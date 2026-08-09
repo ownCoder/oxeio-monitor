@@ -55,16 +55,21 @@ oxeio-monitor/
 │
 ├── agent/                                  # ── C# .NET 8 ──
 │   ├── src/
-│   │   ├── oXeio.Core/                     # শেয়ার্ড লাইব্রেরি
-│   │   │   ├── Native/
-│   │   │   │   ├── User32.cs               # GetLastInputInfo, GetForegroundWindow
-│   │   │   │   ├── WtsApi32.cs             # session lock/unlock ইভেন্ট
-│   │   │   │   └── Dxgi.cs                 # Desktop Duplication API
-│   │   │   ├── Models/                     # Segment, Event, AppUsage, Screenshot
-│   │   │   ├── Time/MonotonicClock.cs      # ⭐ ঘড়ি বদলালেও অটুট
-│   │   │   └── Security/TokenStore.cs      # DPAPI দিয়ে টোকেন এনক্রিপ্ট
+│   │   ├── oXeio.Core/                     # ⭐ **নিয়ম** — net8.0, শূন্য Win32
+│   │   │   ├── Time/MonotonicClock.cs      ✅ ঘড়ি বদলালেও অটুট
+│   │   │   ├── Time/DhakaTime.cs           ✅ সার্ভারের dhaka-time.ts-এর প্রতিরূপ
+│   │   │   ├── Tracking/IdleStateMachine.cs ✅ ⭐ সিস্টেমের হৃদয়
+│   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
+│   │   │   ├── Capture/SlotScheduler.cs    ✅ ৫ মিনিট স্লট + র‍্যান্ডম
+│   │   │   └── Models/                     ✅ SegmentState, ActivitySegment
+│   │   │   # ⚠️ Native/ ইচ্ছাকৃতভাবে এখানে **নয়** — Win32 ঢুকলে নিয়মগুলো
+│   │   │   #    আর ইউনিট টেস্টে যাচাই করা যেত না। ওগুলো oXeio.Agent-এ।
 │   │   │
-│   │   ├── oXeio.Agent/                    # মূল tray অ্যাপ
+│   │   ├── oXeio.Agent/                    # ⏳ net8.0-windows — tray, Win32, ক্যাপচার
+│   │   │   ├── Native/User32.cs            ⏳ GetLastInputInfo, GetForegroundWindow
+│   │   │   ├── Native/WtsApi32.cs          ⏳ lock/unlock ইভেন্ট
+│   │   │   ├── Native/Dxgi.cs              ⏳ Desktop Duplication
+│   │   │   ├── Security/TokenStore.cs      ⏳ DPAPI
 │   │   │   ├── Program.cs
 │   │   │   ├── Tracking/
 │   │   │   │   ├── TrackerEngine.cs        # ⭐⭐ state machine — সিস্টেমের হৃদয়
@@ -90,8 +95,8 @@ oxeio-monitor/
 │   │   └── oXeio.Watchdog/                 # Windows Service
 │   │       ├── ProcessGuard.cs
 │   │       └── AgentUpdater.cs
-│   ├── installer/                          # WiX → oXeioAgent.msi
-│   └── tests/oXeio.Tests/
+│   ├── installer/                          ⏳ WiX → oXeioAgent.msi
+│   └── tests/oXeio.Core.Tests/             ✅ ২৯টি ইউনিট টেস্ট
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/

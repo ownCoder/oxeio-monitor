@@ -104,6 +104,32 @@ jobs:
       - name: Build
         run: npm run build
 
+  agent-core:
+    name: agent core — build · test
+    # ubuntu-তেই চলে, কারণ oXeio.Core-এ ইচ্ছাকৃতভাবে কোনো Win32 নেই।
+    # Win32 অংশ (oXeio.Agent, net8.0-windows) যোগ হলে তার জন্য windows runner লাগবে।
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: oxeio-monitor/agent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+
   docker:
     name: docker image builds
     runs-on: ubuntu-latest
