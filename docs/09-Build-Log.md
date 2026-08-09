@@ -20,7 +20,7 @@
 | ব্যবসায়িক প্ল্যান | [01-Planning](01-Planning.md) |
 | ১০টি ওয়ার্কফ্লো | [02-Workflow](02-Workflow.md) |
 | কোড ম্যাপ | [03-Project-Map](03-Project-Map.md) |
-| ফিচার ক্যাটালগ (১০৫টি সক্রিয়, ৬টি বাতিল) | [04-Features](04-Features.md) |
+| ফিচার ক্যাটালগ (১০৮টি সক্রিয়, ৬টি বাতিল) | [04-Features](04-Features.md) |
 | ২২টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
 | বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
 | ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
@@ -433,8 +433,19 @@ DPI       : ✅ PerMonitorDpiAware — ম্যানিফেস্ট কা�
 
 ### ⚠️ যা এখনো বাকি — এবং যা আমি যাচাই করতে পারব না
 
-বাকি: ক্যাপচার (WGC + GDI fallback + WebP), SQLite অফলাইন queue, sync client,
-tray UI, আর `oXeio.Watchdog`।
+বাকি: **WGC ক্যাপচার ইঞ্জিন**, SQLite অফলাইন queue, sync client, tray UI,
+আর `oXeio.Watchdog`।
+
+**WGC শুরু করার আগে যা জেনে রাখা দরকার** (গবেষণা থেকে, যেন পরে আবার খুঁজতে না হয়):
+
+| | |
+|---|---|
+| IID তিনটে | SDK হেডারে **মিলিয়ে যাচাই করা** — `IGraphicsCaptureItemInterop` `3628E81B-…`, `IDirect3DDxgiInterfaceAccess` `A9B3D012-…`, `IGraphicsCaptureItem` `79c3f95b-…` |
+| TFM | `10.0.17763.0` → **`10.0.19041.0`+** তুলতে হবে, CsWinRT প্রজেকশনের জন্য |
+| থ্রেড | `Direct3D11CaptureFramePool.**CreateFreeThreaded**`, `Create` নয়। `Create`-এর জন্য কলিং থ্রেডে `DispatcherQueue` লাগে — ব্যাকগ্রাউন্ড এজেন্টে `FrameArrived` কখনো আসে না। WPF নমুনা থেকে কোড তুলে আনলে এখানেই আটকায় |
+| ফ্রেম | শুধু `ContentSize` অংশটুকু কপি করতে হবে; পুলের বাকি অংশ অনির্ধারিত ডেটা |
+| টাইমআউট | ৩ সেকেন্ডের কড়া সীমা + `finally`-তে পূর্ণ dispose — আটকে যাওয়া ক্যাপচার যেন পরের স্লট পর্যন্ত D3D ডিভাইস ধরে না রাখে |
+| হলুদ বর্ডার | Windows 10-এ ঝিলিক দেবে, মেনে নেওয়া হয়েছে ([ADR-012b](05-Options-Decisions.md)) — **পলিসিতে লিখতে হবে** |
 
 **যেগুলো আপনাকেই চালিয়ে দেখতে হবে** — ডায়াগনস্টিক টুলটা চালিয়ে:
 
