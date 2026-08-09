@@ -1,0 +1,291 @@
+# 03 · Project Map
+
+কোথায় কী কোড থাকবে, কোন মডিউল কার উপর নির্ভর করে, কোন ফিচার কোন ফাইলে।
+
+---
+
+## ১. সিস্টেম কম্পোনেন্ট ম্যাপ
+
+```
+┌─────────────────────────── CLIENT SIDE (১৫টি PC) ───────────────────────────┐
+│                                                                              │
+│  oXeio.Agent.exe (tray, user session)          oXeio.Watchdog.exe (service)  │
+│  ┌────────────────────────────────────┐        ┌──────────────────────────┐  │
+│  │ TrackerEngine   — state machine    │        │ ProcessGuard  ৩০ সে. চেক │  │
+│  │ IdleMonitor     — GetLastInputInfo │◀──────▶│ AgentUpdater  MSI আপডেট  │  │
+│  │ ScreenCapturer  — DXGI/GDI + WebP  │        │ CrashReporter            │  │
+│  │ WindowWatcher   — foreground app   │        └──────────────────────────┘  │
+│  │ SyncClient      — HTTP + retry     │                                      │
+│  │ LocalQueue      — SQLite + files   │        oXeio.Core.dll (shared)       │
+│  │ TrayUI          — মেনু, নোটিফিকেশন │        Win32 API · Models · Crypto    │
+│  └────────────────────────────────────┘                                      │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │ HTTPS
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                        SERVER (অফিসের PC)                                    │
+│                                                                              │
+│  Caddy (TLS) → NestJS API                                                    │
+│  ┌──────────────┬──────────────┬──────────────┬──────────────┐               │
+│  │ IngestModule │ AuthModule   │ QueryModule  │ ReportModule │               │
+│  │ এজেন্টের ডেটা │ JWT + role   │ ড্যাশবোর্ড    │ Excel/PDF    │               │
+│  ├──────────────┼──────────────┼──────────────┼──────────────┤               │
+│  │ JobsModule   │ StorageModule│ AlertModule  │ AdminModule  │               │
+│  │ cron         │ ছবি + থাম্ব   │ mail/telegram│ CRUD+settings│               │
+│  └──────────────┴──────────────┴──────────────┴──────────────┘               │
+│         │                    │                                               │
+│    PostgreSQL 16        D:\oXeio\storage\                                    │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │ HTTPS
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│  React SPA — Live · Timeline · Gallery · Attendance · Reports · Settings     │
+│              + Employee self-view (স্টাফের নিজের ডেটা)                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ২. রেপো স্ট্রাকচার
+
+> **অবস্থান:** `oXeio Office/oxeio-monitor/`
+> নিচের গাছে **✅ = কোড আছে ও চলছে**, **⏳ = এখনো পরিকল্পনা**।
+> সর্বশেষ অবস্থা ও কী কী যাচাই হয়েছে: [09-Build-Log](09-Build-Log.md)
+
+```
+oxeio-monitor/
+│
+├── agent/                                  # ── C# .NET 8 ──
+│   ├── src/
+│   │   ├── oXeio.Core/                     # শেয়ার্ড লাইব্রেরি
+│   │   │   ├── Native/
+│   │   │   │   ├── User32.cs               # GetLastInputInfo, GetForegroundWindow
+│   │   │   │   ├── WtsApi32.cs             # session lock/unlock ইভেন্ট
+│   │   │   │   └── Dxgi.cs                 # Desktop Duplication API
+│   │   │   ├── Models/                     # Segment, Event, AppUsage, Screenshot
+│   │   │   ├── Time/MonotonicClock.cs      # ⭐ ঘড়ি বদলালেও অটুট
+│   │   │   └── Security/TokenStore.cs      # DPAPI দিয়ে টোকেন এনক্রিপ্ট
+│   │   │
+│   │   ├── oXeio.Agent/                    # মূল tray অ্যাপ
+│   │   │   ├── Program.cs
+│   │   │   ├── Tracking/
+│   │   │   │   ├── TrackerEngine.cs        # ⭐⭐ state machine — সিস্টেমের হৃদয়
+│   │   │   │   ├── IdleMonitor.cs          # ১ সে. পোলিং, ৬০ সে. threshold
+│   │   │   │   ├── SegmentBuilder.cs       # retro-adjust + সেগমেন্ট ক্লোজ
+│   │   │   │   └── CaptureWindow.cs        # শুধু ছবির সময়সীমা (07:00–23:00)
+│   │   │   │                               # ⚠️ ShiftCalendar নেই — শিফটই নেই
+│   │   │   ├── Capture/
+│   │   │   │   ├── SlotScheduler.cs        # ⭐ ৫ মিনিট স্লট + র‍্যান্ডম অফসেট
+│   │   │   │   ├── ScreenCapturer.cs       # মাল্টি-মনিটর, DPI-aware
+│   │   │   │   └── WebpEncoder.cs
+│   │   │   ├── Apps/
+│   │   │   │   ├── WindowWatcher.cs        # ২ সে. foreground চেক
+│   │   │   │   └── BrowserUrlReader.cs     # UI Automation → ডোমেইন
+│   │   │   ├── Sync/
+│   │   │   │   ├── SyncClient.cs           # HTTP, backoff, idempotency
+│   │   │   │   ├── LocalQueue.cs           # SQLite + ফাইল queue
+│   │   │   │   └── ConfigSync.cs
+│   │   │   └── UI/
+│   │   │       ├── TrayIcon.cs             # স্ট্যাটাস + "৬৩.৪ / ২০৮ ঘণ্টা"
+│   │   │       └── MyDayWindow.cs          # স্টাফের নিজের হিসাব
+│   │   │
+│   │   └── oXeio.Watchdog/                 # Windows Service
+│   │       ├── ProcessGuard.cs
+│   │       └── AgentUpdater.cs
+│   ├── installer/                          # WiX → oXeioAgent.msi
+│   └── tests/oXeio.Tests/
+│
+├── server/                                 # ── Node 22 + NestJS 11 ──
+│   ├── src/
+│   │   ├── main.ts  app.module.ts          ✅ prefix, helmet, CSRF, pino
+│   │   ├── prisma/                         ✅ গ্লোবাল PrismaService
+│   │   ├── health/                         ✅ GET /health (@Public)
+│   │   ├── audit/                          ✅ audit_log-এ লেখা
+│   │   ├── auth/                           ✅ ⭐ ৪টি গ্লোবাল গার্ড
+│   │   │   ├── auth.controller.ts          #   login · logout · me · change-password
+│   │   │   ├── token.service.ts            #   jose · httpOnly cookie · sliding
+│   │   │   ├── password.service.ts         #   argon2id
+│   │   │   ├── login-throttle.service.ts   #   ব্রুট-ফোর্স (I11)
+│   │   │   └── guards/                     #   jwt · csrf · must-change-pw · roles
+│   │   ├── users/                          ✅ reset-password · portal-account
+│   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
+│   │   │   ├── agent.controller.ts
+│   │   │   ├── device-auth.guard.ts        #   Bearer → sha256 → device
+│   │   │   ├── clock-drift.service.ts      #   ⭐ drift সংশোধন + অ্যালার্ট
+│   │   │   ├── ingest.service.ts           #   ⭐ মধ্যরাত-স্প্লিট · dedupe · session
+│   │   │   ├── screenshot-ingest.service.ts
+│   │   │   ├── enrollment.service.ts  agent-config.service.ts  update.service.ts
+│   │   │   ├── device-rate-limit.service.ts
+│   │   │   └── util/dhaka-time.ts  util/derive-uuid.ts
+│   │   ├── employees/  devices/            ⏳ CRUD
+│   │   ├── screenshots/                    ⏳ গ্যালারি, থাম্বনেইল, signed URL
+│   │   ├── timeline/                       ⏳ segment → টাইমলাইন
+│   │   ├── monthly/                        ⏳ ⭐ মাসিক ২০৮ঘ, pace, shortfall, OT
+│   │   ├── adjustments/                    ⏳ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
+│   │   ├── reports/  alerts/  admin/       ⏳
+│   │   └── jobs/                           ⏳ cron
+│   │       ├── summary.job.ts              #   প্রতি ১৫ মি.
+│   │       ├── day-close.job.ts            #   ০০:১৫ (আগের দিন)
+│   │       ├── retention.job.ts            #   ০২:০০
+│   │       ├── backup.job.ts               #   ০২:৩০
+│   │       └── health.job.ts               #   ডিস্ক, এজেন্ট চুপ
+│   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
+│   └── test/                               ✅ Vitest + supertest — ৫১টি e2e টেস্ট
+│       ├── auth.e2e.spec.ts  agent.e2e.spec.ts
+│       └── setup/harness.ts  setup/global-setup.ts
+│
+├── web/                                    # ── React 19 + Vite ──
+│   └── src/
+│       ├── pages/
+│       │   ├── LiveBoard.tsx               # ⭐ হোম — ১৫টা কার্ড
+│       │   ├── EmployeeDetail.tsx          # টাইমলাইন + চার্ট
+│       │   ├── Gallery.tsx                 # স্ক্রিনশট গ্রিড + লাইটবক্স
+│       │   ├── Attendance.tsx              # মাসিক গ্রিড
+│       │   ├── Reports.tsx
+│       │   ├── Settings.tsx                # owner only
+│       │   └── MyData.tsx                  # স্টাফের নিজের ভিউ
+│       ├── components/
+│       │   ├── TimelineBar.tsx             # ⭐ active/idle রঙিন বার
+│       │   ├── StatusCard.tsx  ScreenshotGrid.tsx
+│       │   └── TargetRing.tsx              # মাসিক ২০৮ঘ প্রগ্রেস রিং
+│       ├── api/  hooks/  lib/
+│
+├── docs/                                   # ← এই ডকুমেন্টগুলো
+│   └── monitoring-policy-template.md       # স্টাফের সই করার পলিসি
+├── ops/
+│   ├── docker-compose.yml  Caddyfile
+│   ├── av-exclusion.ps1                    # AV exception স্ক্রিপ্ট
+│   └── deploy-agent.ps1                    # সাইলেন্ট MSI ডিপ্লয়
+└── (রেপো রুটে) .github/workflows/ci.yml   ✅ lint · typecheck · test · build · docker
+```
+
+---
+
+## ৩. মডিউল নির্ভরতা
+
+```
+oXeio.Core  ◀── সবাই এর উপর নির্ভর করে
+    ▲
+    ├── oXeio.Agent
+    │     TrackerEngine ──▶ IdleMonitor, SegmentBuilder, CaptureWindow
+    │           │
+    │           ├──▶ SlotScheduler ──▶ ScreenCapturer ──▶ WebpEncoder
+    │           ├──▶ WindowWatcher ──▶ BrowserUrlReader
+    │           └──▶ LocalQueue ──▶ SyncClient ──▶ [Server API]
+    │
+    └── oXeio.Watchdog ──▶ ProcessGuard ──▶ [Agent process]
+
+Server:
+  AgentModule ──▶ DeviceAuthGuard ──▶ Prisma          ✅  (device token, আলাদা জগৎ)
+        │           ClockDrift ──▶ Alert
+        └──▶ Ingest ──▶ dhaka-time, derive-uuid ──▶ Prisma
+  AuthModule  ──▶ Token(jose), Password(argon2), Throttle, Audit   ✅
+        └──▶ ৪টি গ্লোবাল গার্ড ──▶ [বাকি সব কন্ট্রোলার]
+  UsersModule ──▶ AuthModule                          ✅
+  AuditModule ◀── Auth, (পরে) Screenshots, Reports    ✅  (গ্লোবাল)
+  QueryModule  ──▶ Prisma (read-only)                 ⏳
+  ReportModule ──▶ Monthly ──▶ monthly_summary        ⏳
+  JobsModule   ──▶ সব মডিউল (cron)                    ⏳
+  AlertModule  ◀── Jobs, Agent (ইভেন্ট-ভিত্তিক)        ⏳
+```
+
+**নিয়ম:**
+- `Core` কখনো `Agent`-এর উপর নির্ভর করবে না; `Agent`(server) কখনো `Report`-এর উপর নয়।
+- **দুটো অথেনটিকেশন জগৎ কখনো মেশে না** — ড্যাশবোর্ড চলে JWT cookie + CSRF-এ,
+  এজেন্ট চলে device token-এ। তাই `AgentController` ক্লাস-লেভেলে `@Public()`,
+  আর তার নিজের `DeviceAuthGuard` আলাদা করে বসানো।
+
+---
+
+## ৪. ডেটা মডেল সম্পর্ক
+
+```
+shifts ──1:N──▶ employees ──1:N──▶ devices
+                    │
+                    ├──1:N──▶ work_sessions ──1:N──▶ activity_segments  ⭐
+                    ├──1:N──▶ screenshots
+                    ├──1:N──▶ app_usage ──N:1──▶ app_categories
+                    ├──1:N──▶ events
+                    └──1:1(per date)──▶ daily_summary  ⭐ (rollup)
+
+holidays ──(date lookup)──▶ daily_summary
+users ──1:N──▶ audit_log
+settings (key-value)   ·   agent_versions   ·   alerts
+```
+
+---
+
+## ৫. ফিচার → কোড ম্যাপিং
+
+| ফিচার | Agent | Server | Web |
+|---|---|---|---|
+| র‍্যান্ডম স্ক্রিনশট | `SlotScheduler` `ScreenCapturer` | `agent/screenshot-ingest` ✅ → `screenshots/` ⏳ | `Gallery.tsx` |
+| Idle/Active টাইম | `IdleMonitor` `SegmentBuilder` | `agent/ingest.service` ✅ | `TimelineBar.tsx` |
+| মধ্যরাতে দিন বদল | `SegmentBuilder` | `agent/util/dhaka-time` ✅ | — |
+| Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
+| অফলাইন কাজ → dedupe | `LocalQueue` `SyncClient` | `agent/util/derive-uuid` ✅ | — |
+| মাসিক ২০৮ঘ টার্গেট + pace | `TrackerEngine` `TrayIcon` | `monthly/` ⏳ | `TargetRing.tsx` |
+| অ্যাপ/সাইট ট্র্যাকিং | `WindowWatcher` `BrowserUrlReader` | `agent/ingest.service` ✅ (ক্যাটাগরি ⏳) | `EmployeeDetail.tsx` |
+| লাইভ স্ট্যাটাস | heartbeat ✅ | `timeline/live` ⏳ | `LiveBoard.tsx` |
+| মাসিক হিটম্যাপ | — | `monthly/` `day-close.job` | `MonthHeatmap.tsx` |
+| রিপোর্ট | — | `reports/` | `Reports.tsx` |
+| Watchdog | `oXeio.Watchdog` | `alerts/` | `LiveBoard` badge |
+| Retention | — | `retention.job` | `Settings.tsx` |
+| স্টাফের নিজস্ব ভিউ | `MyDayWindow` | role=employee | `MyData.tsx` |
+| **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` | `EmployeeDetail.tsx` + `MyData.tsx` |
+
+---
+
+## ৬. ফেজ → ডেলিভারেবল ম্যাপিং
+
+| ফেজ | Agent | Server | Web |
+|---|---|---|---|
+| **1** Foundation | — | prisma, auth, ingest, docker | লগইন শেল |
+| **2** Agent Core | Core, Tracking, Capture, Sync, Queue | drift, dedupe | — |
+| **3** MVP ⭐ | TrayIcon | timeline, live | LiveBoard, EmployeeDetail, Gallery |
+| **4** Activity | Apps/* | categories | চার্ট |
+| **5** Reports | MyDayWindow | monthly, reports | MonthHeatmap, Reports, MyData |
+| **6** Hardening | Watchdog, installer, updater | jobs, alerts, health | Settings |
+| **7** Rollout | deploy স্ক্রিপ্ট | — | — |
+
+---
+
+## ৭. প্রধান নির্ভরশীল লাইব্রেরি
+
+### Agent (C#)
+| প্যাকেজ | কেন |
+|---|---|
+| `.NET 8` (self-contained) | স্টাফের PC-তে রানটাইম ইনস্টল করতে হবে না |
+| `SharpDX.DXGI` / Windows Graphics Capture | দ্রুত স্ক্রিন ক্যাপচার (GDI fallback) |
+| `SixLabors.ImageSharp` | WebP এনকোডিং + রিসাইজ |
+| `Microsoft.Data.Sqlite` | লোকাল queue |
+| `Polly` | রিট্রাই ও backoff |
+| `Serilog` | লগ |
+| `WiX Toolset v4` | MSI ইনস্টলার |
+
+### Server (Node)
+| প্যাকেজ | কেন |
+|---|---|
+| `@nestjs/core` | মডিউলার স্ট্রাকচার, guard, DI |
+| `prisma` | টাইপ-সেফ ORM + migration |
+| `sharp` | থাম্বনেইল |
+| `exceljs` · `pdfmake` | রিপোর্ট |
+| `@nestjs/schedule` | cron |
+| `argon2` · `jose` | পাসওয়ার্ড + JWT |
+| `nodemailer` | অ্যালার্ট ইমেইল |
+| `pino` | লগ |
+
+### Web (React)
+`react` · `vite` · `tailwindcss` · `@tanstack/react-query` · `recharts` · `react-router` · `date-fns` · `yet-another-react-lightbox`
+
+---
+
+## ৮. পোর্ট ও পাথ
+
+| জিনিস | মান |
+|---|---|
+| API | `https://192.168.0.50:8443` · লোকাল ডেভে `http://localhost:3000/api/v1` |
+| Web | একই origin (`/`), API `/api/v1` |
+| Postgres | `localhost:5432` (শুধু ভেতরে) |
+| এজেন্ট ডেটা | `%ProgramData%\oXeio\` |
+| স্ক্রিনশট | `D:\oXeio\storage\screenshots\YYYY\MM\DD\emp-XXX\` |
+| ব্যাকআপ | `D:\oXeio\backups\` → `E:\` (এক্সটার্নাল) |
+| লগ | `D:\oXeio\logs\` |

@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.data/
+*.log
+coverage/
+
+# টেস্ট চলার সময় তৈরি হওয়া স্ক্রিনশট
+server/.tmp-test-storage/
+
+# .NET (agent, phase 2)
+bin/
+obj/
+
+# OS
+Thumbs.db
+.DS_Store

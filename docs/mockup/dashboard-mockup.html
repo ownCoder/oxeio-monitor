@@ -1,0 +1,965 @@
+<title>oXeio Monitoring — UI Mockup</title>
+
+<style>
+  /* ─────────────────────────────────────────────────────────
+     oXeio Monitoring — design tokens
+     Brand: black · white · red (from the oXeio LLC mark).
+
+     The whole surface is monochrome, exactly like the logo,
+     and RED is the one saturated colour — used for two things
+     only, kept apart by weight:
+       · outline red  → the product itself (bar, tabs, ring, primary button)
+       · solid red    → something needs attention (agent down, behind pace)
+     INK carries "counted work"; GREY carries "not counted".
+     ───────────────────────────────────────────────────────── */
+  :root {
+    --bg:        #F1F1F1;
+    --surface:   #FFFFFF;
+    --surface-2: #F7F7F7;
+    --line:      #E2E2E2;
+    --line-soft: #EDEDED;
+    --text:      #0B0B0B;
+    --text-2:    #4B4B4B;
+    --text-3:    #7C7C7C;
+
+    --brand:     #ED1C24;   /* logo red — fills, rings, marks */
+    --ink:       #0B0B0B;   /* counted work */
+
+    --accent:    #C4121A;   /* red that still reads as text on white */
+    --accent-2:  #9A0A11;
+    --accent-bg: #FCE9EA;
+
+    --st-active:  #0B0B0B;
+    --st-idle:    #B4B4B4;
+    --st-warn:    #C4121A;
+    --st-crit:    #C4121A;
+    --st-off:     #D2D2D2;
+    --st-leave:   #8E8E8E;
+
+    --active-bg:  #ECECEC;
+    --warn-bg:    #FCE9EA;
+    --crit-bg:    #FCE9EA;
+
+    /* sequential ramp for the month heatmap — grey → ink */
+    --ramp-0: #EDEDED;
+    --ramp-1: #D2D2D2;
+    --ramp-2: #A0A0A0;
+    --ramp-3: #5A5A5A;
+    --ramp-4: #0B0B0B;
+
+    --mark-bg: #0B0B0B;
+    --mark-fg: #FFFFFF;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+
+    --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --font-display: "Segoe UI Variable Display", "Segoe UI Semibold",
+               "Segoe UI", system-ui, sans-serif;
+    --font-num: "Cascadia Mono", "Consolas", ui-monospace, "SF Mono", monospace;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px -6px rgba(0,0,0,.14);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0A0A0A; --surface:#151515; --surface-2:#1C1C1C; --line:#2C2C2C;
+      --line-soft:#242424; --text:#F2F2F2; --text-2:#A8A8A8; --text-3:#7E7E7E;
+      --brand:#F5333A; --ink:#FFFFFF;
+      --accent:#FF6B70; --accent-2:#FF9296; --accent-bg:#2A1214;
+      --st-active:#FFFFFF; --st-idle:#5C5C5C; --st-warn:#FF6B70; --st-crit:#FF6B70;
+      --st-off:#333333; --st-leave:#7E7E7E;
+      --active-bg:#242424; --warn-bg:#2A1214; --crit-bg:#2A1214;
+      --ramp-0:#242424; --ramp-1:#3B3B3B; --ramp-2:#636363; --ramp-3:#A6A6A6; --ramp-4:#FFFFFF;
+      --mark-bg:#FFFFFF; --mark-fg:#0B0B0B;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px -8px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F1F1F1; --surface:#FFFFFF; --surface-2:#F7F7F7; --line:#E2E2E2;
+    --line-soft:#EDEDED; --text:#0B0B0B; --text-2:#4B4B4B; --text-3:#7C7C7C;
+    --brand:#ED1C24; --ink:#0B0B0B;
+    --accent:#C4121A; --accent-2:#9A0A11; --accent-bg:#FCE9EA;
+    --st-active:#0B0B0B; --st-idle:#B4B4B4; --st-warn:#C4121A; --st-crit:#C4121A;
+    --st-off:#D2D2D2; --st-leave:#8E8E8E;
+    --active-bg:#ECECEC; --warn-bg:#FCE9EA; --crit-bg:#FCE9EA;
+    --ramp-0:#EDEDED; --ramp-1:#D2D2D2; --ramp-2:#A0A0A0; --ramp-3:#5A5A5A; --ramp-4:#0B0B0B;
+    --mark-bg:#0B0B0B; --mark-fg:#FFFFFF;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px -6px rgba(0,0,0,.14);
+  }
+  :root[data-theme="dark"] {
+    --bg:#0A0A0A; --surface:#151515; --surface-2:#1C1C1C; --line:#2C2C2C;
+    --line-soft:#242424; --text:#F2F2F2; --text-2:#A8A8A8; --text-3:#7E7E7E;
+    --brand:#F5333A; --ink:#FFFFFF;
+    --accent:#FF6B70; --accent-2:#FF9296; --accent-bg:#2A1214;
+    --st-active:#FFFFFF; --st-idle:#5C5C5C; --st-warn:#FF6B70; --st-crit:#FF6B70;
+    --st-off:#333333; --st-leave:#7E7E7E;
+    --active-bg:#242424; --warn-bg:#2A1214; --crit-bg:#2A1214;
+    --ramp-0:#242424; --ramp-1:#3B3B3B; --ramp-2:#636363; --ramp-3:#A6A6A6; --ramp-4:#FFFFFF;
+    --mark-bg:#FFFFFF; --mark-fg:#0B0B0B;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px -8px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-ui); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 22px 18px 56px; }
+
+  .preamble { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; margin-bottom: 16px; }
+  .preamble h1 { font-family: var(--font-display); font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .preamble p { margin: 0; color: var(--text-3); font-size: 13px; }
+  .demo-tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 4px; background: var(--warn-bg); color: var(--st-warn);
+    border: 1px solid color-mix(in srgb, var(--st-warn) 35%, transparent);
+  }
+
+  .app { background: var(--surface); border: 1px solid var(--line);
+         border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+
+  /* the bar is the logo's black field, in both themes */
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 11px 16px;
+            border-bottom: 1px solid #000; background: #000; color: #fff; }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); }
+  .brand-mark { width: 26px; height: 26px; border-radius: 7px; flex: none; background: var(--mark-bg);
+                color: var(--mark-fg); display: grid; place-items: center; font-size: 13px; font-weight: 700; letter-spacing: -.03em; }
+  .brand-name { font-weight: 650; font-size: 15px; letter-spacing: -.01em; }
+  .brand-sub { color: var(--text-3); font-size: 12px; }
+  .rx { color: var(--brand); }              /* the red X, straight off the mark */
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+  .topbar .brand-mark { background: #fff; color: #000; }
+  .topbar .brand-sub  { color: rgba(255,255,255,.55); }
+  .topbar .who b      { color: #fff; }
+  .topbar .who span   { color: rgba(255,255,255,.55); }
+  .topbar .avatar     { background: rgba(255,255,255,.12); color: #fff;
+                        border-color: rgba(255,255,255,.22); }
+  .topbar .shift-pill { background: rgba(255,255,255,.08); color: #fff;
+                        border-color: rgba(255,255,255,.18); }
+  /* a recording light, not a status colour */
+  .topbar .live-dot   { background: var(--brand);
+                        box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent); }
+
+  .shift-pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px 4px 8px;
+                border-radius: 999px; background: var(--active-bg);
+                border: 1px solid color-mix(in srgb, var(--st-active) 28%, transparent);
+                color: var(--st-active); font-size: 12px; font-weight: 600; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none;
+              box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .live-dot { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+  }
+
+  .who { text-align: right; line-height: 1.25; }
+  .who b { font-size: 12.5px; font-weight: 600; display: block; }
+  .who span { font-size: 11px; color: var(--text-3); }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; flex: none; background: var(--accent-bg);
+            color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700;
+            border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+
+  .nav { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line);
+         background: var(--surface); overflow-x: auto; scrollbar-width: thin; }
+  .nav button { appearance: none; border: 0; background: none; cursor: pointer; font: inherit;
+                font-size: 13px; color: var(--text-2); padding: 11px 13px 10px;
+                border-bottom: 2px solid transparent; white-space: nowrap;
+                display: flex; align-items: center; gap: 7px; }
+  .nav button:hover { color: var(--text); }
+  .nav button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+  .nav .badge { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+                background: var(--crit-bg); color: var(--st-crit); }
+
+  .screen { padding: 18px 16px 22px; }
+  .screen[hidden] { display: none; }
+
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; flex-wrap: wrap; }
+  .sec-head h2 { font-family: var(--font-display); font-size: 15px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .sec-head .hint { font-size: 12px; color: var(--text-3); }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
+
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); gap: 1px;
+             background: var(--line); border: 1px solid var(--line); border-radius: var(--radius);
+             overflow: hidden; margin-bottom: 16px; }
+  .stat { background: var(--surface); padding: 11px 13px; }
+  .stat .k { font-size: 11.5px; color: var(--text-3); margin-bottom: 3px; }
+  .stat .v { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 21px;
+             font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .stat .v small { font-size: 12px; font-weight: 500; color: var(--text-3); margin-left: 2px; }
+  .stat.is-active .v { color: var(--st-active); }
+  .stat.is-warn   .v { color: var(--st-warn); }
+  .stat.is-crit   .v { color: var(--st-crit); }
+
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(246px, 1fr)); gap: 11px; }
+  .pcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+           padding: 12px; position: relative; display: flex; flex-direction: column; gap: 10px;
+           transition: border-color .15s ease, transform .15s ease; }
+  .pcard::before { content: ""; position: absolute; inset: -1px auto -1px -1px; width: 3px;
+                   border-radius: var(--radius) 0 0 var(--radius); background: var(--st-off); }
+  .pcard[data-state="active"]::before { background: var(--st-active); }
+  .pcard[data-state="idle"]::before   { background: var(--st-idle); }
+  .pcard[data-state="down"]::before   { background: var(--st-crit); }
+  .pcard[data-state="leave"]::before  { background: var(--st-leave); }
+  .pcard:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); transform: translateY(-1px); }
+
+  .pcard-top { display: flex; align-items: center; gap: 9px; }
+  .pcard-name { min-width: 0; flex: 1; }
+  .pcard-name b { display: block; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
+  .pcard-name span { font-family: var(--font-num); font-size: 11px; color: var(--text-3); }
+
+  .ring { width: 46px; height: 46px; flex: none; position: relative; }
+  .ring svg { transform: rotate(-90deg); display: block; }
+  .ring .track { stroke: var(--line-soft); }
+  .ring .fill { stroke: var(--accent); stroke-linecap: round;
+                transition: stroke-dashoffset .9s cubic-bezier(.2,.7,.3,1); }
+  .ring[data-met="1"] .fill { stroke: var(--st-active); }
+  .ring .pct { position: absolute; inset: 0; display: grid; place-items: center;
+               font-family: var(--font-num); font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+          padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-2);
+          border: 1px solid var(--line); }
+  .chip i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .chip.s-active { background: var(--active-bg); color: var(--st-active); border-color: color-mix(in srgb, var(--st-active) 26%, transparent); }
+  .chip.s-idle   { background: var(--surface-2); color: var(--text-2); }
+  /* solid red = needs attention; outline red elsewhere = brand */
+  .chip.s-down   { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .chip.s-warn   { background: var(--warn-bg); color: var(--st-warn); border-color: color-mix(in srgb, var(--st-warn) 26%, transparent); }
+  .chip.s-leave  { background: color-mix(in srgb, var(--st-leave) 14%, transparent); color: var(--st-leave); border-color: color-mix(in srgb, var(--st-leave) 26%, transparent); }
+
+  .mrow { display: flex; align-items: baseline; gap: 6px; }
+  .mrow .big { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 18px;
+               font-weight: 600; letter-spacing: -.02em; }
+  .mrow .of { font-family: var(--font-num); font-size: 11.5px; color: var(--text-3); }
+  .today { display: flex; align-items: baseline; gap: 6px; font-size: 11.5px; color: var(--text-3); }
+  .today b { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 12.5px;
+             font-weight: 600; color: var(--text-2); }
+
+  /* day strip: 06:00 → 24:00 */
+  .strip { position: relative; height: 12px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+  .strip .seg { position: absolute; top: 0; bottom: 0; }
+  .strip .seg.a { background: var(--st-active); }
+  .strip .seg.i { background: var(--st-idle); opacity: .34; }
+  .strip .now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: .5; }
+  .strip.tall { height: 34px; border-radius: 5px; }
+  .strip-axis { display: flex; justify-content: space-between; margin-top: 5px;
+                font-family: var(--font-num); font-size: 10px; color: var(--text-3); }
+  .pcard-foot { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-3); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 11.5px; color: var(--text-3); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .split { display: grid; grid-template-columns: minmax(0,1.55fr) minmax(0,1fr); gap: 14px; }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .panel + .panel { margin-top: 14px; }
+  .panel h3 { font-family: var(--font-display); font-size: 13px; font-weight: 650; margin: 0 0 11px; }
+
+  .person-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .person-head .avatar { width: 42px; height: 42px; font-size: 15px; }
+  .person-head h2 { font-family: var(--font-display); font-size: 18px; margin: 0; font-weight: 650; }
+  .person-head .meta { font-size: 12px; color: var(--text-3); }
+  .person-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  .hours { display: flex; align-items: flex-end; gap: 2px; height: 84px; }
+  .hours .h { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+              gap: 4px; height: 100%; }
+  .hours .bar { width: 100%; border-radius: 2px 2px 0 0; background: var(--ink); opacity: .82; min-height: 2px; }
+  .hours .bar.zero { background: var(--line); }
+  .hours .lbl { font-family: var(--font-num); font-size: 9px; color: var(--text-3); }
+
+  .applist { display: flex; flex-direction: column; gap: 9px; }
+  .approw { display: grid; grid-template-columns: 12px 1fr auto; gap: 9px; align-items: center; }
+  .approw .cat { width: 8px; height: 8px; border-radius: 2px; }
+  .approw .cat.p { background: var(--st-active); }
+  .approw .cat.n { background: var(--st-idle); }
+  .approw .cat.u { background: var(--st-warn); }
+  .approw .nm { font-size: 12.5px; min-width: 0; }
+  .approw .nm b { font-weight: 550; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .approw .nm .track { height: 4px; border-radius: 2px; background: var(--line-soft); margin-top: 4px; }
+  .approw .nm .track i { display: block; height: 100%; border-radius: 2px; background: var(--ink); opacity: .45; }
+  .approw .du { font-family: var(--font-num); font-size: 12px; color: var(--text-2); }
+
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px,1fr)); gap: 10px; }
+  .shot { border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+          background: var(--surface-2); cursor: pointer; transition: border-color .15s ease; }
+  .shot:hover { border-color: var(--accent); }
+  .shot-img { aspect-ratio: 16/10; background: var(--surface); position: relative;
+              border-bottom: 1px solid var(--line-soft); overflow: hidden; }
+  .shot-bar { height: 12px; background: var(--surface-2); border-bottom: 1px solid var(--line-soft);
+              display: flex; align-items: center; gap: 3px; padding: 0 5px; }
+  .shot-bar i { width: 4px; height: 4px; border-radius: 50%; background: var(--st-off); }
+  .shot-lines { padding: 8px 8px 0; display: flex; flex-direction: column; gap: 5px; }
+  .shot-lines b { display: block; height: 5px; border-radius: 2px; background: var(--line); }
+  .shot-side { position: absolute; left: 0; top: 12px; bottom: 0; width: 26%;
+               background: var(--surface-2); border-right: 1px solid var(--line-soft); }
+  .shot-meta { padding: 6px 8px; display: flex; align-items: center; gap: 6px; }
+  .shot-meta .t { font-family: var(--font-num); font-size: 11px; font-weight: 600; }
+  .shot-meta .a { font-size: 10.5px; color: var(--text-3); margin-left: auto; white-space: nowrap;
+                  overflow: hidden; text-overflow: ellipsis; }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { padding: 8px 11px; text-align: left; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  thead th { background: var(--surface-2); font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+             text-transform: uppercase; color: var(--text-3); position: sticky; top: 0; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--surface-2); }
+  td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+  th.n { text-align: right; }
+  .warnv { color: var(--st-warn); font-weight: 600; }
+  .okv { color: var(--st-active); font-weight: 600; }
+
+  /* month heatmap */
+  .att { border-collapse: separate; border-spacing: 2px; font-size: 11px; }
+  .att th { background: none; border: 0; padding: 3px 4px; position: static; font-family: var(--font-num);
+            font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 10px; }
+  .att td { border: 0; padding: 0; }
+  .att .nm { padding-right: 10px; font-family: var(--font-ui); font-size: 12px; white-space: nowrap; }
+  .cell { width: 19px; height: 19px; border-radius: 3px; display: block; }
+  .cell.r0 { background: var(--ramp-0); }
+  .cell.r1 { background: var(--ramp-1); }
+  .cell.r2 { background: var(--ramp-2); }
+  .cell.r3 { background: var(--ramp-3); }
+  .cell.r4 { background: var(--ramp-4); }
+  .cell.lv { background: var(--st-leave); opacity: .6; }
+  .cell.fu { background: transparent; border: 1px dashed var(--line); }
+
+  .desk { background: linear-gradient(160deg, color-mix(in srgb, var(--ink) 8%, var(--surface-2)), var(--surface-2));
+          border: 1px solid var(--line); border-radius: var(--radius); padding: 26px;
+          display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: flex-start; }
+  .tray { width: 296px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+          box-shadow: var(--shadow); overflow: hidden; flex: none; }
+  .tray-head { display: flex; align-items: center; gap: 8px; padding: 11px 13px; border-bottom: 1px solid var(--line-soft); }
+  .tray-body { padding: 13px; display: flex; flex-direction: column; gap: 12px; }
+  .tray-big { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 26px;
+              font-weight: 600; letter-spacing: -.03em; line-height: 1; }
+  .tray-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .btn { font: inherit; font-size: 12px; font-weight: 550; cursor: pointer; padding: 7px 10px;
+         border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface-2); color: var(--text); }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .toast { width: 296px; flex: none; background: var(--surface); border: 1px solid var(--line);
+           border-left: 3px solid var(--st-active); border-radius: 8px; padding: 11px 13px; box-shadow: var(--shadow); }
+  .toast b { font-size: 12.5px; display: block; margin-bottom: 2px; }
+  .toast p { margin: 0; font-size: 11.5px; color: var(--text-2); }
+
+  .note { margin-top: 14px; padding: 11px 13px; border-radius: var(--radius); background: var(--surface-2);
+          border: 1px solid var(--line); font-size: 12px; color: var(--text-2); }
+  .note b { color: var(--text); }
+  .note.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--st-warn) 30%, transparent); }
+
+  .foot { margin-top: 20px; font-size: 12px; color: var(--text-3); text-align: center; }
+</style>
+
+<div class="wrap">
+
+  <div class="preamble">
+    <h1>oXeio — Monitoring Dashboard</h1>
+    <span class="demo-tag">Mockup · sample data</span>
+    <p>Click the tabs to walk through every screen. All names and numbers are fictional.</p>
+  </div>
+
+  <div class="app">
+
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">oX</div>
+        <div>
+          <div class="brand-name">o<span class="rx">X</span>eio</div>
+          <div class="brand-sub">Workforce Monitor</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="shift-pill"><i class="live-dot"></i> Tracking on · no time window</span>
+        <div class="who">
+          <b>Sunday, 9 August</b>
+          <span class="num">22:10</span>
+        </div>
+        <div class="avatar">A</div>
+      </div>
+    </div>
+
+    <div class="nav" role="tablist">
+      <button role="tab" aria-selected="true"  data-tab="live">Live board</button>
+      <button role="tab" aria-selected="false" data-tab="detail">Staff detail</button>
+      <button role="tab" aria-selected="false" data-tab="gallery">Screenshots</button>
+      <button role="tab" aria-selected="false" data-tab="att">Monthly progress</button>
+      <button role="tab" aria-selected="false" data-tab="report">Reports</button>
+      <button role="tab" aria-selected="false" data-tab="tray">Staff PC</button>
+    </div>
+
+    <!-- ══ LIVE BOARD ══ -->
+    <section class="screen" id="s-live">
+      <div class="summary">
+        <div class="stat is-active"><div class="k">Working now</div><div class="v" id="k-active">—<small>/15</small></div></div>
+        <div class="stat"><div class="k">Worked today</div><div class="v" id="k-worked">—<small>/15</small></div></div>
+        <div class="stat"><div class="k">Average today</div><div class="v" id="k-avg">—</div></div>
+        <div class="stat"><div class="k">Avg monthly progress</div><div class="v" id="k-mavg">—<small>%</small></div></div>
+        <div class="stat is-warn"><div class="k">Behind target</div><div class="v" id="k-behind">—<small>people</small></div></div>
+        <div class="stat is-crit"><div class="k">Agent down</div><div class="v" id="k-down">—</div></div>
+      </div>
+
+      <div class="sec-head">
+        <h2>Team · 15 people</h2>
+        <span class="hint">Ring = share of the monthly <b class="num">208</b> hours · bar = today,
+          <span class="num">06:00</span> to <span class="num">24:00</span></span>
+      </div>
+
+      <div class="board" id="board"></div>
+
+      <div class="legend">
+        <span><i style="background:var(--st-active)"></i> Working (counted)</span>
+        <span><i style="background:var(--st-idle);opacity:.42"></i> 1 min idle → hold (not counted)</span>
+        <span>⏱ chip = ahead of or behind the monthly target</span>
+      </div>
+
+      <div class="note">
+        <b>The rule:</b> there is no fixed shift. Any hour of the day — 7 in the morning or 10 at night —
+        whenever someone is active on their PC, that time counts. The only measure is
+        <b>208 hours a month</b>. At <span class="num">22:10</span> three people are still working,
+        and their time counts in full.
+      </div>
+    </section>
+
+    <!-- ══ DETAIL ══ -->
+    <section class="screen" id="s-detail" hidden>
+      <div class="person-head">
+        <div class="avatar" style="background:var(--mark-bg);color:var(--mark-fg);border-color:var(--mark-bg)">R</div>
+        <div>
+          <h2>Rakib Hasan</h2>
+          <div class="meta"><span class="num">OX-001</span> · Senior Developer · <span class="num">PC-07</span></div>
+        </div>
+        <div class="right">
+          <span class="chip s-active"><i></i> Still working</span>
+          <button class="btn">◀ Previous day</button>
+          <button class="btn">Next day ▶</button>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="stat is-active"><div class="k">Worked today</div><div class="v" id="d-today">—</div></div>
+        <div class="stat"><div class="k">Idle time</div><div class="v" id="d-idle">—</div></div>
+        <div class="stat"><div class="k">First activity</div><div class="v" id="d-first">—</div></div>
+        <div class="stat"><div class="k">Month to date</div><div class="v">63.4<small>/208h</small></div></div>
+        <div class="stat is-active"><div class="k">Monthly pace</div><div class="v">+7.4<small>h ahead</small></div></div>
+        <div class="stat"><div class="k">Screenshots today</div><div class="v" id="d-shots">—</div></div>
+      </div>
+
+      <div class="panel">
+        <h3>Day timeline <span class="eyebrow" style="margin-left:6px">06:00 → 24:00 · full day</span></h3>
+        <div class="strip tall" id="detail-strip"></div>
+        <div class="strip-axis" id="detail-axis"></div>
+      </div>
+
+      <div class="split" style="margin-top:14px">
+        <div>
+          <div class="panel">
+            <h3>Work by hour <span class="eyebrow" style="margin-left:6px">minutes / 60</span></h3>
+            <div class="hours" id="hours"></div>
+          </div>
+          <div class="panel">
+            <h3>Today's screenshots <span class="eyebrow" style="margin-left:6px">latest 6</span></h3>
+            <div class="shots" id="detail-shots"></div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <h3>Most used</h3>
+            <div class="applist" id="apps"></div>
+            <div class="legend" style="margin-top:12px">
+              <span><i style="background:var(--st-active)"></i> Productive</span>
+              <span><i style="background:var(--st-idle)"></i> Neutral</span>
+              <span><i style="background:var(--st-warn)"></i> Unproductive</span>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Today's events</h3>
+            <div class="applist">
+              <div class="approw"><span class="cat p"></span><span class="nm"><b>PC started and logged on</b></span><span class="du">08:47</span></div>
+              <div class="approw"><span class="cat n"></span><span class="nm"><b>Screen locked</b></span><span class="du">13:22</span></div>
+              <div class="approw"><span class="cat n"></span><span class="nm"><b>Screen unlocked</b></span><span class="du">14:05</span></div>
+              <div class="approw"><span class="cat u"></span><span class="nm"><b>Long idle · 41 minutes</b></span><span class="du">16:12</span></div>
+              <div class="approw"><span class="cat p"></span><span class="nm"><b>Still working after evening</b></span><span class="du">19:00+</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ GALLERY ══ -->
+    <section class="screen" id="s-gallery" hidden>
+      <div class="sec-head">
+        <h2>Screenshot gallery</h2>
+        <span class="hint">Rakib Hasan · 9 August · one per 5-minute slot, at a random moment</span>
+      </div>
+      <div class="note" style="margin:0 0 14px">
+        Look at the times — <span class="num">09:03:47</span>, <span class="num">09:06:12</span>,
+        <span class="num">09:12:31</span>… one shot per 5-minute slot, but there is no way to know
+        <b>exactly when</b> in advance. The <span class="num">09:20</span> slot is missing — the staff member
+        was idle then, so no shot was taken.
+      </div>
+      <div class="shots" id="gallery"></div>
+    </section>
+
+    <!-- ══ MONTH HEATMAP ══ -->
+    <section class="screen" id="s-att" hidden>
+      <div class="sec-head">
+        <h2>Monthly progress · August 2026</h2>
+        <span class="hint">Each cell = hours actually worked that day · target <b class="num">208 hours/month</b></span>
+      </div>
+      <div class="tablewrap" style="padding:12px">
+        <table class="att" id="attgrid"></table>
+      </div>
+      <div class="legend">
+        <span>Less</span>
+        <span><i class="cell r0" style="width:13px;height:13px"></i></span>
+        <span><i class="cell r1" style="width:13px;height:13px"></i></span>
+        <span><i class="cell r2" style="width:13px;height:13px"></i></span>
+        <span><i class="cell r3" style="width:13px;height:13px"></i></span>
+        <span><i class="cell r4" style="width:13px;height:13px"></i></span>
+        <span>More (8h+)</span>
+        <span style="margin-left:10px"><i class="cell lv" style="width:13px;height:13px"></i> Leave</span>
+        <span><i class="cell fu" style="width:13px;height:13px"></i> Not yet</span>
+      </div>
+      <div class="note">
+        Days are not counted — <b>hours</b> are. Ten hours one day and six the next is fine;
+        if the month totals 208, the target is met.
+      </div>
+    </section>
+
+    <!-- ══ REPORT ══ -->
+    <section class="screen" id="s-report" hidden>
+      <div class="sec-head">
+        <h2>Payroll hours · August 2026</h2>
+        <span class="hint">Monthly target <b class="num">208</b> hours · <span class="num">9</span> days elapsed,
+          <span class="num">22</span> to go</span>
+        <div style="margin-left:auto;display:flex;gap:7px">
+          <button class="btn">Download Excel</button>
+          <button class="btn primary">Download PDF</button>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table id="paytable"></table>
+      </div>
+      <div class="note">
+        <b>One measure only —</b> how many hours of <i>actual</i> work in the month. Who arrived when,
+        left when, took lunch when — none of it is shown, and none of it is recorded.
+      </div>
+    </section>
+
+    <!-- ══ TRAY ══ -->
+    <section class="screen" id="s-tray" hidden>
+      <div class="sec-head">
+        <h2>What the staff member sees on their PC</h2>
+        <span class="hint">Nothing is hidden — the tray icon is always visible, and staff can see their own numbers</span>
+      </div>
+
+      <div class="desk">
+        <div class="tray">
+          <div class="tray-head">
+            <div class="brand-mark" style="width:20px;height:20px;font-size:10px;border-radius:5px">o<span class="rx">X</span></div>
+            <b style="font-size:12.5px">oXeio Agent</b>
+            <span class="chip s-active" style="margin-left:auto"><i></i> Counting</span>
+          </div>
+          <div class="tray-body">
+            <div>
+              <div class="eyebrow" style="margin-bottom:4px">This month</div>
+              <div class="tray-big">63.4<span style="font-size:15px">h</span>
+                <span style="font-size:14px;color:var(--text-3);font-weight:500"> / 208h</span></div>
+            </div>
+            <div>
+              <div class="strip" style="height:8px">
+                <span class="seg a" style="left:0;width:30.5%"></span>
+              </div>
+              <div class="strip-axis"><span>0 hours</span><span>30%</span><span>208 hours</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--st-active);font-weight:600">
+              ✓ You are 7.4 hours ahead of target
+            </div>
+            <div style="border-top:1px solid var(--line-soft);padding-top:10px">
+              <div class="eyebrow" style="margin-bottom:4px">Today</div>
+              <div style="font-family:var(--font-num);font-size:17px;font-weight:600" id="tray-today">—</div>
+            </div>
+            <div class="tray-btns">
+              <button class="btn">My hours</button>
+              <button class="btn">My screenshots</button>
+            </div>
+            <p style="margin:0;font-size:11px;color:var(--text-3);line-height:1.45">
+              Whenever you are working, it is being counted — morning or night.
+              No keystrokes, passwords or personal messages are ever collected.
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="toast">
+            <b>✅ Monthly 208 hours complete</b>
+            <p>You reached the monthly target on 24 August at <span class="num">16:12</span>. Everything after this is overtime.</p>
+          </div>
+          <div class="toast" style="border-left-color:var(--st-idle)">
+            <b>⏸ Counting paused</b>
+            <p>No keyboard or mouse activity for 1 minute. Move the mouse and it starts again.</p>
+          </div>
+          <div class="toast" style="border-left-color:var(--st-leave)">
+            <b>📷 Screenshot taken</b>
+            <p><span class="num">21:47:26</span> · Open "My hours" to see all of your own screenshots.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="note warn">
+        <b>⚠️ Settled since this mockup was drawn:</b> with the time window removed, screenshots would
+        otherwise be taken <b>even at 2 in the morning</b>. Time counting stays 24 hours, but screenshots
+        are limited to a <b>capture window of 07:00–23:00</b> (ADR-011c).
+      </div>
+    </section>
+
+  </div>
+
+  <p class="foot">
+    Design mockup · all names, numbers and screenshots are fictional · colours, layout and wording can still change
+  </p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── the new model: no shift. Any active minute counts, any hour of day.
+  var DAY_START = 6 * 60;          // strip window starts 06:00
+  var DAY_END   = 24 * 60;         // …ends 24:00
+  var SPAN      = DAY_END - DAY_START;   // 1080 min
+  var NOW       = 22 * 60 + 10;    // 22:10 — mock "now"
+  var NOW_REL   = NOW - DAY_START; // 970
+
+  var MONTH_TARGET = 208;          // hours
+  var MONTH_DAYS   = 26;           // expected working days
+  var DAYS_DONE    = 8;            // month-to-date
+  var EXPECTED     = MONTH_TARGET / MONTH_DAYS * DAYS_DONE;  // 64.0 h
+
+  function rng(seed) {
+    var s = seed >>> 0;
+    return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  }
+
+  var PEOPLE = [
+    { n: "Rakib Hasan",     c: "OX-001", r: "Senior Developer" },
+    { n: "Sadia Islam",     c: "OX-002", r: "Designer" },
+    { n: "Tanvir Ahmed",    c: "OX-003", r: "Developer" },
+    { n: "Nusrat Jahan",    c: "OX-004", r: "Accounts" },
+    { n: "Mehedi Hasan",    c: "OX-005", r: "Support" },
+    { n: "Farhana Akter",   c: "OX-006", r: "Content" },
+    { n: "Shakil Mahmud",   c: "OX-007", r: "Developer" },
+    { n: "Tasnim Rahman",   c: "OX-008", r: "QA" },
+    { n: "Ariful Islam",    c: "OX-009", r: "Sales" },
+    { n: "Sumaiya Khatun",  c: "OX-010", r: "HR" },
+    { n: "Imran Hossain",   c: "OX-011", r: "Developer" },
+    { n: "Rubaiya Nasrin",  c: "OX-012", r: "Designer" },
+    { n: "Zahid Hasan",     c: "OX-013", r: "Support" },
+    { n: "Marufa Begum",    c: "OX-014", r: "Admin" },
+    { n: "Sajjad Hossain",  c: "OX-015", r: "Sales" }
+  ];
+
+  // still working at 22:10 · agent down · no activity at all · early starter
+  var STILL_ON = [0, 6, 10];
+  var AGENT_DOWN = 4;
+  var NO_WORK = 9;       // PC never started today
+  var EARLY_BIRD = 13;   // starts 06:40
+
+  function fmt(mins) {
+    var h = Math.floor(mins / 60), m = Math.round(mins % 60);
+    return h + ":" + (m < 10 ? "0" + m : m);
+  }
+  function clock(rel) {
+    var t = DAY_START + rel, h = Math.floor(t / 60) % 24, m = Math.round(t % 60);
+    return (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m;
+  }
+
+  function buildDay(i) {
+    if (i === NO_WORK) return { segs: [], worked: 0, idle: 0, arrive: null, stop: 0 };
+    var rand = rng(i * 7919 + 13);
+    var arrive = i === EARLY_BIRD ? 40 : 120 + Math.floor(rand() * 210);   // 06:40 or 08:00–11:30
+    var stop;
+    if (i === AGENT_DOWN)             stop = 700;                          // last seen 17:40
+    else if (STILL_ON.indexOf(i) > -1) stop = NOW_REL;                     // still going
+    else                               stop = 620 + Math.floor(rand() * 220); // 16:20–20:00
+
+    var segs = [], t = arrive, worked = 0, idle = 0;
+    while (t < stop) {
+      var run = 12 + Math.floor(rand() * 40);
+      var end = Math.min(t + run, stop);
+      segs.push({ s: t, e: end, k: "a" }); worked += end - t; t = end;
+      if (t >= stop) break;
+      var roll = rand();
+      var gap = roll > 0.9 ? 28 + Math.floor(rand() * 40)
+              : roll > 0.58 ? 6 + Math.floor(rand() * 14)
+              : 2 + Math.floor(rand() * 5);
+      var gEnd = Math.min(t + gap, stop);
+      segs.push({ s: t, e: gEnd, k: "i" });   // not active = simply not counted
+      idle += gEnd - t;
+      t = gEnd;
+    }
+    // whoever is still working should end on an active segment
+    if (stop === NOW_REL && segs.length && segs[segs.length - 1].k === "i") {
+      var lastGap = segs.pop();
+      worked += lastGap.e - lastGap.s;
+      idle   -= lastGap.e - lastGap.s;
+      segs.push({ s: lastGap.s, e: lastGap.e, k: "a" });
+    }
+    return { segs: segs, worked: worked, idle: idle, arrive: arrive, stop: stop };
+  }
+
+  function stripHTML(segs, showNow, stopAt) {
+    var h = "";
+    segs.forEach(function (g) {
+      h += '<span class="seg ' + g.k + '" style="left:' + ((g.s / SPAN) * 100).toFixed(2) +
+           '%;width:' + (((g.e - g.s) / SPAN) * 100).toFixed(2) + '%"></span>';
+    });
+    if (showNow) {
+      h += '<span class="now" style="left:' + (((stopAt == null ? NOW_REL : stopAt) / SPAN) * 100).toFixed(2) + '%"></span>';
+    }
+    return h;
+  }
+
+  // ── live board ───────────────────────────────────────
+  var board = document.getElementById("board");
+  var nActive = 0, nWorkedToday = 0, nBehind = 0, nDown = 0;
+  var sumToday = 0, sumMonthPct = 0, countedMonth = 0;
+  var days = [], months = [];
+
+  PEOPLE.forEach(function (p, i) {
+    var day = buildDay(i);
+    days.push(day);
+
+    // month-to-date hours, seeded per person, consistent with today's figure
+    var mrand = rng(i * 104729 + 991);
+    var monthH = +( (EXPECTED - 9) + mrand() * 20 ).toFixed(1);   // ~55–75 h
+    if (i === NO_WORK) monthH = +(EXPECTED - 14 + mrand() * 4).toFixed(1);
+    months.push(monthH);
+
+    var pace = +(monthH - EXPECTED).toFixed(1);
+    var pct  = Math.min(100, (monthH / MONTH_TARGET) * 100);
+    var C    = 2 * Math.PI * 20;
+
+    var state, chipCls, chipTxt, footTxt;
+    if (i === NO_WORK) {
+      state = "leave"; chipCls = "s-leave"; chipTxt = "No work today";
+      footTxt = "PC never started today";
+    } else if (i === AGENT_DOWN) {
+      state = "down"; chipCls = "s-down"; chipTxt = "Agent down"; nDown++;
+      footTxt = "Last seen " + clock(day.stop) + " · watchdog retrying";
+    } else {
+      var last = day.segs[day.segs.length - 1];
+      if (day.stop >= NOW_REL && last && last.k === "a") {
+        state = "active"; chipCls = "s-active"; chipTxt = "Working"; nActive++;
+      } else if (day.stop >= NOW_REL) {
+        state = "idle"; chipCls = "s-idle"; chipTxt = "Idle " + (NOW_REL - last.s) + "m";
+      } else {
+        state = "off"; chipCls = ""; chipTxt = "Ended " + clock(day.stop);
+      }
+      footTxt = "Started " + clock(day.arrive) + " · " + Math.round(day.worked / 5) + " screenshots";
+      nWorkedToday++;
+      sumToday += day.worked;
+    }
+    if (i !== NO_WORK) { sumMonthPct += pct; countedMonth++; }
+    if (pace < 0) nBehind++;
+
+    var el = document.createElement("article");
+    el.className = "pcard";
+    el.setAttribute("data-state", state);
+    el.innerHTML =
+      '<div class="pcard-top">' +
+        '<div class="pcard-name"><b>' + p.n + '</b><span>' + p.c + ' · ' + p.r + '</span></div>' +
+        '<div class="ring" data-met="' + (monthH >= MONTH_TARGET ? 1 : 0) + '" data-pct="' + pct.toFixed(1) + '">' +
+          '<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">' +
+            '<circle class="track" cx="23" cy="23" r="20" fill="none" stroke-width="4"></circle>' +
+            '<circle class="fill" cx="23" cy="23" r="20" fill="none" stroke-width="4" ' +
+              'stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '"></circle>' +
+          '</svg>' +
+          '<span class="pct">' + Math.round(pct) + '%</span>' +
+        '</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="mrow"><span class="big">' + monthH.toFixed(1) + '</span>' +
+          '<span class="of">/ 208 hours · this month</span></div>' +
+        '<div class="today">Today <b>' + (i === NO_WORK ? "—" : fmt(day.worked)) + '</b>' +
+          (i === NO_WORK ? '' : ' h') + '</div>' +
+      '</div>' +
+      '<div><div class="strip">' + stripHTML(day.segs, i !== NO_WORK, day.stop < NOW_REL ? day.stop : null) + '</div></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<span class="chip ' + chipCls + '"><i></i> ' + chipTxt + '</span>' +
+        (i === NO_WORK ? '' :
+          (pace >= 0
+            ? '<span class="chip s-active"><i></i> ⏱ ' + pace.toFixed(1) + 'h ahead</span>'
+            : '<span class="chip s-warn"><i></i> ⏱ ' + Math.abs(pace).toFixed(1) + 'h behind</span>')) +
+      '</div>' +
+      '<div class="pcard-foot">' + footTxt + '</div>';
+    board.appendChild(el);
+  });
+
+  document.getElementById("k-active").innerHTML = nActive + '<small>/15</small>';
+  document.getElementById("k-worked").innerHTML = nWorkedToday + '<small>/15</small>';
+  document.getElementById("k-avg").textContent  = fmt(sumToday / nWorkedToday);
+  document.getElementById("k-mavg").innerHTML   = Math.round(sumMonthPct / countedMonth) + '<small>%</small>';
+  document.getElementById("k-behind").innerHTML = nBehind + '<small>people</small>';
+  document.getElementById("k-down").textContent = nDown;
+
+  requestAnimationFrame(function () {
+    setTimeout(function () {
+      board.querySelectorAll(".ring").forEach(function (r) {
+        var pct = parseFloat(r.dataset.pct) || 0, C = 2 * Math.PI * 20;
+        r.querySelector(".fill").style.strokeDashoffset = (C * (1 - pct / 100)).toFixed(1);
+      });
+    }, 60);
+  });
+
+  // ── detail ───────────────────────────────────────────
+  var d = days[0];
+  document.getElementById("detail-strip").innerHTML = stripHTML(d.segs, true, null);
+  var axis = "";
+  for (var h = 6; h <= 24; h += 3) axis += "<span>" + (h < 10 ? "0" : "") + (h === 24 ? "24" : h) + ":00</span>";
+  document.getElementById("detail-axis").innerHTML = axis;
+
+  document.getElementById("d-today").textContent = fmt(d.worked);
+  document.getElementById("d-idle").textContent  = fmt(d.idle);
+  document.getElementById("d-first").textContent = clock(d.arrive);
+  document.getElementById("d-shots").textContent = Math.round(d.worked / 5);
+  document.getElementById("tray-today").textContent = fmt(d.worked) + " h";
+
+  var perHour = [];
+  for (var i = 0; i < 18; i++) perHour.push(0);
+  d.segs.forEach(function (g) {
+    if (g.k === "i") return;
+    for (var m = g.s; m < g.e; m++) {
+      var idx = Math.floor(m / 60);
+      if (idx >= 0 && idx < 18) perHour[idx]++;
+    }
+  });
+  var hoursEl = document.getElementById("hours");
+  perHour.forEach(function (v, i) {
+    var el = document.createElement("div");
+    el.className = "h";
+    el.innerHTML = '<div class="bar' + (v === 0 ? " zero" : "") + '" style="height:' +
+      ((v / 60) * 100).toFixed(0) + '%" title="' + v + ' min"></div>' +
+      '<span class="lbl">' + (6 + i) + '</span>';
+    hoursEl.appendChild(el);
+  });
+
+  var APPS = [
+    { n: "Visual Studio Code", d: 214, c: "p" },
+    { n: "Google Chrome — github.com", d: 96, c: "p" },
+    { n: "Microsoft Teams", d: 61, c: "p" },
+    { n: "Google Chrome — stackoverflow.com", d: 47, c: "p" },
+    { n: "Windows Terminal", d: 38, c: "p" },
+    { n: "Google Chrome — youtube.com", d: 24, c: "u" },
+    { n: "File Explorer", d: 16, c: "n" },
+    { n: "Google Chrome — facebook.com", d: 8, c: "u" }
+  ];
+  var appsEl = document.getElementById("apps"), maxApp = APPS[0].d;
+  APPS.forEach(function (a) {
+    var row = document.createElement("div");
+    row.className = "approw";
+    row.innerHTML = '<span class="cat ' + a.c + '"></span>' +
+      '<span class="nm"><b>' + a.n + '</b><span class="track"><i style="width:' +
+      ((a.d / maxApp) * 100).toFixed(0) + '%"></i></span></span>' +
+      '<span class="du">' + fmt(a.d) + '</span>';
+    appsEl.appendChild(row);
+  });
+
+  // ── screenshot placeholders ──────────────────────────
+  function shotHTML(time, app) {
+    var lines = "";
+    for (var i = 0; i < 5; i++) lines += '<b style="width:' + (42 + ((i * 37) % 55)) + '%"></b>';
+    return '<div class="shot"><div class="shot-img">' +
+      '<div class="shot-bar"><i></i><i></i><i></i></div><div class="shot-side"></div>' +
+      '<div class="shot-lines" style="padding-left:32%">' + lines + '</div></div>' +
+      '<div class="shot-meta"><span class="t num">' + time + '</span><span class="a">' + app + '</span></div></div>';
+  }
+  document.getElementById("detail-shots").innerHTML =
+    ["21:14:09","21:22:55","21:31:18","21:40:33","21:47:26","22:03:41"]
+      .map(function (t) { return shotHTML(t, "VS Code"); }).join("");
+
+  var gTimes = ["09:03:47","09:06:12","09:12:31","09:19:55","09:25:08","09:33:41",
+                "09:36:19","09:44:02","09:47:38","09:52:50","09:58:14","10:02:27",
+                "10:09:44","10:11:05","10:18:53","10:23:31","10:26:09","10:34:47"];
+  var gApps = ["VS Code","Chrome — github.com","VS Code","Teams","VS Code","Chrome — docs",
+               "VS Code","Terminal","VS Code","Chrome — github.com","VS Code","Excel",
+               "VS Code","Teams","VS Code","Chrome — stackoverflow","VS Code","VS Code"];
+  document.getElementById("gallery").innerHTML =
+    gTimes.map(function (t, i) { return shotHTML(t, gApps[i]); }).join("");
+
+  // ── month heatmap ────────────────────────────────────
+  var att = document.getElementById("attgrid"), DAYS = 31, TODAY = 9;
+  var head = "<thead><tr><th class='nm'></th>";
+  for (var dd = 1; dd <= DAYS; dd++) head += "<th>" + dd + "</th>";
+  head += "<th style='padding-left:10px'>Total</th><th>Target</th></tr></thead>";
+
+  var body = "<tbody>";
+  PEOPLE.forEach(function (p, i) {
+    var rand = rng(i * 104729 + 31);
+    var row = "<tr><td class='nm'>" + p.n + "</td>", total = 0;
+    for (var dd = 1; dd <= DAYS; dd++) {
+      if (dd > TODAY) { row += "<td><span class='cell fu'></span></td>"; continue; }
+      var roll = rand(), hrs;
+      if (roll > 0.93) { row += "<td><span class='cell lv' title='Leave'></span></td>"; continue; }
+      if (roll > 0.86) hrs = 0;
+      else if (roll > 0.72) hrs = 3 + rand() * 2.5;
+      else if (roll > 0.45) hrs = 6 + rand() * 1.8;
+      else if (roll > 0.15) hrs = 7.8 + rand() * 1.4;
+      else hrs = 9.2 + rand() * 2.2;
+      total += hrs;
+      var cls = hrs === 0 ? "r0" : hrs < 4 ? "r1" : hrs < 6.5 ? "r2" : hrs < 8.5 ? "r3" : "r4";
+      row += "<td><span class='cell " + cls + "' title='" + hrs.toFixed(1) + " hours'></span></td>";
+    }
+    row += "<td class='n' style='padding-left:10px;font-weight:600'>" + total.toFixed(0) + "h</td>" +
+           "<td class='n' style='color:var(--text-3)'>208h</td></tr>";
+    body += row;
+  });
+  att.innerHTML = head + body + "</tbody>";
+
+  // ── payroll ──────────────────────────────────────────
+  var pay = document.getElementById("paytable");
+  var ph = "<thead><tr><th>Staff</th><th>Role</th><th class='n'>Days worked</th>" +
+           "<th class='n'>Actual hours</th><th class='n'>Target</th><th class='n'>Expected by now</th>" +
+           "<th class='n'>Ahead / behind</th><th class='n'>Daily average</th></tr></thead><tbody>";
+  PEOPLE.forEach(function (p, i) {
+    var monthH = months[i];
+    var wdays = i === NO_WORK ? 6 : 8;
+    var pace = +(monthH - EXPECTED).toFixed(1);
+    ph += "<tr><td>" + p.n + "</td><td style='color:var(--text-3)'>" + p.r + "</td>" +
+      "<td class='n'>" + wdays + "</td>" +
+      "<td class='n' style='font-weight:600'>" + monthH.toFixed(1) + "</td>" +
+      "<td class='n' style='color:var(--text-3)'>208.0</td>" +
+      "<td class='n' style='color:var(--text-3)'>" + EXPECTED.toFixed(1) + "</td>" +
+      "<td class='n'>" + (pace >= 0
+        ? "<span class='okv'>+" + pace.toFixed(1) + "</span>"
+        : "<span class='warnv'>" + pace.toFixed(1) + "</span>") + "</td>" +
+      "<td class='n'>" + (monthH / wdays).toFixed(1) + "h</td></tr>";
+  });
+  pay.innerHTML = ph + "</tbody>";
+
+  // ── tabs ─────────────────────────────────────────────
+  var tabs = document.querySelectorAll(".nav button");
+  tabs.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tabs.forEach(function (b) { b.setAttribute("aria-selected", String(b === btn)); });
+      ["live","detail","gallery","att","report","tray"].forEach(function (id) {
+        document.getElementById("s-" + id).hidden = (id !== btn.dataset.tab);
+      });
+    });
+  });
+})();
+</script>

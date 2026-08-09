@@ -1,0 +1,29 @@
+# রেপো-রুটের রক্ষাকবচ।
+# oxeio-monitor/.gitignore-এ বিস্তারিত নিয়ম আছে; এখানে `**/` দিয়ে সব স্তরে
+# ধরা হচ্ছে, যাতে ভবিষ্যতে agent/ বা web/ যোগ হলেও ফাঁক না থাকে।
+
+# ── কখনোই কমিট হবে না ─────────────────────────────
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# ── তৈরি হওয়া জিনিস ───────────────────────────────
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+**/.data/
+**/.tmp-test-storage/
+*.log
+
+# .NET (agent, Phase 2)
+**/bin/
+**/obj/
+
+# ── OS ও এডিটর ────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,406 @@
+import { randomUUID } from 'node:crypto';
+
+import { Injectable, Logger, UnprocessableEntityException } from '@nestjs/common';
+import type { Device, Prisma } from '@prisma/client';
+
+import { PrismaService } from '../prisma/prisma.service';
+import { ClockDriftService, type Drift } from './clock-drift.service';
+import type { AppUsageDto, EventDto, SegmentDto } from './dto';
+import { deriveUuid } from './util/derive-uuid';
+import { nextLocalMidnight, workDateOf } from './util/dhaka-time';
+
+export interface IngestResult {
+  accepted: number;
+  duplicates: number;
+  /** মধ্যরাত পার হওয়ায় যতগুলো রেকর্ড ভাগ করতে হয়েছে */
+  split: number;
+}
+
+interface Span {
+  startedAt: Date;
+  endedAt: Date;
+  durationSec: number;
+}
+
+/** সেশন বন্ধ হওয়ার যেসব ইভেন্ট */
+const SESSION_CLOSING = new Set(['logoff', 'shutdown', 'agent_stop']);
+
+@Injectable()
+export class IngestService {
+  private readonly logger = new Logger(IngestService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockDriftService,
+  ) {}
+
+  /**
+   * স্পেক § ৪.১ — `client_uuid` ছাড়া রেকর্ড নেওয়া হয় না, আর স্ট্যাটাস হয় **422**।
+   * (ValidationPipe দিলে 400 হতো, তাই যাচাইটা এখানে।)
+   */
+  private assertClientUuids(items: Array<{ clientUuid?: string }>): void {
+    const missing = items.findIndex((i) => !i.clientUuid);
+    if (missing >= 0) {
+      throw new UnprocessableEntityException(
+        `${missing} নম্বর রেকর্ডে client_uuid নেই — ডুপ্লিকেট ঠেকাতে এটা বাধ্যতামূলক`,
+      );
+    }
+  }
+
+  /**
+   * § ২.১-ক — কোনো রেকর্ড দুই work_date জুড়ে থাকতে পারবে না।
+   * এজেন্টের ভাগ করে পাঠানোর কথা; এটা সার্ভারের রক্ষাকবচ (পুরোনো এজেন্টের জন্য)।
+   */
+  private splitAtMidnight(span: Span): Span[] {
+    if (span.endedAt <= span.startedAt) {
+      return [{ ...span, endedAt: span.startedAt, durationSec: 0 }];
+    }
+
+    const parts: Span[] = [];
+    let cursor = span.startedAt;
+    const wallMs = span.endedAt.getTime() - span.startedAt.getTime();
+
+    while (cursor < span.endedAt) {
+      const boundary = nextLocalMidnight(cursor);
+      const end = boundary < span.endedAt ? boundary : span.endedAt;
+      const partMs = end.getTime() - cursor.getTime();
+
+      parts.push({
+        startedAt: cursor,
+        endedAt: end,
+        // অখণ্ড রেকর্ডে এজেন্টের monotonic durationSec-ই রাখা হয় (সবচেয়ে নির্ভুল)।
+        // ভাগ হলে সেটা অনুপাত করে ভাগ করে দেওয়া হয়, যাতে যোগফল অটুট থাকে।
+        durationSec:
+          parts.length === 0 && partMs === wallMs
+            ? span.durationSec
+            : Math.round((span.durationSec * partMs) / wallMs),
+      });
+
+      cursor = end;
+    }
+
+    return parts;
+  }
+
+  /**
+   * সেগমেন্ট কোন `work_session`-এ বসবে।
+   *
+   * ⚠️ অফলাইন queue রিপ্লে হলে (A05) **পুরোনো ব্যাচ নতুনের পরে** আসতে পারে।
+   *    তাই "শেষ খোলা সেশনটাই চলতি সেশন" ধরে নেওয়া যায় না — ধরলে পুরোনো
+   *    ডেটা এসে চলতি সেশনকে অতীতের সময়ে বন্ধ করে দেয় (ended_at < started_at)।
+   *    সেশন তাই সবসময় **(device, work_date)** ধরে খোঁজা হয়।
+   */
+  private async resolveSession(
+    tx: Prisma.TransactionClient,
+    device: Device,
+    employeeId: number,
+    workDate: Date,
+    startedAt: Date,
+    endedAt: Date,
+  ): Promise<bigint> {
+    // ১· ওই তারিখেরই খোলা সেশন
+    const open = await tx.workSession.findFirst({
+      where: { deviceId: device.id, workDate, endedAt: null },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (open) {
+      await this.widen(tx, open, startedAt, endedAt);
+      return open.id;
+    }
+
+    // ২· ওই তারিখের বন্ধ সেশন — backfill হলে সেটাতেই বসবে, নতুন সেশন নয়
+    const closed = await tx.workSession.findFirst({
+      where: { deviceId: device.id, workDate },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (closed) {
+      await this.widen(tx, closed, startedAt, endedAt);
+      return closed.id;
+    }
+
+    // ৩· আগের কোনো তারিখের সেশন খোলা পড়ে আছে? তাকে **তার নিজের** মধ্যরাতে
+    //    বন্ধ করা হয় — নতুন সেগমেন্টের সময়ে নয় (§ ২.১-ক)
+    const stale = await tx.workSession.findFirst({
+      where: { deviceId: device.id, endedAt: null, workDate: { lt: workDate } },
+      orderBy: { startedAt: 'desc' },
+    });
+    if (stale) {
+      await tx.workSession.update({
+        where: { id: stale.id },
+        data: {
+          endedAt: nextLocalMidnight(stale.startedAt),
+          endReason: 'day_rollover',
+        },
+      });
+    }
+
+    const created = await tx.workSession.create({
+      data: { employeeId, deviceId: device.id, workDate, startedAt },
+    });
+    return created.id;
+  }
+
+  /**
+   * সেশনের সীমা তার ভেতরের সেগমেন্টগুলোকে ধরে রাখা উচিত।
+   * backfill-এ পুরোনো সেগমেন্ট এলে সেশনের শুরু পিছিয়ে দিতে হয়,
+   * নইলে টাইমলাইনে সেগমেন্ট সেশনের বাইরে পড়ে যায়।
+   */
+  private async widen(
+    tx: Prisma.TransactionClient,
+    session: { id: bigint; startedAt: Date; endedAt: Date | null },
+    startedAt: Date,
+    endedAt: Date,
+  ): Promise<void> {
+    const data: Prisma.WorkSessionUpdateInput = {};
+
+    if (startedAt < session.startedAt) data.startedAt = startedAt;
+    // খোলা সেশনের শেষ নেই — সেটা logoff বা দিন-ক্লোজেই বসবে
+    if (session.endedAt !== null && endedAt > session.endedAt) {
+      data.endedAt = endedAt;
+    }
+
+    if (Object.keys(data).length > 0) {
+      await tx.workSession.update({ where: { id: session.id }, data });
+    }
+  }
+
+  // ── segments ──────────────────────────────────────────────────────────────
+
+  async ingestSegments(
+    device: Device,
+    drift: Drift,
+    segments: SegmentDto[],
+  ): Promise<IngestResult> {
+    this.assertClientUuids(segments);
+    if (segments.length === 0) return { accepted: 0, duplicates: 0, split: 0 };
+
+    const employeeId = device.employeeId;
+    if (employeeId === null) {
+      throw new UnprocessableEntityException(
+        'এই ডিভাইস কোনো স্টাফের সাথে যুক্ত নয়',
+      );
+    }
+
+    let split = 0;
+
+    // সেশন তৈরি আর সেগমেন্ট insert — একই ট্রানজেকশনে, নইলে insert ব্যর্থ হলে
+    // অনাথ work_session পড়ে থাকত
+    const { count, total } = await this.prisma.$transaction(async (tx) => {
+      const rows: Prisma.ActivitySegmentCreateManyInput[] = [];
+      const sessionByDate = new Map<number, bigint>();
+
+      for (const seg of segments) {
+        const corrected: Span = {
+          startedAt: this.clock.correct(seg.startedAt, drift),
+          endedAt: this.clock.correct(seg.endedAt, drift),
+          durationSec: seg.durationSec,
+        };
+
+        const parts = this.splitAtMidnight(corrected);
+        if (parts.length > 1) split += parts.length - 1;
+
+        for (const [i, part] of parts.entries()) {
+          const workDate = workDateOf(part.startedAt);
+          const key = workDate.getTime();
+
+          let sessionId = sessionByDate.get(key);
+          if (sessionId === undefined) {
+            sessionId = await this.resolveSession(
+              tx,
+              device,
+              employeeId,
+              workDate,
+              part.startedAt,
+              part.endedAt,
+            );
+            sessionByDate.set(key, sessionId);
+          }
+
+          rows.push({
+            sessionId,
+            employeeId,
+            deviceId: device.id,
+            clientUuid: deriveUuid(seg.clientUuid as string, i),
+            workDate,
+            state: seg.state,
+            startedAt: part.startedAt,
+            endedAt: part.endedAt,
+            durationSec: part.durationSec,
+            inputScore: seg.inputScore ?? null,
+            // § ২.১ — শুধু ACTIVE গোনা হয়, আর কিছু নয়
+            countsAsWork: seg.state === 'active',
+          });
+        }
+      }
+
+      const res = await tx.activitySegment.createMany({
+        data: rows,
+        skipDuplicates: true, // ← client_uuid UNIQUE, তাই রি-আপলোড নিরাপদ
+      });
+      return { count: res.count, total: rows.length };
+    });
+
+    if (split > 0) {
+      await this.logSplit(device, employeeId, split);
+    }
+
+    return { accepted: count, duplicates: total - count, split };
+  }
+
+  private async logSplit(
+    device: Device,
+    employeeId: number,
+    split: number,
+  ): Promise<void> {
+    this.logger.warn(
+      `device ${device.id}: ${split}টি সেগমেন্ট মধ্যরাতে সার্ভারেই ভাগ করতে হলো — ` +
+        'এজেন্টের নিজেরই ভাগ করার কথা',
+    );
+    await this.prisma.event.create({
+      data: {
+        deviceId: device.id,
+        employeeId,
+        clientUuid: randomUUID(),
+        type: 'segment_split',
+        occurredAt: new Date(),
+        meta: { count: split, by: 'server' },
+      },
+    });
+  }
+
+  // ── app usage ─────────────────────────────────────────────────────────────
+
+  async ingestAppUsage(
+    device: Device,
+    drift: Drift,
+    items: AppUsageDto[],
+  ): Promise<IngestResult> {
+    this.assertClientUuids(items);
+    if (items.length === 0) return { accepted: 0, duplicates: 0, split: 0 };
+
+    const employeeId = device.employeeId;
+    if (employeeId === null) {
+      throw new UnprocessableEntityException(
+        'এই ডিভাইস কোনো স্টাফের সাথে যুক্ত নয়',
+      );
+    }
+
+    const rows: Prisma.AppUsageCreateManyInput[] = [];
+    let split = 0;
+
+    for (const item of items) {
+      const parts = this.splitAtMidnight({
+        startedAt: this.clock.correct(item.startedAt, drift),
+        endedAt: this.clock.correct(item.endedAt, drift),
+        durationSec: item.durationSec,
+      });
+      if (parts.length > 1) split += parts.length - 1;
+
+      for (const [i, part] of parts.entries()) {
+        rows.push({
+          employeeId,
+          deviceId: device.id,
+          clientUuid: deriveUuid(item.clientUuid as string, i),
+          workDate: workDateOf(part.startedAt),
+          startedAt: part.startedAt,
+          endedAt: part.endedAt,
+          durationSec: part.durationSec,
+          processName: item.processName,
+          appName: item.appName ?? null,
+          windowTitle: item.windowTitle ?? null,
+          // ADR-013 — ডোমেইন ছাড়া কিছু জমা হয় না
+          domain: item.domain ?? null,
+          isBrowser: item.isBrowser ?? false,
+          // ক্যাটাগরি মেলানো Phase 4-এ (D05) — এখন null
+          categoryId: null,
+        });
+      }
+    }
+
+    const { count } = await this.prisma.appUsage.createMany({
+      data: rows,
+      skipDuplicates: true,
+    });
+
+    return { accepted: count, duplicates: rows.length - count, split };
+  }
+
+  // ── events ────────────────────────────────────────────────────────────────
+
+  async ingestEvents(
+    device: Device,
+    drift: Drift,
+    events: EventDto[],
+  ): Promise<IngestResult> {
+    this.assertClientUuids(events);
+    if (events.length === 0) return { accepted: 0, duplicates: 0, split: 0 };
+
+    const rows: Prisma.EventCreateManyInput[] = events.map((e) => ({
+      deviceId: device.id,
+      employeeId: device.employeeId,
+      clientUuid: e.clientUuid as string,
+      type: e.type,
+      occurredAt: this.clock.correct(e.occurredAt, drift),
+      meta: (e.meta ?? undefined) as Prisma.InputJsonValue | undefined,
+    }));
+
+    const { count } = await this.prisma.event.createMany({
+      data: rows,
+      skipDuplicates: true,
+    });
+
+    await this.applySessionEffects(device, rows);
+
+    return { accepted: count, duplicates: rows.length - count, split: 0 };
+  }
+
+  /**
+   * logoff / shutdown / agent_stop এলে খোলা সেশন বন্ধ করা হয় —
+   * নইলে `ended_at` চিরকাল NULL পড়ে থাকত (G24)।
+   */
+  private async applySessionEffects(
+    device: Device,
+    rows: Prisma.EventCreateManyInput[],
+  ): Promise<void> {
+    const closing = rows
+      .filter((r) => SESSION_CLOSING.has(r.type))
+      .sort(
+        (a, b) =>
+          new Date(a.occurredAt as Date).getTime() -
+          new Date(b.occurredAt as Date).getTime(),
+      )
+      .pop();
+
+    if (!closing) return;
+
+    const at = closing.occurredAt as Date;
+    const workDate = workDateOf(at);
+
+    // ওই দিনের সেশন — ইভেন্টের সময়েই বন্ধ
+    await this.prisma.workSession.updateMany({
+      where: { deviceId: device.id, workDate, endedAt: null },
+      data: {
+        endedAt: at,
+        endReason: closing.type === 'logoff' ? 'logoff' : 'shutdown',
+      },
+    });
+
+    // ⚠️ আগের দিনের কোনো সেশন খোলা পড়ে থাকলে সেটাকে আজকের logoff দিয়ে বন্ধ
+    //    করা যাবে না — তাহলে একদিনের সেশন দুদিন লম্বা দেখাত।
+    //    প্রত্যেকটাকে **তার নিজের** মধ্যরাতে বন্ধ করা হয়।
+    const stale = await this.prisma.workSession.findMany({
+      where: { deviceId: device.id, endedAt: null, workDate: { lt: workDate } },
+      select: { id: true, startedAt: true },
+    });
+
+    for (const s of stale) {
+      await this.prisma.workSession.update({
+        where: { id: s.id },
+        data: {
+          endedAt: nextLocalMidnight(s.startedAt),
+          endReason: 'day_rollover',
+        },
+      });
+    }
+  }
+}

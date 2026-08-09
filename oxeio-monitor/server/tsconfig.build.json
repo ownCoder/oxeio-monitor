@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "comment": "prisma/ বাদ — নইলে rootDir বদলে গিয়ে বিল্ড dist/src/main.js-এ যায়, dist/main.js-এ নয়",
+  "exclude": ["node_modules", "dist", "prisma", "**/*.spec.ts", "test"]
+}

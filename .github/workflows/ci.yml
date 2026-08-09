@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# একই ব্রাঞ্চে নতুন push এলে আগের রান বাতিল — অকারণে runner আটকে থাকে না
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: server — lint · typecheck · test · build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: oxeio-monitor/server
+
+    services:
+      # লোকালে docker compose যেটা দেয়, CI-তে সেটাই service container হিসেবে।
+      # টেস্ট নিজেই `oxeio_test` ডাটাবেস বানিয়ে নেয় (test/setup/global-setup.ts)
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: oxeio
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: oxeio
+          TZ: Asia/Dhaka
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oxeio -d oxeio"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # সার্ভারের TZ ঢাকাতেই রাখা জরুরি — মধ্যরাত-স্প্লিট ও work_date
+      # এর উপরেই দাঁড়ানো (07-Technical-Spec § ২.১-ক)
+      TZ: Asia/Dhaka
+      DATABASE_URL: postgresql://oxeio:ci-password@localhost:5432/oxeio?schema=public
+      JWT_SECRET: ci-only-secret-at-least-32-characters-long
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: oxeio-monitor/server/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # npm 11-এর script-approval গেট থাকা সত্ত্বেও prisma-র engine নামা
+      # নিশ্চিত করতে আলাদা করে generate চালানো হয়
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # `npm test` স্থানীয়ভাবে ../.env পড়ে; CI-তে env উপরে দেওয়া আছে,
+      # তাই vitest সরাসরি চালানো হয়
+      - name: Test
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
+
+  docker:
+    name: docker image builds
+    runs-on: ubuntu-latest
+    needs: server
+    steps:
+      - uses: actions/checkout@v4
+
+      # Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, এখনই ধরা পড়ে
+      - name: Build API image
+        run: docker build -t oxeio-api:ci ./oxeio-monitor/server

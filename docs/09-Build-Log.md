@@ -1,0 +1,318 @@
+# 09 · Build Log
+
+এ পর্যন্ত কী কী করা হয়েছে, এখন কোথায় আটকে আছে, আর পরের ধাপ কী।
+
+**সর্বশেষ হালনাগাদ:** ৯ আগস্ট ২০২৬ · **বর্তমান ফেজ:** Phase 1 (Foundation) 🔨
+
+> ✅ **আর কোনো ব্লকার নেই।** ৯ আগস্ট BIOS-এ SVM Mode চালু করার পর পুরো স্ট্যাক দাঁড়িয়ে গেছে —
+> Postgres চলছে, ১৯টি টেবিল migrate হয়েছে, seed বসেছে, API `db: up` ফেরত দিচ্ছে। বিস্তারিত § ২।
+
+---
+
+## ১. এ পর্যন্ত যা সম্পন্ন
+
+### ✅ Phase 0 — ডিজাইন (সম্পূর্ণ)
+
+| কাজ | ফল |
+|---|---|
+| প্রয়োজন নির্ধারণ ও সিদ্ধান্ত | ৩ দফায় নিয়ম চূড়ান্ত (নিচে § ৪) |
+| ব্যবসায়িক প্ল্যান | [01-Planning](01-Planning.md) |
+| ১০টি ওয়ার্কফ্লো | [02-Workflow](02-Workflow.md) |
+| কোড ম্যাপ | [03-Project-Map](03-Project-Map.md) |
+| ফিচার ক্যাটালগ (১০৫টি সক্রিয়, ৬টি বাতিল) | [04-Features](04-Features.md) |
+| ২০টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
+| বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
+| ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
+| ৪০টি ফাঁক চিহ্নিত ও সমাধান (দুই দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |
+| **UI মকআপ — ৭টি স্ক্রিন** | [dashboard-mockup.html](mockup/dashboard-mockup.html) |
+
+### 🔨 Phase 1 — Foundation (শুরু হয়েছে)
+
+কোড থাকবে `oxeio-monitor/` ফোল্ডারে। এ পর্যন্ত লেখা হয়েছে:
+
+| ফাইল | কী করে |
+|---|---|
+| `oxeio-monitor/docker-compose.yml` | Postgres 16 + API কনটেইনার, healthcheck, ভলিউম, টাইমজোন `Asia/Dhaka` |
+| `oxeio-monitor/.env.example` | সব কনফিগের নমুনা — পাসওয়ার্ড, JWT সিক্রেট, স্টোরেজ পাথ |
+| `oxeio-monitor/.gitignore` | `.env`, `node_modules`, `.data/`, `bin/`, `obj/` বাদ |
+
+**এই তিনটি ফাইলে যে দুটি নিরাপত্তা সিদ্ধান্ত নেওয়া হয়েছে:**
+1. Postgres পোর্ট `127.0.0.1:5432` — শুধু সার্ভার PC থেকে, LAN থেকে নয়
+2. `.env` কখনো git-এ যাবে না; শুধু `.env.example`-এ প্লেসহোল্ডার
+
+#### `server/` স্ক্যাফোল্ড ✅ *(৯ আগস্ট)*
+
+| ফাইল | কী আছে |
+|---|---|
+| `server/prisma/schema.prisma` | ⭐ **১৯টি মডেল** — স্পেকের § ২ হুবহু। ১১টি enum, তাই "মাত্র ৩ স্টেট" নিয়মটা টাইপ-লেভেলেই আটকানো |
+| `server/prisma/seed.ts` | work policy · **১০৯টি app category রুল** · ৭টি নির্দিষ্ট-তারিখের ছুটি · owner অ্যাকাউন্ট |
+| `server/package.json` | NestJS 11 · Prisma 6 · `@node-rs/argon2` (native build লাগে না) · pino · jose |
+| `server/src/main.ts` | `/api/v1` prefix · helmet · cookie-parser · CORS(credentials) · ValidationPipe · shutdown hooks |
+| `server/src/app.module.ts` | ConfigModule · pino logger (**টোকেন/পাসওয়ার্ড লগ থেকে redact**) · Prisma · Health |
+| `server/src/prisma/` | গ্লোবাল `PrismaService` — connect/disconnect lifecycle সহ |
+| `server/src/health/` | `GET /api/v1/health` → `{status, db, time}` |
+| `server/src/auth/` | ⭐ **Auth মডিউল** — লগইন, httpOnly JWT cookie, CSRF, ৪টি গ্লোবাল গার্ড, ব্রুট-ফোর্স থ্রটল, পাসওয়ার্ড রিসেট |
+| `server/src/audit/` | `audit_log`-এ লেখা — login, login_failed, change_password, reset_password… |
+| `server/src/users/` | `POST /users/:id/reset-password` · `POST /employees/:id/portal-account` (দুটোই owner-only) |
+| `server/src/agent/` | ⭐ **Agent ingest** — ৯টি endpoint, device token guard, clock-drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট আপলোড, rate limit |
+| `server/Dockerfile` | ৩-স্তরের বিল্ড, non-root `node` ইউজার, `Asia/Dhaka` |
+| `server/tsconfig.build.json` | `prisma/` বাদ — নইলে বিল্ড `dist/src/main.js`-এ যেত |
+
+**যাচাই হয়েছে:** `prisma validate` ✅ · `prisma generate` ✅ · `npm run build` ✅ · `tsc --noEmit` ✅ (০ error)
+**যা এখনো হয়নি:** `prisma migrate` চালানো — ডাটাবেস দরকার (নিচে § ২)।
+
+> **`.env` তৈরি হয়ে গেছে** — Postgres পাসওয়ার্ড ও JWT সিক্রেট র‍্যান্ডম জেনারেট করা।
+> ফাইলটা gitignored। owner-এর প্রথম পাসওয়ার্ড ওখানেই আছে, প্রথম লগইনেই বদলাতে হবে।
+
+---
+
+## ২. ✅ পরিবেশ প্রস্তুত — স্ট্যাক চলছে
+
+সার্ভার PC-তে যাচাই করে যা পাওয়া গেল:
+
+| সফটওয়্যার | দরকার কেন | অবস্থা |
+|---|---|:---:|
+| **Node.js** | API সার্ভার ও ওয়েব ড্যাশবোর্ড | ✅ **v24.19.0** *(৯ আগস্ট ইনস্টল করা হলো)* |
+| **npm** | প্যাকেজ | ✅ **v11.17.0** |
+| **Git** | সোর্স কন্ট্রোল | ✅ **v2.53.0** |
+| **.NET 8 SDK** | Windows এজেন্ট (Phase 2) | ✅ **v8.0.423** |
+| **Docker Desktop** | PostgreSQL ও API চালানো | ✅ **v4.85.0** · engine 29.6.2 |
+| **WSL2** | Docker-এর ব্যাকএন্ড | ✅ **v2.7.11** · `docker-desktop` ডিস্ট্রো চালু |
+
+> ⚠️ **আগের এই টেবিলটা ভুল ছিল।** ৯ আগস্ট আবার যাচাই করে দেখা গেল Node.js আসলে **ইনস্টলই ছিল না**
+> (v24.18.0 লেখা ছিল), আর .NET 8 SDK **আগে থেকেই ইনস্টল করা আছে** (নেই লেখা ছিল)।
+> Git-ও 2.53.0, 2.55.0 নয় — ওটা ছিল আপডেটে *পাওয়া যাচ্ছে* এমন ভার্সন।
+> শিক্ষা: `winget list` দিয়ে যাচাই করা, অনুমান না করা।
+
+### যা ইতিমধ্যে করা হয়েছে ✅
+
+- **Node.js 24.19.0** ইনস্টল (`winget install OpenJS.NodeJS.LTS`)
+- **Docker Desktop 4.85.0** ইনস্টল (`winget install Docker.DockerDesktop`)
+- **WSL 2.7.11** ইনস্টল, `VirtualMachinePlatform` ও `Microsoft-Windows-Subsystem-Linux` দুটোই enabled
+- **`C:\Users\Mamunur Rasid\.wslconfig`** লেখা হয়েছে — `memory=8GB · processors=4 · swap=2GB`
+
+### একটা বাধা এসেছিল — BIOS ভার্চুয়ালাইজেশন *(সমাধান হয়ে গেছে)*
+
+সব ইনস্টল হওয়ার পরও WSL2 উঠছিল না: *"virtualization is not enabled on this machine."*
+CPU (Ryzen 7 5700G) সাপোর্ট করে (`VMMonitorModeExtensions = True`), কিন্তু
+`VirtualizationFirmwareEnabled = False` — অর্থাৎ **BIOS-এ বন্ধ ছিল**।
+
+**সমাধান:** BIOS → Advanced → CPU Configuration → **SVM Mode → Enabled** (Intel-এ VT-x)।
+এরপর `HypervisorPresent = True`, WSL2 চালু, Docker engine পৌঁছানো যাচ্ছে।
+
+> **ভবিষ্যতে নতুন সার্ভার PC বসালে এটা প্রথমেই দেখে নেবেন** — Docker/WSL ইনস্টল করার
+> আগেই BIOS-এ SVM/VT-x চালু আছে কি না। না থাকলে সব ইনস্টল হয়েও কিছু চলবে না।
+
+### ✅ স্ট্যাক দাঁড়িয়ে গেছে (৯ আগস্ট, যাচাই করা)
+
+| ধাপ | ফল |
+|---|---|
+| `docker compose up -d postgres` | `oxeio-postgres` · **healthy** · `postgres:16-alpine` |
+| `prisma migrate dev --name init` | মাইগ্রেশন `20260809164642_init` · **১৯টি টেবিল** + `_prisma_migrations` · সব instant কলাম `timestamptz` ([G42](08-Gap-Analysis.md)) |
+| `npm run seed` | work policy #1 · **১০৯টি** app category (৭৪ productive · ২০ unproductive · ১৫ neutral) · ৭টি ছুটি · owner অ্যাকাউন্ট |
+| `npm run start:dev` | `GET /api/v1/health` → `{"status":"ok","db":"up"}` ✅ |
+
+ডাটাবেসে যাচাই করা work policy: `208.00` ঘণ্টা · `weekly_off_day = 5` (শুক্র) ·
+ছবি `07:00–23:00` · idle `60` সে. · `Asia/Dhaka`।
+
+> **ফলব্যাক এখনো খোলা:** Docker নিয়ে পরে সমস্যা হলে [ADR-008](05-Options-Decisions.md)-এর
+> নেটিভ পথ আছে — PostgreSQL সরাসরি Windows-এ, `DATABASE_URL` একই, কোডে কিছু বদলাতে হবে না।
+
+> **বিকল্প পথ:** Docker না চাইলে PostgreSQL 16 সরাসরি Windows-এ ইনস্টল করেও চলবে
+> ([ADR-008](05-Options-Decisions.md)-এর fallback)। তবে আপডেট, ব্যাকআপ ও রিস্টোর Docker-এ অনেক সহজ,
+> তাই Docker-ই সুপারিশ করছি।
+
+---
+
+## ৩. পরের ধাপ (Docker ইনস্টল হওয়ার পর)
+
+| # | কাজ | ফল |
+|---|---|---|
+| ~~1~~ | ~~`server/` স্ক্যাফোল্ড — NestJS + TypeScript~~ | ✅ `npm run build` চলে |
+| ~~2~~ | ~~`prisma/schema.prisma` — ১৯টি মডেল~~ | ✅ `prisma validate` + `generate` চলে |
+| ~~3~~ | ~~`prisma/seed.ts`~~ | ✅ চলেছে — ডাটাবেসে ডেটা বসে গেছে |
+| ~~3b~~ | ~~`prisma migrate dev`~~ | ✅ `20260809164642_init` প্রয়োগ হয়েছে |
+| ~~4~~ | ~~Auth মডিউল~~ | ✅ **শেষ** — ২২টি end-to-end টেস্ট পাস (নিচে § ৩.১) |
+| ~~5~~ | ~~Agent ingest মডিউল~~ | ✅ **শেষ** — ২৭টি end-to-end টেস্ট পাস (নিচে § ৩.২) |
+| ~~6~~ | ~~টেস্ট Vitest-এ তোলা~~ | ✅ **৫১টি টেস্ট রেপোতে** — `npm test` (নিচে § ৩.৩) |
+| ~~8~~ | ~~GitHub Actions CI~~ | ✅ **লেখা ও যাচাই হয়েছে** (নিচে § ৩.৪) — তবে চলবে `git init` + GitHub remote হওয়ার পর |
+| 7 | `web/` লগইন শেল | Vite + React + Tailwind |
+| 9 | Postman collection | সব endpoint হাতে টেস্ট করার জন্য |
+
+**ছোট ধার (technical debt) যা জমছে:**
+
+| | |
+|---|---|
+| `package.json#prisma` | Prisma 7-এ কাজ করবে না — `prisma.config.ts`-এ সরাতে হবে (এখন শুধু সতর্কবার্তা) |
+| থাম্বনেইল | স্ক্রিনশট আপলোড হচ্ছে কিন্তু `thumb_path` null — Phase 3-এ sharp দিয়ে backfill লাগবে |
+| `device_commands` টেবিল | `capture_now` / `pause_tracking`-এর জন্য ([G41](08-Gap-Analysis.md)) |
+| শুধু Asia/Dhaka | `dhaka-time.ts` অফসেট +৬ ধ্রুবক ধরে; অন্য টাইমজোনে যেতে হলে আসল tz লাইব্রেরি লাগবে |
+
+---
+
+### ৩.১ Auth মডিউল — যা যাচাই করা হয়েছে *(২২/২২ পাস)*
+
+| এলাকা | যা পরীক্ষা করা হলো |
+|---|---|
+| পাবলিক রুট | `/health` লগইন ছাড়াই খোলে |
+| সুরক্ষা | লগইন ছাড়া প্রতিটি রুট **401** (CSRF-এর 403 নয় — গার্ডের ক্রম ঠিক করার পর) |
+| লগইন | ভুল পাসওয়ার্ড 401 · সঠিক 200 · `oxeio_session` **httpOnly** · `oxeio_csrf` বসে |
+| mustChangePw | `/auth/me` খোলা থাকে, বাকি সব **403** |
+| CSRF | হেডার ছাড়া 403 · ভুল টোকেন 403 · সঠিক টোকেনে কাজ করে |
+| পাসওয়ার্ড | ১০ অক্ষরের কম 400 · ভুল current 401 · আগেরটার মতো 400 · সঠিক 204 |
+| role guard | owner-only রুট owner-এর কাছে খোলে |
+| logout | cookie মুছে যায়, পরের রিকোয়েস্ট 401 |
+| ব্রুট-ফোর্স | ৫ বার ভুল → **429**, আর অন্য অ্যাকাউন্ট অক্ষত থাকে |
+| audit_log | `login`, `login_failed`, `change_password` — সব রেকর্ড হচ্ছে |
+
+> **টেস্ট লিখতে গিয়ে একটা ফাঁদ:** PowerShell-এর `WebRequestSession` একবার `-Headers` দিলে
+> সেটা পরের রিকোয়েস্টেও পাঠাতে থাকে — ফলে "CSRF হেডার ছাড়া" টেস্টটা আসলে হেডার পাঠিয়ে
+> মিথ্যে পাস দেখাচ্ছিল। প্রতিটি কলের আগে `$session.Headers.Clear()` করতে হয়।
+
+### ৩.২ Agent ingest — যা যাচাই করা হয়েছে *(২৭/২৭ পাস)*
+
+| এলাকা | যা পরীক্ষা করা হলো |
+|---|---|
+| Enrollment | ভুল কোড 401 · সঠিক কোড 201 + টোকেন · **একবার ব্যবহারের পর 401** |
+| Device auth | টোকেন ছাড়া 401 · ভুল টোকেন 401 · sha256 মিললে 200 |
+| Heartbeat | কনফিগ ভার্সন মিললে কোনো কমান্ড নেই · না মিললে `reload_config` |
+| dedupe | একই ব্যাচ দুবার → `accepted 0, duplicates 2` |
+| `client_uuid` | না থাকলে **422** (স্পেক § ৪.১ যেমন বলেছে) |
+| **মধ্যরাত-স্প্লিট** | ২৩:৫০→০০:১০ একটি সেগমেন্ট → **২টি রো**, work_date ০৮-০৮ ও ০৮-০৯ |
+| Clock drift | ঘড়ি ১০ মিনিট পিছিয়ে দিলেও সার্ভারে সঠিক সময় বসে |
+| ব্যাচ সীমা | ৫০১টি রেকর্ড → 400 |
+| স্ক্রিনশট | ভুল mime 400 · webp 201 · একই স্লট আবার → `duplicate: true`, ফাইল ডিস্কে ঠিক পাথে |
+| Session | logoff-এ বন্ধ হয়; প্রতিটি সেগমেন্ট তার সেশনের সীমার ভেতরে (`bad_bounds = 0`) |
+
+**দুটো আসল বাগ ধরা পড়ল, দুটোই ঠিক করা হয়েছে:**
+
+**১· কলামগুলো `timestamptz` ছিল না।** Prisma-র `DateTime`-এর ডিফল্ট `timestamp(3)` —
+স্পেকে `TIMESTAMPTZ` বলা থাকলেও স্কিমায় `@db.Timestamptz(3)` লিখিনি। অ্যাপের ভেতরে সমস্যা হতো না
+(সব UTC-তেই লেখা-পড়া), কিন্তু raw SQL-এ `AT TIME ZONE 'Asia/Dhaka'` করলে **৬ ঘণ্টা ভুল** ফল দিত —
+আর day-close ও মাসিক rollup জব ঠিক সেটাই করবে। ডাটাবেস রিসেট করে নতুন migration নেওয়া হয়েছে।
+
+**২· অফলাইন queue রিপ্লেতে সেশন ভেঙে যাচ্ছিল।** `resolveSession` ধরে নিয়েছিল সেগমেন্ট সময়ের
+ক্রমে আসবে। কিন্তু নেট ফিরলে **পুরোনো ব্যাচ নতুনের পরে** আসে (A05) — ফলে পুরোনো ডেটা এসে চলতি
+সেশনকে অতীতের সময়ে বন্ধ করে দিচ্ছিল (`ended_at < started_at`)। এখন সেশন খোঁজা হয়
+**(device, work_date)** ধরে, আর পুরোনো সেশন বন্ধ হয় **তার নিজের** মধ্যরাতে।
+
+**যা ইচ্ছাকৃতভাবে পরে:** থাম্বনেইল (A06, Phase 3) · অ্যাপ ক্যাটাগরি ম্যাচিং (D05, Phase 4) ·
+`capture_now` / `pause_tracking` কমান্ড — এর জন্য একটা কমান্ড-কিউ টেবিল লাগবে ([G41](08-Gap-Analysis.md))।
+
+### ৩.৩ স্বয়ংক্রিয় টেস্ট — `npm test` *(৫১টি, সবই পাস)*
+
+আগের যাচাইগুলো scratchpad-এর PowerShell স্ক্রিপ্টে ছিল — রেপোতেও ছিল না, CI-তেও চলত না।
+এখন Vitest + supertest দিয়ে রেপোর ভেতরে:
+
+```
+server/test/
+  auth.e2e.spec.ts      ২১টি — লগইন, CSRF, mustChangePw, role guard, রিসেট, ব্রুট-ফোর্স
+  agent.e2e.spec.ts     ৩০টি — enroll, drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট, auto-update
+  setup/harness.ts      অ্যাপ তৈরি, ডাটাবেস রিসেট, লগইন ও এজেন্ট হেল্পার
+  setup/global-setup.ts oxeio_test ডাটাবেস তৈরি + migrate
+```
+
+**যে তিনটি সিদ্ধান্ত নিতে হলো:**
+
+| | |
+|---|---|
+| **আলাদা `oxeio_test` ডাটাবেস** | [§ ৯](02-Workflow.md)-এ Testcontainers-এর কথা ছিল। নেওয়া হয়নি — docker compose-এ Postgres তো চলছেই, প্রতি রানে নতুন কন্টেইনার মানে অকারণে ৩০+ সেকেন্ড। CI-তে service container দিলে একই কোড চলবে। **ডেভ ডাটাবেস কখনো ছোঁয়া হয় না** |
+| **`configureApp()` আলাদা করা** | prefix · helmet · CSRF · ValidationPipe — টেস্ট আর প্রোডাকশন একই ফাংশন ব্যবহার করে। নইলে টেস্ট পাস করেও প্রোডাকশনে অন্যরকম আচরণ হতে পারত |
+| **SWC ট্রান্সফর্ম** | Vitest esbuild দিয়ে ট্রান্সপাইল করে, আর esbuild `emitDecoratorMetadata` সমর্থন করে না — ফলে NestJS-এর সব DI `undefined` হয়ে আসছিল। `unplugin-swc` বসানোর পর ঠিক |
+
+seed ইচ্ছাকৃতভাবে টেস্টে চালানো হয় না — প্রতিটি টেস্ট নিজের fixture নিজেই বসায়,
+নইলে seed বদলালেই টেস্ট ভাঙত।
+
+### ৩.৪ CI — `.github/workflows/ci.yml`
+
+push ও PR-এ দুটি job চলে:
+
+| job | ধাপ |
+|---|---|
+| **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৫১টি) → **build** |
+| **docker** | `docker build` — Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, তখনই ধরা পড়ে |
+
+Postgres আসে **service container** হিসেবে (`postgres:16-alpine`) — লোকালে docker compose যা দেয়,
+CI-তে সেটাই। টেস্ট নিজেই `oxeio_test` ডাটাবেস বানিয়ে migrate করে নেয়, তাই আলাদা কোনো ধাপ লাগে না।
+
+`TZ: Asia/Dhaka` **ইচ্ছাকৃতভাবে** সেট করা — মধ্যরাত-স্প্লিট ও `work_date` এর উপরেই দাঁড়ানো,
+UTC runner-এ চললে ওই টেস্টগুলো ভুল জায়গায় ভাঙত।
+
+**পাঁচটি ধাপই স্থানীয়ভাবে চালিয়ে দেখা হয়েছে** — lint ০ error · typecheck ০ error ·
+৫১/৫১ টেস্ট · `nest build` · `docker build`। শুধু বিল্ড নয়, **তৈরি ইমেজটা চালিয়েও** দেখা হয়েছে:
+কনটেইনার উঠে Postgres-এ পৌঁছে `{"status":"ok","db":"up"}` ফেরত দিয়েছে — অর্থাৎ Dockerfile-এর
+prisma engine কপি করার কৌশলটা সত্যিই কাজ করে।
+
+> ⚠️ **এখনো `git init` করা হয়নি।** ফাইলটা তৈরি আছে, কিন্তু GitHub remote না থাকলে CI চলবে না।
+
+সাথে যেগুলো লাগল: `eslint.config.mjs` (flat config, আগে কোনো eslint কনফিগই ছিল না, তাই
+`npm run lint` চলতই না) · `npm run typecheck` স্ক্রিপ্ট · Dockerfile-এর Node 22 → **24**,
+যাতে লোকাল, CI ও কনটেইনার — তিন জায়গায় একই ভার্সন থাকে।
+
+---
+
+## ৪. নিয়ম কীভাবে বিবর্তিত হলো
+
+প্রথম প্ল্যান থেকে চূড়ান্ত নিয়মে পৌঁছাতে তিন দফা পরিবর্তন হয়েছে। পুরনো ডকুমেন্টের কোনো অংশ যদি এর সাথে না মেলে, **এই টেবিলটাই সঠিক**।
+
+| বিষয় | দফা ১ | দফা ২ | দফা ৩ | **দফা ৪ — চূড়ান্ত ✅** |
+|---|---|---|---|---|
+| শিফট | ৯:০০–৬:০০ | ৯:০০–৬:০০ উইন্ডো | নেই | **নেই** |
+| টার্গেট | দৈনিক ৮ ঘণ্টা | দৈনিক ৮ ঘণ্টা | মাসিক ২০৮ঘ | **মাসিক ২০৮ ঘণ্টা** |
+| লাঞ্চ | ১:০০–২:০০ ট্র্যাক | ট্র্যাক নয় | ট্র্যাক নয় | **ট্র্যাক নয়** |
+| সাপ্তাহিক ছুটি | শুক্র + শনি | শুধু শুক্র | যেকোনো দিন গোনা হয় | **যেকোনো দিন** |
+| দেরি / আগে যাওয়া | ফ্ল্যাগ ছিল | ফ্ল্যাগ ছিল | নেই | **নেই** |
+| স্ক্রিনশট | ঘণ্টায় ৩ | প্রতি ৫ মিনিট | ৫ মিনিট, ২৪ঘ | **৫ মিনিট, ০৭:০০–২৩:০০** |
+| সময় গণনা | শিফটের ভেতরে | শিফটের ভেতরে | ২৪ ঘণ্টা | **২৪ ঘণ্টা** |
+| অনুমোদন ব্যবস্থা | মিটিং+ছুটি claim | claim ছিল | claim ছিল | **❌ কিছুই নেই** |
+| স্টেট সংখ্যা | ৫ (+BREAK, MEETING) | ৪ | ৪ | **৩ — ACTIVE/IDLE/LOCKED** |
+| DB টেবিল | ১৩ | ১৯ | ২২ | **১৯** *(G34 · G35-এ ২টি যোগ)* |
+
+### চূড়ান্ত নিয়ম — এক প্যারায়
+
+> এজেন্ট PC চালু হলেই চলে। যখনই স্টাফ কি-বোর্ড বা মাউস ব্যবহার করছে, তখনই সময় গোনা হয় — সকাল ৭টা হোক বা রাত ২টা, শুক্রবার হোক বা সোমবার। **১ মিনিট নিষ্ক্রিয় থাকলে গণনা hold, কি-বোর্ড/মাউস নাড়লেই আবার চালু।** স্টাফের কিছু চাপতে হয় না, কারো কিছু অনুমোদন করতে হয় না। **একমাত্র মাপকাঠি: মাসে ২০৮ ঘণ্টা প্রকৃত কাজ।** স্ক্রিনশট প্রতি ৫ মিনিটের ঘরে একবার, র‍্যান্ডম সময়ে, শুধু ০৭:০০–২৩:০০ এবং শুধু active অবস্থায়। ছবি ৯০ দিন পর নিজে থেকেই মুছে যায়।
+
+### সিস্টেমের সম্পূর্ণ লজিক
+
+```
+                কি-বোর্ড বা মাউস ব্যবহার হচ্ছে?
+                            │
+              ┌─────────────┴─────────────┐
+             হ্যাঁ                      না (৬০ সেকেন্ড)
+              │                            │
+       ⏱ ACTIVE — গোনা হচ্ছে         ⏸ IDLE — গোনা বন্ধ
+       📸 স্ক্রিনশট (০৭–২৩)            📸 বন্ধ
+              │                            │
+              └──────────┬─────────────────┘
+                         ▼
+              মাসে জমা হয় → ২০৮ ঘণ্টা?
+```
+
+---
+
+## ৫. এখনো খোলা প্রশ্ন
+
+| # | প্রশ্ন | কখন দরকার | ডিফল্ট ধরে এগোচ্ছি |
+|---|---|---|---|
+| O1 | রিমোট/WFH স্টাফ আছে কি? | Phase 6 | সবাই অফিসে |
+| O2 | ২০২৬-২৭-এর সরকারি ছুটির তালিকা | Phase 5 | প্রি-লোড করে দেব, আপনি এডিট করবেন |
+| O3 | ছুটির ধরন ও বার্ষিক কোটা | Phase 5 | ১০ casual + ১৪ sick |
+| O4 | ওভারটাইমের আলাদা রেট আছে কি? | Phase 5 | শুধু ঘণ্টা দেখাব, টাকা নয় |
+| O5 | অ্যালার্ট ইমেইল কোন ঠিকানায়? SMTP আছে? | Phase 6 | Gmail SMTP |
+| O6 | ড্যাশবোর্ডের ভাষা — বাংলা না ইংরেজি? | Phase 3 | মকআপ অনুযায়ী **বাংলা** |
+| O7 | কোনো PC একাধিক স্টাফ ব্যবহার করে? | Phase 2 | ১ PC = ১ স্টাফ |
+
+কোনোটাই কোড শুরুর পথে বাধা নয় — সবগুলোরই যুক্তিসঙ্গত ডিফল্ট ধরা আছে।
+
+### দ্বিতীয় দফা রিভিউ থেকে আসা সিদ্ধান্ত *(৯ আগস্ট ২০২৬)*
+
+কোড শুরুর আগে পুরো প্ল্যান আবার যাচাই করে ১২টা ফাঁক পাওয়া গেছে ([08 § G](08-Gap-Analysis.md))।
+**G29–G34 স্পেকে বসানো হয়ে গেছে** — schema লেখা শুরু করা যায়। বাকিগুলো আপনার সিদ্ধান্তের অপেক্ষায়:
+
+**G35 ✅ অনুমোদিত ও স্পেকে বসানো** — owner-এর audited সংশোধন ([ADR-011e](05-Options-Decisions.md))।
+
+| # | প্রশ্ন | কখন দরকার |
+|---|---|---|
+| **G37** | মাঝপথে জয়েন করলে ২০৮ ঘণ্টা proration হবে কি? | Phase 5 |
+| **G39** | সাপ্তাহিক এনক্রিপটেড অফসাইট ব্যাকআপ — কোথায়? (Google Drive / অন্য ব্রাঞ্চ / ব্যাংক লকার) | Phase 6 |
+| — | `monitoring-policy-template.md` ড্রাফট — **Phase 7-এর ব্লকার** | যত আগে তত ভালো |
