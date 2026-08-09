@@ -43,8 +43,10 @@
 
 - **`server/`** 🔨 NestJS 11 + Prisma 6 — ১৯ মডেলের স্কিমা migrate হয়েছে, seed বসেছে,
   **Auth** (২২ টেস্ট) ও **Agent ingest** (২৭ টেস্ট) মডিউল চলছে। বাকি: reports, jobs, alerts।
-- **`agent/`** 🔨 `oXeio.Core` — state machine, স্লট শিডিউলার, ঢাকার সময়। **২৯টি ইউনিট টেস্ট পাস**।
-  Win32/tray/ক্যাপচার এখনো বাকি, আর সেগুলোর যাচাই আসল ডেস্কটপেই করতে হবে।
+- **`agent/`** 🔨 `oXeio.Core` (নিয়ম, **৪৬টি ইউনিট টেস্ট**) + `oXeio.Agent`-এর Win32 স্তর।
+  `dotnet run --project src/oXeio.Agent` দিয়ে একটা **ডায়াগনস্টিক টুল** চলে — নিজের PC-তে
+  idle, lock, ঘুম আর ক্যাপচার উইন্ডো ঠিকমতো ধরা পড়ছে কি না দেখা যায়।
+  ক্যাপচার, queue, tray ও watchdog বাকি।
 
 অগ্রগতি ও পরের ধাপ: [09-Build-Log](docs/09-Build-Log.md)
 

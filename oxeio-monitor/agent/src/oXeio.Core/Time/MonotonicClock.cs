@@ -10,9 +10,13 @@ namespace oXeio.Core.Time;
 /// এখানে শুরুর সময়টা একবার ধরা হয়, তারপর <see cref="Stopwatch"/> (QPC) দিয়ে
 /// এগোনো হয় — যা কেবল সামনেই যায় (G7 · ADR-অনুযায়ী § ৩.২)।
 ///
-/// ⚠️ <b>সীমাবদ্ধতা:</b> Windows-এ PC ঘুমিয়ে গেলে QPC থেমে থাকে, তাই জেগে ওঠার পর
-/// এই ঘড়ি বাস্তব সময়ের চেয়ে পিছিয়ে থাকবে। সেজন্যই suspend/resume আলাদা করে
-/// <see cref="Tracking.IdleStateMachine"/>-কে জানাতে হয় (G3) — শুধু ঘড়ির উপর ভরসা নয়।
+/// ✅ <b>ঘুমের সময়ও এই ঘড়ি চলতে থাকে।</b> Microsoft-এর ডকুমেন্টেশন অনুযায়ী
+/// QueryPerformanceCounter "standby, hibernate, connected standby" — সব ধরনের ঘুমের
+/// সময়টাই গুনে রাখে, আর <see cref="Stopwatch"/> QPC-ই ব্যবহার করে।
+///
+/// এটা আমাদের পক্ষেই যায়: জেগে ওঠার পর <c>Now</c> বাস্তব সময়ের সাথেই মেলে, <b>আর</b>
+/// ঘুম ধরার কাজেও লাগে — এক টিকে এই ঘড়ি ১ সেকেন্ডের বদলে ৮ ঘণ্টা এগোলে বোঝা যায়
+/// মাঝখানে PC ঘুমিয়ে ছিল (<see cref="Tracking.SleepGapDetector"/>)।
 /// </summary>
 public sealed class MonotonicClock
 {

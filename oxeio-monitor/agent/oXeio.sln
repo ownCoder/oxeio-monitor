@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{36A827DB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "oXeio.Core.Tests", "tests\oXeio.Core.Tests\oXeio.Core.Tests.csproj", "{0ADAB5CE-5B5F-4397-B551-EC8D07AD5BA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "oXeio.Agent", "src\oXeio.Agent\oXeio.Agent.csproj", "{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{0ADAB5CE-5B5F-4397-B551-EC8D07AD5BA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0ADAB5CE-5B5F-4397-B551-EC8D07AD5BA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0ADAB5CE-5B5F-4397-B551-EC8D07AD5BA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{95D34290-77BD-4618-B18E-C8642E218F39} = {6726CD29-6F51-450C-9640-48DCD4722AE5}
 		{0ADAB5CE-5B5F-4397-B551-EC8D07AD5BA8} = {36A827DB-451E-43E1-B4F4-6E82B0497D02}
+		{C1254CB4-E0F2-4AB8-9EE6-3855CF75999F} = {6726CD29-6F51-450C-9640-48DCD4722AE5}
 	EndGlobalSection
 EndGlobal

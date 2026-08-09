@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- এখন কনসোল — এটা প্রথমে একটা ডায়াগনস্টিক টুল। tray UI যোগ হলে WinExe হবে। -->
+    <OutputType>Exe</OutputType>
+    <!-- 10.0.17763 = Windows 10 1809, আমাদের সর্বনিম্ন লক্ষ্য।
+         খালি `net8.0-windows` দিলে platform version 7.0 ধরে নেয়, আর তখন
+         SupportedOSPlatformVersion বসানো যায় না। -->
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- NativeWindow-এর জন্য — হাতে CreateWindowExW করলে delegate-এর আয়ু নিয়ে
+         CallbackOnCollectedDelegate শ্রেণির বাগের ঝুঁকি থাকে -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>oXeio.Agent</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!--
+      WFAC010: WinForms analyzer চায় DPI সেটিং ম্যানিফেস্ট থেকে সরিয়ে
+      Application.SetHighDpiMode()-এ নিতে। এখানে ইচ্ছাকৃতভাবে সেটা মানা হচ্ছে না।
+
+      কারণ: ওই API কাজ করে শুধু প্রসেসে **প্রথম HWND তৈরি হওয়ার আগে**। tray আইকন,
+      NativeWindow, বা যেকোনো লাইব্রেরির লুকানো উইন্ডো Main-এর শরীর চলার আগেই একটা
+      HWND বানিয়ে ফেলতে পারে — তারপর কলটা নীরবে ব্যর্থ হয়, কোনো ব্যতিক্রম ছাড়াই,
+      আর প্রসেস DPI-unaware থেকে যায়। তখন ১৫০% স্কেলের 4K মনিটরের স্ক্রিনশট ঝাপসা
+      আসে আর ছোট হরফ পড়াই যায় না — অথচ স্ক্রিনশটের উদ্দেশ্যই ওই লেখা দেখা।
+
+      ম্যানিফেস্ট প্রসেস শুরুর আগেই প্রযোজ্য হয়, তাই ওটাই একমাত্র নির্ভরযোগ্য পথ।
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\oXeio.Core\oXeio.Core.csproj" />
+  </ItemGroup>
+
+</Project>

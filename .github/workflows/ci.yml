@@ -105,9 +105,10 @@ jobs:
         run: npm run build
 
   agent-core:
-    name: agent core — build · test
-    # ubuntu-তেই চলে, কারণ oXeio.Core-এ ইচ্ছাকৃতভাবে কোনো Win32 নেই।
-    # Win32 অংশ (oXeio.Agent, net8.0-windows) যোগ হলে তার জন্য windows runner লাগবে।
+    name: agent core — build · test (linux)
+    # ⚠️ পুরো solution নয়, শুধু Core আর তার টেস্ট।
+    # oXeio.Agent টার্গেট করে net8.0-windows10.0.17763.0 — সেটা Linux-এ বিল্ডই হয় না।
+    # নিয়মগুলো Core-এ রাখার পুরো লাভটা এখানেই: প্রতি PR-এ সস্তা runner-এ যাচাই হয়।
     runs-on: ubuntu-latest
 
     defaults:
@@ -121,14 +122,31 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
-        run: dotnet restore
+      - name: Build rules core
+        run: dotnet build src/oXeio.Core/oXeio.Core.csproj -warnaserror
 
-      - name: Build
-        run: dotnet build --no-restore -warnaserror
+      - name: Test rules core
+        run: dotnet test tests/oXeio.Core.Tests/oXeio.Core.Tests.csproj --verbosity normal
 
-      - name: Test
-        run: dotnet test --no-build --verbosity normal
+  agent-windows:
+    name: agent full — build (windows)
+    # Win32 স্তর শুধু Windows runner-এ বিল্ড হয়। টেস্ট নেই — এই স্তরের আচরণ
+    # আসল ডেস্কটপ ছাড়া যাচাই করা যায় না, তাই বিল্ড ভাঙেনি সেটুকুই দেখা।
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: oxeio-monitor/agent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build solution
+        run: dotnet build -warnaserror
 
   docker:
     name: docker image builds

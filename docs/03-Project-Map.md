@@ -59,17 +59,30 @@ oxeio-monitor/
 │   │   │   ├── Time/MonotonicClock.cs      ✅ ঘড়ি বদলালেও অটুট
 │   │   │   ├── Time/DhakaTime.cs           ✅ সার্ভারের dhaka-time.ts-এর প্রতিরূপ
 │   │   │   ├── Tracking/IdleStateMachine.cs ✅ ⭐ সিস্টেমের হৃদয়
+│   │   │   ├── Tracking/IdleMath.cs        ✅ wraparound + ভবিষ্যৎ-টাইমস্ট্যাম্প ক্ল্যাম্প
+│   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
 │   │   │   ├── Capture/SlotScheduler.cs    ✅ ৫ মিনিট স্লট + র‍্যান্ডম
 │   │   │   └── Models/                     ✅ SegmentState, ActivitySegment
 │   │   │   # ⚠️ Native/ ইচ্ছাকৃতভাবে এখানে **নয়** — Win32 ঢুকলে নিয়মগুলো
 │   │   │   #    আর ইউনিট টেস্টে যাচাই করা যেত না। ওগুলো oXeio.Agent-এ।
 │   │   │
-│   │   ├── oXeio.Agent/                    # ⏳ net8.0-windows — tray, Win32, ক্যাপচার
-│   │   │   ├── Native/User32.cs            ⏳ GetLastInputInfo, GetForegroundWindow
-│   │   │   ├── Native/WtsApi32.cs          ⏳ lock/unlock ইভেন্ট
-│   │   │   ├── Native/Dxgi.cs              ⏳ Desktop Duplication
-│   │   │   ├── Security/TokenStore.cs      ⏳ DPAPI
+│   │   ├── oXeio.Agent/                    # 🔨 net8.0-windows10.0.17763.0
+│   │   │   ├── app.manifest                ✅ PerMonitorV2 DPI
+│   │   │   ├── Program.cs                  ✅ আপাতত ডায়াগনস্টিক টুল
+│   │   │   ├── Native/{Win32,Structs}.cs   ✅ ধ্রুবক ও লেআউট
+│   │   │   ├── Native/Kernel32.cs          ✅ GetTickCount64, QueryUnbiasedInterruptTime
+│   │   │   ├── Native/User32.cs            ✅ GetLastInputInfo, power notifications
+│   │   │   ├── Native/Wtsapi32.cs          ✅ session notifications + lock query
+│   │   │   ├── Platform/SessionGuard.cs    ✅ Session 0-তে চললে সময় গোনা বন্ধ
+│   │   │   ├── Platform/IdleProbe.cs       ✅ কাঁচা সংখ্যা → IdleMath
+│   │   │   ├── Platform/LockStateProbe.cs  ✅ ইভেন্ট ছাড়াই লক অবস্থা
+│   │   │   ├── Platform/MessageWindow.cs   ✅ লুকানো top-level (message-only নয়)
+│   │   │   ├── Platform/SessionMonitor.cs  ✅ lock/logoff/RDP disconnect
+│   │   │   ├── Platform/PowerMonitor.cs    ✅ suspend/resume/display
+│   │   │   ├── Platform/Capture/           ⏳ WGC প্রধান · GDI fallback · WebP
+│   │   │   ├── Sync/                       ⏳ SQLite queue + SyncClient
+│   │   │   └── Security/TokenStore.cs      ⏳ DPAPI
 │   │   │   ├── Program.cs
 │   │   │   ├── Tracking/
 │   │   │   │   ├── TrackerEngine.cs        # ⭐⭐ state machine — সিস্টেমের হৃদয়
@@ -96,7 +109,7 @@ oxeio-monitor/
 │   │       ├── ProcessGuard.cs
 │   │       └── AgentUpdater.cs
 │   ├── installer/                          ⏳ WiX → oXeioAgent.msi
-│   └── tests/oXeio.Core.Tests/             ✅ ২৯টি ইউনিট টেস্ট
+│   └── tests/oXeio.Core.Tests/             ✅ ৪৬টি ইউনিট টেস্ট
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
