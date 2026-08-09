@@ -80,36 +80,23 @@ oxeio-monitor/
 │   │   │   ├── Platform/MessageWindow.cs   ✅ লুকানো top-level (message-only নয়)
 │   │   │   ├── Platform/SessionMonitor.cs  ✅ lock/logoff/RDP disconnect
 │   │   │   ├── Platform/PowerMonitor.cs    ✅ suspend/resume/display
-│   │   │   ├── Platform/Capture/           ⏳ WGC প্রধান · GDI fallback · WebP
-│   │   │   ├── Sync/                       ⏳ SQLite queue + SyncClient
+│   │   │   ├── Platform/DpiGuard.cs        ✅ ম্যানিফেস্ট কার্যকর হয়েছে কি না
+│   │   │   ├── Platform/Capture/
+│   │   │   │   ├── MonitorEnumerator.cs    ✅ প্রতিবার নতুন করে গোনা
+│   │   │   │   ├── GdiCapturer.cs          ✅ BitBlt + GetDIBits (ফলব্যাক ইঞ্জিন)
+│   │   │   │   ├── WebpEncoder.cs          ✅ SkiaSharp q70, ≤১৯২০px
+│   │   │   │   ├── ScreenCaptureService.cs ✅ সব মনিটর + গুণমান যাচাই
+│   │   │   │   └── WgcCapturer.cs          ⏳ প্রধান ইঞ্জিন (ADR-012b)
+│   │   │   ├── Apps/                       ⏳ WindowWatcher · BrowserUrlReader
+│   │   │   ├── Sync/                       ⏳ SyncClient · LocalQueue · ConfigSync
+│   │   │   ├── UI/                         ⏳ TrayIcon · MyDayWindow
 │   │   │   └── Security/TokenStore.cs      ⏳ DPAPI
-│   │   │   ├── Program.cs
-│   │   │   ├── Tracking/
-│   │   │   │   ├── TrackerEngine.cs        # ⭐⭐ state machine — সিস্টেমের হৃদয়
-│   │   │   │   ├── IdleMonitor.cs          # ১ সে. পোলিং, ৬০ সে. threshold
-│   │   │   │   ├── SegmentBuilder.cs       # retro-adjust + সেগমেন্ট ক্লোজ
-│   │   │   │   └── CaptureWindow.cs        # শুধু ছবির সময়সীমা (07:00–23:00)
-│   │   │   │                               # ⚠️ ShiftCalendar নেই — শিফটই নেই
-│   │   │   ├── Capture/
-│   │   │   │   ├── SlotScheduler.cs        # ⭐ ৫ মিনিট স্লট + র‍্যান্ডম অফসেট
-│   │   │   │   ├── ScreenCapturer.cs       # মাল্টি-মনিটর, DPI-aware
-│   │   │   │   └── WebpEncoder.cs
-│   │   │   ├── Apps/
-│   │   │   │   ├── WindowWatcher.cs        # ২ সে. foreground চেক
-│   │   │   │   └── BrowserUrlReader.cs     # UI Automation → ডোমেইন
-│   │   │   ├── Sync/
-│   │   │   │   ├── SyncClient.cs           # HTTP, backoff, idempotency
-│   │   │   │   ├── LocalQueue.cs           # SQLite + ফাইল queue
-│   │   │   │   └── ConfigSync.cs
-│   │   │   └── UI/
-│   │   │       ├── TrayIcon.cs             # স্ট্যাটাস + "৬৩.৪ / ২০৮ ঘণ্টা"
-│   │   │       └── MyDayWindow.cs          # স্টাফের নিজের হিসাব
 │   │   │
-│   │   └── oXeio.Watchdog/                 # Windows Service
+│   │   └── oXeio.Watchdog/                 ⏳ Windows Service
 │   │       ├── ProcessGuard.cs
 │   │       └── AgentUpdater.cs
 │   ├── installer/                          ⏳ WiX → oXeioAgent.msi
-│   └── tests/oXeio.Core.Tests/             ✅ ৪৬টি ইউনিট টেস্ট
+│   └── tests/oXeio.Core.Tests/             ✅ ৫২টি ইউনিট টেস্ট
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/

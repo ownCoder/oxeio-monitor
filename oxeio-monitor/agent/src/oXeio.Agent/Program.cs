@@ -3,6 +3,8 @@ using System.Windows.Forms;
 
 using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
+using oXeio.Agent.Platform.Capture;
+using oXeio.Core.Capture;
 using oXeio.Core.Models;
 using oXeio.Core.Time;
 using oXeio.Core.Tracking;
@@ -50,6 +52,11 @@ internal static class Program
             return 1;
         }
 
+        var dpi = DpiGuard.Check();
+        Line(dpi.Ok
+            ? $"DPI       : ✅ {dpi.Awareness} — ম্যানিফেস্ট কাজ করেছে"
+            : $"DPI       : ❌ {dpi.Awareness} — স্ক্রিনশট ঝাপসা আসবে, ম্যানিফেস্ট দেখুন");
+
         var lockState = LockStateProbe.Query();
         Line($"lock state: {lockState}  (ইভেন্টের অপেক্ষা না করে শুরুতেই জেনে নেওয়া)");
 
@@ -78,6 +85,9 @@ internal static class Program
 
         Line($"capture window       : {(Capture.Allows(DateTimeOffset.UtcNow) ? "খোলা" : "বন্ধ")} (০৭:০০–২৩:০০)");
         Line("");
+
+        TestCapture();
+
         Line("চলছে… Ctrl+C দিয়ে থামান। ৬০ সেকেন্ড মাউস/কি-বোর্ড না ছুঁয়ে দেখুন।");
         Line("");
 
@@ -92,6 +102,51 @@ internal static class Program
 
         Application.Run();
         return 0;
+    }
+
+    // ── ক্যাপচার পরীক্ষা ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// একবার ছবি তুলে দেখা — সত্যিই কাজ করছে কি না, ছবিগুলো কোথায় গেল,
+    /// আর কোনোটা কালো এল কি না।
+    /// </summary>
+    private static void TestCapture()
+    {
+        var monitors = MonitorEnumerator.Enumerate();
+        Line($"মনিটর: {monitors.Count}টি");
+        foreach (var m in monitors)
+        {
+            Line($"   ▸ {m.DeviceName}  {m.Width}×{m.Height}  " +
+                 $"@{m.Bounds.Left},{m.Bounds.Top}  DPI {m.Dpi} ({m.Scale:P0})" +
+                 (m.IsPrimary ? "  [প্রাইমারি]" : ""));
+        }
+
+        var outDir = Path.Combine(Path.GetTempPath(), "oXeio-capture-test");
+        Directory.CreateDirectory(outDir);
+
+        using var service = new ScreenCaptureService(new GdiCapturer());
+        Line($"");
+        Line($"ক্যাপচার ইঞ্জিন: {service.EngineName}");
+
+        var results = service.CaptureAll();
+        if (results.Count == 0)
+        {
+            Line("❌ একটাও ছবি তোলা গেল না");
+            return;
+        }
+
+        foreach (var r in results)
+        {
+            var path = Path.Combine(outDir, $"monitor-{r.MonitorIndex}.webp");
+            File.WriteAllBytes(path, r.Webp);
+
+            Line($"   ▸ মনিটর {r.MonitorIndex}: {r.Width}×{r.Height} → " +
+                 $"{r.Webp.Length / 1024.0:F0} KB  ({r.Elapsed.TotalMilliseconds:F0} ms)  " +
+                 (r.Degraded ? $"⚠️ {r.Quality.Reason}" : $"✅ কালো {r.Quality.BlackRatio:P0}"));
+        }
+
+        Line($"   ছবিগুলো: {outDir}");
+        Line("");
     }
 
     // ── প্রতি সেকেন্ডের কাজ ────────────────────────────────────────────────

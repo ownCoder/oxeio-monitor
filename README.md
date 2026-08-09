@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **স্ট্যাটাস** | ✅ Phase 1 সম্পূর্ণ · 🔨 **Phase 2 চলমান** — এজেন্টের নিয়মের কোর (৪৬ টেস্ট) ও Win32 স্তর দাঁড়িয়েছে |
+| **স্ট্যাটাস** | ✅ Phase 1 সম্পূর্ণ · 🔨 **Phase 2 চলমান** — এজেন্টের নিয়মের কোর (৫২ টেস্ট) ও Win32 স্তর দাঁড়িয়েছে |
 | **প্রতিষ্ঠান** | oXeio |
 | **স্টাফ** | ১৫ জন · সব Windows PC |
 | **ট্র্যাকিং** | **কোনো শিফট নেই** — দিনের যেকোনো সময় active থাকলেই গোনা হয় (২৪ ঘণ্টা) |
@@ -31,7 +31,7 @@
 | 05 | [Options & Decisions](docs/05-Options-Decisions.md) | প্রতিটা টেকনিক্যাল সিদ্ধান্তের বিকল্প, তুলনা ও কারণ (ADR) |
 | 06 | [Research](docs/06-Research.md) | প্রতিযোগী বিশ্লেষণ, Windows API গবেষণা, আইনি দিক, ৩ বছরের খরচ |
 | 07 | [Technical Spec](docs/07-Technical-Spec.md) | DB স্কিমা, API কনট্রাক্ট, এজেন্ট state machine, সার্ভার সেটআপ |
-| 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো (৪০টি, দুই দফায়) |
+| 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো (৪৭টি, তিন দফায়) |
 | 09 | [Build Log](docs/09-Build-Log.md) | ⭐ **এখন পর্যন্ত কী হয়েছে, কী আটকে আছে, পরের ধাপ** |
 | 🎨 | [UI Mockup](docs/mockup/dashboard-mockup.html) | ৭টি স্ক্রিনের ক্লিকযোগ্য ডিজাইন মকআপ |
 
@@ -43,7 +43,7 @@
 
 - **`server/`** 🔨 NestJS 11 + Prisma 6 — ১৯ মডেলের স্কিমা migrate হয়েছে, seed বসেছে,
   **Auth** (২২ টেস্ট) ও **Agent ingest** (২৭ টেস্ট) মডিউল চলছে। বাকি: reports, jobs, alerts।
-- **`agent/`** 🔨 `oXeio.Core` (নিয়ম, **৪৬টি ইউনিট টেস্ট**) + `oXeio.Agent`-এর Win32 স্তর।
+- **`agent/`** 🔨 `oXeio.Core` (নিয়ম, **৫২টি ইউনিট টেস্ট**) + `oXeio.Agent`-এর Win32 স্তর।
   `dotnet run --project src/oXeio.Agent` দিয়ে একটা **ডায়াগনস্টিক টুল** চলে — নিজের PC-তে
   idle, lock, ঘুম আর ক্যাপচার উইন্ডো ঠিকমতো ধরা পড়ছে কি না দেখা যায়।
   ক্যাপচার, queue, tray ও watchdog বাকি।

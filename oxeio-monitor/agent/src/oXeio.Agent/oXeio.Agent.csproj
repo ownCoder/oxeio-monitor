@@ -37,4 +37,9 @@
     <ProjectReference Include="..\oXeio.Core\oXeio.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="4.151.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.151.1" />
+  </ItemGroup>
+
 </Project>
