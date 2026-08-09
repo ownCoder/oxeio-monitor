@@ -77,10 +77,37 @@ jobs:
       - name: Build
         run: npm run build
 
+  web:
+    name: web — lint · build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: oxeio-monitor/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: oxeio-monitor/web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # `npm run build` নিজেই `tsc -b` চালায়, তাই আলাদা typecheck ধাপ লাগে না
+      - name: Build
+        run: npm run build
+
   docker:
     name: docker image builds
     runs-on: ubuntu-latest
-    needs: server
+    needs: [server, web]
     steps:
       - uses: actions/checkout@v4
 

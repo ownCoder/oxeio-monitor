@@ -851,8 +851,12 @@ oxeio-monitor/
 │  ├─ prisma/schema.prisma  (১৯ মডেল, timestamptz)    ✅
 │  ├─ prisma/seed.ts  migrations/                     ✅
 │  └─ Dockerfile  tsconfig.build.json                 ✅
-├─ web/                        # React 19 + Vite + Tailwind + Recharts
-│  └─ src/pages/{live,employee,gallery,monthly,reports,settings,my-data}
+├─ web/                        # React 19 + Vite 7 + Tailwind 4
+│  ├─ src/api/  src/auth/  src/components/            ✅ লগইন শেল
+│  ├─ src/pages/{Login,ChangePassword,Home}           ✅
+│  ├─ src/pages/{live,employee,gallery,monthly,       ⏳ Phase 3
+│  │             reports,settings,my-data}
+│  └─ vite.config.ts  # /api → :3000 proxy (SameSite=Strict-এর জন্য অপরিহার্য)
 ├─ docker-compose.yml
 ├─ docs/
 │  ├─ deployment.md

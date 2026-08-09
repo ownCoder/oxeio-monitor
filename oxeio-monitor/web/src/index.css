@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+/* ── ব্র্যান্ড টোকেন — oXeio LLC-র লোগো: কালো · সাদা · লাল ────────────
+   লাল দুটো কাজে, ওজন দিয়ে আলাদা করা:
+     · আউটলাইন/সরু লাল → ব্র্যান্ড (রিং, ট্যাব, ফোকাস)
+     · সলিড লাল       → মনোযোগ দরকার (ভুল, এজেন্ট বন্ধ)
+   কালো = গোনা হওয়া কাজ · ধূসর = গোনা হয়নি                        */
+@theme {
+  --color-brand: #ed1c24;
+  --color-brand-ink: #c4121a;
+  --color-brand-bg: #fce9ea;
+
+  --color-ink: #0b0b0b;
+  --color-ink-2: #4b4b4b;
+  --color-ink-3: #7c7c7c;
+
+  --color-paper: #f1f1f1;
+  --color-surface: #ffffff;
+  --color-line: #e2e2e2;
+
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
+
+/* সংখ্যা সবসময় সমান প্রস্থে — ঘণ্টার হিসাব লাফালাফি করবে না */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

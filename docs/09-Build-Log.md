@@ -2,10 +2,11 @@
 
 এ পর্যন্ত কী কী করা হয়েছে, এখন কোথায় আটকে আছে, আর পরের ধাপ কী।
 
-**সর্বশেষ হালনাগাদ:** ৯ আগস্ট ২০২৬ · **বর্তমান ফেজ:** Phase 1 (Foundation) 🔨
+**সর্বশেষ হালনাগাদ:** ৯ আগস্ট ২০২৬ · **বর্তমান ফেজ:** Phase 1 ✅ সম্পূর্ণ → Phase 2 শুরুর অপেক্ষায়
 
-> ✅ **আর কোনো ব্লকার নেই।** ৯ আগস্ট BIOS-এ SVM Mode চালু করার পর পুরো স্ট্যাক দাঁড়িয়ে গেছে —
-> Postgres চলছে, ১৯টি টেবিল migrate হয়েছে, seed বসেছে, API `db: up` ফেরত দিচ্ছে। বিস্তারিত § ২।
+> ✅ **Phase 1-এর নয়টি ডেলিভারেবলই শেষ** — ডাটাবেস, auth, agent ingest, ৫১টি টেস্ট,
+> CI, web লগইন শেল। এক দিনেই ([দ্বিতীয় দফা রিভিউ](08-Gap-Analysis.md) সহ)।
+> **পরের ধাপ Phase 2 — Windows এজেন্ট**, যেটার যাচাই আমার হাতে নেই (§ ৫ দেখুন)।
 
 ---
 
@@ -55,6 +56,8 @@
 | `server/src/audit/` | `audit_log`-এ লেখা — login, login_failed, change_password, reset_password… |
 | `server/src/users/` | `POST /users/:id/reset-password` · `POST /employees/:id/portal-account` (দুটোই owner-only) |
 | `server/src/agent/` | ⭐ **Agent ingest** — ৯টি endpoint, device token guard, clock-drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট আপলোড, rate limit |
+| `server/test/` | ৫১টি e2e টেস্ট (Vitest + supertest) |
+| `web/` | ⭐ **লগইন শেল** — React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে |
 | `server/Dockerfile` | ৩-স্তরের বিল্ড, non-root `node` ইউজার, `Asia/Dhaka` |
 | `server/tsconfig.build.json` | `prisma/` বাদ — নইলে বিল্ড `dist/src/main.js`-এ যেত |
 
@@ -135,9 +138,11 @@ CPU (Ryzen 7 5700G) সাপোর্ট করে (`VMMonitorModeExtensions = 
 | ~~4~~ | ~~Auth মডিউল~~ | ✅ **শেষ** — ২২টি end-to-end টেস্ট পাস (নিচে § ৩.১) |
 | ~~5~~ | ~~Agent ingest মডিউল~~ | ✅ **শেষ** — ২৭টি end-to-end টেস্ট পাস (নিচে § ৩.২) |
 | ~~6~~ | ~~টেস্ট Vitest-এ তোলা~~ | ✅ **৫১টি টেস্ট রেপোতে** — `npm test` (নিচে § ৩.৩) |
-| ~~8~~ | ~~GitHub Actions CI~~ | ✅ **লেখা ও যাচাই হয়েছে** (নিচে § ৩.৪) — তবে চলবে `git init` + GitHub remote হওয়ার পর |
-| 7 | `web/` লগইন শেল | Vite + React + Tailwind |
-| 9 | Postman collection | সব endpoint হাতে টেস্ট করার জন্য |
+| ~~8~~ | ~~GitHub Actions CI~~ | ✅ **লেখা ও যাচাই হয়েছে** (নিচে § ৩.৪) · রেপো তৈরি — বাকি শুধু GitHub remote + push |
+| ~~7~~ | ~~`web/` লগইন শেল~~ | ✅ **শেষ** — ব্রাউজারে পুরো ফ্লো যাচাই করা (নিচে § ৩.৫) |
+| 9 | Postman collection | সব endpoint হাতে টেস্ট করার জন্য · Phase 3-এ |
+
+> 🎉 **Phase 1 সম্পূর্ণ।** পরের ধাপ Phase 2 — Windows এজেন্ট।
 
 **ছোট ধার (technical debt) যা জমছে:**
 
@@ -230,6 +235,7 @@ push ও PR-এ দুটি job চলে:
 | job | ধাপ |
 |---|---|
 | **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৫১টি) → **build** |
+| **web** | `npm ci` → **lint** → **build** (`tsc -b` বিল্ডের ভেতরেই) |
 | **docker** | `docker build` — Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, তখনই ধরা পড়ে |
 
 Postgres আসে **service container** হিসেবে (`postgres:16-alpine`) — লোকালে docker compose যা দেয়,
@@ -243,11 +249,40 @@ UTC runner-এ চললে ওই টেস্টগুলো ভুল জা�
 কনটেইনার উঠে Postgres-এ পৌঁছে `{"status":"ok","db":"up"}` ফেরত দিয়েছে — অর্থাৎ Dockerfile-এর
 prisma engine কপি করার কৌশলটা সত্যিই কাজ করে।
 
-> ⚠️ **এখনো `git init` করা হয়নি।** ফাইলটা তৈরি আছে, কিন্তু GitHub remote না থাকলে CI চলবে না।
+> ✅ **রেপো তৈরি হয়ে গেছে** — `main` ব্রাঞ্চ, প্রথম কমিটে **৭৬টি ফাইল**।
+> author পরিচয় `--local` দিয়ে বসানো, গ্লোবাল কনফিগে হাত পড়েনি।
+> **এখনো বাকি:** GitHub-এ remote যোগ করে push — তার আগে CI চলবে না।
 
 সাথে যেগুলো লাগল: `eslint.config.mjs` (flat config, আগে কোনো eslint কনফিগই ছিল না, তাই
 `npm run lint` চলতই না) · `npm run typecheck` স্ক্রিপ্ট · Dockerfile-এর Node 22 → **24**,
 যাতে লোকাল, CI ও কনটেইনার — তিন জায়গায় একই ভার্সন থাকে।
+
+### ৩.৫ Web লগইন শেল — `web/`
+
+React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে (কালো টপবার, লাল X)।
+
+```
+web/src/
+  api/client.ts          fetch র‍্যাপার — cookie, CSRF হেডার, গ্লোবাল 401 হ্যান্ডলিং
+  api/auth.ts            login · me · logout · change-password
+  auth/AuthContext.tsx   সেশনের অবস্থা, অ্যাপ খুললেই /auth/me
+  pages/LoginPage        pages/ChangePasswordPage        pages/HomePage
+  components/Layout      টপবার + নেভ (Phase 3-এর পেজগুলোর জায়গা রাখা)
+```
+
+**তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ** — লগইন করেনি · পাসওয়ার্ড বদলায়নি · ঢুকে গেছে।
+ফলে "লগইন না করেই ভেতরের পেজ" বা "অস্থায়ী পাসওয়ার্ড নিয়ে ঘোরাঘুরি" সম্ভবই নয়।
+সার্ভারও একই জিনিস আলাদাভাবে আটকায় (`mustChangePw` → 403), তাই দুই স্তরে সুরক্ষা।
+
+**⚠️ যে জিনিসটা ধরা না পড়লে লগইনই ভাঙত:** সেশন cookie-তে `SameSite=Strict`, তাই ব্রাউজার
+সেটা শুধু **same-site** রিকোয়েস্টে পাঠায়। ফ্রন্টএন্ড `:5173` থেকে সরাসরি `:3000`-এ ডাকলে
+লগইন সফল দেখাত, কিন্তু পরের রিকোয়েস্টেই 401। তাই Vite-এ `/api` → `:3000` **proxy**
+বসানো হয়েছে — ব্রাউজারের চোখে সবই এক origin। প্রোডাকশনে Caddy একই কাজ করবে
+(ওয়েব ও API একই origin-এ), তাই সেখানে আলাদা কিছু লাগবে না।
+
+**ব্রাউজারে যা যাচাই করা হয়েছে:** লগইন → বাধ্যতামূলক পাসওয়ার্ড বদল → শেলে ঢোকা
+(নাম, ভূমিকা, সর্বশেষ লগইন ঢাকার সময়ে) → লগআউট → আবার লগইন পর্দা।
+`npm run lint` ও `npm run build` দুটোই পাস।
 
 ---
 

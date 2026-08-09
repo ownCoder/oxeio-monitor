@@ -134,19 +134,26 @@ oxeio-monitor/
 │
 ├── web/                                    # ── React 19 + Vite ──
 │   └── src/
+│       ├── api/client.ts                   ✅ cookie · CSRF হেডার · গ্লোবাল 401
+│       ├── api/auth.ts                     ✅
+│       ├── auth/AuthContext.tsx            ✅ সেশনের অবস্থা
+│       ├── components/Layout.tsx           ✅ কালো টপবার + নেভ
+│       ├── components/Brand.tsx  Field.tsx ✅
+│       ├── pages/LoginPage.tsx             ✅
+│       ├── pages/ChangePasswordPage.tsx    ✅ বাধ্যতামূলক প্রথম-বদল (G33)
+│       ├── pages/HomePage.tsx              ✅ প্লেসহোল্ডার
 │       ├── pages/
-│       │   ├── LiveBoard.tsx               # ⭐ হোম — ১৫টা কার্ড
-│       │   ├── EmployeeDetail.tsx          # টাইমলাইন + চার্ট
-│       │   ├── Gallery.tsx                 # স্ক্রিনশট গ্রিড + লাইটবক্স
-│       │   ├── Attendance.tsx              # মাসিক গ্রিড
-│       │   ├── Reports.tsx
-│       │   ├── Settings.tsx                # owner only
-│       │   └── MyData.tsx                  # স্টাফের নিজের ভিউ
+│       │   ├── LiveBoard.tsx               ⏳ ⭐ হোম — ১৫টা কার্ড
+│       │   ├── EmployeeDetail.tsx          ⏳ টাইমলাইন + চার্ট
+│       │   ├── Gallery.tsx                 ⏳ স্ক্রিনশট গ্রিড + লাইটবক্স
+│       │   ├── Monthly.tsx                 ⏳ মাসিক হিটম্যাপ
+│       │   ├── Reports.tsx  Settings.tsx   ⏳
+│       │   └── MyData.tsx                  ⏳ স্টাফের নিজের ভিউ
 │       ├── components/
-│       │   ├── TimelineBar.tsx             # ⭐ active/idle রঙিন বার
-│       │   ├── StatusCard.tsx  ScreenshotGrid.tsx
-│       │   └── TargetRing.tsx              # মাসিক ২০৮ঘ প্রগ্রেস রিং
-│       ├── api/  hooks/  lib/
+│       │   ├── TimelineBar.tsx             ⏳ ⭐ active/idle রঙিন বার
+│       │   ├── StatusCard.tsx  ScreenshotGrid.tsx  ⏳
+│       │   └── TargetRing.tsx              ⏳ মাসিক ২০৮ঘ প্রগ্রেস রিং
+│       └── hooks/  lib/                    ⏳
 │
 ├── docs/                                   # ← এই ডকুমেন্টগুলো
 │   └── monitoring-policy-template.md       # স্টাফের সই করার পলিসি
@@ -154,7 +161,7 @@ oxeio-monitor/
 │   ├── docker-compose.yml  Caddyfile
 │   ├── av-exclusion.ps1                    # AV exception স্ক্রিপ্ট
 │   └── deploy-agent.ps1                    # সাইলেন্ট MSI ডিপ্লয়
-└── (রেপো রুটে) .github/workflows/ci.yml   ✅ lint · typecheck · test · build · docker
+└── (রেপো রুটে) .github/workflows/ci.yml   ✅ server · web · docker — তিনটি job
 ```
 
 ---

@@ -118,25 +118,27 @@ DB স্কিমা · API কনট্রাক্ট · এজেন্ট �
 
 ---
 
-### Phase 1 — Foundation · সপ্তাহ ১ 🔨 *চলমান*
+### Phase 1 — Foundation · সপ্তাহ ১ ✅ *সম্পূর্ণ*
 
 **অগ্রগতি ও পরিবেশের অবস্থা: [09-Build-Log](09-Build-Log.md) দেখুন**
 
 | ডেলিভারেবল | অবস্থা | Done-এর সংজ্ঞা |
 |---|:---:|---|
-| রেপো স্ক্যাফোল্ড | 🔨 `server/` ✅ | `agent/` `server/` `web/` — তিনটাই বিল্ড হয় |
+| রেপো স্ক্যাফোল্ড | ✅ | `server/` ও `web/` বিল্ড হয় · `agent/` Phase 2-এর কাজ |
 | Docker Compose | ✅ লেখা হয়েছে | `docker compose up` দিলে Postgres + API ওঠে |
 | Prisma স্কিমা | ✅ | ১৯টি মডেল · `validate` + `generate` চলে |
 | Prisma migration | ✅ | `init` প্রয়োগ হয়েছে — ডাটাবেসে ১৯টি টেবিল আছে |
 | Seed ডেটা | ✅ | work policy, ১০৯টি app category, ছুটি, owner অ্যাকাউন্ট — সব বসেছে |
 | Auth | ✅ | লগইন, httpOnly JWT cookie, CSRF, role guard, পাসওয়ার্ড রিসেট — ২২টি টেস্ট পাস |
 | Agent ingest API | ✅ | ৯টা endpoint + clock-drift + `client_uuid` dedupe — ২৭টি টেস্ট পাস |
-| Web login shell | ⏳ | লগইন পেজ কাজ করে |
+| Web login shell | ✅ | লগইন → বাধ্যতামূলক পাসওয়ার্ড বদল → শেল → লগআউট, ব্রাউজারে যাচাই করা |
 | CI | ✅ | lint + typecheck + test + build + docker — সব ধাপ স্থানীয়ভাবে যাচাই করা *(চলবে `git init` + remote-এর পর)* |
 
-> ✅ **কোনো ব্লকার নেই।** Node · Docker · WSL2 · .NET 8 SDK সব প্রস্তুত, Postgres চলছে,
-> স্কিমা migrate হয়েছে, seed বসেছে, API `db: up` দিচ্ছে। পরের কাজ Auth ও Agent ingest মডিউল।
-> বিস্তারিত: [09-Build-Log §2](09-Build-Log.md)
+> ✅ **Phase 1-এর সব ডেলিভারেবল শেষ।** পরের ধাপ Phase 2 — Windows এজেন্ট (C# .NET 8)।
+> ⚠️ এজেন্টের কোড লেখা যাবে ও বিল্ড করা যাবে, কিন্তু **যাচাই করতে হবে আসল ডেস্কটপে** —
+> স্ক্রিন ক্যাপচার, idle ডিটেকশন, tray, watchdog, AV আচরণ কোনোটাই স্বয়ংক্রিয়ভাবে টেস্ট করা যায় না
+> ([§ ৯-এর ম্যানুয়াল চেকলিস্ট](02-Workflow.md))।
+> বিস্তারিত: [09-Build-Log](09-Build-Log.md)
 
 ---
 

@@ -17,6 +17,9 @@
 **/.tmp-test-storage/
 *.log
 
+# TypeScript-এর incremental বিল্ড ক্যাশ
+*.tsbuildinfo
+
 # .NET (agent, Phase 2)
 **/bin/
 **/obj/
