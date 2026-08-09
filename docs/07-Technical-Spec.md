@@ -555,15 +555,40 @@ credited_sec    = worked_sec + adjustment_sec   ← ২০৮ ঘণ্টার
 
 ### ৩.২ Idle detection (প্রতি ১ সেকেন্ডে)
 
+> ⚠️ **এই অংশটা ২০২৬-০৮-১০-এ সংশোধিত।** আগের সংস্করণে
+> `Environment.TickCount − lastInput` লেখা ছিল, যা তিনভাবে ভুল — নিচের কমেন্টে ব্যাখ্যা।
+> বাস্তব বাস্তবায়ন: `oXeio.Core/Tracking/IdleMath.cs` (টেস্ট করা) +
+> `oXeio.Agent/Platform/IdleProbe.cs`।
+
 ```csharp
 // Windows API: GetLastInputInfo() — কি-বোর্ড বা মাউসের শেষ ইনপুট কখন
-[DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO p);
+// ⚠️ সেশন-ভিত্তিক: Session 0 থেকে ডাকলে ভুল ফল, তাই এজেন্ট ইউজার সেশনেই চলে
+[LibraryImport("user32.dll", SetLastError = true)]
+[return: MarshalAs(UnmanagedType.Bool)]
+static partial bool GetLastInputInfo(ref LASTINPUTINFO p);
 
 const int IDLE_THRESHOLD = 60;   // সেকেন্ড
 
 void Tick()  // প্রতি ১ সেকেন্ডে
 {
-    int idleSec = (Environment.TickCount - GetLastInputTick()) / 1000;
+    var lii = new LASTINPUTINFO { cbSize = 8 };   // ⚠️ ভুল হলে false + dwTime = 0
+    if (!GetLastInputInfo(ref lii)) return;       // ⚠️ ব্যর্থ হলে নমুনাই বাদ,
+                                                 //    কোনো ডিফল্ট বসানো যাবে না
+
+    // ⚠️ Environment.TickCount(64) নয় — GetTickCount64 সরাসরি P/Invoke।
+    //    dwTime চলে GetTickCount ঘড়িতে; ভবিষ্যতে .NET যদি TickCount64-কে
+    //    unbiased ঘড়িতে বদলায়, এই বিয়োগ কোড না বদলেই নীরবে ভুল হবে।
+    uint now32 = unchecked((uint)GetTickCount64());
+
+    // ⚠️ unchecked — ৪৯.৭ দিনে ঘড়ি উল্টে গেলেও modular বিয়োগ ঠিক উত্তর দেয়
+    uint delta = unchecked(now32 - lii.dwTime);
+
+    // ⚠️ dwTime "not guaranteed to be incremental" (Microsoft)। মাত্র ৫ সেকেন্ড
+    //    এগিয়ে থাকলে এই বিয়োগ ৪৯.৭ দিনের ভুয়া নিষ্ক্রিয়তা দিত — ওই স্টাফের
+    //    সারাদিনের কাজ মুছে যেত। ৬৪-বিটে নিলেও ঠিক হয় না (G44)।
+    if (delta > 0x8000_0000u) delta = 0;
+
+    int idleSec = (int)(delta / 1000);
 
     // ⛔ কোনো shift/workday চেক নেই — যেকোনো সময়, যেকোনো দিন গোনা হয়
     // ⛔ কোনো break/meeting মোড নেই — স্টাফের কিছু চাপতে হয় না

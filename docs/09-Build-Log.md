@@ -21,7 +21,7 @@
 | ১০টি ওয়ার্কফ্লো | [02-Workflow](02-Workflow.md) |
 | কোড ম্যাপ | [03-Project-Map](03-Project-Map.md) |
 | ফিচার ক্যাটালগ (১০৫টি সক্রিয়, ৬টি বাতিল) | [04-Features](04-Features.md) |
-| ২০টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
+| ২২টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
 | বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
 | ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
 | ৪০টি ফাঁক চিহ্নিত ও সমাধান (দুই দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |
@@ -320,7 +320,7 @@ CI-তে সাধারণ ubuntu runner-এই চলে। `GetLastInputInfo
 | `Capture/SlotScheduler.cs` | ৫ মিনিট স্লট + র‍্যান্ডম অফসেট |
 | `Models/` | `SegmentState` (তিনটেই) · `ActivitySegment` |
 
-### ২৯টি ইউনিট টেস্ট — সবই পাস
+### ৪৬টি ইউনিট টেস্ট — সবই পাস
 
 [02-Workflow § ৯](02-Workflow.md)-এর ম্যানুয়াল চেকলিস্ট থেকে যা স্বয়ংক্রিয় করা গেল:
 
