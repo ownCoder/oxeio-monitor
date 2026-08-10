@@ -1,0 +1,187 @@
+import { getAttendanceReport, type AttendanceRow } from '../../api/reports';
+import { useApi } from '../../api/useApi';
+import { Card, Stat, StatRow } from '../../components/Card';
+import { Hours } from '../../components/Duration';
+import { Empty, ErrorBox, Loading } from '../../components/States';
+import { PersonCell, Table, type Column } from '../../components/Table';
+import { formatCount, formatDateShort, weekdayOf } from '../../lib/format';
+import {
+  DAY_TYPE_LABEL,
+  MAX_SHOWN_ROWS,
+  MetaNote,
+  Pill,
+  SignedHours,
+  TrimmedNote,
+} from './shared';
+
+/**
+ * F01 — দৈনিক অ্যাটেনডেন্স রিপোর্ট: প্রতি কর্মী, প্রতি দিন এক সারি।
+ *
+ * ⭐⚠️ এখানে **"কে কখন বসল" নেই এবং কখনো থাকবে না** (ADR-011)। সার্ভার
+ *    `first_activity_at` পাঠায়ই না, আর পাঠালেও বসানো যেত না — একটা "শুরুর
+ *    সময়" কলাম বসিয়ে দিলে এই শিটটাই কার্যত লেট-রিপোর্ট হয়ে যেত, অথচ লেট
+ *    ট্র্যাকিং এই পণ্যে নেই। রিপোর্ট শুধু বলে কত ঘণ্টা হয়েছে।
+ */
+export function AttendanceTab({
+  from,
+  to,
+  employeeId,
+}: {
+  from: string;
+  to: string;
+  employeeId: number | null;
+}) {
+  const { data, error, loading, reload } = useApi(
+    (signal) =>
+      // ⚠️ `employeeId: null` পাঠানো যাবে না — `qs()` null বাদ দেয়, তাই
+      //    "সবাই" মানে প্যারামিটারটা একেবারেই না পাঠানো।
+      getAttendanceReport(
+        { from, to, employeeId: employeeId ?? undefined },
+        signal,
+      ),
+    [from, to, employeeId],
+  );
+
+  if (loading && !data) return <Loading label="অ্যাটেনডেন্স আনা হচ্ছে…" />;
+  if (error) return <ErrorBox error={error} retry={reload} />;
+  if (!data || data.rows.length === 0) {
+    return (
+      <Empty
+        title="এই রেঞ্জে কোনো সারি নেই"
+        hint="কর্মীদের কর্মকাল এই তারিখগুলোর বাইরে হতে পারে, নয়তো এজেন্ট এখনো কোনো ডেটা পাঠায়নি। অন্য তারিখ বেছে দেখুন।"
+      />
+    );
+  }
+
+  const { totals } = data;
+  const shown = data.rows.slice(0, MAX_SHOWN_ROWS);
+
+  const columns: Column<AttendanceRow>[] = [
+    {
+      key: 'person',
+      header: 'স্টাফ',
+      render: (row) => (
+        <PersonCell
+          fullName={row.fullName}
+          empCode={row.empCode}
+          note={row.department ?? undefined}
+        />
+      ),
+    },
+    {
+      key: 'date',
+      header: 'তারিখ',
+      render: (row) => (
+        <span className="whitespace-nowrap">
+          <span className="num">{formatDateShort(row.date)}</span>
+          <span className="ml-1.5 text-[11px] text-ink-3">
+            {weekdayOf(row.date)}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: 'dayType',
+      header: 'দিন',
+      render: (row) => (
+        <Pill muted={row.dayType !== 'workday'}>
+          {DAY_TYPE_LABEL[row.dayType]}
+        </Pill>
+      ),
+    },
+    {
+      key: 'worked',
+      header: 'কাজ',
+      align: 'right',
+      render: (row) => <Hours hours={row.workedHours} />,
+    },
+    {
+      // ⚠️ ধূসর — idle সময় **গোনা হয়নি**। কালোয় দেখালে মনে হতো এটাও
+      //    কাজের ঘণ্টার সাথে যোগ হয়েছে।
+      key: 'idle',
+      header: 'অলস',
+      align: 'right',
+      render: (row) => <Hours hours={row.idleHours} tone="muted" />,
+    },
+    {
+      key: 'adjustment',
+      header: 'সমন্বয়',
+      align: 'right',
+      render: (row) => <SignedHours hours={row.adjustmentHours} />,
+    },
+    {
+      // ⭐ এই কলামটাই আসল — worked + adjustment, টার্গেটের সাথে এটাই মেলে
+      key: 'credited',
+      header: 'গোনা হয়েছে',
+      align: 'right',
+      render: (row) => (
+        <Hours hours={row.creditedHours} className="font-semibold" />
+      ),
+    },
+    {
+      key: 'target',
+      header: 'টার্গেট',
+      align: 'right',
+      render: (row) => <Hours hours={row.targetHours} tone="muted" />,
+    },
+  ];
+
+  return (
+    <>
+      <StatRow>
+        <Stat label="স্টাফ" value={formatCount(totals.employees)} />
+        <Stat label="সারি" value={formatCount(totals.rows)} />
+        <Stat label="কাজ হওয়া দিন" value={formatCount(totals.daysWithWork)} />
+        <Stat
+          label="মোট কাজ"
+          value={<Hours hours={totals.workedHours} />}
+        />
+        <Stat
+          label="মোট গোনা"
+          value={<Hours hours={totals.creditedHours} />}
+        />
+        <Stat
+          label="মোট টার্গেট"
+          value={<Hours hours={totals.targetHours} />}
+          tone="muted"
+        />
+      </StatRow>
+
+      <div className="mt-4">
+        <Card title="দিনে দিনে" padded={false}>
+          <Table
+            columns={columns}
+            rows={shown}
+            // ⚠️ একজন কর্মীর একাধিক দিন আসে, তাই কী-তে দুটোই লাগে —
+            //    শুধু employeeId দিলে React সারিগুলো গুলিয়ে ফেলত।
+            rowKey={(row) => `${row.employeeId}-${row.date}`}
+            rowMuted={(row) => row.status === 'no_activity'}
+            footer={
+              <tr>
+                <td className="px-3 py-2" colSpan={3}>
+                  মোট
+                </td>
+                <td className="num px-3 py-2 text-right">
+                  <Hours hours={totals.workedHours} />
+                </td>
+                <td className="px-3 py-2" />
+                <td className="px-3 py-2" />
+                <td className="num px-3 py-2 text-right">
+                  <Hours hours={totals.creditedHours} />
+                </td>
+                <td className="num px-3 py-2 text-right">
+                  <Hours hours={totals.targetHours} tone="muted" />
+                </td>
+              </tr>
+            }
+          />
+          {data.rows.length > shown.length && (
+            <TrimmedNote total={data.rows.length} />
+          )}
+        </Card>
+      </div>
+
+      <MetaNote meta={data.meta} />
+    </>
+  );
+}

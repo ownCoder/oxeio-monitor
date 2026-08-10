@@ -1,10 +1,16 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
-import { HomePage, PlaceholderPage } from './pages/HomePage';
+import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
+import { GalleryPage } from './pages/GalleryPage';
+import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
+import { MonthlyPage } from './pages/MonthlyPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { SettingsPage } from './pages/settings/SettingsPage';
 
 /**
  * তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ — তাই "লগইন করেনি অথচ ভেতরের পেজ দেখছে"
@@ -37,21 +43,46 @@ function Router() {
     );
   }
 
+  const isOwner = user.role === 'owner';
+  /**
+   * ⚠️ সার্ভারের গার্ড পড়ে দেখা: স্টাফের জন্য `/screenshots` **ছাড়া** আর
+   *    কোনো ড্যাশবোর্ড endpoint খোলা নেই (`live`, `employees`, `activity`,
+   *    `reports` — সবগুলোয় ক্লাস-লেভেল `@Roles(owner, manager)`)। তাই
+   *    লগইনের পর তাকে লাইভ বোর্ডে নামালে প্রথম যা দেখত তা একটা ৪০৩ বাক্স।
+   */
+  const isStaff = user.role === 'employee';
+
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<HomePage />} />
-        <Route path="staff" element={<PlaceholderPage title="স্টাফ" />} />
         <Route
-          path="screenshots"
-          element={<PlaceholderPage title="স্ক্রিনশট গ্যালারি" />}
+          index
+          element={
+            isStaff ? <Navigate to="/screenshots" replace /> : <LiveBoardPage />
+          }
         />
-        <Route
-          path="monthly"
-          element={<PlaceholderPage title="মাসিক অগ্রগতি" />}
-        />
-        <Route path="reports" element={<PlaceholderPage title="রিপোর্ট" />} />
-        <Route path="*" element={<PlaceholderPage title="পাওয়া যায়নি" />} />
+
+        {/*
+          ⚠️ `staff` বলে কোনো তালিকা-পর্দা নেই (স্পেক § ৫-এ ছ-টা পর্দা, স্টাফ
+             ম্যানেজমেন্ট সেটিংসের ভেতরে)। এখানে শুধু একজনের একটা দিন —
+             লাইভ বোর্ডের কার্ড থেকে ক্লিক করে আসার জায়গা।
+        */}
+        <Route path="staff/:id" element={<EmployeeDetailPage />} />
+
+        <Route path="screenshots" element={<GalleryPage />} />
+        <Route path="monthly" element={<MonthlyPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+
+        {/*
+          ⭐ owner না হলে রুটটা **থাকেই না** — সরাসরি `/settings` টাইপ করলে
+             "পাওয়া যায়নি" আসে, ৪০৩ নয়। ৪০৩ বললে উল্টো স্বীকার করা হতো যে
+             পর্দাটা আছে। (`createRoutesFromChildren` non-element চাইল্ড
+             নীরবে বাদ দেয়, তাই `false` বসানো নিরাপদ — v7-এর ডকুমেন্টেড
+             আচরণ, ঠিক এই ধরনের শর্তের জন্যই রাখা।)
+        */}
+        {isOwner && <Route path="settings" element={<SettingsPage />} />}
+
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

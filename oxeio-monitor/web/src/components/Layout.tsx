@@ -1,15 +1,50 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import type { Role } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark, Wordmark } from './Brand';
+import { ErrorBoundary } from './ErrorBoundary';
 
-/** Phase 3-এ এগুলো আসল পেজ হবে; এখন শুধু কাঠামোটা দাঁড় করানো */
-const NAV = [
-  { to: '/', label: 'লাইভ বোর্ড', end: true },
-  { to: '/staff', label: 'স্টাফ' },
-  { to: '/screenshots', label: 'স্ক্রিনশট' },
-  { to: '/monthly', label: 'মাসিক অগ্রগতি' },
-  { to: '/reports', label: 'রিপোর্ট' },
+interface NavItem {
+  to: string;
+  label: string;
+  end?: boolean;
+  /** কোন ভূমিকা এই ট্যাবটা **দেখতে পাবে** */
+  roles: Role[];
+}
+
+/**
+ * ⭐ **নেভ থেকেই ফিল্টার হয়, ৪০৩ থেকে নয়।** যে পর্দায় ঢোকার অনুমতি নেই
+ *    সেটার নামটাই দেখানো হয় না — নইলে ম্যানেজার "সেটিংস" শব্দটা পড়ে বুঝে
+ *    ফেলত কী কী তার নাগালের বাইরে আছে, আর চেপে "অনুমতি নেই" খেয়ে ভাবত
+ *    কিছু ভেঙেছে। পেজের ৪০৩ পর্দাগুলো শেষ রক্ষাকবচ, প্রথম নয়।
+ *
+ * ⚠️ **`/staff` তালিকা-ট্যাবটা সরানো হয়েছে।** স্পেক § ৫-এ ছ-টা পর্দা, আর
+ *    "স্টাফ তালিকা" তাদের একটাও নয় — কর্মী যোগ/সম্পাদনা সেটিংসের স্টাফ
+ *    ট্যাবে (owner-only)। `/staff/:id` রুটটা আছে, কিন্তু সেখানে যাওয়ার পথ
+ *    লাইভ বোর্ডের কার্ড। খালি `/staff` কোনো পর্দা নয়, তাই ট্যাবটা রাখলে
+ *    "পাওয়া যায়নি"-তে গিয়ে ঠেকত।
+ *
+ * ⚠️ স্টাফের জন্য একটাই ট্যাব — সার্ভারে তার জন্য `/screenshots` ছাড়া আর
+ *    কোনো ড্যাশবোর্ড endpoint খোলা নেই। একটা ট্যাবের সারি দেখতে ফাঁকা লাগে,
+ *    কিন্তু চারটে ট্যাবের তিনটেয় ৪০৩ পাওয়ার চেয়ে সেটা ভালো।
+ */
+const NAV: NavItem[] = [
+  {
+    to: '/',
+    label: 'লাইভ বোর্ড',
+    end: true,
+    roles: ['owner', 'manager'],
+  },
+  {
+    to: '/screenshots',
+    label: 'স্ক্রিনশট',
+    roles: ['owner', 'manager', 'employee'],
+  },
+  { to: '/monthly', label: 'মাসিক অগ্রগতি', roles: ['owner', 'manager'] },
+  { to: '/reports', label: 'রিপোর্ট', roles: ['owner', 'manager'] },
+  // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
+  { to: '/settings', label: 'সেটিংস', roles: ['owner'] },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -20,6 +55,8 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function Layout() {
   const { user, signOut } = useAuth();
+  const { pathname } = useLocation();
+  const nav = user ? NAV.filter((item) => item.roles.includes(user.role)) : [];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -50,8 +87,9 @@ export function Layout() {
         </div>
       </header>
 
+      {/* ⚠️ E12 — ফোনে সারিটা নিজেই আড়াআড়ি স্ক্রল করে, পুরো পাতা নয় */}
       <nav className="flex gap-1 overflow-x-auto border-b border-line bg-surface px-2">
-        {NAV.map((item) => (
+        {nav.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -70,7 +108,15 @@ export function Layout() {
       </nav>
 
       <main className="flex-1 px-4 py-5">
-        <Outlet />
+        {/*
+          ⭐ ভেতরে, বাইরে নয় — কোনো পেজ render-এ ছুড়ে ফেললেও হেডার ও নেভ
+             টিকে থাকে, তাই ব্যবহারকারী অন্য ট্যাবে সরে যেতে পারে। বাইরে
+             বসালে পুরো পর্দা একটা এরর বাক্স হয়ে যেত আর বেরোনোর কোনো পথ
+             থাকত না। `resetKey` রুট — পাতা বদলালেই নিজে থেকে সেরে ওঠে।
+        */}
+        <ErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   );

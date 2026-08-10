@@ -1,0 +1,102 @@
+import { api } from './client';
+import { qs } from './query';
+
+/**
+ * G01–G07 — অ্যালার্টের তালিকা ও acknowledge।
+ *
+ * সার্ভারের উৎস: `server/src/alerts/` (alerts.controller.ts ·
+ * alerts.service.ts · alerts.constants.ts)।
+ *
+ * ⚠️ পুরোটাই **owner-only** — অ্যালার্টে হোস্টনেম, কর্মীর নাম আর ডিভাইসের
+ *    অবস্থা একসাথে থাকে, আর সেগুলো ম্যানেজারের নাগালের বাইরে (§ ৪.৩)।
+ *    ম্যানেজারকে অ্যালার্টের ব্যাজটাও দেখাবেন না।
+ */
+
+export type AlertType =
+  | 'agent_down'
+  | 'agent_killed'
+  | 'disk_warning'
+  | 'disk_critical'
+  | 'backup_failed'
+  | 'clock_drift'
+  | 'no_activity_today'
+  | 'device_overlap';
+
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+
+/** পর্দায় দেখানোর বাংলা নাম — সব পেজে এক থাকুক */
+export const ALERT_TYPE_LABEL: Record<AlertType, string> = {
+  agent_down: 'এজেন্ট চুপ',
+  agent_killed: 'এজেন্ট বন্ধ করা হয়েছে',
+  disk_warning: 'ডিস্ক ভরে আসছে',
+  disk_critical: 'ডিস্ক প্রায় ভর্তি',
+  backup_failed: 'ব্যাকআপ ব্যর্থ',
+  clock_drift: 'ঘড়ির গরমিল',
+  no_activity_today: 'আজ কোনো কাজ নেই',
+  device_overlap: 'একসাথে দুই ডিভাইস',
+};
+
+export const ALERT_SEVERITY_LABEL: Record<AlertSeverity, string> = {
+  info: 'তথ্য',
+  warning: 'সতর্কতা',
+  critical: 'জরুরি',
+};
+
+export interface AlertRow {
+  /** ⚠️ স্ট্রিং — সার্ভারে BigInt */
+  id: string;
+  /** ⚠️ কলামটা TEXT, তাই তালিকার বাইরের মানও তাত্ত্বিকভাবে আসতে পারে */
+  type: string;
+  severity: AlertSeverity;
+  title: string;
+  detail: string | null;
+  deviceId: number | null;
+  deviceHostname: string | null;
+  employeeId: number | null;
+  employeeName: string | null;
+  meta: unknown;
+  /** কোন কোন চ্যানেলে পাঠানো হয়েছে (`email` …) */
+  channelsSent: string[];
+  acknowledgedAt: string | null;
+  /** যিনি প্রথম "দেখেছি" বলেছিলেন — পরে কেউ ডাকলেও নাম বদলায় না */
+  acknowledgedBy: string | null;
+  createdAt: string;
+}
+
+export interface AlertPage {
+  total: number;
+  page: number;
+  limit: number;
+  /** ⭐ ফিল্টার যাই হোক, এখনো acknowledge হয়নি এমন মোট সংখ্যা — nav ব্যাজে এটাই */
+  openCount: number;
+  rows: AlertRow[];
+}
+
+export interface AlertListQuery {
+  /** ডিফল্ট `open` — তালিকাটার উদ্দেশ্যই "এখনো দেখা বাকি" */
+  status?: 'open' | 'all';
+  type?: AlertType;
+  severity?: AlertSeverity;
+  page?: number;
+  /** ডিফল্ট ৫০, সর্বোচ্চ ২০০ */
+  limit?: number;
+}
+
+export function listAlerts(
+  query: AlertListQuery = {},
+  signal?: AbortSignal,
+): Promise<AlertPage> {
+  return api<AlertPage>(`/alerts${qs({ ...query })}`, { signal });
+}
+
+/**
+ * "দেখেছি" বলা।
+ *
+ * ⚠️ অ্যালার্ট কখনো **ডিলিট হয় না**, শুধু acknowledged হয় — তাই UI-তে
+ *    "মুছে ফেলুন" নয়, "দেখেছি" লিখুন। ইতিহাসটাই পরে ঘণ্টা সংশোধনের প্রমাণ।
+ *
+ * ⭐ idempotent, আর **প্রথমজনের নামই থেকে যায়**।
+ */
+export function acknowledgeAlert(id: string): Promise<AlertRow> {
+  return api<AlertRow>(`/alerts/${id}/acknowledge`, { method: 'POST' });
+}
