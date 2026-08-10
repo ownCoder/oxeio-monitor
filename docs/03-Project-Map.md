@@ -13,7 +13,7 @@
 │  ┌────────────────────────────────────┐        ┌──────────────────────────┐  │
 │  │ TrackerEngine   — state machine    │        │ ProcessGuard  ৩০ সে. চেক │  │
 │  │ IdleMonitor     — GetLastInputInfo │◀──────▶│ AgentUpdater  MSI আপডেট  │  │
-│  │ ScreenCapturer  — DXGI/GDI + WebP  │        │ CrashReporter            │  │
+│  │ ScreenCapturer  — DXGI→GDI + WebP  │        │ CrashReporter            │  │
 │  │ WindowWatcher   — foreground app   │        └──────────────────────────┘  │
 │  │ SyncClient      — HTTP + retry     │                                      │
 │  │ LocalQueue      — SQLite + files   │        oXeio.Core.dll (shared)       │
@@ -63,6 +63,13 @@ oxeio-monitor/
 │   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
 │   │   │   ├── Capture/SlotScheduler.cs    ✅ ৫ মিনিট স্লট + র‍্যান্ডম
+│   │   │   ├── Capture/FrameQuality.cs     ✅ ছবি কালো/এক-রঙা কি না
+│   │   │   ├── Capture/PixelCopy.cs        ✅ RowPitch সামলানো + ঘূর্ণন
+│   │   │   ├── Capture/EngineFallbackPolicy.cs ✅ কতবার ব্যর্থে কত বিরতি
+│   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ১৬টা ফাইল
+│   │   │   │   #  IOutboxStore · ISyncClient · SyncOutcome · RetryPolicy
+│   │   │   │   #  OutboxBudget · AgentStatus · রেকর্ড টাইপ
+│   │   │   ├── Watchdog/                   ✅ RestartLadder · WatchdogPolicy · AgentHeartbeat
 │   │   │   └── Models/                     ✅ SegmentState, ActivitySegment
 │   │   │   # ⚠️ Native/ ইচ্ছাকৃতভাবে এখানে **নয়** — Win32 ঢুকলে নিয়মগুলো
 │   │   │   #    আর ইউনিট টেস্টে যাচাই করা যেত না। ওগুলো oXeio.Agent-এ।
@@ -74,6 +81,8 @@ oxeio-monitor/
 │   │   │   ├── Native/Kernel32.cs          ✅ GetTickCount64, QueryUnbiasedInterruptTime
 │   │   │   ├── Native/User32.cs            ✅ GetLastInputInfo, power notifications
 │   │   │   ├── Native/Wtsapi32.cs          ✅ session notifications + lock query
+│   │   │   ├── Native/ComCall.cs           ✅ vtable-স্লট ধরে COM কল
+│   │   │   ├── Native/{D3D11,Dxgi}.cs      ✅ স্লট ও IID — হেডারের লাইন নম্বর সহ
 │   │   │   ├── Platform/SessionGuard.cs    ✅ Session 0-তে চললে সময় গোনা বন্ধ
 │   │   │   ├── Platform/IdleProbe.cs       ✅ কাঁচা সংখ্যা → IdleMath
 │   │   │   ├── Platform/LockStateProbe.cs  ✅ ইভেন্ট ছাড়াই লক অবস্থা
@@ -83,20 +92,23 @@ oxeio-monitor/
 │   │   │   ├── Platform/DpiGuard.cs        ✅ ম্যানিফেস্ট কার্যকর হয়েছে কি না
 │   │   │   ├── Platform/Capture/
 │   │   │   │   ├── MonitorEnumerator.cs    ✅ প্রতিবার নতুন করে গোনা
-│   │   │   │   ├── GdiCapturer.cs          ✅ BitBlt + GetDIBits (ফলব্যাক ইঞ্জিন)
+│   │   │   │   ├── DuplicationCapturer.cs  ✅ ⭐ প্রধান ইঞ্জিন — DXGI (ADR-012c)
+│   │   │   │   ├── GdiCapturer.cs          ✅ BitBlt + GetDIBits (ফলব্যাক)
+│   │   │   │   ├── FallbackCapturer.cs     ✅ DXGI → GDI শৃঙ্খল
 │   │   │   │   ├── WebpEncoder.cs          ✅ SkiaSharp q70, ≤১৯২০px
-│   │   │   │   ├── ScreenCaptureService.cs ✅ সব মনিটর + গুণমান যাচাই
-│   │   │   │   └── WgcCapturer.cs          ⏳ প্রধান ইঞ্জিন (ADR-012b)
-│   │   │   ├── Apps/                       ⏳ WindowWatcher · BrowserUrlReader
-│   │   │   ├── Sync/                       ⏳ SyncClient · LocalQueue · ConfigSync
-│   │   │   ├── UI/                         ⏳ TrayIcon · MyDayWindow
-│   │   │   └── Security/TokenStore.cs      ⏳ DPAPI
+│   │   │   │   └── ScreenCaptureService.cs ✅ সব মনিটর + গুণমান যাচাই
+│   │   │   ├── Storage/                    ✅ SQLite outbox — lease/ack, WAL, বাজেট
+│   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWire · rate gate
+│   │   │   ├── Security/                   ✅ MachineIdentity · DPAPI টোকেন · enrollment
+│   │   │   ├── Ui/                         ✅ TrayIcon · TodayForm · AboutForm (J07)
+│   │   │   └── Apps/                       ⏳ WindowWatcher · BrowserUrlReader
 │   │   │
-│   │   └── oXeio.Watchdog/                 ⏳ Windows Service
-│   │       ├── ProcessGuard.cs
-│   │       └── AgentUpdater.cs
+│   │   └── oXeio.Watchdog/                 ✅ আলাদা প্রসেস — শুধু Core-এর উপর নির্ভর
+│   │       ├── WatchdogLoop.cs             ✅ ৩০ সে. চেক, restart storm ঠেকানো (H01)
+│   │       ├── Platform/                   ✅ heartbeat · instance lock · rolling log
+│   │       └── Deployment/                 ✅ Task Scheduler XML (H02)
 │   ├── installer/                          ⏳ WiX → oXeioAgent.msi
-│   └── tests/oXeio.Core.Tests/             ✅ ৫২টি ইউনিট টেস্ট
+│   └── tests/oXeio.Core.Tests/             ✅ ১৯৯টি ইউনিট টেস্ট
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -120,6 +132,10 @@ oxeio-monitor/
 │   │   │   ├── enrollment.service.ts  agent-config.service.ts  update.service.ts
 │   │   │   ├── device-rate-limit.service.ts
 │   │   │   └── util/dhaka-time.ts  util/derive-uuid.ts
+│   │   ├── payroll/                        ✅ ⭐ owner-only — বেতন ও ঘাটতি (ADR-023)
+│   │   │   ├── payroll.math.ts             #   খাঁটি হিসাব, সব পয়সায়
+│   │   │   ├── payroll.service.ts          #   monthly_salary পড়ে **শুধু এখানেই**
+│   │   │   └── payroll.controller.ts       #   @Roles(owner) ক্লাস-লেভেলে
 │   │   ├── employees/  devices/            ⏳ CRUD
 │   │   ├── screenshots/                    ⏳ গ্যালারি, থাম্বনেইল, signed URL
 │   │   ├── timeline/                       ⏳ segment → টাইমলাইন
@@ -133,7 +149,7 @@ oxeio-monitor/
 │   │       ├── backup.job.ts               #   ০২:৩০
 │   │       └── health.job.ts               #   ডিস্ক, এজেন্ট চুপ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৫১টি e2e টেস্ট
+│   └── test/                               ✅ Vitest + supertest — ৬০টি টেস্ট (৫১ e2e + ৯ ইউনিট)
 │       ├── auth.e2e.spec.ts  agent.e2e.spec.ts
 │       └── setup/harness.ts  setup/global-setup.ts
 │
@@ -266,7 +282,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | প্যাকেজ | কেন |
 |---|---|
 | `.NET 8` (self-contained) | স্টাফের PC-তে রানটাইম ইনস্টল করতে হবে না |
-| `SharpDX.DXGI` / Windows Graphics Capture | দ্রুত স্ক্রিন ক্যাপচার (GDI fallback) |
+| ~~`SharpDX.DXGI`~~ | ❌ **লাগেনি** — SharpDX ২০১৯ থেকে পরিত্যক্ত। DXGI/D3D11-এর যে নয়টা মেথড দরকার, সেগুলো `Native/{ComCall,D3D11,Dxgi}.cs`-এ হাতে লেখা, শূন্য নির্ভরতা |
 | `SixLabors.ImageSharp` | WebP এনকোডিং + রিসাইজ |
 | `Microsoft.Data.Sqlite` | লোকাল queue |
 | ~~`Polly`~~ | ❌ **লাগেনি** — `Core/Agent/RetryPolicy.cs` খাঁটি ফাংশন হিসেবে backoff দেয়, তাই শিডিউলার ছাড়াই ইউনিট টেস্ট করা যায় |

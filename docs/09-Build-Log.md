@@ -4,9 +4,14 @@
 
 **সর্বশেষ হালনাগাদ:** ১০ আগস্ট ২০২৬ · **বর্তমান ফেজ:** Phase 1 ✅ · **Phase 2 🔨 চলমান**
 
-> ✅ **Phase 1-এর নয়টি ডেলিভারেবলই শেষ** — ডাটাবেস, auth, agent ingest, ৫১টি টেস্ট,
-> CI, web লগইন শেল। এক দিনেই ([দ্বিতীয় দফা রিভিউ](08-Gap-Analysis.md) সহ)।
-> **পরের ধাপ Phase 2 — Windows এজেন্ট**, যেটার যাচাই আমার হাতে নেই (§ ৫ দেখুন)।
+> ✅ **Phase 1 শেষ** — ডাটাবেস, auth, agent ingest, ৬০টি টেস্ট, CI, web লগইন শেল।
+>
+> 🔨 **Phase 2 প্রায় শেষ** — এজেন্টের সব মডিউল দাঁড়িয়ে গেছে: Win32 স্তর,
+> DXGI ক্যাপচার, SQLite outbox, sync client, DPAPI টোকেন, tray, watchdog।
+> **১৯৯টি ইউনিট টেস্ট**, পুরো সলিউশন `-warnaserror`-এ পরিষ্কার।
+>
+> **যা বাকি:** sync worker (মডিউলগুলো জোড়া লাগানো), এজেন্ট হোস্ট, MSI।
+> এজেন্টের অনেক আচরণ আমার পক্ষে যাচাই করা সম্ভব নয় — § ৫ দেখুন।
 
 ---
 
@@ -24,7 +29,7 @@
 | ২৪টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
 | বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
 | ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
-| ৪৭টি ফাঁক চিহ্নিত ও সমাধান (তিন দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |
+| ৪৯টি ফাঁক চিহ্নিত ও সমাধান (তিন দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |
 | **UI মকআপ — ৭টি স্ক্রিন** | [dashboard-mockup.html](mockup/dashboard-mockup.html) |
 
 ### 🔨 Phase 1 — Foundation (শুরু হয়েছে)
@@ -56,7 +61,7 @@
 | `server/src/audit/` | `audit_log`-এ লেখা — login, login_failed, change_password, reset_password… |
 | `server/src/users/` | `POST /users/:id/reset-password` · `POST /employees/:id/portal-account` (দুটোই owner-only) |
 | `server/src/agent/` | ⭐ **Agent ingest** — ৯টি endpoint, device token guard, clock-drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট আপলোড, rate limit |
-| `server/test/` | ৫১টি e2e টেস্ট (Vitest + supertest) |
+| `server/test/` | ৬০টি টেস্ট (৫১ e2e + ৯ পে-রোল ইউনিট) |
 | `web/` | ⭐ **লগইন শেল** — React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে |
 | `server/Dockerfile` | ৩-স্তরের বিল্ড, non-root `node` ইউজার, `Asia/Dhaka` |
 | `server/tsconfig.build.json` | `prisma/` বাদ — নইলে বিল্ড `dist/src/main.js`-এ যেত |
@@ -137,7 +142,7 @@ CPU (Ryzen 7 5700G) সাপোর্ট করে (`VMMonitorModeExtensions = 
 | ~~3b~~ | ~~`prisma migrate dev`~~ | ✅ `20260809164642_init` প্রয়োগ হয়েছে |
 | ~~4~~ | ~~Auth মডিউল~~ | ✅ **শেষ** — ২২টি end-to-end টেস্ট পাস (নিচে § ৩.১) |
 | ~~5~~ | ~~Agent ingest মডিউল~~ | ✅ **শেষ** — ২৭টি end-to-end টেস্ট পাস (নিচে § ৩.২) |
-| ~~6~~ | ~~টেস্ট Vitest-এ তোলা~~ | ✅ **৫১টি টেস্ট রেপোতে** — `npm test` (নিচে § ৩.৩) |
+| ~~6~~ | ~~টেস্ট Vitest-এ তোলা~~ | ✅ **৬০টি টেস্ট রেপোতে** — `npm test` (নিচে § ৩.৩) |
 | ~~8~~ | ~~GitHub Actions CI~~ | ✅ **লেখা ও যাচাই হয়েছে** (নিচে § ৩.৪) · রেপো তৈরি — বাকি শুধু GitHub remote + push |
 | ~~7~~ | ~~`web/` লগইন শেল~~ | ✅ **শেষ** — ব্রাউজারে পুরো ফ্লো যাচাই করা (নিচে § ৩.৫) |
 | 9 | Postman collection | সব endpoint হাতে টেস্ট করার জন্য · Phase 3-এ |
@@ -204,7 +209,7 @@ CPU (Ryzen 7 5700G) সাপোর্ট করে (`VMMonitorModeExtensions = 
 **যা ইচ্ছাকৃতভাবে পরে:** থাম্বনেইল (A06, Phase 3) · অ্যাপ ক্যাটাগরি ম্যাচিং (D05, Phase 4) ·
 `capture_now` / `pause_tracking` কমান্ড — এর জন্য একটা কমান্ড-কিউ টেবিল লাগবে ([G41](08-Gap-Analysis.md))।
 
-### ৩.৩ স্বয়ংক্রিয় টেস্ট — `npm test` *(৫১টি, সবই পাস)*
+### ৩.৩ স্বয়ংক্রিয় টেস্ট — `npm test` *(৬০টি, সবই পাস)*
 
 আগের যাচাইগুলো scratchpad-এর PowerShell স্ক্রিপ্টে ছিল — রেপোতেও ছিল না, CI-তেও চলত না।
 এখন Vitest + supertest দিয়ে রেপোর ভেতরে:
@@ -234,9 +239,9 @@ push ও PR-এ দুটি job চলে:
 
 | job | ধাপ |
 |---|---|
-| **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৫১টি) → **build** |
+| **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৬০টি) → **build** |
 | **web** | `npm ci` → **lint** → **build** (`tsc -b` বিল্ডের ভেতরেই) |
-| **agent-core** | `dotnet build -warnaserror` → **test** (২৯টি) · ubuntu-তেই চলে, কারণ Core-এ Win32 নেই |
+| **agent-core** | `dotnet build -warnaserror` → **test** (১৯৯টি) · ubuntu-তেই চলে, কারণ Core-এ Win32 নেই |
 | **docker** | `docker build` — Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, তখনই ধরা পড়ে |
 
 Postgres আসে **service container** হিসেবে (`postgres:16-alpine`) — লোকালে docker compose যা দেয়,
@@ -394,7 +399,8 @@ capture window       : বন্ধ (০৭:০০–২৩:০০)
 ### ৩অ.৩ ক্যাপচার — GDI ইঞ্জিন চলছে
 
 [ADR-012b](05-Options-Decisions.md) অনুযায়ী দুটো ইঞ্জিন দরকার। **GDI (ফলব্যাক) আগে
-বানানো হলো**, কারণ ওটা এই মেশিনেই চালিয়ে যাচাই করা যায়। WGC পরের ধাপ।
+বানানো হলো**, কারণ ওটা এই মেশিনেই চালিয়ে যাচাই করা যায়।
+*(পরে প্রধান ইঞ্জিন WGC নয়, DXGI হয়েছে — নিচে § ৩অ.৪।)*
 
 | ফাইল | কাজ |
 |---|---|
