@@ -212,7 +212,63 @@ async function seedHolidays(): Promise<number> {
   return FIXED_HOLIDAYS_2026.length;
 }
 
-// ── 4 · owner account ───────────────────────────────────────────────────────
+// ── 4 · কর্মী তালিকা ────────────────────────────────────────────────────────
+//
+// অফিসের বর্তমান ১২ জন। emp_code দেওয়া হয়েছে তালিকার ক্রম অনুযায়ী।
+//
+// ⚠️ `policySignedAt` ইচ্ছাকৃতভাবে ফাঁকা — কেউ এখনো monitoring policy-তে সই
+//    করেনি। রোলআউটের আগে এটা পূরণ হওয়া বাধ্যতামূলক শর্ত, তাই আগেভাগে ভরে
+//    রেখে শর্তটা অর্থহীন করে দেওয়া হয়নি।
+//
+// ⚠️ বেতন এখানে **রাখা হয়নি**। এটা সময়-ট্র্যাকিং সিস্টেম, পে-রোল সিস্টেম নয় —
+//    F03 ঘণ্টার শিট বানায়, টাকার হিসাব নয়। বেতন রাখতে হলে আলাদা সিদ্ধান্ত,
+//    owner-only অ্যাক্সেস আর একটা ADR লাগবে (09-Build-Log § ৪ দেখুন)।
+
+type Staff = [code: string, name: string, designation: string];
+
+const STAFF: Staff[] = [
+  ['OX-01', 'Ali', 'Researcher'],
+  ['OX-02', 'Asa', 'Designer'],
+  ['OX-03', 'Belal', 'Manager'],
+  ['OX-04', 'Hafiz', 'Designer'],
+  ['OX-05', 'Mariya', 'Designer'],
+  ['OX-06', 'Sadia', 'Designer'],
+  ['OX-07', 'Sumaiya', 'Researcher'],
+  ['OX-08', 'Saiful', 'Intern'],
+  ['OX-09', 'Shovon', 'Intern'],
+  ['OX-10', 'Istiaq', 'Intern'],
+  ['OX-11', 'Razu', 'Intern'],
+  ['OX-12', 'Karim', 'Intern'],
+];
+
+/** designation থেকে বিভাগ — রিপোর্টে দল ধরে ভাগ করার জন্য (D09, E07)। */
+function departmentOf(designation: string): string {
+  if (designation === 'Manager') return 'Management';
+  if (designation === 'Designer') return 'Design';
+  if (designation === 'Researcher') return 'Research';
+  return 'Intern';
+}
+
+async function seedEmployees(policyId: number): Promise<number> {
+  for (const [empCode, fullName, designation] of STAFF) {
+    await prisma.employee.upsert({
+      where: { empCode },
+      // ⚠️ update-এ status নেই — কেউ ছেড়ে গেলে seed আবার চালালে তাকে
+      //    জীবিত করে তোলা হবে না।
+      update: { fullName, designation, department: departmentOf(designation), policyId },
+      create: {
+        empCode,
+        fullName,
+        designation,
+        department: departmentOf(designation),
+        policyId,
+      },
+    });
+  }
+  return STAFF.length;
+}
+
+// ── 5 · owner account ───────────────────────────────────────────────────────
 
 async function seedOwner(): Promise<string> {
   const email = process.env.SEED_OWNER_EMAIL ?? 'owner@oxeio.local';
@@ -250,12 +306,14 @@ async function main(): Promise<void> {
   const policyId = await seedWorkPolicy();
   const rules = await seedAppCategories();
   const holidays = await seedHolidays();
+  const staff = await seedEmployees(policyId);
   const ownerEmail = await seedOwner();
 
   console.log('✅ seed সম্পূর্ণ');
   console.log(`   work policy   : #${policyId} · ২০৮ ঘণ্টা/মাস · ছবি ০৭:০০–২৩:০০`);
   console.log(`   app categories: ${rules}টি রুল`);
   console.log(`   holidays      : ${holidays}টি (শুধু নির্দিষ্ট তারিখের — বাকিগুলো হাতে যোগ করুন)`);
+  console.log(`   কর্মী          : ${staff} জন — কারো policy সই করা নেই, রোলআউটের আগে দরকার`);
   console.log(`   owner         : ${ownerEmail} (প্রথম লগইনে পাসওয়ার্ড বদলাতে হবে)`);
 }
 
