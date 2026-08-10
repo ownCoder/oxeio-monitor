@@ -21,7 +21,7 @@
 | ১০টি ওয়ার্কফ্লো | [02-Workflow](02-Workflow.md) |
 | কোড ম্যাপ | [03-Project-Map](03-Project-Map.md) |
 | ফিচার ক্যাটালগ (১০৭টি সক্রিয়, ৭টি বাতিল) | [04-Features](04-Features.md) |
-| ২২টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
+| ২৪টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
 | বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
 | ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
 | ৪৭টি ফাঁক চিহ্নিত ও সমাধান (তিন দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |

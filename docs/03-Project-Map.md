@@ -269,7 +269,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | `SharpDX.DXGI` / Windows Graphics Capture | দ্রুত স্ক্রিন ক্যাপচার (GDI fallback) |
 | `SixLabors.ImageSharp` | WebP এনকোডিং + রিসাইজ |
 | `Microsoft.Data.Sqlite` | লোকাল queue |
-| `Polly` | রিট্রাই ও backoff |
+| ~~`Polly`~~ | ❌ **লাগেনি** — `Core/Agent/RetryPolicy.cs` খাঁটি ফাংশন হিসেবে backoff দেয়, তাই শিডিউলার ছাড়াই ইউনিট টেস্ট করা যায় |
 | `Serilog` | লগ |
 | `WiX Toolset v4` | MSI ইনস্টলার |
 

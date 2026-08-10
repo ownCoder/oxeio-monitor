@@ -220,25 +220,24 @@ async function seedHolidays(): Promise<number> {
 //    করেনি। রোলআউটের আগে এটা পূরণ হওয়া বাধ্যতামূলক শর্ত, তাই আগেভাগে ভরে
 //    রেখে শর্তটা অর্থহীন করে দেওয়া হয়নি।
 //
-// ⚠️ বেতন এখানে **রাখা হয়নি**। এটা সময়-ট্র্যাকিং সিস্টেম, পে-রোল সিস্টেম নয় —
-//    F03 ঘণ্টার শিট বানায়, টাকার হিসাব নয়। বেতন রাখতে হলে আলাদা সিদ্ধান্ত,
-//    owner-only অ্যাক্সেস আর একটা ADR লাগবে (09-Build-Log § ৪ দেখুন)।
+// ⚠️ বেতন **শুধু owner** দেখতে পায় ([ADR-023](../../docs/05-Options-Decisions.md))।
+//    ঘাটতির টাকা বের করতে লাগে। ম্যানেজারের রিপোর্টেও এই কলাম যায় না।
 
-type Staff = [code: string, name: string, designation: string];
+type Staff = [code: string, name: string, designation: string, salary: number];
 
 const STAFF: Staff[] = [
-  ['OX-01', 'Ali', 'Researcher'],
-  ['OX-02', 'Asa', 'Designer'],
-  ['OX-03', 'Belal', 'Manager'],
-  ['OX-04', 'Hafiz', 'Designer'],
-  ['OX-05', 'Mariya', 'Designer'],
-  ['OX-06', 'Sadia', 'Designer'],
-  ['OX-07', 'Sumaiya', 'Researcher'],
-  ['OX-08', 'Saiful', 'Intern'],
-  ['OX-09', 'Shovon', 'Intern'],
-  ['OX-10', 'Istiaq', 'Intern'],
-  ['OX-11', 'Razu', 'Intern'],
-  ['OX-12', 'Karim', 'Intern'],
+  ['OX-01', 'Example 1', 'Researcher', 0],
+  ['OX-02', 'Example 2', 'Designer', 0],
+  ['OX-03', 'Example 3', 'Manager', 0],
+  ['OX-04', 'Example 4', 'Designer', 0],
+  ['OX-05', 'Example 5', 'Designer', 0],
+  ['OX-06', 'Example 6', 'Designer', 0],
+  ['OX-07', 'Example 7', 'Researcher', 0],
+  ['OX-08', 'Example 8', 'Intern', 0],
+  ['OX-09', 'Example 9', 'Intern', 0],
+  ['OX-10', 'Example 10', 'Intern', 0],
+  ['OX-11', 'Example 11', 'Intern', 0],
+  ['OX-12', 'Example 12', 'Intern', 0],
 ];
 
 /** designation থেকে বিভাগ — রিপোর্টে দল ধরে ভাগ করার জন্য (D09, E07)। */
@@ -250,19 +249,21 @@ function departmentOf(designation: string): string {
 }
 
 async function seedEmployees(policyId: number): Promise<number> {
-  for (const [empCode, fullName, designation] of STAFF) {
+  for (const [empCode, fullName, designation, monthlySalary] of STAFF) {
+    const common = {
+      fullName,
+      designation,
+      department: departmentOf(designation),
+      policyId,
+      monthlySalary,
+    };
+
     await prisma.employee.upsert({
       where: { empCode },
       // ⚠️ update-এ status নেই — কেউ ছেড়ে গেলে seed আবার চালালে তাকে
       //    জীবিত করে তোলা হবে না।
-      update: { fullName, designation, department: departmentOf(designation), policyId },
-      create: {
-        empCode,
-        fullName,
-        designation,
-        department: departmentOf(designation),
-        policyId,
-      },
+      update: common,
+      create: { empCode, ...common },
     });
   }
   return STAFF.length;

@@ -16,6 +16,8 @@ export type AuditAction =
   | 'create_portal_account'
   | 'view_screenshot'
   | 'export_report'
+  /** ⭐ বেতন দেখা — সবচেয়ে সংবেদনশীল রিড, তাই আলাদা action ([ADR-023](../../../docs/05-Options-Decisions.md)) */
+  | 'payroll_view'
   | 'change_setting'
   | 'create_enrollment_code'
   | 'revoke_device'

@@ -15,7 +15,9 @@ export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
     environment: 'node',
-    include: ['test/*.e2e.spec.ts', 'test/**/*.e2e.spec.ts'],
+    // `*.e2e.spec.ts` ছাড়াও সাধারণ `*.spec.ts` — খাঁটি ফাংশনের টেস্ট
+    // (যেমন payroll.math) ডাটাবেস ছাড়াই চলে, কিন্তু একই কমান্ডে চলা দরকার।
+    include: ['test/**/*.spec.ts'],
     globalSetup: ['./test/setup/global-setup.ts'],
     // সব টেস্ট একই ডাটাবেস ব্যবহার করে, তাই ফাইলগুলো একের পর এক চলবে
     fileParallelism: false,

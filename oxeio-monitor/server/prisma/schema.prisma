@@ -97,23 +97,23 @@ enum RolloutStage {
 
 /// ⚠️ shifts টেবিলের বদলে এটি। কোনো শিফট উইন্ডো, লাঞ্চ উইন্ডো বা আসার নির্দিষ্ট সময় নেই।
 model WorkPolicy {
-  id                 Int      @id @default(autoincrement())
+  id                 Int     @id @default(autoincrement())
   name               String
   /// ⭐ একমাত্র টার্গেট
-  monthlyTargetHours Decimal  @default(208) @db.Decimal(6, 2) @map("monthly_target_hours")
+  monthlyTargetHours Decimal @default(208) @map("monthly_target_hours") @db.Decimal(6, 2)
   /// fallback মাত্র — আসল হিসাব ক্যালেন্ডার থেকে, § ২.১-খ
-  expectedWorkdays   Int      @default(26) @map("expected_workdays")
+  expectedWorkdays   Int     @default(26) @map("expected_workdays")
   /// ISO দিন (শুক্র = 5)। null হলে প্রতিটি ক্যালেন্ডার দিনই কর্মদিবস।
   /// ⚠️ এটা ব্লক নয় — ছুটির দিনে কাজ করলেও ঘণ্টা পুরোপুরি গোনা হয়।
-  weeklyOffDay       Int?     @db.SmallInt @map("weekly_off_day")
+  weeklyOffDay       Int?    @map("weekly_off_day") @db.SmallInt
   /// 'HH:MM' — ক্যাপচার উইন্ডো। null হলে ২৪ ঘণ্টা ছবি ওঠে।
-  screenshotFrom     String?  @db.VarChar(5) @map("screenshot_from")
-  screenshotTo       String?  @db.VarChar(5) @map("screenshot_to")
-  idleThresholdSec   Int      @default(60) @map("idle_threshold_sec")
-  slotMinutes        Int      @default(5) @map("slot_minutes")
+  screenshotFrom     String? @map("screenshot_from") @db.VarChar(5)
+  screenshotTo       String? @map("screenshot_to") @db.VarChar(5)
+  idleThresholdSec   Int     @default(60) @map("idle_threshold_sec")
+  slotMinutes        Int     @default(5) @map("slot_minutes")
   /// Asia/Dhaka = GMT+6 (UTC+06:00), কোনো DST নেই — তাই work_date সবসময় নির্দ্বিধায় বের হয়
-  timezone           String   @default("Asia/Dhaka")
-  isActive           Boolean  @default(true) @map("is_active")
+  timezone           String  @default("Asia/Dhaka")
+  isActive           Boolean @default(true) @map("is_active")
 
   employees Employee[]
 
@@ -128,8 +128,12 @@ model Employee {
   designation    String?
   department     String?
   policyId       Int?           @map("policy_id")
-  joinedOn       DateTime?      @db.Date @map("joined_on")
-  leftOn         DateTime?      @db.Date @map("left_on")
+  /// ⭐ মাসিক বেতন — **শুধু owner দেখতে পায়** ([ADR-023](../../docs/05-Options-Decisions.md))।
+  /// ঘাটতির টাকা বের করতে লাগে: (বেতন ÷ মাসিক টার্গেট ঘণ্টা) × ঘাটতি-ঘণ্টা।
+  /// ⚠️ Decimal, Float নয় — টাকা কখনো binary float-এ রাখা হয় না।
+  monthlySalary  Decimal?       @map("monthly_salary") @db.Decimal(12, 2)
+  joinedOn       DateTime?      @map("joined_on") @db.Date
+  leftOn         DateTime?      @map("left_on") @db.Date
   status         EmployeeStatus @default(active)
   /// সই করা monitoring policy — রোলআউটের বাধ্যতামূলক শর্ত
   policySignedAt DateTime?      @map("policy_signed_at") @db.Timestamptz(3)
@@ -170,13 +174,13 @@ model User {
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  employee            Employee?        @relation(fields: [employeeId], references: [id])
-  auditLogs           AuditLog[]
-  settingsUpdated     Setting[]
-  alertsAcknowledged  Alert[]
-  enrollmentCodes     EnrollmentCode[]
-  adjustmentsCreated  TimeAdjustment[] @relation("AdjustmentCreatedBy")
-  adjustmentsRevoked  TimeAdjustment[] @relation("AdjustmentRevokedBy")
+  employee           Employee?        @relation(fields: [employeeId], references: [id])
+  auditLogs          AuditLog[]
+  settingsUpdated    Setting[]
+  alertsAcknowledged Alert[]
+  enrollmentCodes    EnrollmentCode[]
+  adjustmentsCreated TimeAdjustment[] @relation("AdjustmentCreatedBy")
+  adjustmentsRevoked TimeAdjustment[] @relation("AdjustmentRevokedBy")
 
   @@map("users")
 }
@@ -239,7 +243,7 @@ model WorkSession {
   employeeId Int               @map("employee_id")
   deviceId   Int               @map("device_id")
   /// Asia/Dhaka অনুযায়ী
-  workDate   DateTime          @db.Date @map("work_date")
+  workDate   DateTime          @map("work_date") @db.Date
   startedAt  DateTime          @map("started_at") @db.Timestamptz(3)
   endedAt    DateTime?         @map("ended_at") @db.Timestamptz(3)
   endReason  SessionEndReason? @map("end_reason")
@@ -257,24 +261,24 @@ model WorkSession {
 /// ⚠️ কোনো সেগমেন্ট দুই workDate জুড়ে থাকতে পারবে না — মধ্যরাতে ভাগ হয় (§ ২.১-ক)।
 /// ⚠️ এই টেবিল কখনো এডিট বা ডিলিট হয় না — সংশোধন যায় TimeAdjustment-এ (§ ২.১-ঙ)।
 model ActivitySegment {
-  id         BigInt       @id @default(autoincrement())
-  sessionId  BigInt       @map("session_id")
-  employeeId Int          @map("employee_id")
+  id           BigInt       @id @default(autoincrement())
+  sessionId    BigInt       @map("session_id")
+  employeeId   Int          @map("employee_id")
   /// একই স্টাফের দুই ডিভাইসে overlap ধরার জন্য (§ ২.১-গ)
-  deviceId   Int          @map("device_id")
+  deviceId     Int          @map("device_id")
   /// এজেন্টের দেওয়া আইডি — রিট্রাইয়ে ডুপ্লিকেট ঠেকায় (§ ২.১-ঘ)
-  clientUuid String       @unique @db.Uuid @map("client_uuid")
+  clientUuid   String       @unique @map("client_uuid") @db.Uuid
   /// startedAt-এর Asia/Dhaka তারিখ
-  workDate   DateTime     @db.Date @map("work_date")
-  state      SegmentState
-  startedAt  DateTime     @map("started_at") @db.Timestamptz(3)
-  endedAt    DateTime     @map("ended_at") @db.Timestamptz(3)
+  workDate     DateTime     @map("work_date") @db.Date
+  state        SegmentState
+  startedAt    DateTime     @map("started_at") @db.Timestamptz(3)
+  endedAt      DateTime     @map("ended_at") @db.Timestamptz(3)
   /// monotonic clock থেকে — PC-র ঘড়ি বদলালেও অটুট
-  durationSec Int         @map("duration_sec")
+  durationSec  Int          @map("duration_sec")
   /// 0–100, ওই খণ্ডে কতটা অ্যাক্টিভ ছিল। কীলগিং নয়।
-  inputScore Int?         @db.SmallInt @map("input_score")
+  inputScore   Int?         @map("input_score") @db.SmallInt
   /// = (state == active); ingest-এ সেট হয়
-  countsAsWork Boolean    @default(false) @map("counts_as_work")
+  countsAsWork Boolean      @default(false) @map("counts_as_work")
 
   session  WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   employee Employee    @relation(fields: [employeeId], references: [id])
@@ -289,13 +293,13 @@ model Screenshot {
   id           BigInt    @id @default(autoincrement())
   employeeId   Int       @map("employee_id")
   deviceId     Int       @map("device_id")
-  clientUuid   String    @unique @db.Uuid @map("client_uuid")
-  workDate     DateTime  @db.Date @map("work_date")
+  clientUuid   String    @unique @map("client_uuid") @db.Uuid
+  workDate     DateTime  @map("work_date") @db.Date
   /// ৫ মিনিটের স্লটের শুরু
   slotStart    DateTime  @map("slot_start") @db.Timestamptz(3)
   /// আসল র‍্যান্ডম সময় — স্লটের ভেতরে কখন ছবি উঠল
   capturedAt   DateTime  @map("captured_at") @db.Timestamptz(3)
-  monitorIndex Int       @default(0) @db.SmallInt @map("monitor_index")
+  monitorIndex Int       @default(0) @map("monitor_index") @db.SmallInt
   filePath     String    @map("file_path")
   thumbPath    String?   @map("thumb_path")
   width        Int?
@@ -316,21 +320,21 @@ model Screenshot {
 }
 
 model AppUsage {
-  id           BigInt   @id @default(autoincrement())
-  employeeId   Int      @map("employee_id")
-  deviceId     Int      @map("device_id")
-  clientUuid   String   @unique @db.Uuid @map("client_uuid")
-  workDate     DateTime @db.Date @map("work_date")
-  startedAt    DateTime @map("started_at") @db.Timestamptz(3)
-  endedAt      DateTime @map("ended_at") @db.Timestamptz(3)
-  durationSec  Int      @map("duration_sec")
-  processName  String   @map("process_name")
-  appName      String?  @map("app_name")
-  windowTitle  String?  @map("window_title")
+  id          BigInt   @id @default(autoincrement())
+  employeeId  Int      @map("employee_id")
+  deviceId    Int      @map("device_id")
+  clientUuid  String   @unique @map("client_uuid") @db.Uuid
+  workDate    DateTime @map("work_date") @db.Date
+  startedAt   DateTime @map("started_at") @db.Timestamptz(3)
+  endedAt     DateTime @map("ended_at") @db.Timestamptz(3)
+  durationSec Int      @map("duration_sec")
+  processName String   @map("process_name")
+  appName     String?  @map("app_name")
+  windowTitle String?  @map("window_title")
   /// ⚠️ শুধু ডোমেইন — ফুল URL কখনো নয় (ADR-013)
-  domain       String?
-  categoryId   Int?     @map("category_id")
-  isBrowser    Boolean  @default(false) @map("is_browser")
+  domain      String?
+  categoryId  Int?     @map("category_id")
+  isBrowser   Boolean  @default(false) @map("is_browser")
 
   employee Employee     @relation(fields: [employeeId], references: [id])
   device   Device       @relation(fields: [deviceId], references: [id])
@@ -361,7 +365,7 @@ model Event {
   id         BigInt   @id @default(autoincrement())
   deviceId   Int?     @map("device_id")
   employeeId Int?     @map("employee_id")
-  clientUuid String   @unique @db.Uuid @map("client_uuid")
+  clientUuid String   @unique @map("client_uuid") @db.Uuid
   /// agent_start | agent_stop | logon | logoff | lock | unlock | sleep | resume
   /// agent_crash | clock_drift | screenshot_skipped | day_rollover | segment_split
   type       String
@@ -381,7 +385,7 @@ model Event {
 model TimeAdjustment {
   id              BigInt          @id @default(autoincrement())
   employeeId      Int             @map("employee_id")
-  workDate        DateTime        @db.Date @map("work_date")
+  workDate        DateTime        @map("work_date") @db.Date
   /// + = ঘণ্টা ফেরত · − = কেটে নেওয়া
   deltaSec        Int             @map("delta_sec")
   cause           AdjustmentCause
@@ -417,7 +421,7 @@ model AuditLog {
   action     String
   targetType String?  @map("target_type")
   targetId   String?  @map("target_id")
-  ipAddress  String?  @db.Inet @map("ip_address")
+  ipAddress  String?  @map("ip_address") @db.Inet
   meta       Json?
   occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
 
@@ -445,7 +449,7 @@ model Setting {
 /// ⚠️ ব্লক নয় — ছুটির দিনে কেউ কাজ করলে সেই ঘণ্টাও পুরোপুরি গোনা হবে।
 model Holiday {
   id          Int      @id @default(autoincrement())
-  holidayDate DateTime @unique @db.Date @map("holiday_date")
+  holidayDate DateTime @unique @map("holiday_date") @db.Date
   name        String
   type        String   @default("public")
 
@@ -455,20 +459,20 @@ model Holiday {
 // ══════════════════ অ্যালার্ট ও এজেন্ট ভার্সন ══════════════════
 
 model Alert {
-  id             BigInt        @id @default(autoincrement())
+  id               BigInt        @id @default(autoincrement())
   /// agent_down | agent_killed | disk_warning | disk_critical | backup_failed
   /// clock_drift | no_activity_today | device_overlap
-  type           String
-  severity       AlertSeverity
-  employeeId     Int?          @map("employee_id")
-  deviceId       Int?          @map("device_id")
-  title          String
-  detail         String?
-  meta           Json?
-  channelsSent   String[]      @map("channels_sent")
-  acknowledgedById Int?        @map("acknowledged_by")
-  acknowledgedAt DateTime?     @map("acknowledged_at") @db.Timestamptz(3)
-  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  type             String
+  severity         AlertSeverity
+  employeeId       Int?          @map("employee_id")
+  deviceId         Int?          @map("device_id")
+  title            String
+  detail           String?
+  meta             Json?
+  channelsSent     String[]      @map("channels_sent")
+  acknowledgedById Int?          @map("acknowledged_by")
+  acknowledgedAt   DateTime?     @map("acknowledged_at") @db.Timestamptz(3)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
   employee       Employee?        @relation(fields: [employeeId], references: [id])
   device         Device?          @relation(fields: [deviceId], references: [id])
@@ -498,7 +502,7 @@ model AgentVersion {
 ///    দৈনিক কোনো টার্গেটই নেই। সব টার্গেট-হিসাব MonthlySummary-তে।
 model DailySummary {
   employeeId      Int       @map("employee_id")
-  workDate        DateTime  @db.Date @map("work_date")
+  workDate        DateTime  @map("work_date") @db.Date
   firstActivityAt DateTime? @map("first_activity_at") @db.Timestamptz(3)
   lastActivityAt  DateTime? @map("last_activity_at") @db.Timestamptz(3)
   activeSec       Int       @default(0) @map("active_sec")
@@ -511,11 +515,11 @@ model DailySummary {
   /// ⭐ worked + adjustment → মাসিক টার্গেটে এটাই যায়
   creditedSec     Int       @default(0) @map("credited_sec")
   /// দিনের প্রথম ও শেষ active ঘণ্টা (0–23) — তথ্য মাত্র, বিচারের মাপকাঠি নয়
-  earliestHour    Int?      @db.SmallInt @map("earliest_hour")
-  latestHour      Int?      @db.SmallInt @map("latest_hour")
+  earliestHour    Int?      @map("earliest_hour") @db.SmallInt
+  latestHour      Int?      @map("latest_hour") @db.SmallInt
   productiveSec   Int       @default(0) @map("productive_sec")
   unproductiveSec Int       @default(0) @map("unproductive_sec")
-  productivityPct Decimal?  @db.Decimal(5, 2) @map("productivity_pct")
+  productivityPct Decimal?  @map("productivity_pct") @db.Decimal(5, 2)
   screenshotCount Int       @default(0) @map("screenshot_count")
   dayType         DayType?  @map("day_type")
   computedAt      DateTime  @default(now()) @map("computed_at") @db.Timestamptz(3)
@@ -530,7 +534,7 @@ model DailySummary {
 model MonthlySummary {
   employeeId       Int       @map("employee_id")
   /// '2026-08'
-  yearMonth        String    @db.Char(7) @map("year_month")
+  yearMonth        String    @map("year_month") @db.Char(7)
   /// কাঁচা হিসাব
   workedSec        Int       @default(0) @map("worked_sec")
   adjustmentSec    Int       @default(0) @map("adjustment_sec")
