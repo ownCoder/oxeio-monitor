@@ -8,6 +8,7 @@ import type { ReadStream } from 'node:fs';
 
 import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { isNewer, isOfferedTo } from './rollout';
 
 export interface UpdateOffer {
   version: string;
@@ -15,18 +16,6 @@ export interface UpdateOffer {
   url: string;
   mandatory: boolean;
   releaseNotes: string | null;
-}
-
-/** '1.10.0' > '1.9.0' — স্ট্রিং তুলনায় উল্টো ফল দিত, তাই অংশে অংশে */
-function isNewer(candidate: string, current: string): boolean {
-  const a = candidate.split('.').map((n) => parseInt(n, 10) || 0);
-  const b = current.split('.').map((n) => parseInt(n, 10) || 0);
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const x = a[i] ?? 0;
-    const y = b[i] ?? 0;
-    if (x !== y) return x > y;
-  }
-  return false;
 }
 
 @Injectable()
@@ -49,13 +38,24 @@ export class UpdateService {
    * `rollout_stage = halted` হলে কিছুই দেওয়া হয় না — খারাপ আপডেট গেলে
    * ওখানেই থামিয়ে দেওয়া যায়।
    */
-  async offerFor(currentVersion: string): Promise<UpdateOffer | null> {
+  async offerFor(
+    currentVersion: string,
+    machineGuid?: string | null,
+  ): Promise<UpdateOffer | null> {
     const latest = await this.prisma.agentVersion.findFirst({
       where: { rolloutStage: { not: 'halted' } },
       orderBy: { releasedAt: 'desc' },
     });
 
     if (!latest || !isNewer(latest.version, currentVersion)) return null;
+
+    // H04 — ⭐ ধাপে ধাপে। machineGuid না জানলে **কিছুই দেওয়া হয় না**:
+    //    অজানা ডিভাইসকে আপডেট দেওয়ার চেয়ে না দেওয়া নিরাপদ, কারণ
+    //    canary-র পুরো মানেই "গুটিকয়েক মেশিনে আগে"।
+    if (!machineGuid) return null;
+    if (!isOfferedTo(latest.rolloutStage, machineGuid, latest.version)) {
+      return null;
+    }
 
     return {
       version: latest.version,

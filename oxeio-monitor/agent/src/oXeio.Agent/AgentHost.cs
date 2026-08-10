@@ -73,6 +73,7 @@ internal sealed class AgentHost : IAsyncDisposable
     private ScreenCaptureService? _capture;
     private SlotScheduler? _slots;
     private AppUsageService? _apps;
+    private UpdateStager? _updates;
     private CaptureWindow _window = CaptureWindow.Default;
 
     private volatile bool _sessionSuspended;
@@ -148,6 +149,10 @@ internal sealed class AgentHost : IAsyncDisposable
         _credentials.ApplyTo(_sync);
         _credentials.Changed += c => c.ApplyTo(_sync);
 
+        // H04 — নতুন ভার্সন নামানো ও যাচাই। ⚠️ বসানো **হয় না** —
+        //    কারণ UpdateStage-এ লেখা (G58)。
+        // (কিউ খোলার পরে paths পাওয়া যাবে, তাই নিচে বসানো হয়)
+
         // ── অফলাইন কিউ ─────────────────────────────────────────────────────
         // ⚠️ কিউ খুলতে না পারলেও এজেন্ট চলে। সময় গোনা বন্ধ হয় না; শুধু
         //    পাঠানো যায় না, আর সেটা tray-তে লাল হয়ে দেখা যায়।
@@ -155,6 +160,7 @@ internal sealed class AgentHost : IAsyncDisposable
         {
             _outbox = SqliteOutboxStore.Open(log: _log.Info);
             _worker = new SyncWorker(_outbox, _sync, _log);
+            _updates = new UpdateStager(_sync, _outbox.Paths, _version, _log);
         }
         catch (Exception ex)
         {
@@ -225,6 +231,7 @@ internal sealed class AgentHost : IAsyncDisposable
         _ = Task.Run(() => SyncLoopAsync(_stopping.Token));
         _ = Task.Run(() => HeartbeatLoopAsync(_stopping.Token));
         _ = Task.Run(() => EnrollIfNeededAsync(_stopping.Token));
+        _ = Task.Run(() => UpdateLoopAsync(_stopping.Token));
     }
 
     /// <summary>
@@ -452,6 +459,34 @@ internal sealed class AgentHost : IAsyncDisposable
 
         _log.Info(result.Ok ? "✅ ডিভাইস enroll হয়েছে" : $"enroll ব্যর্থ: {result.Message}");
         PublishStatus();
+    }
+
+    /// <summary>
+    /// H04 — ৬ ঘণ্টায় একবার নতুন ভার্সন খোঁজা।
+    ///
+    /// ⚠️ এই লুপ ব্যর্থ হলে আপডেট আসে না — সময়ের হিসাব বা সিঙ্ক কিছুই
+    /// থামে না। তাই এখানকার কোনো ব্যর্থতাই ট্র্যাকিং পর্যন্ত পৌঁছাতে পারবে না।
+    /// </summary>
+    private async Task UpdateLoopAsync(CancellationToken ct)
+    {
+        if (_updates is null) return;
+
+        // ⚠️ চালু হওয়ার সাথে সাথেই নয় — enrollment ও প্রথম heartbeat আগে
+        //    হোক। টোকেন ছাড়া চেক করলে শুধু একটা ৪০১ পেতাম।
+        try { await Task.Delay(TimeSpan.FromMinutes(2), ct); }
+        catch (OperationCanceledException) { return; }
+
+        while (!ct.IsCancellationRequested)
+        {
+            if (_credentials?.IsEnrolled == true)
+            {
+                await _updates.CheckOnceAsync(ct);
+                PublishStatus();
+            }
+
+            try { await Task.Delay(UpdateStager.CheckEvery, ct); }
+            catch (OperationCanceledException) { return; }
+        }
     }
 
     public async Task SyncNowAsync()

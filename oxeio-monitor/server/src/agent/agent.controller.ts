@@ -116,7 +116,7 @@ export class AgentController {
     await this.recordHeartbeatState(device, dto.state, runningVersion);
 
     if (runningVersion) {
-      const offer = await this.updates.offerFor(runningVersion);
+      const offer = await this.updates.offerFor(runningVersion, device.machineGuid);
       if (offer) commands.push('update_agent');
     }
 
@@ -283,6 +283,7 @@ export class AgentController {
   ): Promise<unknown> {
     const offer = await this.updates.offerFor(
       current ?? device.agentVersion ?? '0.0.0',
+      device.machineGuid,
     );
     if (!offer) {
       res.status(HttpStatus.NO_CONTENT);
