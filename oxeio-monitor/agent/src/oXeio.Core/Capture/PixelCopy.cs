@@ -79,6 +79,72 @@ public static class PixelCopy
         return (Math.Max(0, w), Math.Max(0, h));
     }
 
+    /// <summary>
+    /// ঘোরানো ডিসপ্লের ছবি সোজা করা।
+    ///
+    /// <b>কেন দরকার:</b> মনিটর portrait-এ ঘোরালে GPU ছবিটা প্যানেলের নিজস্ব
+    /// (landscape) দিকেই স্ক্যান করে, ভেতরের ছবিটা ঘুরিয়ে দিয়ে। ডেস্কটপ
+    /// ডুপ্লিকেশন ওই স্ক্যান-আউট সারফেসটাই দেয় — অর্থাৎ কাত হয়ে থাকা ছবি।
+    ///
+    /// এটা না থাকলে ঘোরানো মনিটর GDI-তে নেমে যেত, আর তখন ওই পর্দায় ভিডিও
+    /// চললে ছবি কালো আসত — অথচ ভিডিওর জন্যই তো DXGI নেওয়া।
+    /// </summary>
+    /// <param name="bgra">টানটান BGRA, top-down।</param>
+    /// <param name="quarterTurnsClockwise">০–৩। ০ হলে উৎসই ফেরত আসে।</param>
+    public static (byte[] Pixels, int Width, int Height) RotateClockwise(
+        byte[] bgra, int width, int height, int quarterTurnsClockwise)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
+        var turns = ((quarterTurnsClockwise % 4) + 4) % 4;
+        if (turns == 0) return (bgra, width, height);
+
+        var swap = turns is 1 or 3;
+        var newW = swap ? height : width;
+        var newH = swap ? width : height;
+
+        var dest = new byte[newW * newH * BytesPerPixel];
+
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var (nx, ny) = turns switch
+                {
+                    1 => (height - 1 - y, x),
+                    2 => (width - 1 - x, height - 1 - y),
+                    _ => (y, width - 1 - x),
+                };
+
+                var src = ((y * width) + x) * BytesPerPixel;
+                var dst = ((ny * newW) + nx) * BytesPerPixel;
+
+                dest[dst] = bgra[src];
+                dest[dst + 1] = bgra[src + 1];
+                dest[dst + 2] = bgra[src + 2];
+                dest[dst + 3] = bgra[src + 3];
+            }
+        }
+
+        return (dest, newW, newH);
+    }
+
+    /// <summary>
+    /// <c>DXGI_MODE_ROTATION</c> → কত পাক ঘোরাতে হবে।
+    ///
+    /// ⚠️ ১৮০ ডিগ্রি নিয়ে কোনো সন্দেহ নেই, কিন্তু <b>৯০ আর ২৭০ কোনটা কোন দিকে
+    /// সেটা আসল ঘোরানো মনিটরে যাচাই করা হয়নি</b>। উল্টো হলে ছবি উল্টো দিকে
+    /// কাত হবে — তবে সেটা চোখে পড়বেই, কালো ছবির মতো লুকিয়ে থাকবে না।
+    /// </summary>
+    public static int TurnsForRotation(uint dxgiModeRotation) => dxgiModeRotation switch
+    {
+        2 => 1, // ROTATE90
+        3 => 2, // ROTATE180
+        4 => 3, // ROTATE270
+        _ => 0, // UNSPECIFIED / IDENTITY
+    };
+
     private static void Validate(int rowPitch, int width, int height)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);

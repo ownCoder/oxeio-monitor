@@ -98,11 +98,8 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
             //    এই স্লটটা GDI-তে উঠবে।
             if (hr < 0) return null;
 
-            // ঘোরানো ডিসপ্লেতে টেক্সচার ঘোরানো নয়, ভেতরের ছবিটাই কাত হয়ে বসে।
-            // নিজে ঘোরানোর কোড লেখার চেয়ে GDI-কে দেওয়াই ভালো — ও composed
-            // ডেস্কটপ পড়ে, তাই ঘূর্ণন ওর কাছে এমনিতেই ঠিক।
             LastStep = "ঘূর্ণন যাচাই";
-            if (IsRotated(duplication)) return null;
+            var turns = PixelCopy.TurnsForRotation(RotationOf(duplication));
 
             LastStep = "ফ্রেমের অপেক্ষা";
             if (!TryAcquire(duplication, out var info, ref desktop)) return null;
@@ -139,18 +136,28 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
 
             mapped = true;
 
-            var (w, h) = PixelCopy.ContentBounds(
-                (int)desc.Width, (int)desc.Height, monitor.Width, monitor.Height);
+            // ⚠️ ঘোরানো ডিসপ্লেতে মনিটরের মাপ (১০৮০×১৯২০) আর সারফেসের মাপ
+            //    (১৯২০×১০৮০) উল্টো। তাই ঘোরানোর **আগে** ক্ল্যাম্প করতে হলে
+            //    মনিটরের মাপটাও উল্টে নিতে হয় — নইলে ছবির অর্ধেক কেটে যেত।
+            var swapped = turns is 1 or 3;
+            var wantW = swapped ? monitor.Height : monitor.Width;
+            var wantH = swapped ? monitor.Width : monitor.Height;
+
+            var (w, h) = PixelCopy.ContentBounds((int)desc.Width, (int)desc.Height, wantW, wantH);
             if (w <= 0 || h <= 0) return null;
 
-            LastStep += $" · {desc.Width}×{desc.Height} pitch={map.RowPitch} → {w}×{h}";
+            LastStep += $" · {desc.Width}×{desc.Height} pitch={map.RowPitch} → {w}×{h}" +
+                        (turns == 0 ? "" : $" · ঘূর্ণন {turns * 90}°");
 
             var source = new ReadOnlySpan<byte>(map.pData, checked((int)(map.RowPitch * desc.Height)));
-            var pixels = PixelCopy.ToTightBuffer(source, (int)map.RowPitch, w, h);
+            var tight = PixelCopy.ToTightBuffer(source, (int)map.RowPitch, w, h);
+
+            var (pixels, finalW, finalH) = PixelCopy.RotateClockwise(tight, w, h, turns);
 
             EngineFault = false;
 
-            return new CapturedFrame(pixels, w, h, w * PixelCopy.BytesPerPixel, monitor, Name)
+            return new CapturedFrame(
+                pixels, finalW, finalH, finalW * PixelCopy.BytesPerPixel, monitor, Name)
             {
                 ProtectedContentMasked = info.ProtectedContentMaskedOut != 0,
             };
@@ -260,14 +267,14 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
         return true;
     }
 
-    private static bool IsRotated(nint duplication)
+    /// <summary>ডিসপ্লে কতটা ঘোরানো — <c>DXGI_MODE_ROTATION</c>।</summary>
+    private static uint RotationOf(nint duplication)
     {
         DXGI_OUTDUPL_DESC desc;
         ((delegate* unmanaged[Stdcall]<nint, DXGI_OUTDUPL_DESC*, void>)
             ComCall.Method(duplication, Dxgi.Duplication_GetDesc))(duplication, &desc);
 
-        // 0 = UNSPECIFIED, 1 = IDENTITY — দুটোই "ঘোরানো নয়"
-        return desc.Rotation > 1;
+        return desc.Rotation;
     }
 
     /// <summary>

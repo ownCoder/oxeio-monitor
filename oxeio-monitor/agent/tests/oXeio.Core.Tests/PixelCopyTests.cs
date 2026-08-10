@@ -169,4 +169,117 @@ public class PixelCopyTests
         Assert.Equal(0, w);
         Assert.Equal(0, h);
     }
+
+    // ── ঘূর্ণন ──────────────────────────────────────────────────────────────
+
+    /// <summary>প্রতিটি পিক্সেলে B = কলাম, G = সারি — ঘোরানোর পর কে কোথায় গেল দেখা যায়।</summary>
+    private static byte[] Tagged(int w, int h)
+    {
+        var buf = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var i = ((y * w) + x) * 4;
+                buf[i] = (byte)x;
+                buf[i + 1] = (byte)y;
+                buf[i + 2] = 0x20;
+                buf[i + 3] = 0xFF;
+            }
+        }
+        return buf;
+    }
+
+    private static (byte B, byte G) At(byte[] buf, int w, int x, int y)
+    {
+        var i = ((y * w) + x) * 4;
+        return (buf[i], buf[i + 1]);
+    }
+
+    [Fact]
+    public void শূন্য_পাকে_উৎসই_ফেরে()
+    {
+        var src = Tagged(4, 3);
+        var (dst, w, h) = PixelCopy.RotateClockwise(src, 4, 3, 0);
+
+        Assert.Same(src, dst);
+        Assert.Equal(4, w);
+        Assert.Equal(3, h);
+    }
+
+    [Fact]
+    public void নব্বই_ডিগ্রিতে_মাপ_উল্টে_যায়_আর_কোণা_ঠিক_জায়গায়_বসে()
+    {
+        var src = Tagged(4, 3);
+        var (dst, w, h) = PixelCopy.RotateClockwise(src, 4, 3, 1);
+
+        Assert.Equal(3, w);
+        Assert.Equal(4, h);
+
+        // ঘড়ির কাঁটার দিকে ৯০°: উৎসের বাঁ-উপরের কোণা (0,0) যায় ডান-উপরে
+        Assert.Equal((0, 0), At(dst, w, 2, 0));
+        // উৎসের ডান-উপরের কোণা (3,0) যায় ডান-নিচে
+        Assert.Equal((3, 0), At(dst, w, 2, 3));
+        // উৎসের বাঁ-নিচের কোণা (0,2) যায় বাঁ-উপরে
+        Assert.Equal((0, 2), At(dst, w, 0, 0));
+    }
+
+    [Fact]
+    public void একশো_আশি_ডিগ্রিতে_মাপ_একই_থাকে_ছবি_উল্টে_যায়()
+    {
+        var src = Tagged(4, 3);
+        var (dst, w, h) = PixelCopy.RotateClockwise(src, 4, 3, 2);
+
+        Assert.Equal(4, w);
+        Assert.Equal(3, h);
+        Assert.Equal((0, 0), At(dst, w, 3, 2)); // বাঁ-উপর → ডান-নিচ
+        Assert.Equal((3, 2), At(dst, w, 0, 0)); // ডান-নিচ → বাঁ-উপর
+    }
+
+    [Fact]
+    public void চার_পাক_ঘোরালে_আবার_আগের_জায়গায়()
+    {
+        // ঘূর্ণনের সবচেয়ে ভালো পরীক্ষা — যোগ করে পুরো বৃত্ত হলে ফল অপরিবর্তিত
+        var src = Tagged(5, 3);
+        var cur = (Pixels: src, Width: 5, Height: 3);
+
+        for (var i = 0; i < 4; i++)
+            cur = PixelCopy.RotateClockwise(cur.Pixels, cur.Width, cur.Height, 1);
+
+        Assert.Equal(5, cur.Width);
+        Assert.Equal(3, cur.Height);
+        Assert.Equal(src, cur.Pixels);
+    }
+
+    [Fact]
+    public void নব্বই_দুবার_আর_একশো_আশি_একবার_একই_ফল()
+    {
+        var src = Tagged(4, 3);
+
+        var twice = PixelCopy.RotateClockwise(src, 4, 3, 1);
+        twice = PixelCopy.RotateClockwise(twice.Pixels, twice.Width, twice.Height, 1);
+
+        var once = PixelCopy.RotateClockwise(src, 4, 3, 2);
+
+        Assert.Equal(once.Pixels, twice.Pixels);
+        Assert.Equal(once.Width, twice.Width);
+    }
+
+    [Theory]
+    [InlineData(0u, 0)] // UNSPECIFIED
+    [InlineData(1u, 0)] // IDENTITY
+    [InlineData(2u, 1)] // ROTATE90
+    [InlineData(3u, 2)] // ROTATE180
+    [InlineData(4u, 3)] // ROTATE270
+    public void DXGI_ঘূর্ণন_কোড_ঠিকভাবে_পাকে_রূপান্তরিত_হয়(uint rotation, int turns)
+    {
+        Assert.Equal(turns, PixelCopy.TurnsForRotation(rotation));
+    }
+
+    [Fact]
+    public void অচেনা_ঘূর্ণন_কোডে_ঘোরানো_হয়_না()
+    {
+        // অজানা মান পেলে আন্দাজে ঘোরানোর চেয়ে না ঘোরানোই নিরাপদ
+        Assert.Equal(0, PixelCopy.TurnsForRotation(99));
+    }
 }
