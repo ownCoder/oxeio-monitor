@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!--
+  H02 — লগঅনে স্বয়ংক্রিয় চালু।
+
+  ⚠️ এই টাস্ক **watchdog**-কে চালু করে, এজেন্টকে নয়। এজেন্টকে চালু করার
+  একমাত্র লোক watchdog। দুই জায়গা থেকে চালু হলে এক মেশিনে দুটো এজেন্ট চলত
+  আর একই ঘণ্টা দুবার গোনা হতো — পে-রোল নষ্ট, আর কেউ টেরও পেত না।
+
+  {EXE} আর {DIR} ইনস্টল করার সময় বদলে দেওয়া হয় (Deployment/TaskInstaller.cs)।
+-->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Author>oXeio</Author>
+    <Description>oXeio এজেন্ট পাহারাদার — প্রতি ৩০ সেকেন্ডে দেখে, দরকার হলে আবার চালু করে।</Description>
+    <URI>\oXeio\oXeio Watchdog</URI>
+  </RegistrationInfo>
+
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <!-- লগঅনের ভিড় একটু কমার পর — সাথে সাথে চালু হলে ডিস্ক আর CPU-র
+           প্রতিযোগিতায় প্রথম কয়েকটা টিক এমনিতেই ব্যর্থ হতো। -->
+      <Delay>PT15S</Delay>
+    </LogonTrigger>
+  </Triggers>
+
+  <Principals>
+    <Principal id="Author">
+      <!-- S-1-5-32-545 = BUILTIN\Users। যে-ই লগঅন করুক, তার নিজের সেশনেই চলবে।
+           ⚠️ SYSTEM হিসেবে চালানো যাবে না: তাহলে এটা Session 0-তে যেত, আর
+           সেখান থেকে চালু করা এজেন্টও Session 0-তে গিয়ে সাথে সাথে বন্ধ হতো। -->
+      <GroupId>S-1-5-32-545</GroupId>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+
+  <Settings>
+    <!-- ⚠️ IgnoreNew — ফাস্ট ইউজার সুইচিং বা দ্রুত পরপর লগঅনে দ্বিতীয় একটা
+         watchdog যেন চালু না হয়। দুটো পাহারাদার একে অপরের চালু করা এজেন্টকে
+         মারতে শুরু করত। -->
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+
+    <!-- ⚠️ ডিফল্ট দুটোই true। ল্যাপটপ প্লাগ খুললেই পাহারা নীরবে বন্ধ হয়ে যেত। -->
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+
+    <!-- ⚠️ সবচেয়ে বড় ফাঁদ। ডিফল্ট PT72H — অর্থাৎ তিন দিন পর Task Scheduler
+         নিজেই watchdog-কে মেরে ফেলত, আর তারপর মেশিনটা পাহারাহীন চলত।
+         এই প্রসেস সপ্তাহের পর সপ্তাহ চলার কথা, তাই কোনো সীমা নেই। -->
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+
+    <!-- ⚠️ ডিফল্ট RunOnlyIfIdle=false হলেও StopOnIdleEnd=true — মেশিন idle
+         থেকে ফিরলে টাস্ক থামত। idle ট্র্যাক করাই যেখানে কাজ, সেখানে এটা
+         আত্মঘাতী। -->
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+
+    <!-- পাহারাদার নিজে মরে গেলে দ্বিতীয় জাল। -->
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>3</Count>
+    </RestartOnFailure>
+
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <Enabled>true</Enabled>
+    <!-- ⚠️ Hidden=false ইচ্ছাকৃত। tray আইকনের মতোই — লুকিয়ে ইনস্টল করা হচ্ছে না,
+         আর সেটা প্রমাণযোগ্য থাকা দরকার। -->
+    <Hidden>false</Hidden>
+    <WakeToRun>false</WakeToRun>
+    <DisallowStartOnRemoteAppSession>false</DisallowStartOnRemoteAppSession>
+    <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
+    <Priority>6</Priority>
+  </Settings>
+
+  <Actions Context="Author">
+    <Exec>
+      <Command>{EXE}</Command>
+      <WorkingDirectory>{DIR}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>

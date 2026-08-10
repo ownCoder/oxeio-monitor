@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe = কনসোল উইন্ডো নেই। এটা লগঅনে চুপচাপ চালু হয়ে সপ্তাহের পর সপ্তাহ
+         চলে; Exe দিলে প্রতিবার লগঅনে একটা কালো কনসোল ঝলকে উঠত। -->
+    <OutputType>WinExe</OutputType>
+
+    <!-- এজেন্টের সাথে মিলিয়ে — 10.0.17763 = Windows 10 1809। -->
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>oXeio.Watchdog</RootNamespace>
+    <AssemblyName>oXeio.Watchdog</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- ⚠️ `LibraryImport` (source-generated P/Invoke) ছাড়া চলে না — জেনারেট করা
+         কোডে পয়েন্টার থাকে। না দিলে SYSLIB1062 দিয়ে বিল্ড থামে। -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- UseWindowsForms ইচ্ছাকৃতভাবে নেই: watchdog-এর কোনো উইন্ডো, কোনো message
+         pump, কোনো tray আইকন নেই। WinForms টানলে একটা গোটা UI স্ট্যাক এই
+         প্রসেসে ঢুকত যেটার কোনো কাজ নেই, অথচ যেটা ক্র্যাশ করতে পারত। -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ⚠️ শুধু Core। oXeio.Agent-এর রেফারেন্স যোগ করা যাবে না — তাহলে এজেন্টের
+         একটা বাগ (যেমন SkiaSharp-এর native DLL লোড না হওয়া) পাহারাদারকেও সাথে
+         নিয়ে ডুবত, আর তখন কেউ আর কাউকে তুলত না। -->
+    <ProjectReference Include="..\oXeio.Core\oXeio.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- LogicalName স্পষ্ট করে দেওয়া হয়েছে: ডিফল্ট নাম ফোল্ডার ও ফাইলের নাম
+         জোড়া দিয়ে তৈরি হয়, ফাইল সরালেই নীরবে বদলে যেত আর রিসোর্স খুঁজে
+         পাওয়া যেত না। -->
+    <EmbeddedResource Include="Deployment\WatchdogTask.xml" LogicalName="oXeio.Watchdog.Task.xml" />
+  </ItemGroup>
+
+</Project>

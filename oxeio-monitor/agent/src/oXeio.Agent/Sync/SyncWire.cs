@@ -1,0 +1,303 @@
+using oXeio.Core.Agent;
+using oXeio.Core.Models;
+
+namespace oXeio.Agent.Sync;
+
+/// <summary>
+/// তারে যা যায় ঠিক তার আকৃতি — Core-এর রেকর্ডগুলো সরাসরি সিরিয়ালাইজ করা হয় না।
+///
+/// ⭐⚠️ <b>কেন এই বাড়তি স্তর:</b> System.Text.Json <b>সব</b> public getter লেখে,
+/// computed প্রপার্টিসহ। <see cref="ActivitySegment"/>-এ আছে
+/// <see cref="ActivitySegment.WorkDate"/> আর <see cref="ActivitySegment.CountsAsWork"/> —
+/// সরাসরি পাঠালে JSON-এ <c>workDate</c> ও <c>countsAsWork</c>ও চলে যেত। NestJS-এ
+/// <c>forbidNonWhitelisted</c> চালু থাকলে অচেনা ফিল্ড মানেই ৪০০, আর ৪০০ মানে
+/// <see cref="SyncOutcome.Permanent"/> — অর্থাৎ ৫০০টা সেগমেন্ট চিরতরে মুছে যেত।
+/// কেউ Core-এ একটা নিরীহ computed প্রপার্টি যোগ করলেই সেটা ঘটত, আর কোথাও
+/// কোনো কম্পাইলার সতর্কবার্তা থাকত না।
+///
+/// তাই নিয়ম: <b>সার্ভারে যা পাঠানো হয় তার প্রতিটা ফিল্ড এখানে হাতে লেখা।</b>
+/// (উল্টো দিকে, অর্থাৎ পড়ার সময়, Core-এর রেকর্ডে সরাসরি deserialize করা নিরাপদ —
+/// অচেনা ফিল্ড STJ এমনিতেই বাদ দেয়।)
+/// </summary>
+internal static class SyncWire
+{
+    private static readonly char[] PathStarters = ['/', '?', '#'];
+
+    // ── segments ────────────────────────────────────────────────────────────
+
+    internal sealed record SegmentsEnvelope
+    {
+        public required IReadOnlyList<SegmentDto> Segments { get; init; }
+    }
+
+    internal sealed record SegmentDto
+    {
+        public required Guid ClientUuid { get; init; }
+        public required string State { get; init; }
+        public required DateTimeOffset StartedAt { get; init; }
+        public required DateTimeOffset EndedAt { get; init; }
+        public required int DurationSec { get; init; }
+        public int? InputScore { get; init; }
+    }
+
+    internal static SegmentsEnvelope Segments(IReadOnlyList<ActivitySegment> segments)
+    {
+        var list = new List<SegmentDto>(segments.Count);
+        foreach (var s in segments)
+        {
+            list.Add(new SegmentDto
+            {
+                ClientUuid = s.ClientUuid,
+                State = StateToWire(s.State),
+                StartedAt = s.StartedAt,
+                EndedAt = s.EndedAt,
+                DurationSec = s.DurationSec,
+                InputScore = s.InputScore,
+            });
+        }
+
+        return new SegmentsEnvelope { Segments = list };
+    }
+
+    /// <summary>
+    /// ⚠️ <b>সার্ভারের enum ছোট হাতের অক্ষরে</b> — <c>active / idle / locked</c>।
+    /// দেখুন <c>server/prisma/schema.prisma</c>-র <c>enum SegmentState</c>;
+    /// Postgres enum আর <c>@IsEnum()</c> দুটোই case-sensitive।
+    ///
+    /// C#-এর <c>SegmentState.Active</c> সরাসরি পাঠালে <c>"Active"</c> যেত, আর
+    /// বড় হাতে <c>"ACTIVE"</c> পাঠালেও একই ফল: <b>৪০০</b>। আর ৪০০ মানে
+    /// <see cref="SyncOutcome.Permanent"/> — অর্থাৎ ব্যাচটা রিট্রাই না হয়ে
+    /// <b>মুছে</b> যেত। একটা অক্ষরের ভুলে মাসের পে-রোল ডেটা হারাত।
+    ///
+    /// রূপান্তরটা এই একটাই জায়গায় — segments আর heartbeat দুটোই এখান থেকে নেয়।
+    /// </summary>
+    internal static string StateToWire(SegmentState state) => state switch
+    {
+        SegmentState.Active => "active",
+        SegmentState.Idle => "idle",
+        SegmentState.Locked => "locked",
+
+        // ⚠️ অজানা স্টেটে ডিফল্ট বসানো হয় না। আগে এখানে "ACTIVE" ফিরত —
+        //    অর্থাৎ নতুন কোনো স্টেট যোগ হলে সেটা নীরবে **কাজের সময়** হিসেবে
+        //    গোনা হতো। সার্ভারে ভুল ডেটা পাঠানোর চেয়ে এখানেই থেমে যাওয়া ভালো।
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(state), state, "এই স্টেটের জন্য সার্ভারের কোনো রূপ ঠিক করা নেই"),
+    };
+
+    // ── app usage ───────────────────────────────────────────────────────────
+
+    internal sealed record AppUsageEnvelope
+    {
+        public required IReadOnlyList<AppUsageDto> Items { get; init; }
+    }
+
+    internal sealed record AppUsageDto
+    {
+        public required Guid ClientUuid { get; init; }
+        public required DateTimeOffset StartedAt { get; init; }
+        public required DateTimeOffset EndedAt { get; init; }
+        public required int DurationSec { get; init; }
+        public required string ProcessName { get; init; }
+        public string? AppName { get; init; }
+        public string? WindowTitle { get; init; }
+        public string? Domain { get; init; }
+        public bool? IsBrowser { get; init; }
+    }
+
+    internal static AppUsageEnvelope AppUsage(IReadOnlyList<AppUsageRecord> items)
+    {
+        var list = new List<AppUsageDto>(items.Count);
+        foreach (var i in items)
+        {
+            list.Add(new AppUsageDto
+            {
+                ClientUuid = i.ClientUuid,
+                StartedAt = i.StartedAt,
+                EndedAt = i.EndedAt,
+                DurationSec = i.DurationSec,
+                ProcessName = i.ProcessName,
+                AppName = i.AppName,
+                WindowTitle = i.WindowTitle,
+                Domain = DomainOnly(i.Domain),
+                IsBrowser = i.IsBrowser,
+            });
+        }
+
+        return new AppUsageEnvelope { Items = list };
+    }
+
+    /// <summary>
+    /// ⭐ শেষ প্রহরী: পুরো URL কখনোই নেটওয়ার্কে ওঠে না — শুধু ডোমেইন।
+    ///
+    /// ব্রাউজার টাইটেল/URL থেকে ডোমেইন বের করার কাজ app-tracking মডিউলের, কিন্তু
+    /// এই নিষেধটা (পুরো URL জমা রাখা যাবে না) সিস্টেমের একটা <b>কঠিন</b> নিয়ম।
+    /// একটা মডিউলের বাগে <c>https://bank.com/account/12345?token=…</c> চলে এলে সেটা
+    /// সার্ভারের ডেটাবেসে বসে যেত আর ফেরানোর উপায় থাকত না। তাই দরজার মুখেই ছাঁটা হয়,
+    /// এমনকি "এমনটা হওয়ার কথা নয়" জেনেও।
+    /// </summary>
+    internal static string? DomainOnly(string? domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain)) return null;
+
+        var value = domain.Trim();
+
+        var scheme = value.IndexOf("://", StringComparison.Ordinal);
+        if (scheme >= 0) value = value[(scheme + 3)..];
+
+        var path = value.IndexOfAny(PathStarters);
+        if (path >= 0) value = value[..path];
+
+        // user:pass@host — credential যেন কোনোভাবেই না যায়
+        var at = value.LastIndexOf('@');
+        if (at >= 0) value = value[(at + 1)..];
+
+        // পোর্ট ছাঁটা, কিন্তু IPv6 ([::1]) হাতে না দিয়ে — একাধিক ':' থাকলে ছোঁয়া হয় না
+        var colon = value.LastIndexOf(':');
+        if (colon > 0 && value.IndexOf(':') == colon) value = value[..colon];
+
+        value = value.Trim().TrimEnd('.');
+
+        return value.Length == 0 ? null : value.ToLowerInvariant();
+    }
+
+    // ── events ──────────────────────────────────────────────────────────────
+
+    internal sealed record EventsEnvelope
+    {
+        public required IReadOnlyList<EventDto> Events { get; init; }
+    }
+
+    internal sealed record EventDto
+    {
+        public required Guid ClientUuid { get; init; }
+        public required string Type { get; init; }
+        public required DateTimeOffset OccurredAt { get; init; }
+        public IReadOnlyDictionary<string, object?>? Meta { get; init; }
+    }
+
+    internal static EventsEnvelope Events(IReadOnlyList<AgentEventRecord> events)
+    {
+        var list = new List<EventDto>(events.Count);
+        foreach (var e in events)
+        {
+            list.Add(new EventDto
+            {
+                ClientUuid = e.ClientUuid,
+                Type = e.Type,
+                OccurredAt = e.OccurredAt,
+
+                // খালি ডিকশনারি পাঠানোর মানে নেই; null হলে ফিল্ডটাই বাদ যাবে
+                Meta = e.Meta is { Count: > 0 } ? e.Meta : null,
+            });
+        }
+
+        return new EventsEnvelope { Events = list };
+    }
+
+    // ── heartbeat / enroll ──────────────────────────────────────────────────
+
+    internal sealed record HeartbeatDto
+    {
+        public required string State { get; init; }
+        public required int ActiveSecToday { get; init; }
+        public int? QueueDepth { get; init; }
+        public string? ConfigVersion { get; init; }
+    }
+
+    internal static HeartbeatDto Heartbeat(HeartbeatRequest request) => new()
+    {
+        State = StateToWire(request.State),
+
+        // ⚠️ ০–৮৬৪০০-র বাইরে হলে সার্ভার ৪০০ দেয়। heartbeat-এর ৪০০ কোনো ডেটা
+        //    মোছে না, কিন্তু তখন কমান্ডও আসে না — অর্থাৎ revoke পৌঁছাত না।
+        //    তাই সন্দেহজনক মানকে এখানেই সীমার ভেতরে বসানো হয়।
+        ActiveSecToday = Math.Clamp(request.ActiveSecToday, 0, 86_400),
+
+        QueueDepth = request.QueueDepth is { } d ? Math.Max(0, d) : null,
+        ConfigVersion = request.ConfigVersion,
+    };
+
+    internal sealed record EnrollDto
+    {
+        public required string EnrollmentCode { get; init; }
+        public required string Hostname { get; init; }
+        public required string WindowsUsername { get; init; }
+        public required string MachineGuid { get; init; }
+        public string? OsVersion { get; init; }
+        public string? AgentVersion { get; init; }
+        public int? Monitors { get; init; }
+    }
+
+    internal static EnrollDto Enroll(EnrollRequest request) => new()
+    {
+        EnrollmentCode = request.EnrollmentCode,
+        Hostname = request.Hostname,
+        WindowsUsername = request.WindowsUsername,
+        MachineGuid = request.MachineGuid,
+        OsVersion = request.OsVersion,
+        AgentVersion = request.AgentVersion,
+        Monitors = request.Monitors,
+    };
+
+    // ── screenshot meta ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// multipart-এর <c>meta</c> অংশ। ⚠️ এটা JSON <b>স্ট্রিং</b> হয়ে যায়,
+    /// JSON অবজেক্ট হয়ে নয় — <see cref="HttpSyncClient.SendScreenshotAsync"/> দেখুন।
+    /// </summary>
+    internal sealed record ScreenshotMetaDto
+    {
+        public required Guid ClientUuid { get; init; }
+        public required DateTimeOffset SlotStart { get; init; }
+        public required DateTimeOffset CapturedAt { get; init; }
+        public required int MonitorIndex { get; init; }
+        public int? Width { get; init; }
+        public int? Height { get; init; }
+        public string? ActiveApp { get; init; }
+        public string? ActiveTitle { get; init; }
+    }
+
+    internal static ScreenshotMetaDto ScreenshotMeta(ScreenshotRecord meta) => new()
+    {
+        ClientUuid = meta.ClientUuid,
+        SlotStart = meta.SlotStart,
+        CapturedAt = meta.CapturedAt,
+        MonitorIndex = meta.MonitorIndex,
+        Width = meta.Width,
+        Height = meta.Height,
+        ActiveApp = meta.ActiveApp,
+        ActiveTitle = meta.ActiveTitle,
+    };
+
+    // ── যা পড়া হয় ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// heartbeat-এর উত্তর। কমান্ড তারে snake_case স্ট্রিং, C#-এ enum — তাই
+    /// <see cref="HeartbeatResponse"/>-এ সরাসরি deserialize করা যায় না।
+    /// অচেনা কমান্ড <see cref="AgentCommands.Parse"/>-এ null হয়ে বাদ পড়ে,
+    /// ফলে ভবিষ্যতের সার্ভার নতুন কমান্ড পাঠালেও পুরোনো এজেন্ট ভাঙে না।
+    /// </summary>
+    internal sealed record HeartbeatResponseDto
+    {
+        public IReadOnlyList<string>? Commands { get; init; }
+        public string? ConfigVersion { get; init; }
+    }
+
+    internal static HeartbeatResponse ToHeartbeatResponse(HeartbeatResponseDto dto)
+    {
+        var commands = new List<AgentCommand>();
+        if (dto.Commands is not null)
+        {
+            foreach (var wire in dto.Commands)
+            {
+                if (AgentCommands.Parse(wire) is { } command) commands.Add(command);
+            }
+        }
+
+        return new HeartbeatResponse
+        {
+            Commands = commands,
+            ConfigVersion = dto.ConfigVersion ?? string.Empty,
+        };
+    }
+}
