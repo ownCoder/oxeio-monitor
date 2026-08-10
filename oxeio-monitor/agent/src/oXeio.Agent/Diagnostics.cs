@@ -134,22 +134,37 @@ internal static class Diagnostics
         }
 
         var service = new AppUsageService(TimeSpan.FromSeconds(config.MinDurationSec));
-        Line("৫ সেকেন্ড নমুনা নিচ্ছি — এখন ব্রাউজারে গিয়ে দেখতে পারেন…");
+        var seen = new List<AppUsageRecord>();
 
-        for (var i = 0; i < 5; i++)
+        Line("১০ সেকেন্ড নমুনা নিচ্ছি — এখন ব্রাউজারে গিয়ে একটা সাইট খুলুন…");
+
+        for (var i = 0; i < 10; i++)
         {
-            service.Tick(Clock.Now, SegmentState.Active);
+            seen.AddRange(service.Tick(Clock.Now, SegmentState.Active));
             Thread.Sleep(1000);
         }
 
-        var closed = service.CloseAll(Clock.Now);
+        // ⚠️ CloseAll-এর **আগে** পড়তে হবে — ওটা খোলা উইন্ডোটা বন্ধ করে দেয়,
+        //    তারপর CurrentProcess সবসময় null। আগে উল্টো ছিল, ফলে সব কিছু
+        //    ঠিকঠাক চললেও লাইনটা "পড়া গেল না" দেখাত।
+        var current = service.CurrentProcess;
+        seen.AddRange(service.CloseAll(Clock.Now));
 
-        Line($"   foreground : {service.CurrentProcess ?? "(পড়া গেল না)"}");
-        Line(service.UrlReadingDisabled
-            ? "   address bar: ❌ এই মেশিনে UI Automation কাজ করছে না — সাইটের নাম আসবে না"
-            : "   address bar: ✅ পড়া যাচ্ছে");
+        Line($"   এখন সামনে  : {current ?? "(কোনো উইন্ডো পড়া গেল না)"}");
 
-        foreach (var r in closed)
+        // ⚠️ "UI Automation বন্ধ" পতাকাটা দিয়ে বিচার করা যায় না — ওটা টানা
+        //    ২০ বার ব্যর্থ হলে ওঠে, আর ১০ সেকেন্ডে ২০ বার চেষ্টাই হয় না।
+        //    তাই সত্যিই ডোমেইন এসেছে কি না, সেটাই একমাত্র নির্ভরযোগ্য প্রমাণ।
+        var browser = seen.FirstOrDefault(r => r.IsBrowser == true);
+        Line(browser switch
+        {
+            null => "   address bar: — নমুনার সময় কোনো ব্রাউজার সামনে ছিল না, পরীক্ষা হয়নি",
+            { Domain: { } d } => $"   address bar: ✅ পড়া যাচ্ছে — {d}",
+            _ => "   address bar: ❌ ব্রাউজার সামনে ছিল, ডোমেইন পড়া গেল না " +
+                 "(অথবা ছদ্মবেশী উইন্ডো — তখন এটাই ঠিক আচরণ)",
+        });
+
+        foreach (var r in seen)
         {
             // ⚠️ টাইটেল ছাপা হয় না — পড়ার সময় কেউ পাশে থাকতে পারে
             Line($"   ▸ {r.ProcessName} {r.DurationSec} সে." +
