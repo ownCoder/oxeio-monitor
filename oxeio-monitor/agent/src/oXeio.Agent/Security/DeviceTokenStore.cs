@@ -269,6 +269,53 @@ internal sealed class DeviceTokenStore
     /// move নিজে NTFS-এ atomic, তাই বিদ্যুৎ চলে গেলেও অর্ধেক লেখা ফাইল থাকে না —
     /// হয় পুরোনো টোকেন, নয় নতুনটা।
     /// </summary>
+    /// <summary>
+    /// ⭐ টোকেন সত্যিই লেখা যাবে কি না — <b>সার্ভারে যাওয়ার আগে</b> দেখা হয়।
+    ///
+    /// <b>কেন এটা দরকার:</b> enrollment কোড একবার-ব্যবহার্য। সার্ভার কোডটা
+    /// খরচ করে ডিভাইস বানিয়ে টোকেন ফেরত দেয় — <b>একবারই</b>। ওই মুহূর্তে
+    /// ডিস্কে লেখা ব্যর্থ হলে কোডটাও গেল, টোকেনটাও গেল, আর সার্ভারে একটা
+    /// অনাথ ডিভাইস পড়ে রইল। ঠিক করতে হলে অ্যাডমিনকে নতুন কোড বানাতে হয়।
+    ///
+    /// আসল মেশিনে চালিয়ে ঠিক এটাই ঘটেছিল। তাই আগে একটা প্রোব ফাইল লিখে —
+    /// একই ACL, একই পথ — নিশ্চিত হওয়া হয়।
+    /// </summary>
+    public bool CanPersist(out string? error)
+    {
+        error = null;
+        var probe = FilePath + ".probe";
+
+        try
+        {
+            EnsureDirectory();
+            if (File.Exists(probe)) File.Delete(probe);
+
+            // ⚠️ আসল লেখার ধাপগুলো হুবহু — ফাইল বানানো, ACL বসানো, তারপর
+            //    লেখা। শুধু "ফোল্ডারে লেখা যায় কি না" দেখলে এই বাগটা ধরা
+            //    পড়ত না, কারণ ফোল্ডারে লেখা যাচ্ছিলই।
+            using (new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+            new FileInfo(probe).SetAccessControl(BuildFileSecurity());
+
+            using (var fs = new FileStream(probe, FileMode.Open, FileAccess.Write, FileShare.None))
+            {
+                fs.WriteByte(0);
+            }
+
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                       or SystemException)
+        {
+            error = $"{ex.GetType().Name}: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            try { if (File.Exists(probe)) File.Delete(probe); }
+            catch (Exception) { /* প্রোব রেখে যাওয়া ক্ষতিকর নয় */ }
+        }
+    }
+
     private void WriteAtomic(byte[] blob)
     {
         var temp = FilePath + ".tmp";
@@ -313,11 +360,25 @@ internal sealed class DeviceTokenStore
 
         if (!_restrictToAdministrators)
         {
-            // ইনস্টলার (অ্যাডমিন) লেখে, এজেন্ট (স্টাফের অ্যাকাউন্ট) পড়ে।
-            // Read ছাড়া কম দিলে এজেন্ট নিজের টোকেনই পড়তে পারত না।
-            security.AddAccessRule(new FileSystemAccessRule(
-                new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
-                FileSystemRights.Read, AccessControlType.Allow));
+            // ⚠️ আগে এখানে `BUILTIN\Users : Read` ছিল, এই ধারণায় যে
+            //    "ইনস্টলার (অ্যাডমিন) লেখে, এজেন্ট (স্টাফ) পড়ে"।
+            //    **ধারণাটা ভুল** — enrollment এজেন্টই করে, ইনস্টলার নয়।
+            //    ফলে এজেন্ট ফাইলটা বানিয়ে, তাতে নিজেকে Read দিয়ে, তারপর
+            //    Write করতে গিয়ে নিজের ফাইলেই "Access denied" খেত।
+            //
+            //    আসল মেশিনে চালিয়ে ধরা পড়েছে: device.dat.tmp তৈরি হয়েছিল,
+            //    ০ বাইট, আর enrollment কোডটা ততক্ষণে খরচ হয়ে গেছে।
+            //
+            //    এখন যে অ্যাকাউন্টে এজেন্ট চলছে **সেটাই** Modify পায়।
+            //    Users-এর blanket Read সরানো হয়েছে — DPAPI LocalMachine স্কোপে
+            //    থাকায় ওই Read মানে ছিল ওই PC-র যেকোনো ইউজার টোকেনটা
+            //    খুলে ফেলতে পারত।
+            using var me = WindowsIdentity.GetCurrent();
+            if (me.User is { } sid)
+            {
+                security.AddAccessRule(new FileSystemAccessRule(
+                    sid, FileSystemRights.Modify, AccessControlType.Allow));
+            }
         }
 
         return security;

@@ -30,13 +30,20 @@ public class IdleStateMachineTests
         return all;
     }
 
+    /// <summary>
+    /// আগে এই টেস্ট বলত "কাজ করতে থাকলে কোনো সেগমেন্ট বন্ধ হয় না" — আর
+    /// সেটাই ছিল বাগ: টানা কাজের সময়টুকু কিউয়ে না গিয়ে মেমরিতে খোলা থাকত,
+    /// আর বিদ্যুৎ গেলে হারাত ([G53](../../../../docs/08-Gap-Analysis.md))।
+    /// এখন স্টেট বদলায় না, কিন্তু রেকর্ড নিয়মিত বেরোয়।
+    /// </summary>
     [Fact]
-    public void কাজ_করতে_থাকলে_কোনো_সেগমেন্ট_বন্ধ_হয়_না()
+    public void কাজ_করতে_থাকলেও_রেকর্ড_নিয়মিত_বেরোয়_কিন্তু_স্টেট_বদলায়_না()
     {
         var sm = New();
         var closed = Run(sm, Start, 600, _ => TimeSpan.Zero);
 
-        Assert.Empty(closed);
+        Assert.NotEmpty(closed);
+        Assert.All(closed, c => Assert.Equal(SegmentState.Active, c.State));
         Assert.Equal(SegmentState.Active, sm.State);
     }
 
@@ -76,17 +83,20 @@ public class IdleStateMachineTests
     public void দশ_মিনিট_দূরে_থাকলে_ঠিক_দশ_মিনিটই_বাদ_যায়()
     {
         var sm = New();
-        Run(sm, Start, 300, _ => TimeSpan.Zero);
+        var all = Run(sm, Start, 300, _ => TimeSpan.Zero).ToList();
 
         // ১০ মিনিট কেউ নেই (৩০১ থেকে ৯০০ সেকেন্ড পর্যন্ত টিক)
-        Run(sm, Start.AddSeconds(300), 600, i => TimeSpan.FromSeconds(i));
+        all.AddRange(Run(sm, Start.AddSeconds(300), 600, i => TimeSpan.FromSeconds(i)));
         // ঠিক ৯০০ সেকেন্ডের মাথায় ফিরে এসে মাউস নাড়ল
-        var closed = sm.Tick(Start.AddSeconds(900), TimeSpan.Zero, locked: false);
+        all.AddRange(sm.Tick(Start.AddSeconds(900), TimeSpan.Zero, locked: false));
 
-        var idle = Assert.Single(closed);
-        Assert.Equal(SegmentState.Idle, idle.State);
-        Assert.Equal(600, idle.DurationSec); // ৩০০ → ৯০০, ঠিক ১০ মিনিট
-        Assert.False(idle.CountsAsWork);
+        // ⚠️ এখন লম্বা সেগমেন্ট ৫ মিনিটেও ভাগ হয়, তাই সংখ্যা নয় — **যোগফল**
+        //    যাচাই করা হয়। নিয়মটা একই: ১০ মিনিট দূরে থাকলে ঠিক ১০ মিনিটই বাদ।
+        var idleAll = all.Where(c => c.State == SegmentState.Idle).ToList();
+
+        Assert.NotEmpty(idleAll);
+        Assert.Equal(600, idleAll.Sum(c => c.DurationSec));
+        Assert.All(idleAll, c => Assert.False(c.CountsAsWork));
     }
 
     [Fact]
@@ -165,18 +175,25 @@ public class IdleStateMachineTests
         // ২০ মিনিট একটানা কাজ — মধ্যরাত পেরিয়ে
         var closed = Run(sm, lateNight, 20 * 60, _ => TimeSpan.Zero);
 
-        var part = Assert.Single(closed);
-        Assert.Equal(new DateOnly(2026, 8, 8), part.WorkDate);
-        Assert.Equal(600, part.DurationSec); // ২৩:৫০ → ০০:০০
-        Assert.Equal(new DateTimeOffset(2026, 8, 8, 18, 0, 0, TimeSpan.Zero), part.EndedAt);
+        // ⚠️ লম্বা সেগমেন্ট ৫ মিনিটেও ভাগ হয়, তাই একাধিক টুকরো আসে।
+        //    যা যাচাই করার: মধ্যরাতের **আগের** সব টুকরো আগের তারিখে, আর
+        //    সেগুলোর যোগফল ঠিক ১০ মিনিট (২৩:৫০ → ০০:০০)।
+        var midnight = new DateTimeOffset(2026, 8, 8, 18, 0, 0, TimeSpan.Zero);
+        var before = closed.Where(c => c.EndedAt <= midnight).ToList();
 
-        // পরের অংশটা এখনো খোলা, আর সেটা নতুন তারিখে
-        Assert.Equal(new DateTimeOffset(2026, 8, 8, 18, 0, 0, TimeSpan.Zero), sm.OpenedAt);
+        Assert.NotEmpty(before);
+        Assert.All(before, c => Assert.Equal(new DateOnly(2026, 8, 8), c.WorkDate));
+        Assert.Equal(600, before.Sum(c => c.DurationSec));
+        Assert.Equal(midnight, before[^1].EndedAt);
 
-        var rest = sm.CloseAll(lateNight.AddMinutes(20));
-        var second = Assert.Single(rest);
-        Assert.Equal(new DateOnly(2026, 8, 9), second.WorkDate);
-        Assert.Equal(600, second.DurationSec);
+        // মধ্যরাতের পরের অংশ — টুকরো যতগুলোই হোক, সবই নতুন তারিখে,
+        // আর যোগফল ঠিক ১০ মিনিট (০০:০০ → ০০:১০)
+        var after = closed.Where(c => c.StartedAt >= midnight).ToList();
+        after.AddRange(sm.CloseAll(lateNight.AddMinutes(20)));
+
+        Assert.NotEmpty(after);
+        Assert.All(after, c => Assert.Equal(new DateOnly(2026, 8, 9), c.WorkDate));
+        Assert.Equal(600, after.Sum(c => c.DurationSec));
     }
 
     [Fact]

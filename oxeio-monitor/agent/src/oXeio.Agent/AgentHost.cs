@@ -103,7 +103,7 @@ internal sealed class AgentHost : IAsyncDisposable
 
         // ── সার্ভারের সাথে কথা ─────────────────────────────────────────────
         _sync = new HttpSyncClient(
-            SyncClientOptions.For(_settings.ServerUrl, _version),
+            new SyncClientOptions { BaseAddress = _settings.ApiRoot, AgentVersion = _version },
             log: _log);
         _credentials.ApplyTo(_sync);
         _credentials.Changed += c => c.ApplyTo(_sync);

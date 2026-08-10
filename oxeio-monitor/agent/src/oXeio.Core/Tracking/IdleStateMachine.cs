@@ -20,7 +20,24 @@ public sealed class IdleStateMachine
     /// <summary>এর চেয়ে কম সময় আগে ইনপুট এলে ওই সেকেন্ডটা "সক্রিয়" ধরা হয় (input score)।</summary>
     private static readonly TimeSpan RecentInput = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// ⭐ একটা সেগমেন্ট সর্বোচ্চ এতক্ষণ খোলা থাকতে পারে।
+    ///
+    /// <b>কেন দরকার:</b> সেগমেন্ট বন্ধ হয় কেবল স্টেট বদলালে। কেউ টানা কাজ
+    /// করলে (বা ভিডিও দেখতে দেখতে মাউস নাড়তে থাকলে) একটাই ACTIVE সেগমেন্ট
+    /// ঘণ্টার পর ঘণ্টা খোলা থাকত, আর <b>কিউয়ে কিছুই যেত না</b>।
+    ///
+    /// তারপর বিদ্যুৎ গেলে বা PC ক্র্যাশ করলে ওই পুরো সময়টা হারাত — কারণ
+    /// <see cref="CloseAll"/> কেবল স্বাভাবিকভাবে বন্ধ হওয়ার সময় চলে।
+    /// আসল মেশিনে চালিয়ে দেখা গেছে: ৩ মিনিট টানা কাজে সার্ভারে শূন্য সেগমেন্ট।
+    ///
+    /// ৫ মিনিট বেছে নেওয়ার কারণ স্ক্রিনশটের স্লটও ৫ মিনিট — দুটো একই ছন্দে
+    /// চলে, আর ক্র্যাশে হারানোর সর্বোচ্চ পরিমাণ ৫ মিনিটে বাঁধা পড়ে।
+    /// </summary>
+    public static readonly TimeSpan MaxSegmentLength = TimeSpan.FromMinutes(5);
+
     private readonly TimeSpan _idleThreshold;
+    private readonly TimeSpan _maxSegment;
     private readonly Func<Guid> _newUuid;
 
     private SegmentState _state;
@@ -32,12 +49,18 @@ public sealed class IdleStateMachine
         TimeSpan idleThreshold,
         DateTimeOffset startedAt,
         SegmentState initial = SegmentState.Active,
-        Func<Guid>? newUuid = null)
+        Func<Guid>? newUuid = null,
+        TimeSpan? maxSegment = null)
     {
         if (idleThreshold <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(idleThreshold));
 
         _idleThreshold = idleThreshold;
+        _maxSegment = maxSegment ?? MaxSegmentLength;
+
+        if (_maxSegment <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(maxSegment));
+
         _openedAt = startedAt;
         _state = initial;
         _newUuid = newUuid ?? Guid.NewGuid;
@@ -60,6 +83,10 @@ public sealed class IdleStateMachine
 
         // ১· মধ্যরাত পার হলে state না বদলেও রেকর্ড ভাগ হয় (§ ২.১-ক)
         SplitAtMidnights(closed, now);
+
+        // ২· অনেকক্ষণ একই স্টেটে থাকলেও ভাগ — নইলে টানা কাজের সময়টুকু
+        //    কিউয়ে না গিয়ে মেমরিতে খোলা থাকত, আর ক্র্যাশে হারাত।
+        SplitLongSegments(closed, now);
 
         if (locked)
         {
@@ -145,6 +172,33 @@ public sealed class IdleStateMachine
         _state = next;
         _openedAt = at;
         ResetScore();
+    }
+
+    /// <summary>
+    /// খোলা সেগমেন্ট <see cref="MaxSegmentLength"/> পেরোলে সেখানেই কেটে
+    /// নতুন করে খোলা। স্টেট বদলায় না — শুধু রেকর্ডটা টেকসই হয়।
+    ///
+    /// ⚠️ <b>শেষ <c>idleThreshold</c> সময়টুকু কখনো বন্ধ করা হয় না।</b>
+    ///
+    /// কারণ retro-adjust (B04): ACTIVE থেকে IDLE-এ যাওয়ার সময় শেষ ৬০ সেকেন্ড
+    /// কাজের হিসাব থেকে <b>বাদ</b> দিতে হয়। ওই ৬০ সেকেন্ড যদি ইতিমধ্যে
+    /// আলাদা সেগমেন্ট হিসেবে বেরিয়ে গিয়ে থাকে, তখন আর পিছিয়ে গিয়ে কাটা
+    /// যায় না — আর নিষ্ক্রিয় সময়টা নীরবে <b>কাজ হিসেবে গোনা</b> হয়ে যায়।
+    ///
+    /// তাই ভাগ করার সীমানা সবসময় <c>now − idleThreshold</c>-এর আগে রাখা হয়।
+    /// এতে সেগমেন্ট ~৬০ সেকেন্ড দেরিতে বের হয়, যেটা কোনো সমস্যা নয়।
+    /// </summary>
+    private void SplitLongSegments(List<ActivitySegment> closed, DateTimeOffset now)
+    {
+        var horizon = now - _idleThreshold;
+
+        while (_openedAt + _maxSegment <= horizon)
+        {
+            var boundary = _openedAt + _maxSegment;
+            EmitSegment(closed, _state, _openedAt, boundary);
+            _openedAt = boundary;
+            ResetScore();
+        }
     }
 
     /// <summary>খোলা সেগমেন্ট মধ্যরাত পেরিয়ে গেলে সেখানেই কেটে নতুন করে খোলা হয়।</summary>

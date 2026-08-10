@@ -142,6 +142,17 @@ internal sealed class EnrollmentClient
                 _credentials.Employee?.EmpCode);
         }
 
+        // ⭐ সার্ভারে যাওয়ার **আগেই** নিশ্চিত হওয়া যে টোকেনটা রাখা যাবে।
+        //    কোড একবার-ব্যবহার্য: enroll সফল হয়ে টোকেন এলো অথচ ডিস্কে লেখা
+        //    গেল না — তখন কোডও গেল, টোকেনও গেল, আর সার্ভারে অনাথ ডিভাইস
+        //    পড়ে রইল। আসল মেশিনে ঠিক এটাই ঘটেছিল।
+        if (!_store.CanPersist(out var storageError))
+        {
+            return new EnrollmentResult(
+                EnrollmentStatus.StorageFailed,
+                $"টোকেন রাখার জায়গা লেখা যাচ্ছে না, তাই enrollment কোডটা খরচ করা হয়নি — {storageError}");
+        }
+
         var identity = _credentials.Identity;
         if (!identity.UsableForEnrollment)
         {

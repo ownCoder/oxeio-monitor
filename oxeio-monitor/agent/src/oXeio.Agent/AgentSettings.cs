@@ -16,8 +16,27 @@ namespace oXeio.Agent;
 [SupportedOSPlatform("windows")]
 internal sealed record AgentSettings
 {
-    /// <summary>উদাহরণ: <c>https://oxeio.office.local</c> — শেষে <c>/api/v1</c> নয়।</summary>
+    /// <summary>
+    /// উদাহরণ: <c>https://oxeio.office.local</c> — <b>শুধু ঠিকানা</b>, কোনো পথ নয়।
+    ///
+    /// ⚠️ API-র prefix (<c>/api/v1</c>) এখানে লিখতে হয় না; <see cref="ApiRoot"/>
+    /// নিজে জুড়ে নেয়। ওটা সার্ভারের ভেতরের ব্যাপার — অফিসের অ্যাডমিনকে
+    /// মনে রাখতে বলা মানে একদিন কেউ ভুলে যাবে, আর তখন এজেন্ট প্রতিটা
+    /// রিকোয়েস্টে ৪০৪ খেয়ে চুপচাপ কিছুই পাঠাবে না।
+    /// </summary>
     public required string ServerUrl { get; init; }
+
+    /// <summary>সার্ভারের গ্লোবাল prefix — <c>server/src/main.ts</c>-এ সেট করা।</summary>
+    public const string ApiPrefix = "api/v1";
+
+    /// <summary>
+    /// <see cref="ServerUrl"/> + <see cref="ApiPrefix"/>। শেষে স্ল্যাশ থাকে,
+    /// কারণ <c>Uri</c> আপেক্ষিক পথ জোড়ার সময় শেষ খণ্ডটা <b>কেটে ফেলে</b> —
+    /// স্ল্যাশ ছাড়া <c>…/api/v1</c> + <c>agent/enroll</c> হতো
+    /// <c>…/api/agent/enroll</c>।
+    /// </summary>
+    [JsonIgnore]
+    public Uri ApiRoot => new(new Uri(ServerUrl.TrimEnd('/') + "/"), ApiPrefix + "/");
 
     /// <summary>স্টাফ নিজের ডেটা যেখানে দেখবে (J02)। না থাকলে মেনু আইটেমটা নিষ্ক্রিয়।</summary>
     public string? StaffPortalUrl { get; init; }
