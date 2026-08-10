@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    tags: ["v*"]
   pull_request:
     branches: [main, develop]
+  # ইনস্টলার হাতে বানানোর জন্য — নিচের installer job দেখুন
+  workflow_dispatch:
 
 # একই ব্রাঞ্চে নতুন push এলে আগের রান বাতিল — অকারণে runner আটকে থাকে না
 concurrency:
@@ -154,6 +157,38 @@ jobs:
 
       - name: Test
         run: dotnet test -warnaserror --no-build
+
+  installer:
+    name: MSI — শুধু ট্যাগে বা হাতে চালালে
+    # ⚠️ প্রতিটা push-এ চালানো হয় না। self-contained publish ~২০০ MB আর
+    #    cab কম্প্রেশনে কয়েক মিনিট লাগে; রোজকার CI-তে ওটা নিছক অপচয়।
+    #    রিলিজের আগে (ট্যাগ) বা হাতে চালিয়ে যাচাই করা হয়।
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: oxeio-monitor/agent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install WiX
+        run: dotnet tool install --global wix
+
+      - name: Build MSI
+        shell: pwsh
+        run: ./installer/build.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oXeioAgent-msi
+          path: oxeio-monitor/agent/installer/bin/oXeioAgent.msi
+          retention-days: 30
 
   docker:
     name: docker image builds

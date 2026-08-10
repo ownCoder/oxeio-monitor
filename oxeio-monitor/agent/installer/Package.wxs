@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  oXeio এজেন্টের MSI (H03)।
+
+  সাইলেন্ট ইনস্টল — ১৫টা PC-তে একে একে হাতে ক্লিক করার প্রশ্নই ওঠে না:
+
+    msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local" ^
+            ENROLLCODE="OXEIO-XXXXXXXX"
+
+  আনইনস্টল:
+
+    msiexec /x oXeioAgent.msi /qn
+
+  ⚠️ আনইনস্টলে %ProgramData%\oXeio **মুছে ফেলা হয় না**। ওখানে এমন ডেটা
+     থাকতে পারে যা এখনো সার্ভারে যায়নি — এজেন্ট সরানোর মানে কারো গত
+     সপ্তাহের ঘণ্টা মুছে ফেলা নয়। ফোল্ডারটা হাতে মুছতে হবে, জেনেবুঝে।
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <!-- ⚠️ Codepage 65001 (UTF-8) না দিলে নিচের বাংলা বার্তাগুলো MSI-র ডিফল্ট
+       1252 কোডপেজে ধরে না আর বিল্ডই থেমে যায় (WIX0311)। -->
+  <Package
+      Name="oXeio Agent"
+      Manufacturer="oXeio"
+      Version="$(var.AgentVersion)"
+      UpgradeCode="7A1E4C2B-9D33-4E51-8F0A-2C6B5D9E1A47"
+      Scope="perMachine"
+      Compressed="yes"
+      Language="1033"
+
+      Codepage="65001">
+
+    <!-- একই ভার্সন বা পুরোনো ভার্সন দিয়ে ঢেকে দেওয়া আটকানো। নইলে rollout
+         স্ক্রিপ্ট ভুল করে পুরোনো MSI চালালে ফ্লিটের কিছু PC পিছিয়ে যেত। -->
+    <MajorUpgrade
+        AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="oXeio Agent-এর নতুন ভার্সন ইতিমধ্যেই বসানো আছে।" />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- ── ইনস্টলের সময় দেওয়া মান ─────────────────────────────────────────
+         ⚠️ Secure="yes" না দিলে elevated অংশে মানগুলো পৌঁছাত না — সাইলেন্ট
+            ইনস্টলে নীরবে ফাঁকা রেজিস্ট্রি লেখা হতো, আর এজেন্ট "কনফিগার করা
+            হয়নি" বলে বসে থাকত। -->
+    <Property Id="SERVERURL" Secure="yes" />
+    <Property Id="ENROLLCODE" Secure="yes" />
+    <Property Id="PORTALURL" Secure="yes" />
+    <Property Id="POLICYURL" Secure="yes" />
+
+    <!-- সার্ভারের ঠিকানা ছাড়া ইনস্টল করার কোনো মানে নেই — এজেন্ট বসত,
+         চলত, আর কিছুই পাঠাত না। শুরুতেই থামিয়ে দেওয়া ভালো। -->
+    <Launch
+        Condition="SERVERURL"
+        Message="SERVERURL দিতে হবে। যেমন: msiexec /i oXeioAgent.msi /qn SERVERURL=&quot;https://oxeio.office.local&quot;" />
+
+    <!-- Windows 10 1809 (build 17763) — এজেন্টের সর্বনিম্ন লক্ষ্য -->
+    <Launch
+        Condition="Installed OR (VersionNT &gt;= 603)"
+        Message="oXeio Agent-এর জন্য Windows 10 বা নতুন সংস্করণ দরকার।" />
+
+    <!-- ── ফাইল ও ফোল্ডার ─────────────────────────────────────────────── -->
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="oXeio" />
+    </StandardDirectory>
+
+    <!-- ── কনফিগ রেজিস্ট্রিতে, ফাইলে নয় ────────────────────────────────────
+         কারণ: আনইনস্টলে Windows নিজেই মুছে দেয়, আর ফাইলের ACL নিয়ে ভাবতে
+         হয় না। এখানে গোপন কিছু নেই — ডিভাইস টোকেন DPAPI দিয়ে আলাদা ফাইলে।
+         ⚠️ enrollment কোডটা একবার-ব্যবহার্য, তাই enroll হয়ে যাওয়ার পর ওটা
+            পড়ে থাকলেও কাজে লাগে না। -->
+    <ComponentGroup Id="Configuration" Directory="INSTALLFOLDER">
+      <Component Id="SettingsRegistry" Guid="3D9B6C12-8E44-4FA0-9035-5C7E9B4DAF86">
+        <RegistryKey Root="HKLM" Key="SOFTWARE\oXeio\Agent" ForceDeleteOnUninstall="yes">
+          <RegistryValue Name="ServerUrl" Type="string" Value="[SERVERURL]" KeyPath="yes" />
+          <RegistryValue Name="EnrollmentCode" Type="string" Value="[ENROLLCODE]" />
+          <RegistryValue Name="StaffPortalUrl" Type="string" Value="[PORTALURL]" />
+          <RegistryValue Name="PolicyUrl" Type="string" Value="[POLICYURL]" />
+          <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLFOLDER]" />
+        </RegistryKey>
+      </Component>
+    </ComponentGroup>
+
+    <!-- ── .NET রানটাইম ও নেটিভ লাইব্রেরি ──────────────────────────────────
+         দুটো exe self-contained, তাই সাথে ~২৬৭টা ফাইল যায় (রানটাইম,
+         SkiaSharp-এর নেটিভ DLL, WinForms)। হাতে তালিকা লেখা অসম্ভব — একটা
+         DLL বাদ পড়লে এজেন্ট চালুই হতো না, আর ভুলটা ধরা পড়ত স্টাফের PC-তে।
+
+         ⚠️ দুটো exe-ও এখানেই আসে। কাস্টম অ্যাকশনগুলো সেগুলোকে FileRef দিয়ে নয়,
+         [INSTALLFOLDER] ধরে পথ দিয়ে ডাকে — নইলে একই ফাইল দুবার ঘোষণা করতে হতো। -->
+    <ComponentGroup Id="RuntimeFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="oXeio Agent" Level="1">
+      <ComponentGroupRef Id="Configuration" />
+      <ComponentGroupRef Id="RuntimeFiles" />
+    </Feature>
+
+    <!-- ══ কাস্টম অ্যাকশন ════════════════════════════════════════════════ -->
+
+    <!--
+      ⭐ ডেটা ফোল্ডারটা **এজেন্ট নিজেই** বানায়।
+
+      ProgramData-র ডিফল্ট ACL-এ সাধারণ ইউজার শুধু নিজের বানানো ফাইল বদলাতে
+      পারে। ইনস্টলার (অ্যাডমিন) ফোল্ডারটা বানিয়ে রেখে গেলে স্টাফের অ্যাকাউন্টে
+      চলা এজেন্ট ওখানে SQLite কিউ লিখতেই পারত না — প্রতিটা INSERT-এ
+      SQLITE_READONLY, আর এজেন্ট চুপচাপ কিছুই জমাত না।
+
+      ACL-এর নিয়ম AgentDataDirectory.Ensure()-এ একবারই লেখা আছে। এখানে WiX-এ
+      আবার লিখলে দুটো সংজ্ঞা একদিন আলাদা হয়ে যেত।
+    -->
+    <CustomAction Id="PrepareDataDir"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]oXeio.Agent.exe&quot; --prepare-data-dir"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <!-- H02 — লগঅনে watchdog চালু। ⚠️ এজেন্ট নয়, watchdog — দুই জায়গা থেকে
+         এজেন্ট চালু হলে এক মেশিনে দুটো এজেন্ট চলত আর একই ঘণ্টা দুবার গোনা
+         হতো (Deployment/WatchdogTask.xml দেখুন)। -->
+    <CustomAction Id="InstallLogonTask"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]oXeio.Watchdog.exe&quot; --install-task"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <CustomAction Id="UninstallLogonTask"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]oXeio.Watchdog.exe&quot; --uninstall-task"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <!-- ⚠️ Return="ignore" — প্রসেস না চললে taskkill অশূন্য ফেরত দেয়, আর
+         সেটা এখানে স্বাভাবিক। check দিলে "চলছিল না" কারণেই আনইনস্টল ব্যর্থ হতো। -->
+    <CustomAction Id="StopAgent"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[System64Folder]taskkill.exe&quot; /IM oXeio.Agent.exe /F"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <CustomAction Id="StopWatchdog"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[System64Folder]taskkill.exe&quot; /IM oXeio.Watchdog.exe /F"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <!-- আপগ্রেডেও দরকার: পুরোনো exe চলতে থাকলে ফাইল লক থাকে আর MSI
+           রিবুট চায়। ১৫টা PC-তে রিবুট চাওয়া মানে রোলআউট আটকে যাওয়া।
+
+           ⚠️ deferred অ্যাকশন **অবশ্যই** InstallInitialize আর InstallFinalize-এর
+           মাঝে বসাতে হয়। আগে এগুলো InstallValidate-এর আগে ছিল, যেটা
+           InstallInitialize-এরও আগে — MSI বিল্ডই থেমে যেত (ICE77)। -->
+      <Custom Action="StopAgent" After="InstallInitialize" Condition="1" />
+      <Custom Action="StopWatchdog" After="StopAgent" Condition="1" />
+
+      <Custom Action="UninstallLogonTask" Before="RemoveFiles"
+              Condition="REMOVE=&quot;ALL&quot;" />
+
+      <!-- ফাইল বসার পরে — না হলে ডাকার মতো exe-ই থাকত না -->
+      <Custom Action="PrepareDataDir" After="InstallFiles" Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="InstallLogonTask" After="PrepareDataDir" Condition="NOT Installed OR REINSTALL" />
+    </InstallExecuteSequence>
+
+  </Package>
+</Wix>

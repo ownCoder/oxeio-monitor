@@ -4,6 +4,7 @@ using System.Windows.Forms;
 
 using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
+using oXeio.Agent.Security;
 using oXeio.Agent.Sync;
 
 namespace oXeio.Agent;
@@ -35,7 +36,40 @@ internal static partial class Program
             return Diagnostics.Run();
         }
 
+        if (args.Any(a => a.Equals("--prepare-data-dir", StringComparison.OrdinalIgnoreCase)))
+        {
+            AttachOrAllocConsole();
+            return PrepareDataDir();
+        }
+
         return RunAgent();
+    }
+
+    /// <summary>
+    /// MSI ইনস্টল করার সময় একবার, অ্যাডমিন অধিকারে।
+    ///
+    /// ⭐ <b>কেন ইনস্টলারকে এটা করতে হয়:</b> ProgramData-র ডিফল্ট ACL-এ সাধারণ
+    /// ইউজার শুধু <b>নিজের বানানো</b> ফাইল বদলাতে পারে। ইনস্টলার (অ্যাডমিন)
+    /// ফোল্ডারটা বানিয়ে ফেলে রেখে গেলে স্টাফের অ্যাকাউন্টে চলা এজেন্ট
+    /// ওখানে SQLite কিউ লিখতেই পারত না — প্রতিটা INSERT-এ
+    /// <c>SQLITE_READONLY</c>, আর এজেন্ট চুপচাপ কিছুই জমাত না।
+    ///
+    /// তাই ফোল্ডারটা <see cref="AgentDataDirectory.Ensure"/> দিয়েই বানানো হয়,
+    /// যেটা Users-কে Modify দেয়। ACL-এর নিয়ম একটাই জায়গায় থাকে — WiX-এ
+    /// আলাদা করে লিখলে দুটো সংজ্ঞা একদিন আলাদা হয়ে যেত।
+    /// </summary>
+    private static int PrepareDataDir()
+    {
+        var path = AgentDataDirectory.Default;
+
+        if (!AgentDataDirectory.TryEnsure(path, out var error))
+        {
+            Console.Error.WriteLine($"❌ {path} বানানো গেল না: {error}");
+            return 4;
+        }
+
+        Console.WriteLine($"✅ ডেটা ফোল্ডার প্রস্তুত: {path}");
+        return 0;
     }
 
     private static int RunAgent()

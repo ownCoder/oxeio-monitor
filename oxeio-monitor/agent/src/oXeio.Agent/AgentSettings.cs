@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -68,12 +69,22 @@ internal sealed record AgentSettings
         AllowTrailingCommas = true,
     };
 
+    /// <summary>MSI এখানে লেখে। আনইনস্টলে Windows নিজেই মুছে দেয়।</summary>
+    public const string RegistryKey = @"SOFTWARE\oXeio\Agent";
+
+    public static AgentSettings? Load(out string source) => Load(null, out source);
+
     /// <summary>
     /// পড়া যায়নি মানে কনফিগার করা হয়নি — <c>null</c> ফেরে, ব্যতিক্রম নয়।
     /// কলার তখন স্পষ্ট বার্তা দেখাতে পারে, স্ট্যাক ট্রেস নয়।
+    ///
+    /// তিন জায়গায় খোঁজা হয়, এই ক্রমে:
+    /// <list type="number">
+    /// <item>পরিবেশ-চলক — শুধু ডেভেলপমেন্টে</item>
+    /// <item>রেজিস্ট্রি <c>HKLM\SOFTWARE\oXeio\Agent</c> — MSI যেখানে লেখে</item>
+    /// <item><c>agent.json</c> — হাতে বসানোর পথ</item>
+    /// </list>
     /// </summary>
-    public static AgentSettings? Load(out string source) => Load(null, out source);
-
     public static AgentSettings? Load(string? directory, out string source)
     {
         var env = Environment.GetEnvironmentVariable(ServerUrlEnvVar);
@@ -81,6 +92,13 @@ internal sealed record AgentSettings
         {
             source = $"পরিবেশ-চলক {ServerUrlEnvVar}";
             return new AgentSettings { ServerUrl = env.Trim() };
+        }
+
+        var fromRegistry = FromRegistry();
+        if (fromRegistry is not null)
+        {
+            source = $@"HKLM\{RegistryKey}";
+            return fromRegistry;
         }
 
         var dir = directory ?? AgentDataDirectory.Default;
@@ -98,5 +116,49 @@ internal sealed record AgentSettings
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// ⚠️ <c>Registry.LocalMachine</c> খোলা হয় <b>64-বিট ভিউতে</b> জোর করে।
+    /// এজেন্ট 32-বিট হিসেবে চললে (বা ভবিষ্যতে কেউ AnyCPU বানালে) Windows
+    /// নীরবে <c>WOW6432Node</c>-এ পাঠাত, যেখানে MSI কিছু লেখেইনি — আর তখন
+    /// এজেন্ট "কনফিগার করা হয়নি" বলে বসে থাকত, অথচ ইনস্টল ঠিকই হয়েছে।
+    /// </summary>
+    private static AgentSettings? FromRegistry()
+    {
+        try
+        {
+            using var root = RegistryKey64();
+            using var key = root.OpenSubKey(RegistryKey);
+            if (key is null) return null;
+
+            var url = key.GetValue("ServerUrl") as string;
+            if (string.IsNullOrWhiteSpace(url)) return null;
+
+            var settings = new AgentSettings
+            {
+                ServerUrl = url.Trim(),
+                StaffPortalUrl = Trimmed(key, "StaffPortalUrl"),
+                PolicyUrl = Trimmed(key, "PolicyUrl"),
+                EnrollmentCode = Trimmed(key, "EnrollmentCode"),
+            };
+
+            return settings.IsUsable ? settings : null;
+        }
+        catch (Exception e) when (e is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
+    private static Microsoft.Win32.RegistryKey RegistryKey64() =>
+        Microsoft.Win32.RegistryKey.OpenBaseKey(
+            Microsoft.Win32.RegistryHive.LocalMachine,
+            Microsoft.Win32.RegistryView.Registry64);
+
+    private static string? Trimmed(Microsoft.Win32.RegistryKey key, string name)
+    {
+        var value = (key.GetValue(name) as string)?.Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }
