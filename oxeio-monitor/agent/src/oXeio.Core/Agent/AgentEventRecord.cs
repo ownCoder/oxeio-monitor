@@ -36,6 +36,18 @@ public static class AgentEventTypes
     public const string AgentStop = "agent_stop";
     public const string Logon = "logon";
     public const string Logoff = "logoff";
+
+    /// <summary>
+    /// ⭐ PC বন্ধ/রিস্টার্ট — <c>logoff</c> থেকে আলাদা।
+    ///
+    /// সার্ভারের G02 অ্যালার্ট (<c>alerts.rules.ts</c>) একটা <c>agent_stop</c>-কে
+    /// "স্বাভাবিক" বলে <b>কেবল তখনই</b>, যখন তার আশেপাশে একটা <c>logoff</c> বা
+    /// <c>shutdown</c> আছে। দুটোর কোনোটাই না পাঠালে প্রতিটা রাতের স্বাভাবিক
+    /// শাটডাউনই "হস্তক্ষেপ" হয়ে অ্যালার্ট তুলত — অর্থাৎ ১৫টা PC থেকে রোজ
+    /// ১৫টা মিথ্যা অ্যালার্ট, আর তার পরেই কেউ আর অ্যালার্ট পড়ত না।
+    /// </summary>
+    public const string Shutdown = "shutdown";
+
     public const string Lock = "lock";
     public const string Unlock = "unlock";
     public const string Sleep = "sleep";

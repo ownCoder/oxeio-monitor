@@ -94,6 +94,11 @@ internal static class TrayTooltip
 
     private static string MonthLine(AgentStatus status)
     {
+        // ⚠️ সার্ভার এখনো মাসের যোগফল বলেনি — "০:০০/২০৮ (০%)" লিখলে সেটা
+        //    "কিছুই করোনি" পড়া হতো, অথচ আসলে আমরা জানি না
+        //    (AgentStatus.MonthlyKnown)।
+        if (!status.MonthlyKnown) return "মাসের হিসাব আসছে…";
+
         var target = status.MonthlyTargetHours;
         var targetText = Math.Abs(target - Math.Round(target)) < 0.05
             ? BanglaText.Number((int)Math.Round(target))

@@ -36,7 +36,23 @@ export type AuditAction =
   /** D06 — মালিকের ক্যাটাগরি রুল বদলানো। `change_setting` দিয়ে লিখলে
    *  কে কবে কোন সাইটকে "unproductive" বানাল সেটা ফিল্টার করা যেত না। */
   | 'change_category_rule'
-  | 'recategorize';
+  | 'recategorize'
+  /**
+   * **I06 — 2FA।** আটটা আলাদা নাম, একটা `change_setting` নয়: "কে কবে নিজের
+   * 2FA বন্ধ করল" আর "কে কবে থিম বদলাল" এক ফিল্টারে পড়লে প্রথমটা কোনোদিন
+   * খুঁজে পাওয়া যেত না — অথচ অ্যাকাউন্ট দখলের তদন্তে ঠিক ওটাই প্রথম প্রশ্ন।
+   */
+  | '2fa_setup'
+  | '2fa_enable'
+  | '2fa_enable_failed'
+  | '2fa_disable'
+  | '2fa_disable_failed'
+  | '2fa_recovery_regenerate'
+  /** ⭐ রিকভারি কোড দিয়ে ঢোকা — বিরল আর সংবেদনশীল, তাই আলাদা action */
+  | '2fa_recovery_used'
+  | '2fa_failed'
+  /** K02 — `POST /ops/backup/run`, হাতে চালানো ব্যাকআপ (রাতের cron অডিট করে না) */
+  | 'backup_run';
 
 export interface AuditEntry {
   userId?: number | null;

@@ -4,6 +4,8 @@ import type { Role } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark, Wordmark } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
+import { GlobalSearch } from './GlobalSearch';
+import { ThemeToggle } from './ThemeToggle';
 
 interface NavItem {
   to: string;
@@ -45,6 +47,15 @@ const NAV: NavItem[] = [
   { to: '/reports', label: 'রিপোর্ট', roles: ['owner', 'manager'] },
   // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
   { to: '/settings', label: 'সেটিংস', roles: ['owner'] },
+  /**
+   * ⭐ I06 — **তিনটে ভূমিকারই**, owner-only নয়: এটা ট্র্যাকিংয়ের পর্দা নয়,
+   *    নিজের অ্যাকাউন্টের 2FA সেটিং। owner-only করলে ম্যানেজারের অ্যাকাউন্ট
+   *    — যার হাতে সবার ডেটা — কোনোদিন 2FA পেত না।
+   *
+   * ⚠️ ইচ্ছাকৃতভাবে **সবার শেষে**, সেটিংসের পরেও: এটা রোজকার কাজের পর্দা
+   *    নয়, বছরে দু-একবার খোলার জায়গা।
+   */
+  { to: '/security', label: 'নিরাপত্তা', roles: ['owner', 'manager', 'employee'] },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -60,8 +71,19 @@ export function Layout() {
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* লোগোর কালো ফিল্ড — দুই থিমেই এক */}
-      <header className="flex items-center gap-4 bg-black px-4 py-2.5 text-white">
+      {/*
+        লোগোর কালো ফিল্ড — দুই থিমেই এক।
+
+        ⭐ E13 — এই একটা জায়গাতেই রং টোকেন নয়, হার্ডকোড কালো-সাদা। কারণ
+           এটা পটভূমি নয়, **লোগোর ফিল্ড**: লোগোটা কালোর উপরেই আঁকা, তাই
+           থিমের সাথে উল্টে গেলে ব্র্যান্ডটাই বদলে যেত। ডার্কে পাতার
+           পটভূমি #141517, হেডার #000 — এক ধাপ গাঢ়, তাই কিনারাটা থাকে।
+
+        ⚠️ E12 — `flex-wrap`: ফোনে সার্চ বাক্সটা নিজের একটা সারিতে নেমে
+           যায়। একই সারিতে লোগো, নাম, সার্চ আর দুটো বোতাম রাখলে ৩৭৫px-এ
+           সবকটাই চেপে গিয়ে অপঠ্য হতো।
+      */}
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-black px-4 py-2.5 text-white">
         <div className="flex items-center gap-2.5">
           <BrandMark />
           <div className="leading-tight">
@@ -70,6 +92,9 @@ export function Layout() {
           </div>
         </div>
 
+        {/* ⚠️ role = employee হলে এটা নিজেই `null` — তার খোঁজার মতো কেউ নেই */}
+        <GlobalSearch />
+
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">
             <div className="text-[12.5px] font-medium">{user?.fullName}</div>
@@ -77,6 +102,7 @@ export function Layout() {
               {user ? (ROLE_LABEL[user.role] ?? user.role) : ''}
             </div>
           </div>
+          <ThemeToggle />
           <button
             type="button"
             onClick={() => void signOut()}

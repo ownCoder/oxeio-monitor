@@ -17,9 +17,36 @@ export const SESSION_TTL_MIN = 30;
  */
 export const SESSION_REFRESH_AFTER_MIN = 5;
 
+/**
+ * I09 — মেয়াদ শেষের কত আগে "আর ১ মিনিট" সতর্কবার্তা।
+ * ⚠️ কাজের মাঝপথে চুপচাপ লগআউট নয় — এই জানালাটাই ইউজারকে একটা ক্লিকে
+ *    সেশন বাঁচানোর সুযোগ দেয়।
+ */
+export const IDLE_WARN_BEFORE_SEC = 60;
+
 /** I11 — ব্রুট-ফোর্স */
 export const MAX_LOGIN_FAILS = 5;
 export const LOGIN_LOCK_MIN = 15;
 
 /** পাসওয়ার্ডের সর্বনিম্ন দৈর্ঘ্য */
 export const MIN_PASSWORD_LENGTH = 10;
+
+// ══════════════════ I06 — TOTP 2FA ══════════════════
+
+/** authenticator অ্যাপে যে নামে অ্যাকাউন্টটা দেখাবে */
+export const TOTP_ISSUER = 'oXeio Monitor';
+
+/** RFC 6238-এর ডিফল্ট — Google Authenticator, Authy, 1Password সবাই এটাই ধরে */
+export const TOTP_DIGITS = 6;
+export const TOTP_PERIOD = 30;
+
+/**
+ * ⚠️ ±১ ধাপ (±৩০ সেকেন্ড) সহনশীলতা। ফোনের ঘড়ি কয়েক সেকেন্ড এদিক-ওদিক
+ *    থাকা স্বাভাবিক; ০ রাখলে বহু বৈধ কোড অকারণে বাতিল হতো।
+ */
+export const TOTP_WINDOW = 1;
+
+/** ⭐ ফোন হারালে ঢোকার একমাত্র পথ — একবারই দেখানো হয় */
+export const RECOVERY_CODE_COUNT = 10;
+/** ১০ অক্ষর × ৫ বিট = ৫০ বিট এনট্রপি */
+export const RECOVERY_CODE_LENGTH = 10;

@@ -6,9 +6,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ReadStream } from 'node:fs';
 
+import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
-
-import { storageRoot } from "../common/storage.config";
 
 export interface UpdateOffer {
   version: string;

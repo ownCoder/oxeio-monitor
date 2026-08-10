@@ -5,11 +5,14 @@ import {
   decideLiveStatus,
   formatWorkDate,
   HOURS_PER_DAY,
+  latestHeartbeat,
   monthStartOf,
   OFFLINE_AFTER_SEC,
   parseWorkDate,
   previousWorkDate,
   spreadIntoHourBuckets,
+  type DeviceReport,
+  type LiveStatus,
 } from '../src/dashboard/dashboard.math';
 
 /** ঢাকার ১০ আগস্ট ২০২৬ — কর্মদিবস মানেই UTC-midnight Date */
@@ -23,37 +26,36 @@ function dhaka(hh: number, mm = 0, ss = 0): Date {
 const NOW = new Date('2026-08-10T09:00:00.000Z');
 const secondsAgo = (sec: number): Date => new Date(NOW.getTime() - sec * 1000);
 
-describe('decideLiveStatus — কার্ডের রঙ', () => {
-  const base = { hasDevice: true, lastState: 'active' as const, now: NOW };
+/** heartbeat-এ সদ্য `active` বলা একটা সুস্থ ডিভাইস; over দিয়ে যা খুশি বদলাও */
+function device(over: Partial<DeviceReport> = {}): DeviceReport {
+  return {
+    lastSeenAt: secondsAgo(5),
+    lastState: 'active',
+    lastStateAt: secondsAgo(5),
+    ...over,
+  };
+}
 
-  it('তাজা heartbeat হলে শেষ সেগমেন্টের state-ই দেখায়', () => {
-    expect(decideLiveStatus({ ...base, lastSeenAt: secondsAgo(5) })).toBe(
-      'active',
-    );
-    expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(5),
-        lastState: 'idle',
-      }),
-    ).toBe('idle');
+function statusOf(
+  devices: readonly DeviceReport[],
+  fallbackState: DeviceReport['lastState'] = null,
+): LiveStatus {
+  return decideLiveStatus({ devices, fallbackState, now: NOW });
+}
+
+describe('decideLiveStatus — কার্ডের রঙ', () => {
+  it('তাজা heartbeat হলে এজেন্টের বলা state-ই দেখায়', () => {
+    expect(statusOf([device()])).toBe('active');
+    expect(statusOf([device({ lastState: 'idle' })])).toBe('idle');
   });
 
   it('locked আলাদা রঙ পায় না — idle-এ মেশে', () => {
-    expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(5),
-        lastState: 'locked',
-      }),
-    ).toBe('idle');
+    expect(statusOf([device({ lastState: 'locked' })])).toBe('idle');
   });
 
   it('৯০ সেকেন্ড পেরোলে offline, ১০ মিনিট পেরোলে agent_down', () => {
-    expect(decideLiveStatus({ ...base, lastSeenAt: secondsAgo(120) })).toBe(
-      'offline',
-    );
-    expect(decideLiveStatus({ ...base, lastSeenAt: secondsAgo(700) })).toBe(
+    expect(statusOf([device({ lastSeenAt: secondsAgo(120) })])).toBe('offline');
+    expect(statusOf([device({ lastSeenAt: secondsAgo(700) })])).toBe(
       'agent_down',
     );
   });
@@ -64,71 +66,177 @@ describe('decideLiveStatus — কার্ডের রঙ', () => {
    * 🔴 কোনোদিন উঠত না, অথচ ওটাই ধরার জন্য ফিচারটা।
    */
   it('অনেকক্ষণ চুপ থাকা এজেন্ট offline নয়, agent_down', () => {
-    expect(
-      decideLiveStatus({ ...base, lastSeenAt: secondsAgo(3 * 3600) }),
-    ).toBe('agent_down');
+    expect(statusOf([device({ lastSeenAt: secondsAgo(3 * 3600) })])).toBe(
+      'agent_down',
+    );
   });
 
   it('সীমানার ঠিক উপরে — "বেশি হলে" মানে কঠোরভাবে বেশি', () => {
     expect(
-      decideLiveStatus({ ...base, lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC) }),
+      statusOf([device({ lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC) })]),
     ).toBe('active');
     expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC + 1),
-      }),
+      statusOf([device({ lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC + 1) })]),
     ).toBe('offline');
     expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC),
-      }),
+      statusOf([device({ lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC) })]),
     ).toBe('offline');
     expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC + 1),
-      }),
+      statusOf([device({ lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC + 1) })]),
     ).toBe('agent_down');
   });
 
   it('ডিভাইসই না থাকলে offline — লাল অ্যালার্ম নয়', () => {
-    expect(
-      decideLiveStatus({
-        hasDevice: false,
-        lastSeenAt: null,
-        lastState: null,
-        now: NOW,
-      }),
-    ).toBe('offline');
+    expect(statusOf([])).toBe('offline');
   });
 
   it('ডিভাইস আছে কিন্তু কখনো সাড়া দেয়নি — agent_down', () => {
     expect(
-      decideLiveStatus({
-        hasDevice: true,
-        lastSeenAt: null,
-        lastState: null,
-        now: NOW,
-      }),
+      statusOf([
+        device({ lastSeenAt: null, lastState: null, lastStateAt: null }),
+      ]),
     ).toBe('agent_down');
   });
 
-  it('এজেন্ট জীবিত কিন্তু সেগমেন্ট আসেনি — না-জানাকে active ধরা হয় না', () => {
+  it('এজেন্ট জীবিত কিন্তু কেউ কিছু বলেনি — না-জানাকে active ধরা হয় না', () => {
+    expect(statusOf([device({ lastState: null, lastStateAt: null })])).toBe(
+      'idle',
+    );
+  });
+
+  it('ডিভাইসের ঘড়ি এগিয়ে থাকলেও (ভবিষ্যতের সময়) তাজাই ধরা হয়', () => {
     expect(
-      decideLiveStatus({
-        ...base,
-        lastSeenAt: secondsAgo(10),
-        lastState: null,
-      }),
+      statusOf([
+        device({ lastSeenAt: secondsAgo(-30), lastStateAt: secondsAgo(-30) }),
+      ]),
+    ).toBe('active');
+  });
+});
+
+describe('decideLiveStatus — এজেন্টের কথা বনাম সেগমেন্টের অনুমান', () => {
+  /**
+   * ⭐ পুরো ফিচারটার কারণ। সেগমেন্ট **ব্যাচে** আসে, তাই শেষ সারিটা কয়েক
+   * মিনিট পুরোনো হতে পারে: কর্মী উঠে চলে গেছে, এজেন্ট ৫ সেকেন্ড আগে
+   * `idle` বলেছে, অথচ সেগমেন্টে এখনো `active` লেখা। অনুমানকে প্রাধান্য
+   * দিলে বোর্ড না-কাজের সময়কে সবুজ দেখাত — মিনিটের পর মিনিট।
+   */
+  it('তাজা রিপোর্ট থাকলে সেগমেন্টের অনুমান উপেক্ষা হয়', () => {
+    expect(statusOf([device({ lastState: 'idle' })], 'active')).toBe('idle');
+    expect(statusOf([device({ lastState: 'active' })], 'idle')).toBe('active');
+  });
+
+  /**
+   * ⚠️ `last_state` কলামটা নতুন — মাইগ্রেশনের পরে সব সারিতে null, আর
+   * heartbeat না আসা পর্যন্ত null-ই থাকে। fallback না রাখলে প্রতিটা
+   * সুস্থ কর্মী ওই সময়টুকু ⚪ দেখাত, অর্থাৎ ফিচারটা চালু করাই একটা
+   * সাময়িক ব্ল্যাকআউট হতো।
+   */
+  it('এজেন্ট state না পাঠালে আগের অনুমানের পথেই ফেরে', () => {
+    const old = device({ lastState: null, lastStateAt: null });
+
+    expect(statusOf([old], 'active')).toBe('active');
+    expect(statusOf([old], 'locked')).toBe('idle');
+    expect(statusOf([old], null)).toBe('idle');
+  });
+
+  /**
+   * ⭐ এই টেস্টটা না থাকলে সবচেয়ে খারাপ বাগটা নীরবে বেঁচে যেত। এজেন্ট মরার
+   * ঠিক আগে `active` বলে গিয়েছিল; মানটা কলামে বসেই থাকে। মেয়াদ না দেখলে
+   * বন্ধ PC-র কার্ড চিরকাল সবুজ থাকত — offline দেখানোর চেয়েও খারাপ,
+   * কারণ তখন না-কাজের সময় কাজ বলে দাবি করা হতো।
+   */
+  it('বাসি রিপোর্ট বিশ্বাস করা হয় না — সেগমেন্টে নেমে যায়', () => {
+    // এজেন্ট বেঁচে আছে (segments পাঠাচ্ছে) কিন্তু heartbeat আটকে গেছে
+    const stuck = device({
+      lastSeenAt: secondsAgo(10),
+      lastState: 'active',
+      lastStateAt: secondsAgo(OFFLINE_AFTER_SEC + 1),
+    });
+
+    expect(statusOf([stuck], 'idle')).toBe('idle');
+    expect(statusOf([stuck], null)).toBe('idle');
+    // সীমানার ঠিক উপরে রিপোর্টটা এখনো টাটকা
+    expect(
+      statusOf(
+        [device({ lastStateAt: secondsAgo(OFFLINE_AFTER_SEC) })],
+        'idle',
+      ),
+    ).toBe('active');
+  });
+});
+
+describe('decideLiveStatus — একজনের একাধিক ডিভাইস (§ ২.১-গ)', () => {
+  /**
+   * ⚠️ ডিভাইসপ্রতি বিচার করলে ডেস্কটপ বন্ধ থাকলেই ল্যাপটপে কাজ করা কর্মী
+   * 🔴 দেখাত — IT-কে ডাকা হতো এমন সমস্যার জন্য যা নেই।
+   */
+  it('একটা ডিভাইস মরে থাকলেও আরেকটার তাজা heartbeat-ই গোনা হয়', () => {
+    expect(
+      statusOf([
+        device({
+          lastSeenAt: secondsAgo(6 * 3600),
+          lastStateAt: null,
+          lastState: null,
+        }),
+        device(),
+      ]),
+    ).toBe('active');
+  });
+
+  /**
+   * ⭐ "সবচেয়ে সাম্প্রতিক রিপোর্ট নাও" লিখলে এটা ভাঙত: দুটো ডিভাইসই প্রতি
+   * ৩০ সেকেন্ডে heartbeat পাঠায়, তাই কে "সাম্প্রতিক" সেটা কার্যত এলোমেলো —
+   * কার্ড রিফ্রেশে রিফ্রেশে সবুজ-ধূসর করত, অথচ কর্মী একটানা কাজ করছে।
+   */
+  it('যেকোনো এক PC-তে কাজ করলেই active — ক্রম যাই হোক', () => {
+    const working = device({
+      lastState: 'active',
+      lastStateAt: secondsAgo(20),
+    });
+    const locked = device({ lastState: 'locked', lastStateAt: secondsAgo(2) });
+
+    expect(statusOf([locked, working])).toBe('active');
+    expect(statusOf([working, locked])).toBe('active');
+  });
+
+  it('কোনোটাই active না বললে সবচেয়ে সাম্প্রতিক রিপোর্টই চলে', () => {
+    expect(
+      statusOf([
+        device({ lastState: 'locked', lastStateAt: secondsAgo(60) }),
+        device({ lastState: 'idle', lastStateAt: secondsAgo(3) }),
+      ]),
     ).toBe('idle');
   });
 
-  it('ডিভাইসের ঘড়ি এগিয়ে থাকলেও (ভবিষ্যতের lastSeenAt) তাজাই ধরা হয়', () => {
+  /** ⚠️ বাসি `active` অন্য ডিভাইসের তাজা রিপোর্টকে ছাপিয়ে যেতে পারে না */
+  it('বন্ধ ডেস্কটপের পুরোনো active ল্যাপটপের তাজা idle-কে হারায় না', () => {
     expect(
-      decideLiveStatus({ ...base, lastSeenAt: secondsAgo(-30) }),
-    ).toBe('active');
+      statusOf([
+        device({
+          lastSeenAt: secondsAgo(4 * 3600),
+          lastState: 'active',
+          lastStateAt: secondsAgo(4 * 3600),
+        }),
+        device({ lastState: 'idle' }),
+      ]),
+    ).toBe('idle');
+  });
+});
+
+describe('latestHeartbeat — কার্ডের "শেষ সাড়া"', () => {
+  it('সব ডিভাইসের মধ্যে সবচেয়ে সাম্প্রতিকটা', () => {
+    expect(
+      latestHeartbeat([
+        device({ lastSeenAt: secondsAgo(900) }),
+        device({ lastSeenAt: secondsAgo(5) }),
+        device({ lastSeenAt: null }),
+      ]),
+    ).toEqual(secondsAgo(5));
+  });
+
+  it('একটাও সাড়া না দিলে null — শূন্য বা epoch নয়', () => {
+    expect(latestHeartbeat([])).toBeNull();
+    expect(latestHeartbeat([device({ lastSeenAt: null })])).toBeNull();
   });
 });
 

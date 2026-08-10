@@ -66,22 +66,18 @@ internal sealed class TodayForm : OwnerDrawnForm
 
         stack.Rule();
 
-        stack.Pair("এ মাসে",
-            $"{BanglaText.Duration(status.ActiveThisMonth)} / " +
-            $"{BanglaText.Number((int)Math.Round(status.MonthlyTargetHours))} ঘণ্টা",
-            TrayFontRole.Strong);
-
-        stack.Gap(2);
-        stack.Bar(status.MonthlyProgress, ProgressColor(status.MonthlyProgress));
-
-        stack.Pair("অগ্রগতি", BanglaText.Percent(status.MonthlyProgress));
-        stack.Pair("বাকি", BanglaText.Duration(status.MonthlyRemaining) + " ঘণ্টা");
+        PaintMonth(stack, status, now);
 
         stack.Rule();
 
         stack.Pair("এখন", status.Paused
             ? "ট্র্যাকিং সাময়িক বন্ধ"
             : TrayTooltip.StateName(status.State));
+
+        // ⚠️ সিঙ্কের অবস্থা সবসময় দেখানো হয়, শুধু গোলমাল হলে নয়। আগে এখানে
+        //    কিছু না থাকা মানে "ঠিক আছে" ধরে নিতে হতো — অর্থাৎ সবচেয়ে জরুরি
+        //    আশ্বাসটা (ডেটা পৌঁছেছে) ঠিক তখনই অদৃশ্য, যখন সেটা সত্যি।
+        stack.Pair("সিঙ্ক", HealthName(status.Health));
 
         stack.Pair("শেষ সিঙ্ক", status.LastSyncAt is { } at
             ? BanglaText.Clock(at)
@@ -111,6 +107,81 @@ internal sealed class TodayForm : OwnerDrawnForm
             "নেট না থাকলেও কিছু হারায় না — সারিতে জমা থাকে, সংযোগ ফিরলে নিজে থেকেই চলে যায়।",
             TrayFontRole.Small, Muted);
     }
+
+    /// <summary>
+    /// মাসের অগ্রগতি — <b>শুধু সার্ভার সংখ্যাটা বলে দেওয়ার পর</b>।
+    ///
+    /// ⭐⚠️ মাসের হিসাব এজেন্ট নিজে রাখে না, তাই প্রথম heartbeat আসার আগে
+    /// <see cref="AgentStatus.ActiveThisMonth"/> মিথ্যা শূন্য। ওই অবস্থায়
+    /// বার আর শতাংশ আঁকলে স্টাফ প্রতিবার লগইনের পর কয়েক সেকেন্ডের জন্য
+    /// "০ / ২০৮ ঘণ্টা · ০%" দেখত — অর্থাৎ মনে হতো মাসের কাজ মুছে গেছে।
+    /// তাই তিনটে অবস্থা: জানা নেই / জানা আছে / লক্ষ্য নেই।
+    /// </summary>
+    private static void PaintMonth(TextStack stack, AgentStatus status, DateTimeOffset now)
+    {
+        if (!status.MonthlyKnown)
+        {
+            stack.Pair("এ মাসে", "হিসাব আসছে…", TrayFontRole.Strong);
+            stack.Gap(2);
+            stack.Line(
+                "মাসের যোগফল সার্ভার থেকে আসে — সব PC মিলিয়ে। " +
+                "সংযোগ হওয়ামাত্রই এখানে বসবে।",
+                TrayFontRole.Small, Muted);
+            return;
+        }
+
+        stack.Pair("এ মাসে",
+            $"{BanglaText.Duration(status.ActiveThisMonth)} / " +
+            $"{BanglaText.Number((int)Math.Round(status.MonthlyTargetHours))} ঘণ্টা",
+            TrayFontRole.Strong);
+
+        stack.Gap(2);
+        stack.Bar(status.MonthlyProgress, ProgressColor(status.MonthlyProgress));
+
+        stack.Pair("অগ্রগতি", BanglaText.Percent(status.MonthlyProgress));
+        stack.Pair("বাকি", BanglaText.Duration(status.MonthlyRemaining) + " ঘণ্টা");
+
+        PaintPace(stack, status, now);
+    }
+
+    /// <summary>
+    /// "এগিয়ে না পিছিয়ে" (B05b/J02)।
+    ///
+    /// ⭐ সার্ভার সংখ্যাটা পাঠালে সেটাই — ওটাই ড্যাশবোর্ডের সংখ্যা, আর দুই
+    /// জায়গায় দুই সংখ্যা দেখলে স্টাফ ধরে নেবে একটা মিথ্যা বলছে।
+    /// সার্ভার না পাঠালে <see cref="MonthlyPace"/>-এর আনুমানিক হিসাব, এবং
+    /// লেবেলেই "আনুমানিক" — ⚠️ শব্দটা সরাবেন না, ওটা ছুটির দিনের জন্য
+    /// আমাদের না-জানার স্বীকারোক্তি।
+    ///
+    /// লক্ষ্যই না থাকলে (টার্গেট ০) লাইনটা বাদ — "০ ঘণ্টা এগিয়ে" অর্থহীন।
+    /// </summary>
+    private static void PaintPace(TextStack stack, AgentStatus status, DateTimeOffset now)
+    {
+        var exact = status.Pace is not null;
+        var pace = status.Pace
+                   ?? MonthlyPace.Estimate(status.ActiveThisMonth, status.MonthlyTargetHours, now);
+
+        if (pace is not { } value) return;
+
+        var ahead = value >= TimeSpan.Zero;
+
+        // ⚠️ চিহ্নটা লেখাতেই বলা আছে ("এগিয়ে"/"পিছিয়ে"), তাই সংখ্যাটা সবসময়
+        //    ধনাত্মক রূপে। BanglaText.Duration ঋণাত্মককে শূন্য বানায়, ফলে
+        //    Abs না নিলে প্রতিটা "পিছিয়ে" থাকা স্টাফ দেখত "০:০০ ঘণ্টা পিছিয়ে"।
+        var text = (ahead ? "✓ " : "⚠ ") +
+                   BanglaText.Duration(value.Duration()) + " ঘণ্টা " +
+                   (ahead ? "এগিয়ে" : "পিছিয়ে");
+
+        stack.Pair(exact ? "গতি" : "গতি (আনুমানিক)", text);
+    }
+
+    private static string HealthName(SyncHealth health) => health switch
+    {
+        SyncHealth.Ok => "ঠিক আছে",
+        SyncHealth.Degraded => "একটু দেরিতে",
+        SyncHealth.Failing => "পৌঁছাচ্ছে না",
+        _ => "বন্ধ করা হয়েছে",
+    };
 
     private static Color ProgressColor(double progress) =>
         progress >= 1.0

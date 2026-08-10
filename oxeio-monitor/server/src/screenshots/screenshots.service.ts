@@ -13,13 +13,12 @@ import { Prisma, UserRole } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
+import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
 import type { SessionUser } from '../auth/types';
 import type { GalleryQueryDto } from './dto';
 import { formatWorkDate, pageSlice, parseWorkDate } from './gallery.math';
 import { SignedUrlService } from './signed-url.service';
-
-import { storageRoot } from "../common/storage.config";
 
 export interface GalleryItem {
   /** ⚠️ string, number নয় — `screenshots.id` BigInt, আর BigInt JSON-এ যায় না */
@@ -200,40 +199,48 @@ export class ScreenshotsService {
       throw new NotFoundException('স্ক্রিনশটটি নেই বা মুছে ফেলা হয়েছে');
 
     /**
-     * ⚠️ থাম্বনেইল এখনো তৈরি হয় না — ingest `thumb_path = null` রাখে,
-     *    A06-এ sharp দিয়ে backfill হবে। ততক্ষণ গ্রিডে ফুল ছবিই যাচ্ছে।
-     *    মানে: থাম্বনেইলের লিঙ্ক পাওয়া কেউ এখন ফুল-রেজ়লিউশনই পাবে।
-     *    variant আলাদা রাখা হয়েছে যাতে A06 এলে **শুধু এই লাইনটা** বদলালেই
-     *    আলাদা হয়ে যায়, কোনো টোকেন-ফরম্যাট বদলাতে হবে না।
+     * A06 — ⭐ থাম্বনেইল **সবসময় ঐচ্ছিক**, দুই স্তরেই:
+     *
+     *   ১· `thumb_path` null — পুরোনো সারি, বা এমন এজেন্ট যে এখনো
+     *      থাম্বনেইল পাঠায় না। ফুল ছবিই যাবে, ঠিক আগের মতো।
+     *   ২· পথ আছে কিন্তু ডিস্কে ফাইল নেই — ব্যাকআপ রিস্টোর যদি `thumb/`
+     *      ফোল্ডার বাদ দিয়ে থাকে (দেখুন thumb.ts — বাদ দেওয়াই ইচ্ছাকৃত),
+     *      তখন ঠিক এটাই হবে। এখানে fallback না থাকলে গোটা গ্যালারি
+     *      ভাঙা ছবিতে ভরে যেত, অথচ ফুল ছবিগুলো ডিস্কে দিব্যি ছিল।
+     *
+     * ⚠️ এটা `variant` সই করার নিয়মের ব্যতিক্রম **নয়**। thumb → full-এ
+     *    নামা সার্ভারের নিজের সিদ্ধান্ত, আর তা কেবল **নিচের দিকে** —
+     *    URL ঘেঁটে কেউ এটা ঘটাতে পারে না, আর ফুলের টোকেন কখনো thumb
+     *    হয়ে যায় না। ঝুঁকিটা "সবাই একটু বেশি বাইট নামাল", "কেউ যা
+     *    দেখার কথা নয় তা দেখল" নয়।
      */
-    const relPath =
-      variant === 'thumb' ? (shot.thumbPath ?? shot.filePath) : shot.filePath;
+    const wantsThumb = variant === 'thumb' && shot.thumbPath !== null;
+    const relPath = wantsThumb ? shot.thumbPath! : shot.filePath;
 
-    const absPath = resolve(this.root, relPath);
+    const found = await this.statInsideRoot(shot.id, relPath);
 
-    // ⚠️ পথটা DB থেকে আসে, তবু বিশ্বাস করা হয় না। কোনোভাবে `..` ঢুকে
-    //    গেলে (পুরোনো সারি, ম্যানুয়াল ইনসার্ট) storage-এর বাইরের যেকোনো
-    //    ফাইল সার্ভ হয়ে যেত।
-    if (absPath !== this.root && !absPath.startsWith(this.root + sep)) {
-      this.logger.error(
-        `স্ক্রিনশট ${shot.id.toString()}-এর পথ storage-এর বাইরে: ${relPath}`,
+    if (found === null && wantsThumb) {
+      this.logger.warn(
+        `স্ক্রিনশট ${shot.id.toString()}: থাম্বনেইল নেই (${relPath}) — ফুল ছবি পাঠানো হলো`,
       );
-      throw new NotFoundException('স্ক্রিনশটটি নেই');
+      const full = await this.statInsideRoot(shot.id, shot.filePath);
+      if (full === null) throw new NotFoundException('ছবির ফাইলটি পাওয়া যায়নি');
+
+      this.logger.debug(
+        `স্ক্রিনশট ${shot.id.toString()} (thumb→full) সার্ভ হলো, টোকেন বানিয়েছিল user ${viewerUserId}`,
+      );
+      return {
+        absPath: full.absPath,
+        sizeBytes: full.sizeBytes,
+        downloadName: `${shot.id.toString()}_${variant}.webp`,
+      };
     }
 
-    let sizeBytes: number;
-    try {
-      const info = await stat(absPath);
-      if (!info.isFile()) throw new Error('ফাইল নয়');
-      sizeBytes = info.size;
-    } catch {
-      // ingest আগে DB-তে লেখে, পরে ডিস্কে — মাঝখানে ক্র্যাশ হলে সারি থাকে,
-      // ফাইল থাকে না। ৫০০ নয়, এটা সত্যিই "নেই"।
-      this.logger.warn(
-        `স্ক্রিনশট ${shot.id.toString()}: DB-তে সারি আছে, ডিস্কে ফাইল নেই (${relPath})`,
-      );
+    if (found === null) {
       throw new NotFoundException('ছবির ফাইলটি পাওয়া যায়নি');
     }
+
+    const { absPath, sizeBytes } = found;
 
     this.logger.debug(
       `স্ক্রিনশট ${shot.id.toString()} (${variant}) সার্ভ হলো, টোকেন বানিয়েছিল user ${viewerUserId}`,
@@ -247,6 +254,47 @@ export class ScreenshotsService {
   }
 
   // ── ভেতরের সাহায্যকারী ─────────────────────────────────────────────
+
+  /**
+   * পথটা storage রুটের ভেতরে কি না দেখে, তারপর ফাইলটা আছে কি না।
+   *
+   * ⚠️ রুটের বাইরে হলে `null` নয় — সরাসরি 404 ছুঁড়ে দেয়। পার্থক্যটা
+   *    জরুরি: "ফাইল নেই" থেকে থাম্বনেইল ফুল ছবিতে **ফেরত যেতে পারে**,
+   *    কিন্তু "পথটা সন্দেহজনক" থেকে কোথাও ফেরত যাওয়া চলে না। দুটোকে এক
+   *    করে ফেললে একটা বিকৃত `thumb_path` চুপচাপ ফুল ছবি সার্ভ করিয়ে
+   *    নিত, আর লগে শুধু একটা নিরীহ warn থাকত।
+   *
+   * @returns `null` মানে পথ ঠিক আছে, কিন্তু ডিস্কে ফাইলটা নেই
+   */
+  private async statInsideRoot(
+    id: bigint,
+    relPath: string,
+  ): Promise<{ absPath: string; sizeBytes: number } | null> {
+    const absPath = resolve(this.root, relPath);
+
+    // ⚠️ পথটা DB থেকে আসে, তবু বিশ্বাস করা হয় না। কোনোভাবে `..` ঢুকে
+    //    গেলে (পুরোনো সারি, ম্যানুয়াল ইনসার্ট) storage-এর বাইরের যেকোনো
+    //    ফাইল সার্ভ হয়ে যেত।
+    if (absPath !== this.root && !absPath.startsWith(this.root + sep)) {
+      this.logger.error(
+        `স্ক্রিনশট ${id.toString()}-এর পথ storage-এর বাইরে: ${relPath}`,
+      );
+      throw new NotFoundException('স্ক্রিনশটটি নেই');
+    }
+
+    try {
+      const info = await stat(absPath);
+      if (!info.isFile()) throw new Error('ফাইল নয়');
+      return { absPath, sizeBytes: info.size };
+    } catch {
+      // ingest আগে DB-তে লেখে, পরে ডিস্কে — মাঝখানে ক্র্যাশ হলে সারি থাকে,
+      // ফাইল থাকে না। ৫০০ নয়, এটা সত্যিই "নেই"।
+      this.logger.warn(
+        `স্ক্রিনশট ${id.toString()}: DB-তে সারি আছে, ডিস্কে ফাইল নেই (${relPath})`,
+      );
+      return null;
+    }
+  }
 
   private resolveDate(iso?: string): Date {
     if (iso === undefined) {

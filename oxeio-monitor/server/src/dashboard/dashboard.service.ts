@@ -10,17 +10,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   decideLiveStatus,
   formatWorkDate,
+  latestHeartbeat,
   monthStartOf,
   parseWorkDate,
   previousWorkDate,
   spreadIntoHourBuckets,
+  type DeviceReport,
   type LiveStatus,
 } from './dashboard.math';
 
 const HOUR = 3600;
 
 /**
- * লাইভ বোর্ডে state ঠিক করতে কত পুরোনো সেগমেন্ট পর্যন্ত দেখা হবে।
+ * fallback state বের করতে কত পুরোনো সেগমেন্ট পর্যন্ত দেখা হবে।
  *
  * এজেন্ট সেগমেন্ট **ব্যাচে** পাঠায়, তাই heartbeat তাজা হলেও শেষ সেগমেন্ট
  * কয়েক মিনিট পুরোনো হতে পারে। ১৫ মিনিট ধরা হয়েছে কারণ ৯০ সেকেন্ডের
@@ -28,6 +30,9 @@ const HOUR = 3600;
  * জানালা রাখলেও উত্তর বদলাত না, শুধু বেশি সারি টানা হতো।
  */
 const LIVE_STATE_LOOKBACK_SEC = 900;
+
+/** কর্মীর একটাও সচল ডিভাইস না থাকলে — প্রতি কার্ডে নতুন অ্যারে বানানো নয় */
+const NO_DEVICES: readonly DeviceReport[] = [];
 
 /** ⚠️ ডিফল্ট মাসিক টার্গেট — পলিসি না থাকলে (§ ২.১-খ, ২০৮ ঘণ্টা) */
 const DEFAULT_TARGET_HOURS = 208;
@@ -101,8 +106,16 @@ export class DashboardService {
    *
    * ⚠️ **N+1 লেখা যাবে না।** কর্মীপ্রতি লুপ করে ডিভাইস/সেগমেন্ট আনলে
    *    ১৫ জন × (ডিভাইস + আজ + মাস + state) = ৬০+ কোয়েরি হতো — প্রতি
-   *    ৩০ সেকেন্ডে, প্রতিটি খোলা ব্রাউজার ট্যাব থেকে। তাই সবগুলো
-   *    `groupBy` — মোট **পাঁচটি** কোয়েরি, কর্মীসংখ্যা যাই হোক।
+   *    ৩০ সেকেন্ডে, প্রতিটি খোলা ব্রাউজার ট্যাব থেকে। তাই জোড়া লাগানো
+   *    হয় **কোডে**, কর্মীপ্রতি কোয়েরিতে নয় — মোট **পাঁচটি** কোয়েরি,
+   *    কর্মীসংখ্যা যাই হোক।
+   *
+   * ⭐ কার্ডের রঙ আসে `devices.last_state` থেকে — heartbeat-এ এজেন্ট নিজে
+   *    যা বলেছে। আগে সেটা শেষ `activity_segments` সারি থেকে **অনুমান**
+   *    করা হতো, আর এজেন্ট সেগমেন্ট ব্যাচে পাঠায় বলে বোর্ড কয়েক মিনিট
+   *    পিছিয়ে থাকত: কর্মী উঠে চলে গেলেও কার্ড সবুজ, ফিরে এলেও ধূসর।
+   *    ৩০ সেকেন্ডে রিফ্রেশ হওয়া বোর্ডে ৩ মিনিট পুরোনো উত্তর মানে
+   *    রিফ্রেশটাই অর্থহীন। সেগমেন্ট এখন কেবল fallback (নিচে দেখো)।
    *
    * ⭐ worked সেকেন্ড এখানে **যোগফল**, UNION নয় — যদিও § ২.১-গ বলে UNION।
    *    ইচ্ছাকৃত, এবং কারণটা নির্ভুলতার চেয়েও ভারী:
@@ -147,10 +160,21 @@ export class DashboardService {
     const [devices, todaySums, monthSums, recentSegments] = await Promise.all([
       // ⚠️ revoked ডিভাইস বাদ — ওগুলোর lastSeenAt চিরকাল পুরোনো হয়ে
       //    আটকে থাকে, ফলে PC বদলে দেওয়া কর্মীও চিরকাল 🔴 দেখাত।
-      this.prisma.device.groupBy({
-        by: ['employeeId'],
+      //
+      // ⭐ `groupBy(_max: lastSeenAt)` নয়, সারিগুলোই — কারণ এখন state-ও
+      //    লাগে, আর `_max(lastSeenAt)` ও `_max(lastStateAt)` **আলাদা দুটো
+      //    ডিভাইসের** হতে পারত: SQL aggregate কলামগুলোকে জোড়া ভাঙে।
+      //    তখন বন্ধ ডেস্কটপের বাসি `active` ল্যাপটপের তাজা সময়ের সাথে
+      //    জোড়া লেগে যেত, আর কার্ড চিরকাল সবুজ দেখাত। ১৫ জনের ২০-৩০টা
+      //    সারি — এটা এখনো একটাই কোয়েরি, N+1 নয়।
+      this.prisma.device.findMany({
         where: { employeeId: { in: ids }, status: 'active' },
-        _max: { lastSeenAt: true },
+        select: {
+          employeeId: true,
+          lastSeenAt: true,
+          lastState: true,
+          lastStateAt: true,
+        },
       }),
       this.prisma.activitySegment.groupBy({
         by: ['employeeId'],
@@ -166,6 +190,11 @@ export class DashboardService {
         },
         _sum: { durationSec: true },
       }),
+      // ⚠️ এটা এখন শুধু **fallback** (`devices.last_state` null হলে), তবু
+      //    সবসময়ই চালানো হয় — কর্মীভেদে লাগবে কি না আগে থেকে জানা যায় না,
+      //    আর "দরকার হলে তখন আনি" মানে কর্মীপ্রতি একটা কোয়েরি, অর্থাৎ
+      //    ঠিক সেই N+1 যা এই মেথড এড়ানোর জন্য লেখা।
+      //
       // ⚠️ `workDate` দিয়েও ছাঁকা হয় শুধু ইনডেক্সের জন্য —
       //    (employeeId, workDate, state) ইনডেক্স তখনই কাজে লাগে। গতকালকে
       //    রাখতেই হয়: মধ্যরাতের ঠিক পরে আজকের কোনো সেগমেন্টই থাকে না,
@@ -181,9 +210,12 @@ export class DashboardService {
       }),
     ]);
 
-    const lastSeen = new Map<number, Date | null>();
+    const byEmployee = new Map<number, DeviceReport[]>();
     for (const d of devices) {
-      if (d.employeeId !== null) lastSeen.set(d.employeeId, d._max.lastSeenAt);
+      if (d.employeeId === null) continue;
+      const list = byEmployee.get(d.employeeId);
+      if (list) list.push(d);
+      else byEmployee.set(d.employeeId, [d]);
     }
 
     const todaySec = sumByEmployee(todaySums);
@@ -192,13 +224,14 @@ export class DashboardService {
     // ⚠️ `orderBy endedAt desc` + "প্রথমটাই রাখা" — তাই কর্মীপ্রতি সবচেয়ে
     //    সাম্প্রতিক সেগমেন্টই থাকে। উল্টো ক্রমে লিখলে সবচেয়ে পুরোনোটা
     //    বসে যেত এবং কার্ড কখনো হালনাগাদ হতো না।
-    const lastState = new Map<number, SegmentState>();
+    const segmentState = new Map<number, SegmentState>();
     for (const s of recentSegments) {
-      if (!lastState.has(s.employeeId)) lastState.set(s.employeeId, s.state);
+      if (!segmentState.has(s.employeeId))
+        segmentState.set(s.employeeId, s.state);
     }
 
     const cards = employees.map((e): LiveCard => {
-      const seenAt = lastSeen.get(e.id) ?? null;
+      const own = byEmployee.get(e.id) ?? NO_DEVICES;
       const targetHours = Number(
         e.policy?.monthlyTargetHours ?? DEFAULT_TARGET_HOURS,
       );
@@ -209,15 +242,14 @@ export class DashboardService {
         fullName: e.fullName,
         designation: e.designation,
         status: decideLiveStatus({
-          lastSeenAt: seenAt,
-          hasDevice: lastSeen.has(e.id),
-          lastState: lastState.get(e.id) ?? null,
+          devices: own,
+          fallbackState: segmentState.get(e.id) ?? null,
           now,
         }),
         todayWorkedSec: todaySec.get(e.id) ?? 0,
         monthWorkedSec: monthSec.get(e.id) ?? 0,
         monthTargetSec: Math.round(targetHours * HOUR),
-        lastHeartbeatAt: seenAt,
+        lastHeartbeatAt: latestHeartbeat(own),
       };
     });
 

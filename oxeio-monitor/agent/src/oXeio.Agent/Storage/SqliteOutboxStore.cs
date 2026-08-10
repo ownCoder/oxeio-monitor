@@ -968,7 +968,15 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             using var cmd = _read.CreateCommand();
             cmd.CommandText = "SELECT file_path FROM outbox WHERE file_path IS NOT NULL;";
             using var reader = cmd.ExecuteReader();
-            while (reader.Read()) known.Add(NormalizePath(reader.GetString(0)));
+            while (reader.Read())
+            {
+                var known1 = reader.GetString(0);
+                known.Add(NormalizePath(known1));
+                // ⚠️ থাম্বনেইলও `*.webp`, তাই একে "চেনা" না বললে ঝাড়ুদার
+                //    প্রতিটা থাম্বনেইল অনাথ ভেবে মুছে দিত — আর কেউ বুঝতই না
+                //    কেন গ্যালারি হঠাৎ আবার ধীর হয়ে গেল (A06)।
+                known.Add(NormalizePath(OutboxPaths.ThumbPathFor(known1)));
+            }
         }
         catch (SqliteException ex)
         {
@@ -1090,6 +1098,8 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             try
             {
                 File.Delete(file);   // না থাকলে ব্যতিক্রম দেয় না
+                // A06 — সাথে তার থাম্বনেইলও, নইলে ওগুলো চিরকাল জমত
+                File.Delete(OutboxPaths.ThumbPathFor(file));
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }

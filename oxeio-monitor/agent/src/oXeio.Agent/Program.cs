@@ -103,14 +103,51 @@ internal static partial class Program
         session.TryRegister();
         power.TryRegister();
 
-        Application.ApplicationExit += async (_, _) =>
-        {
-            if (_host is not null) await _host.DisposeAsync();
-        };
-
         Application.Run();
+
+        // ⭐⚠️ <b>ApplicationExit ইভেন্টে এই কাজটা করা যায় না</b>, যদিও দেখতে
+        //    সেটাই স্বাভাবিক জায়গা। ইভেন্ট হ্যান্ডলার হয় <c>async void</c> —
+        //    প্রথম <c>await</c>-এই সে ফিরে আসে, WinForms ধরে নেয় কাজ শেষ,
+        //    <c>Application.Run()</c> ফেরে, <c>Main</c> ফেরে, প্রসেস মরে।
+        //    ফলে DisposeAsync-এর বাকি অংশ — খোলা সেগমেন্ট বন্ধ করা,
+        //    <c>agent_stop</c> ইভেন্ট, শেষ drain — <b>কখনোই</b> চলত না।
+        //    Run() ফেরার পর সিঙ্ক্রোনাসভাবে অপেক্ষা করাই একমাত্র নির্ভরযোগ্য পথ।
+        Shutdown();
         return 0;
     }
+
+    /// <summary>
+    /// বন্ধ হওয়ার সময় হাতে যতটুকু আছে ততটুকুই — তার বেশি নয়।
+    ///
+    /// ⚠️ Windows শাটডাউনে সব প্রসেস মিলিয়ে বাজেট কয়েক সেকেন্ড। ছাদ না দিলে
+    /// একটা ঝুলে যাওয়া drain-এর জন্য Windows আমাদের জোর করে মারত, আর তখন
+    /// <c>agent_stop</c> ইভেন্টটাও যেত না — অর্থাৎ ঠিক যে জিনিসটার জন্য এই
+    /// অপেক্ষা, সেটাই হারাত।
+    /// </summary>
+    private static void Shutdown()
+    {
+        var host = Interlocked.Exchange(ref _host, null);
+        if (host is null) return;
+
+        try
+        {
+            var closing = host.DisposeAsync().AsTask();
+            if (!closing.Wait(ShutdownBudget))
+            {
+                // ⚠️ ছুড়ে দেওয়া হয় না, শুধু ছেড়ে দেওয়া হয়। এখানে ব্যতিক্রম
+                //    মানে exit code বদলে যাওয়া, আর watchdog সেটাকে ক্র্যাশ
+                //    ধরে এজেন্টকে আবার চালু করত — শাটডাউনের ঠিক মাঝখানে।
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            // বন্ধ হচ্ছে — অভিযোগ শোনার কেউ নেই
+        }
+    }
+
+    /// <summary>Windows-এর ~৫ সেকেন্ডের চেয়ে কম, যাতে আমরা নিজেরাই আগে সরে যাই।</summary>
+    private static readonly TimeSpan ShutdownBudget = TimeSpan.FromSeconds(4);
 
     private static AgentHost? _host;
     private static PowerMonitor? _power;
@@ -124,11 +161,18 @@ internal static partial class Program
         switch (m.Msg)
         {
             case Win32.WM_WTSSESSION_CHANGE:
-                _host?.OnSessionChange(SessionMonitor.Interpret((int)m.WParam));
+                _host?.OnSessionChange((int)m.WParam);
                 break;
 
             case Win32.WM_POWERBROADCAST:
                 _host?.OnPower(_power?.Interpret(m.WParam, m.LParam, DateTimeOffset.UtcNow));
+                break;
+
+            // G02 — logoff আর PC-বন্ধ আলাদা করার একমাত্র জায়গা।
+            // ⚠️ এখানে শুধু কিউয়ে ফেলা হয়; পাঠানোর চেষ্টা করলে ডেস্কটপ আটকে
+            //    যেত আর Windows দুজনকেই মেরে ফেলত।
+            case Win32.WM_ENDSESSION:
+                _host?.OnSessionEnd(SessionMonitor.InterpretEndSession(m.WParam, m.LParam));
                 break;
         }
     }

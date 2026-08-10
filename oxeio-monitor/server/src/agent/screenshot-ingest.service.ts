@@ -10,7 +10,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type Device } from '@prisma/client';
 
+import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  checkThumb,
+  thumbPathFor,
+  type ThumbCandidate,
+} from '../screenshots/thumb';
 import {
   ALLOWED_SCREENSHOT_MIME,
   MAX_SCREENSHOT_BYTES,
@@ -19,12 +25,12 @@ import { ClockDriftService, type Drift } from './clock-drift.service';
 import type { ScreenshotMetaDto } from './dto';
 import { dhakaPathParts, workDateOf } from './util/dhaka-time';
 
-import { storageRoot } from "../common/storage.config";
-
 export interface ScreenshotResult {
   accepted: number;
   duplicate: boolean;
   path: string;
+  /** থাম্বনেইল বসেছে কি না — null মানে গ্যালারি ফুল ছবিতে ফেরত যাবে (A06) */
+  thumbPath: string | null;
 }
 
 @Injectable()
@@ -42,11 +48,24 @@ export class ScreenshotIngestService {
     );
   }
 
+  /**
+   * @param thumb ঐচ্ছিক ৩২০px থাম্বনেইল — এজেন্ট `thumb` নামের দ্বিতীয়
+   *   multipart অংশে পাঠায় (A06)। না পাঠালে (পুরোনো এজেন্ট) কিছুই ভাঙে না।
+   *
+   *   ⭐ **কেন এজেন্ট বানায়, সার্ভার নয়** — Node-এ WebP ডিকোড করার কোনো
+   *   উপায় নেই। `sharp` ইনস্টল করা নেই আর নতুন dependency নিষেধ; `pngjs`
+   *   আছে বটে, কিন্তু সে PNG-ই বোঝে, আর এজেন্ট পাঠায় WebP (ADR-007)।
+   *   এজেন্টে SkiaSharp আগে থেকেই আছে — সে ইতিমধ্যেই ১৯২০px-এ নামিয়ে
+   *   এনকোড করে (`WebpEncoder.cs`), তাই একই সারফেস থেকে ৩২০px বের করা
+   *   তার কাছে প্রায় বিনামূল্যে। বোনাস: থাম্বনেইলটাও নেটওয়ার্কের আগে
+   *   তৈরি হয়, তাই সার্ভারের CPU-তে ১৫টা PC-র রিসাইজের ঢেউ ওঠে না।
+   */
   async ingest(
     device: Device,
     drift: Drift,
     meta: ScreenshotMetaDto,
     file: Express.Multer.File,
+    thumb?: Express.Multer.File,
   ): Promise<ScreenshotResult> {
     if (!meta.clientUuid) {
       throw new UnprocessableEntityException('meta-তে client_uuid নেই');
@@ -84,9 +103,15 @@ export class ScreenshotIngestService {
 
     const absPath = join(this.root, relPath);
 
+    // ⚠️ `let` — আইডিটা try-র বাইরে দরকার, কারণ থাম্বনেইলের UPDATE-এ
+    //    `where` লাগবে। `file_path` unique **নয়** (schema দেখুন), তাই
+    //    পথ ধরে আপডেট করলে Prisma-ই ছুঁড়ে দিত।
+    let screenshotId: bigint;
+
     try {
       // DB আগে — UNIQUE-এ আটকালে ডিস্কে অযথা ফাইল লিখব না
-      await this.prisma.screenshot.create({
+      const created = await this.prisma.screenshot.create({
+        select: { id: true },
         data: {
           employeeId: device.employeeId,
           deviceId: device.id,
@@ -96,7 +121,16 @@ export class ScreenshotIngestService {
           capturedAt,
           monitorIndex: meta.monitorIndex,
           filePath: relPath,
-          // থাম্বনেইল Phase 3-এ (A06) — তখন sharp দিয়ে backfill হবে
+          /**
+           * ⭐ এখানে **সবসময় null**, থাম্বনেইল থাকলেও। মানটা বসে নিচে,
+           *    ফাইলটা সত্যিই ডিস্কে পড়ার **পরে**।
+           *
+           * ⚠️ এখানেই পথটা বসিয়ে দিলে, আর তারপর লেখাটা ব্যর্থ হলে,
+           *    `thumb_path` এমন একটা ফাইলের দিকে দেখাত যেটা নেই।
+           *    গ্যালারির `thumbPath ?? filePath` fallback তখন **চলতই না**
+           *    (মান তো null নয়), আর গ্রিড ভাঙা ছবিতে ভরে যেত।
+           *    `thumb_path` তাই ইচ্ছার নয়, **ডিস্কের সত্যের** প্রতিচ্ছবি।
+           */
           thumbPath: null,
           width: meta.width ?? null,
           height: meta.height ?? null,
@@ -105,6 +139,7 @@ export class ScreenshotIngestService {
           activeTitle: meta.activeTitle ?? null,
         },
       });
+      screenshotId = created.id;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -112,7 +147,7 @@ export class ScreenshotIngestService {
       ) {
         // client_uuid অথবা (device, slot, monitor) — দুটোর যেকোনোটায় ডুপ্লিকেট।
         // এজেন্ট আপলোড রিট্রাই করেছে, ভুল কিছু নয়।
-        return { accepted: 0, duplicate: true, path: relPath };
+        return { accepted: 0, duplicate: true, path: relPath, thumbPath: null };
       }
       throw err;
     }
@@ -120,6 +155,79 @@ export class ScreenshotIngestService {
     await mkdir(dirname(absPath), { recursive: true });
     await writeFile(absPath, file.buffer);
 
-    return { accepted: 1, duplicate: false, path: relPath };
+    const thumbPath = await this.storeThumb(
+      screenshotId,
+      relPath,
+      file.size,
+      thumb,
+    );
+
+    return { accepted: 1, duplicate: false, path: relPath, thumbPath };
+  }
+
+  /**
+   * A06 — থাম্বনেইলটা ডিস্কে বসিয়ে `thumb_path` হালনাগাদ করে।
+   *
+   * ⚠️ **এই ফাংশন কখনো ছুঁড়ে দেয় না।** পুরো শরীরটা একটা try/catch-এ, আর
+   *    catch শুধু লগ লেখে। কারণটা A06-এর মূল শর্ত: *ছবিটা মূল্যবান,
+   *    থাম্বনেইলটা সুবিধা মাত্র*। ডিস্ক ভরে যাওয়া, ফোল্ডারের পারমিশন,
+   *    অ্যান্টিভাইরাসের লক — যে কারণেই থাম্বনেইল লেখা আটকাক, ফুল ছবিটা
+   *    ততক্ষণে ডিস্কে ও DB-তে বসে গেছে। এখানে ছুঁড়ে দিলে এজেন্ট 500 পেত,
+   *    রিট্রাই করত, আর পরের বার P2002 ডুপ্লিকেট — অর্থাৎ একটা নিখুঁত
+   *    আপলোডকে ব্যর্থ বলে দেখানো হতো, স্রেফ একটা ছোট ছবি বানাতে না পেরে।
+   *
+   * @returns বসানো `thumb_path`, নয়তো `null` (গ্যালারি ফুল ছবিতে ফেরত যাবে)
+   */
+  private async storeThumb(
+    screenshotId: bigint,
+    relPath: string,
+    fullSizeBytes: number,
+    thumb: Express.Multer.File | undefined,
+  ): Promise<string | null> {
+    // পুরোনো এজেন্ট থাম্বনেইল পাঠায় না — এটা ভুল নয়, তাই লগও নয়
+    if (!thumb) return null;
+
+    try {
+      const candidate: ThumbCandidate = {
+        mimetype: thumb.mimetype,
+        size: thumb.size,
+        buffer: thumb.buffer,
+      };
+
+      const rejection = checkThumb(candidate, fullSizeBytes);
+      if (rejection !== null) {
+        // ⚠️ warn, error নয় — আপলোডটা সফল হয়েছে। কিন্তু নীরবেও ফেলা যায় না:
+        //    এজেন্টের এনকোডার ভেঙে গেলে একমাত্র এই লাইনটাই বলবে।
+        this.logger.warn(
+          `থাম্বনেইল নেওয়া হলো না (${rejection}): ${relPath} — ফুল ছবিটা ঠিকই জমেছে`,
+        );
+        return null;
+      }
+
+      const thumbRel = thumbPathFor(relPath);
+      if (thumbRel === null) {
+        this.logger.error(`থাম্বনেইলের পথ বের করা গেল না: ${relPath}`);
+        return null;
+      }
+
+      const thumbAbs = join(this.root, thumbRel);
+      await mkdir(dirname(thumbAbs), { recursive: true });
+      await writeFile(thumbAbs, thumb.buffer);
+
+      // ⭐ ফাইলটা ডিস্কে পড়ার পরেই কেবল DB জানল — এর উল্টোটা মানেই
+      //    ভাঙা ছবির গ্রিড (উপরে `thumbPath: null`-এর নোট দেখুন)।
+      await this.prisma.screenshot.update({
+        where: { id: screenshotId },
+        data: { thumbPath: thumbRel },
+      });
+
+      return thumbRel;
+    } catch (error) {
+      this.logger.warn(
+        `থাম্বনেইল জমল না: ${relPath} — ${String(error)} · ` +
+          `ফুল ছবিটা ঠিকই আছে, গ্যালারি সেটাই দেখাবে`,
+      );
+      return null;
+    }
   }
 }

@@ -4,12 +4,28 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { EmployeeStatus, Productivity } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
+import { EmployeeStatus, type Productivity } from '@prisma/client';
 
+import {
+  addSeconds,
+  emptyBuckets,
+  foldUsage,
+  scoreOf,
+  type CategoryMeta,
+  type SecondBuckets,
+  type UsageGroup,
+  type UsageTally,
+} from '../activity/activity.math';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
-import { reportFilename } from './reports.excel';
+import {
+  MIME_OF,
+  reportFilename,
+  type DownloadFormat,
+} from './reports.download';
+import { attendancePdf, summaryPdf } from './reports.pages';
 import {
   attendanceWorkbook,
   productivityWorkbook,
@@ -46,11 +62,17 @@ import {
   type ReportMeta,
   type SummaryReport,
   type SummaryRow,
-  type UsageCategory,
 } from './reports.types';
 
 const HOUR = 3600;
 const DEFAULT_TOP = 25;
+
+/**
+ * লেটারহেডে ছাপা প্রতিষ্ঠানের নাম।
+ * ⚠️ `ORG_NAME` না থাকলে ফাঁকা লেটারহেড নয় — অন্তত পণ্যের নামটা বসে,
+ *    কারণ শিরোনামহীন একটা কাগজ কোন কোম্পানির তা কেউ বলতে পারত না।
+ */
+const DEFAULT_ORG_NAME = 'oXeio Monitoring';
 
 // ── ভেতরের সহায়ক টাইপ ──────────────────────────────────────────────────────
 
@@ -90,10 +112,16 @@ interface ReportContext {
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
 
+  private readonly orgName: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.orgName =
+      config.get<string>('ORG_NAME')?.trim() || DEFAULT_ORG_NAME;
+  }
 
   // ── F01 · অ্যাটেনডেন্স ────────────────────────────────────────────────────
 
@@ -180,23 +208,30 @@ export class ReportsService {
     };
   }
 
+  /**
+   * F05 (xlsx) ও F06 (pdf) — একই রিপোর্ট, দুই মোড়ক।
+   *
+   * ⭐ দুটো ফরম্যাট **একই `attendance()` কল** থেকে বানানো হয়। আলাদা কোয়েরি
+   * লিখলে একদিন একটা ফিল্টার শুধু একটাতে বসত, আর তখন একই রেঞ্জের Excel ও
+   * PDF দুই রকম যোগফল দেখাত — যেটা রিপোর্টে হতে পারে এমন সবচেয়ে খারাপ ভুল।
+   */
   async attendanceFile(
     q: ReportRangeQuery,
+    format: DownloadFormat,
     actorUserId: number,
     ip: string,
   ): Promise<ReportFile> {
     const report = await this.attendance(q);
-    const buffer = await attendanceWorkbook(report);
+    const buffer =
+      format === 'pdf'
+        ? await attendancePdf(report, this.orgName)
+        : await attendanceWorkbook(report);
 
-    await this.recordExport('attendance', report.meta, report.rows.length, {
+    return this.fileOf('attendance', report.meta, report.rows.length, format, {
+      buffer,
       actorUserId,
       ip,
     });
-
-    return {
-      filename: reportFilename('attendance', report.meta.from, report.meta.to),
-      buffer,
-    };
   }
 
   // ── F02 · সাপ্তাহিক / মাসিক সারাংশ ────────────────────────────────────────
@@ -313,26 +348,39 @@ export class ReportsService {
 
   async summaryFile(
     q: SummaryQuery,
+    format: DownloadFormat,
     actorUserId: number,
     ip: string,
   ): Promise<ReportFile> {
     const report = await this.summary(q);
-    const buffer = await summaryWorkbook(report);
+    const buffer =
+      format === 'pdf'
+        ? await summaryPdf(report, this.orgName)
+        : await summaryWorkbook(report);
 
-    await this.recordExport('summary', report.meta, report.rows.length, {
+    return this.fileOf('summary', report.meta, report.rows.length, format, {
+      buffer,
       actorUserId,
       ip,
     });
-
-    return {
-      filename: reportFilename('summary', report.meta.from, report.meta.to),
-      buffer,
-    };
   }
 
   // ── F04 · productivity ────────────────────────────────────────────────────
 
   /**
+   * ⭐ **productivity-র সংজ্ঞা একটাই, আর সেটা
+   * [activity.math.ts](../activity/activity.math.ts)-এ।** এই মেথড এখন শুধু
+   * সারি আনে আর ছাপার আকৃতিতে সাজায়।
+   *
+   * আগে এখানে নিজের একটা `switch` ছিল যেটা সেকেন্ডগুলো
+   * productive/neutral/unproductive/uncategorized ভাগে ফেলত — অর্থাৎ
+   * `addSeconds()`-এর হুবহু নকল, শুধু আলাদা কোডে। রুট আলাদা বলে দুটো কখনো
+   * মুখোমুখি হতো না, কিন্তু **তারা ইতিমধ্যেই দু-রকম উত্তর দিত**: এখানে
+   * শতাংশের হরে অচিহ্নিত সময় ছিল, `scoreOf()`-এ ছিল না। কেউ প্রশ্ন করলে
+   * "কোনটা সত্যি" বলার কোনো উপায় থাকত না। এখন দুটো সংখ্যাই আসে একই
+   * `scoreOf()` থেকে, আর প্রত্যেকটার আলাদা নাম ও আলাদা মানে
+   * ([reports.types.ts](./reports.types.ts))।
+   *
    * ⚠️ `window_title` কখনো select করা হয় না, আর ফুল URL কোথাও নেই — শুধু
    *    `domain` (ADR-013)। টাইটেলে প্রায়ই পুরো লিংক বা ব্যক্তিগত ডকুমেন্টের
    *    নাম থাকে; রিপোর্টে সেটা এলে ডোমেইন-only নিয়মটা কার্যত ফাঁকা হয়ে যেত।
@@ -350,149 +398,116 @@ export class ReportsService {
       employeeId: { in: ids },
       workDate: { gte: ctx.range.from, lte: ctx.range.to },
     };
+    const limit = q.limit ?? DEFAULT_TOP;
 
-    const [byApp, byEmployee] = await Promise.all([
+    const [byKey, byEmployee, meta] = await Promise.all([
       this.prisma.appUsage.groupBy({
         by: ['processName', 'domain', 'categoryId'],
         where,
         _sum: { durationSec: true },
+        // `foldUsage` কতগুলো সারি মিলেছে সেটাও গোনে — একটা ডোমেইনের ৩ ঘণ্টা
+        // ৪টা লম্বা খণ্ডে না ২০০টা ছোট খণ্ডে, দুটো খুব আলাদা অভ্যাস
+        _count: { _all: true },
       }),
       this.prisma.appUsage.groupBy({
         by: ['employeeId', 'categoryId'],
         where,
         _sum: { durationSec: true },
       }),
+      this.categoryMeta(),
     ]);
 
-    const categoryIds = [
-      ...new Set(
-        [...byApp, ...byEmployee]
-          .map((r) => r.categoryId)
-          .filter((id): id is number => id !== null),
-      ),
-    ];
-    const categories = await this.prisma.appCategory.findMany({
-      where: { id: { in: categoryIds } },
-      select: { id: true, category: true, displayName: true },
-    });
-    const categoryById = new Map(categories.map((c) => [c.id, c]));
+    // ── টপ অ্যাপ ও সাইট
+    //
+    // ⚠️ প্রতিটা DB সারি **ঠিক একটা** তালিকায় যায়: ডোমেইন থাকলে সাইট,
+    //    নইলে অ্যাপ। এই ভাগটা এখানে TypeScript-এ করা হয়, দুটো আলাদা
+    //    কোয়েরিতে নয় — দুটো `where` লিখলে ফাঁকা-স্ট্রিং ডোমেইনের সারি
+    //    দুই দিকেই পড়ে যেত বা কোনো দিকেই না, আর মোট সময় নীরবে ভুল হতো।
+    // ⭐ এখানেই `/activity/top`-এর সাথে তফাত: ওখানে অ্যাপ ও সাইট **একই**
+    //    সময়ের দুই রকম কাটাছেঁড়া (chrome.exe-এর ভেতরেই youtube.com), তাই
+    //    যোগ করা যায় না। এখানে ভাগ দুটো পরস্পরছেদী, তাই যোগফলই মোট সময়।
+    const appGroups: UsageGroup[] = [];
+    const siteGroups: UsageGroup[] = [];
 
-    // ── টপ অ্যাপ/সাইট
-    const items = new Map<
-      string,
-      {
-        kind: 'app' | 'site';
-        category: UsageCategory;
-        displayName: string | null;
-        sec: number;
-      }
-    >();
-    let totalSec = 0;
-
-    for (const row of byApp) {
-      const sec = row._sum.durationSec ?? 0;
-      if (sec <= 0) continue;
-      totalSec += sec;
+    for (const row of byKey) {
+      const seconds = row._sum.durationSec ?? 0;
+      if (seconds <= 0) continue;
 
       const site =
-        row.domain !== null && row.domain.length > 0 ? row.domain : null;
-      const key = site ?? row.processName;
-      const rule =
-        row.categoryId === null ? null : categoryById.get(row.categoryId);
+        row.domain !== null && row.domain.trim().length > 0 ? row.domain : null;
 
-      const existing = items.get(key);
-      if (existing) {
-        existing.sec += sec;
-        // ⚠️ একই ডোমেইন recategorize-এর আগে-পরে দুই সারিতে আসতে পারে
-        //    (একটায় categoryId null)। চিহ্নিত ভাগটাই জেতে, নইলে
-        //    সদ্য-নিয়ম-পাওয়া সাইট আবার "অচিহ্নিত" দেখাত।
-        if (existing.category === 'uncategorized' && rule) {
-          existing.category = rule.category;
-          existing.displayName = rule.displayName;
-        }
-        continue;
-      }
+      const group: UsageGroup = {
+        key: site ?? row.processName,
+        categoryId: row.categoryId,
+        seconds,
+        records: row._count._all,
+      };
 
-      items.set(key, {
-        kind: site === null ? 'app' : 'site',
-        category: rule?.category ?? 'uncategorized',
-        displayName: rule?.displayName ?? null,
-        sec,
-      });
+      if (site === null) appGroups.push(group);
+      else siteGroups.push(group);
     }
 
-    const top: ProductivityItem[] = [...items]
-      .sort(([, a], [, b]) => b.sec - a.sec)
-      .slice(0, q.limit ?? DEFAULT_TOP)
-      .map(([key, v]) => ({
-        key,
-        kind: v.kind,
-        category: v.category,
-        displayName: v.displayName,
-        hours: secondsToHours(v.sec),
-        sharePct: sharePct(v.sec, totalSec),
-      }));
+    const apps = foldUsage(appGroups, meta, 'app', limit);
+    const sites = foldUsage(siteGroups, meta, 'site', limit);
+    const totalSec = apps.totalSec + sites.totalSec;
+
+    // ⚠️ প্রতিটা তালিকা থেকে টপ `limit` নিয়ে তারপর আবার `limit`-এ কাটা হয়।
+    //    এতে কিছু হারায় না — সব মিলিয়ে সেরা `limit`টা সবসময় দুই তালিকার
+    //    সেরা `limit`-এর ভেতরেই থাকে।
+    // ⚠️ সাজানো হয় **সেকেন্ড ধরে**, ঘণ্টা ধরে নয়। ঘণ্টা দুই দশমিকে গোল করা,
+    //    তাই ৩৫ সেকেন্ডের তফাত থাকা দুটো সারি সমান দেখাত আর ক্রমটা
+    //    বর্ণক্রমে গড়িয়ে যেত — অর্থাৎ ছোট সারিটা উপরে উঠে আসত।
+    const top: ProductivityItem[] = [
+      ...apps.rows.map((tally) => ({ tally, kind: 'app' as const })),
+      ...sites.rows.map((tally) => ({ tally, kind: 'site' as const })),
+    ]
+      // সমান হলে key-র বর্ণক্রম — একই রিপোর্ট দু-বার খুললে একই ক্রম
+      .sort(
+        (a, b) =>
+          b.tally.seconds - a.tally.seconds ||
+          (a.tally.key < b.tally.key ? -1 : 1),
+      )
+      .slice(0, limit)
+      .map(({ tally, kind }) => itemOf(tally, kind, totalSec));
 
     // ── কর্মীভিত্তিক ভাগ
-    const perEmployee = new Map<
-      number,
-      {
-        productive: number;
-        neutral: number;
-        unproductive: number;
-        uncategorized: number;
-      }
-    >();
+    const perEmployee = new Map<number, SecondBuckets>();
 
     for (const row of byEmployee) {
-      const sec = row._sum.durationSec ?? 0;
-      if (sec <= 0) continue;
+      const seconds = row._sum.durationSec ?? 0;
+      if (seconds <= 0) continue;
 
-      let acc = perEmployee.get(row.employeeId);
-      if (!acc) {
-        acc = { productive: 0, neutral: 0, unproductive: 0, uncategorized: 0 };
-        perEmployee.set(row.employeeId, acc);
+      let buckets = perEmployee.get(row.employeeId);
+      if (!buckets) {
+        buckets = emptyBuckets();
+        perEmployee.set(row.employeeId, buckets);
       }
 
-      const rule =
-        row.categoryId === null ? null : categoryById.get(row.categoryId);
-      switch (rule?.category) {
-        case Productivity.productive:
-          acc.productive += sec;
-          break;
-        case Productivity.unproductive:
-          acc.unproductive += sec;
-          break;
-        case Productivity.neutral:
-          acc.neutral += sec;
-          break;
-        default:
-          acc.uncategorized += sec;
-      }
+      // ⚠️ `null` ক্যাটাগরি = **অচেনা**, neutral নয় — `addSeconds()` ওটাই
+      //    করে, আর দুটো মিলিয়ে ফেললে প্রতিটা অচেনা অ্যাপ নীরবে স্কোরের হর
+      //    বাড়িয়ে দিত (যত বেশি অচেনা, স্কোর তত কম, অথচ কারণটা অদৃশ্য)।
+      addSeconds(buckets, categoryOf(meta, row.categoryId), seconds);
     }
 
     let uncategorizedSec = 0;
     const rows: ProductivityEmployeeRow[] = ctx.employees.map((employee) => {
-      const acc = perEmployee.get(employee.id) ?? {
-        productive: 0,
-        neutral: 0,
-        unproductive: 0,
-        uncategorized: 0,
-      };
-      const tracked =
-        acc.productive + acc.neutral + acc.unproductive + acc.uncategorized;
-      uncategorizedSec += acc.uncategorized;
+      // ⭐ যাদের একটাও সারি নেই তারাও তালিকায় থাকেন — বাদ দিলে "এজেন্ট বন্ধ"
+      //    আর "সব ঠিক আছে" দেখতে একরকম হতো
+      const score = scoreOf(perEmployee.get(employee.id) ?? emptyBuckets());
+      uncategorizedSec += score.unknownSec;
 
       return {
         employeeId: employee.id,
         empCode: employee.empCode,
         fullName: employee.fullName,
-        productiveHours: secondsToHours(acc.productive),
-        neutralHours: secondsToHours(acc.neutral),
-        unproductiveHours: secondsToHours(acc.unproductive),
-        uncategorizedHours: secondsToHours(acc.uncategorized),
-        trackedHours: secondsToHours(tracked),
-        productiveSharePct: sharePct(acc.productive, tracked),
+        productiveHours: secondsToHours(score.productiveSec),
+        neutralHours: secondsToHours(score.neutralSec),
+        unproductiveHours: secondsToHours(score.unproductiveSec),
+        uncategorizedHours: secondsToHours(score.unknownSec),
+        trackedHours: secondsToHours(score.totalSec),
+        productiveSharePct: sharePct(score.productiveSec, score.totalSec),
+        productivityScorePct: score.scorePct,
+        uncategorizedSharePct: score.unknownPct,
       };
     });
 
@@ -505,6 +520,7 @@ export class ReportsService {
     };
   }
 
+  /** ⚠️ productivity-র PDF নেই — `ProductivityQuery` DTO-তেই আটকানো (F06) */
   async productivityFile(
     q: ProductivityQuery,
     actorUserId: number,
@@ -513,19 +529,13 @@ export class ReportsService {
     const report = await this.productivity(q);
     const buffer = await productivityWorkbook(report);
 
-    await this.recordExport('productivity', report.meta, report.top.length, {
-      actorUserId,
-      ip,
-    });
-
-    return {
-      filename: reportFilename(
-        'productivity',
-        report.meta.from,
-        report.meta.to,
-      ),
-      buffer,
-    };
+    return this.fileOf(
+      'productivity',
+      report.meta,
+      report.top.length,
+      'xlsx',
+      { buffer, actorUserId, ip },
+    );
   }
 
   // ── সাধারণ অংশ ────────────────────────────────────────────────────────────
@@ -671,22 +681,106 @@ export class ReportsService {
     };
   }
 
-  /** ⭐ এক্সপোর্ট একটা ঘটনা — কে কোন রেঞ্জ নামিয়ে নিল, লেখা থাকবে (§ ৭) */
-  private async recordExport(
+  /**
+   * id → ক্যাটাগরির পরিচয়। ~১১০টা সারি, তাই প্রতিবার পুরোটা পড়াই সবচেয়ে সহজ।
+   *
+   * ⚠️ শুধু ব্যবহৃত id-গুলো আনা হয় **না** — `matchType` লাগে লেবেল বাছতে
+   *    (`foldUsage`-এর chrome.exe/YouTube ফাঁদ), আর সেই লেবেল বাছাই যেন
+   *    `/activity/top`-এর সাথে হুবহু এক থাকে সে জন্য ম্যাপটাও একই রকম
+   *    হওয়া দরকার।
+   *
+   * ⚠️ `AppCategoryService`-এর ক্যাশ ব্যবহার করা হয় না — ওটা `compile()` করা
+   *    রুল রাখে, আর ভুল regex-ওয়ালা রুলগুলো সেখানে বাদ পড়ে। রিপোর্টে ওই
+   *    রুলের id-ওয়ালা পুরোনো সারি থাকতেই পারে; ক্যাশ থেকে নিলে সেগুলো নীরবে
+   *    "অচেনা" দেখাত, অথচ ডাটাবেসে ক্যাটাগরি বসানোই আছে।
+   */
+  private async categoryMeta(): Promise<Map<number, CategoryMeta>> {
+    const rows = await this.prisma.appCategory.findMany({
+      select: { id: true, displayName: true, category: true, matchType: true },
+    });
+
+    return new Map(
+      rows.map((r) => [
+        r.id,
+        {
+          displayName: r.displayName,
+          category: r.category,
+          matchType: r.matchType,
+        },
+      ]),
+    );
+  }
+
+  /**
+   * ⭐ এক্সপোর্ট একটা ঘটনা — কে কোন রেঞ্জ কোন ফরম্যাটে নামিয়ে নিল, লেখা থাকবে (§ ৭)।
+   *
+   * ⚠️ `format` আগে `'xlsx'` হার্ডকোড ছিল। PDF যোগ করার সময় সেটা না বদলালে
+   *    অডিট লগ **মিথ্যে** বলত — কেউ PDF নামালেও লেখা থাকত xlsx, আর "কে কী
+   *    নিয়েছে" প্রশ্নের উত্তর অডিট থেকেই আসার কথা।
+   */
+  private async fileOf(
     report: string,
     meta: ReportMeta,
     rows: number,
-    actor: { actorUserId: number; ip: string },
-  ): Promise<void> {
+    format: DownloadFormat,
+    out: { buffer: Buffer; actorUserId: number; ip: string },
+  ): Promise<ReportFile> {
     await this.audit.record({
-      userId: actor.actorUserId,
+      userId: out.actorUserId,
       action: 'export_report',
       targetType: 'report',
       targetId: report,
-      ipAddress: actor.ip,
-      meta: { from: meta.from, to: meta.to, rows, format: 'xlsx' },
+      ipAddress: out.ip,
+      meta: { from: meta.from, to: meta.to, rows, format },
     });
+
+    return {
+      filename: reportFilename(report, meta.from, meta.to, format),
+      mime: MIME_OF[format],
+      buffer: out.buffer,
+    };
   }
+}
+
+/**
+ * ⚠️ id ম্যাপে না থাকলে `null` — অর্থাৎ "অচেনা", crash নয়। foreign key
+ * থাকায় এমন হওয়ার কথা নয়, কিন্তু একটা রুল মুছে ফেলার আর ম্যাপটা পড়ার
+ * মাঝখানে এটা ঘটতে পারে, আর তখন গোটা রিপোর্ট ৫০০ দেওয়ার কোনো মানে নেই।
+ *
+ * ⚠️ `activity.math.ts`-এও হুবহু এই নিয়মটা আছে, কিন্তু সেটা ফাইল-প্রাইভেট।
+ * export হলে এই ছয় লাইন মুছে ফেলা যেত — নোটে লেখা আছে।
+ */
+function categoryOf(
+  meta: ReadonlyMap<number, CategoryMeta>,
+  categoryId: number | null,
+): Productivity | null {
+  if (categoryId === null) return null;
+  return meta.get(categoryId)?.category ?? null;
+}
+
+/**
+ * `activity.math`-এর `UsageTally` → F04-এর সারি।
+ *
+ * ⚠️ `sharePct`-এর হর **দুই তালিকা মিলিয়ে মোট**, `foldUsage`-এর নিজের
+ * মোট নয়। নইলে অ্যাপ ও সাইট আলাদাভাবে ১০০%-এ যোগ হতো আর এক টেবিলে
+ * পাশাপাশি বসে শতাংশগুলোর যোগফল ২০০ দেখাত।
+ */
+function itemOf(
+  tally: UsageTally,
+  kind: 'app' | 'site',
+  totalSec: number,
+): ProductivityItem {
+  return {
+    key: tally.key,
+    kind,
+    category: tally.category ?? 'uncategorized',
+    // `foldUsage` রুলের নাম না পেলে key-টাই লেবেল করে; F04-এর চুক্তি বলে
+    // "নিয়মে নাম না মিললে null"
+    displayName: tally.label === tally.key ? null : tally.label,
+    mixed: tally.mixed,
+    hours: secondsToHours(tally.seconds),
+    sharePct: sharePct(tally.seconds, totalSec),
+  };
 }
 
 // ── ছোট সহায়ক ───────────────────────────────────────────────────────────────

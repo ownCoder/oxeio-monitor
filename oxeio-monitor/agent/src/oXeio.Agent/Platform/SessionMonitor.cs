@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 using oXeio.Agent.Native;
+using oXeio.Core.Agent;
 
 namespace oXeio.Agent.Platform;
 
@@ -55,6 +56,63 @@ internal sealed class SessionMonitor : IDisposable
         Suspending.Contains(wtsCode) ? SessionChange.Suspend
         : Resuming.Contains(wtsCode) ? SessionChange.Resume
         : null;
+
+    /// <summary>
+    /// G02 — এই সেশন-বার্তাটা কি "স্টাফ চলে যাচ্ছে" বোঝায়? বোঝালে যে ইভেন্ট
+    /// টাইপ পাঠাতে হবে, নইলে <c>null</c>।
+    ///
+    /// ⚠️ <b>lock এখানে নেই, ইচ্ছাকৃতভাবে।</b> লক করা মানে চলে যাওয়া নয় — টানা
+    /// আট ঘণ্টায় একজন ডজনখানেক বার লক করে। ওগুলো ইভেন্ট হিসেবে পাঠালে
+    /// <c>agent_events</c> দিনে হাজারখানেক সারিতে ভরে যেত, অথচ ঘণ্টার হিসাবে
+    /// লক আগে থেকেই <see cref="oXeio.Core.Models.SegmentState.Locked"/> সেগমেন্ট
+    /// হয়ে যায় — অর্থাৎ তথ্যটা দুবার জমা হতো।
+    ///
+    /// ⚠️ <c>WTS_SESSION_TERMINATE</c>-ও logoff। সেশনটা বাইরে থেকে (অ্যাডমিন,
+    /// টাইমআউট) শেষ করে দেওয়া হয়েছে; স্টাফের দিক থেকে ফলটা একই, আর ইভেন্টটা
+    /// না পাঠালে সার্ভার ওই <c>agent_stop</c>-কে হস্তক্ষেপ ধরত।
+    /// </summary>
+    public static string? ClosingEventType(int wtsCode) => wtsCode switch
+    {
+        Win32.WTS_SESSION_LOGOFF or Win32.WTS_SESSION_TERMINATE => AgentEventTypes.Logoff,
+        _ => null,
+    };
+
+    /// <summary>
+    /// <c>WM_ENDSESSION</c> → <c>logoff</c> / <c>shutdown</c> / কিছুই না।
+    ///
+    /// ⭐⚠️ <b>শাটডাউনের খবর PowerMonitor-এ আসে না — খুঁজে দেখা হয়েছে।</b>
+    /// <c>WM_POWERBROADCAST</c>-এর সব রূপ (<c>PBT_APMSUSPEND</c>,
+    /// <c>PBT_APMRESUME*</c>, ডিসপ্লে) ঘুম ও জাগরণের কথা বলে; Windows বন্ধ বা
+    /// রিস্টার্ট হওয়ার সময় ওগুলোর একটাও আসে না। শাটডাউন আসে <b>শুধু</b>
+    /// <c>WM_QUERYENDSESSION</c>/<c>WM_ENDSESSION</c> হয়ে, আর ওটা সেশনের বার্তা —
+    /// সেজন্যই ব্যাখ্যাটা এখানে, পাওয়ারে নয়। PowerMonitor-এ বসালে কোডটা
+    /// কম্পাইল হতো, চলত, এবং <c>shutdown</c> ইভেন্ট কোনোদিন যেত না।
+    ///
+    /// ⚠️ WTS-এর logoff আর এখানকার logoff — দুটোই আসে। একটাই পাঠানো হয়;
+    /// ডিডুপটা <c>AgentHost</c>-এ (<c>RaiseClosingEvent</c>)।
+    /// </summary>
+    /// <param name="wParam">০ হলে সেশন আসলে শেষ হচ্ছে না (কেউ "না" বলেছে)।</param>
+    /// <param name="lParam">ENDSESSION_* বিটমাস্ক।</param>
+    public static string? InterpretEndSession(nint wParam, nint lParam)
+    {
+        // wParam == FALSE মানে WM_QUERYENDSESSION-এ কেউ বাধা দিয়েছে, সেশন
+        // চলবে। এখানে ইভেন্ট পাঠালে "PC বন্ধ হয়েছে" মিথ্যা রেকর্ড হয়ে থাকত।
+        if (wParam == 0) return null;
+
+        // ⚠️ ৬৪-বিটে lParam sign-extend হতে পারে; নিচের ৩২ বিটই আসল মান।
+        var flags = unchecked((uint)(long)lParam);
+
+        if ((flags & Win32.ENDSESSION_LOGOFF) != 0) return AgentEventTypes.Logoff;
+
+        // ⚠️ শুধু CLOSEAPP মানে Restart Manager আমাদেরই বন্ধ করাচ্ছে (সাধারণত
+        //    আপডেট ইনস্টল করতে) — PC বন্ধ হচ্ছে না। এটাকে shutdown বললে
+        //    প্রতিটা এজেন্ট-আপডেট একটা ভুয়া "PC বন্ধ" রেকর্ড রেখে যেত।
+        //    এখানে null ফেরে, আর DisposeAsync-এর agent_stop-ই যথেষ্ট।
+        if ((flags & Win32.ENDSESSION_CLOSEAPP) != 0) return null;
+
+        // বাকি সব (0, ENDSESSION_CRITICAL) = PC বন্ধ বা রিস্টার্ট হচ্ছে
+        return AgentEventTypes.Shutdown;
+    }
 
     public static string Describe(int wtsCode) => wtsCode switch
     {

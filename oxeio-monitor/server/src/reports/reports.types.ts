@@ -98,12 +98,26 @@ export interface SummaryReport {
 export type UsageCategory = Productivity | 'uncategorized';
 
 export interface ProductivityItem {
-  /** ব্রাউজার হলে ডোমেইন, নইলে প্রসেসের নাম */
+  /**
+   * ব্রাউজার হলে ডোমেইন, নইলে প্রসেসের নাম।
+   * ⚠️ **স্বাভাবিক করা** — ছোট হাতের, ডোমেইনে `www.` ছাড়া
+   * (`activity.math.ts`-এর `normalizeProcess` / `normalizeDomain`)। নইলে
+   * `Chrome.exe` আর `chrome.exe` দুটো আলাদা সারি হয়ে টপ তালিকার জায়গা
+   * নষ্ট করত, আর প্রত্যেকের সময় আসল সময়ের ভগ্নাংশ দেখাত।
+   */
   key: string;
   kind: 'app' | 'site';
   category: UsageCategory;
   /** ক্যাটাগরির নিয়মে দেওয়া নাম, না মিললে null */
   displayName: string | null;
+  /**
+   * ⚠️ একাধিক **জানা** ক্যাটাগরি মিশে আছে কি না।
+   *
+   * `chrome.exe`-এর ক্যাটাগরি আসে ডোমেইন থেকে — youtube.com (unproductive)
+   * আর github.com (productive) দুটোই একই প্রসেসে। `true` হলে পাশের
+   * `category` কেবল **সবচেয়ে বড় ভাগ**, একক সত্য নয়।
+   */
+  mixed: boolean;
   hours: number;
   sharePct: number;
 }
@@ -118,13 +132,34 @@ export interface ProductivityEmployeeRow {
   uncategorizedHours: number;
   trackedHours: number;
   /**
-   * productive ÷ মোট ট্র্যাক করা সময়।
-   * ⚠️ `daily_summary.productivity_pct`-এর সাথে হুবহু মিলবে ধরে নেবেন না —
-   *    এখানে uncategorized সময়ও হরে আছে, তাই নিয়ম যোগ হতে হতে সংখ্যাটা
-   *    নিজে থেকেই বাড়ে। লুকিয়ে রাখলে "৯৫% productive" দেখা যেত অথচ
-   *    অর্ধেক সময় অচিহ্নিত।
+   * productive ÷ **মোট** ট্র্যাক করা সময় (অচিহ্নিতসহ)।
+   *
+   * ⚠️ `daily_summary.productivity_pct` বা `/activity/productivity`-র
+   *    `scorePct`-এর সাথে হুবহু মিলবে ধরে নেবেন না — ওখানে হর কেবল
+   *    **চিহ্নিত** সময়। এখানে অচিহ্নিত সময়ও হরে আছে, তাই নিয়ম যোগ হতে
+   *    হতে সংখ্যাটা নিজে থেকেই বাড়ে। লুকিয়ে রাখলে "৯৫% productive"
+   *    দেখা যেত অথচ অর্ধেক সময় অচিহ্নিত।
+   *
+   * ⭐ সম্পর্কটা হলো
+   * `productiveSharePct = scorePct × (১০০ − uncategorizedSharePct) ÷ ১০০`,
+   * আর তিনটে সংখ্যাই এখন **একই** ঝুড়ি থেকে আসে
+   * ([activity.math.ts](../activity/activity.math.ts)-এর `scoreOf`)।
    */
   productiveSharePct: number;
+  /**
+   * ⭐ `activity.math.ts`-এর একমাত্র সংজ্ঞা: productive ÷ **চিহ্নিত** সময়।
+   *
+   * ⚠️ চিহ্নিত সময় শূন্য হলে `null`, `0` নয়। `0` বলত "এই লোক কিছুই
+   *    productive করেনি", অথচ সত্যিটা "বলার মতো কোনো তথ্যই নেই"।
+   *    ছুটির দিনে বা এজেন্ট বন্ধ থাকা দিনে পার্থক্যটা পুরো রিপোর্টের অর্থ বদলায়।
+   */
+  productivityScorePct: number | null;
+  /**
+   * মোট ট্র্যাক করা সময়ের কত শতাংশ অচেনা।
+   * ⭐ স্কোরের পাশে এটা **সবসময়** যায় — ৯০% সময় অচেনা হলে ১০০% স্কোরও
+   *    অর্থহীন, কিন্তু শুধু স্কোরটা দেখলে সেটা দারুণ দেখাত।
+   */
+  uncategorizedSharePct: number;
 }
 
 export interface ProductivityReport {
@@ -135,9 +170,17 @@ export interface ProductivityReport {
   byEmployee: ProductivityEmployeeRow[];
 }
 
-/** F05 — নামসহ তৈরি .xlsx */
+/**
+ * F05/F06 — নামসহ তৈরি ফাইল।
+ *
+ * ⚠️ `mime` সার্ভিসেই বসে, কন্ট্রোলারে নয়। কন্ট্রোলারে বসালে সেখানে আবার
+ * "কোন ফরম্যাট চাওয়া হয়েছিল" মনে রাখতে হতো, আর একদিন `.pdf` নামের ফাইল
+ * `xlsx` MIME নিয়ে যেত — ব্রাউজার তখন ওটা Excel দিয়ে খুলতে গিয়ে
+ * "ফাইল নষ্ট" বলত, অথচ ফাইলটা ঠিকই ছিল।
+ */
 export interface ReportFile {
   filename: string;
+  mime: string;
   buffer: Buffer;
 }
 

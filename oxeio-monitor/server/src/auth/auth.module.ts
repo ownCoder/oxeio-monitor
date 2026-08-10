@@ -10,6 +10,7 @@ import { RolesGuard } from './guards/roles.guard';
 import { LoginThrottleService } from './login-throttle.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
+import { TwoFactorService } from './two-factor.service';
 
 /**
  * চারটি গার্ডই **গ্লোবাল** — নিরাপত্তা opt-out মডেলে, opt-in নয়।
@@ -29,6 +30,7 @@ import { TokenService } from './token.service';
     AuthService,
     PasswordService,
     TokenService,
+    TwoFactorService,
     LoginThrottleService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },

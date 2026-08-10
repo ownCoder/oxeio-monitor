@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { MonthlyPage } from './pages/MonthlyPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SecurityPage } from './pages/security/SecurityPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
 /**
@@ -72,6 +73,14 @@ function Router() {
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />
         <Route path="reports" element={<ReportsPage />} />
+
+        {/*
+          ⭐ I06 — শর্ত ছাড়া, **সব ভূমিকার জন্য**। নিজের অ্যাকাউন্টের 2FA
+             চালু করা কোনো বিশেষাধিকার নয়; স্টাফও নিজের অ্যাকাউন্ট রক্ষা
+             করতে পারবে। (এটা তার উপর নজরদারির কোনো নতুন পথ খোলে না —
+             পাতাটা শুধু তার নিজের লগইন নিয়ে।)
+        */}
+        <Route path="security" element={<SecurityPage />} />
 
         {/*
           ⭐ owner না হলে রুটটা **থাকেই না** — সরাসরি `/settings` টাইপ করলে

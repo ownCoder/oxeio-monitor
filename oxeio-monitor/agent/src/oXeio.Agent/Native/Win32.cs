@@ -27,6 +27,19 @@ internal static class Win32
     internal const int WTS_SESSION_UNLOCK = 0x8;
     internal const int WTS_SESSION_TERMINATE = 0xB;
 
+    // ── সেশন শেষ (WM_ENDSESSION-এর lParam) ─────────────────────────────────
+    // ⚠️ এই তিনটেই বিটমাস্ক, পরস্পর-বর্জক মান নয় — <c>==</c> দিয়ে মেলালে
+    //    ENDSESSION_CRITICAL সহ আসা একটা logoff "shutdown" হয়ে যেত।
+
+    /// <summary>থাকলে ইউজার লগঅফ করছে; <b>না থাকলে</b> PC বন্ধ/রিস্টার্ট হচ্ছে।</summary>
+    internal const uint ENDSESSION_LOGOFF = 0x80000000;
+
+    /// <summary>Restart Manager অ্যাপটাকে বন্ধ করাচ্ছে (ফাইল বদলাতে) — সেশন শেষ নয়।</summary>
+    internal const uint ENDSESSION_CLOSEAPP = 0x00000001;
+
+    /// <summary>জোর করে — "না" বলার সুযোগ নেই। বন্ধের ধরন এতে বদলায় না।</summary>
+    internal const uint ENDSESSION_CRITICAL = 0x40000000;
+
     internal const int WTSSessionInfoEx = 25;
     internal const uint WTS_CURRENT_SESSION = 0xFFFFFFFF;
 

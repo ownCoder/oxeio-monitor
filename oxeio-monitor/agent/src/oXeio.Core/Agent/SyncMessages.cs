@@ -105,6 +105,20 @@ public sealed record EmployeeProgress
     public required int TodayActiveSec { get; init; }
     public required int MonthActiveSec { get; init; }
     public required double MonthlyTargetHours { get; init; }
+
+    /// <summary>
+    /// গতি (pace) — <c>credited − expected</c>, ধনাত্মক মানে এগিয়ে (07 § ২.১-খ)।
+    ///
+    /// ⭐ <b>ঐচ্ছিক, এবং সেটাই মূল কথা।</b> সঠিক হিসাবের জন্য কর্মদিবস গুনতে হয়,
+    /// আর কর্মদিবস মানে সাপ্তাহিক ছুটি <b>ও</b> <c>holidays</c> টেবিল — এজেন্ট
+    /// ছুটির তালিকা জানেই না। সার্ভার সংখ্যাটা পাঠালে tray সেটাই দেখায়; না
+    /// পাঠালে <c>MonthlyPace</c> একটা আনুমানিক হিসাব করে এবং জানালায় স্পষ্ট
+    /// করে "আনুমানিক" লেখে।
+    ///
+    /// ⚠️ এখানে ডিফল্ট ০ বসানো <b>যাবে না</b>। ০ মানে "ঠিক লক্ষ্যে আছে", অর্থাৎ
+    /// সার্ভার চুপ থাকলে সবাইকে চিরকাল নিখুঁত দেখাত।
+    /// </summary>
+    public int? PaceSec { get; init; }
 }
 
 // ── ingest ──────────────────────────────────────────────────────────────────

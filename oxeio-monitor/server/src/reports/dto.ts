@@ -10,8 +10,8 @@ import {
 
 import { MAX_RANGE_DAYS, type GroupBy } from './reports.range';
 
-/** json = ড্যাশবোর্ডের জন্য · xlsx = F05 ডাউনলোড */
-export type ReportFormat = 'json' | 'xlsx';
+/** json = ড্যাশবোর্ডের জন্য · xlsx = F05 ডাউনলোড · pdf = F06 ছাপার জন্য */
+export type ReportFormat = 'json' | 'xlsx' | 'pdf';
 
 const DATE_MESSAGE = 'তারিখ দিতে হবে YYYY-MM-DD ফরম্যাটে';
 
@@ -32,7 +32,9 @@ export class ReportRangeQuery {
   to!: string;
 
   @IsOptional()
-  @IsIn(['json', 'xlsx'], { message: 'format হতে পারে json অথবা xlsx' })
+  @IsIn(['json', 'xlsx', 'pdf'], {
+    message: 'format হতে পারে json, xlsx অথবা pdf',
+  })
   format?: ReportFormat;
 
   /** একজন স্টাফের রিপোর্ট চাইলে */
@@ -52,6 +54,28 @@ export class SummaryQuery extends ReportRangeQuery {
 
 /** F04 — অ্যাপ/সাইট ভিত্তিক */
 export class ProductivityQuery extends ReportRangeQuery {
+  /**
+   * ⭐ এখানে `pdf` **নেই** — F06 শুধু অ্যাটেনডেন্স ও সারাংশের জন্য।
+   *
+   * ⚠️ সীমাটা **DTO-তেই**, কন্ট্রোলারে `if` দিয়ে নয়। কন্ট্রোলারে রাখলে
+   * `?format=pdf` চুপচাপ JSON ফেরত দিত (বা একটা খালি ফাইল), আর
+   * ব্যবহারকারী ভাবতেন ডাউনলোডটা ব্যর্থ হয়েছে। এখানে রাখায় উত্তরটা
+   * একটা পরিষ্কার ৪০০ — কোন ফরম্যাটগুলো চলে সেটাসহ।
+   *
+   * (class-validator সাবক্লাসের ডেকোরেটরকে একই ধরনের inherited ডেকোরেটরের
+   * বদলি হিসেবে নেয়; বদলি হোক বা যোগ, দুই ক্ষেত্রেই `pdf` এখানে আটকায়।)
+   */
+  @IsOptional()
+  @IsIn(['json', 'xlsx'], {
+    message:
+      'productivity রিপোর্টের PDF নেই — format হতে পারে json অথবা xlsx (ছাপার জন্য attendance বা summary)',
+  })
+  // ⚠️ `= undefined` মুছবেন না। `useDefineForClassFields` চালু (target
+  //    ES2023), তাই ইনিশিয়ালাইজার ছাড়া বেস ক্লাসের ফিল্ড ওভাররাইড করা
+  //    TS2612। `declare` দিয়ে সমাধান করা যেত না — declare ফিল্ডে ডেকোরেটর
+  //    বসে না, আর ডেকোরেটরটাই তো এখানকার পুরো উদ্দেশ্য।
+  override format?: ReportFormat = undefined;
+
   /**
    * টপ কতটা অ্যাপ/সাইট ফেরত যাবে।
    * ⚠️ সীমা না থাকলে এক বছরের রেঞ্জে হাজারো ডোমেইন একসাথে ফিরত —

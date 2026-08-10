@@ -296,6 +296,32 @@ internal static class SyncWire
     {
         public IReadOnlyList<string>? Commands { get; init; }
         public string? ConfigVersion { get; init; }
+
+        /// <summary>
+        /// ⚠️ <b>এই ফিল্ডটা ছিল না, আর সেটা নীরব বাগ ছিল।</b> সার্ভার
+        /// (<c>agent.controller.ts</c>) প্রতিটা heartbeat-এর উত্তরে
+        /// <c>progress</c> পাঠায়, কিন্তু DTO-তে ঘরটাই না থাকায় STJ সেটা
+        /// চুপচাপ ফেলে দিত। ফলে <see cref="HeartbeatResponse.Progress"/>
+        /// চিরকাল null, আর tray-তে "এ মাসে" চিরকাল <b>০ ঘণ্টা</b> —
+        /// অথচ সার্ভারে সংখ্যাটা ঠিকই ছিল। J03/J04 দুটোই এর উপর দাঁড়িয়ে।
+        /// </summary>
+        public ProgressDto? Progress { get; init; }
+    }
+
+    /// <summary>
+    /// ⚠️ <see cref="EmployeeProgress"/>-এ সরাসরি deserialize করা হয় না, যদিও
+    /// এটা পড়ার দিক। ওই রেকর্ডের তিনটে সদস্য <c>required</c>, আর .NET ৭+ এ
+    /// required সদস্য JSON-এ না থাকলে STJ <c>JsonException</c> ছোড়ে। সার্ভার
+    /// একদিন একটা ফিল্ড ঐচ্ছিক করলেই তখন <b>পুরো heartbeat-এর উত্তর</b>
+    /// (কমান্ড, revoke, configVersion সহ) পড়া যেত না — অগ্রগতির একটা ঘর হারানোর
+    /// শাস্তি হতো ট্র্যাকিং কমান্ড হারানো। তাই তারের দিকে সব nullable।
+    /// </summary>
+    internal sealed record ProgressDto
+    {
+        public int? TodayActiveSec { get; init; }
+        public int? MonthActiveSec { get; init; }
+        public double? MonthlyTargetHours { get; init; }
+        public int? PaceSec { get; init; }
     }
 
     internal static HeartbeatResponse ToHeartbeatResponse(HeartbeatResponseDto dto)
@@ -313,6 +339,29 @@ internal static class SyncWire
         {
             Commands = commands,
             ConfigVersion = dto.ConfigVersion ?? string.Empty,
+            Progress = ToProgress(dto.Progress),
+        };
+    }
+
+    /// <summary>
+    /// ডিভাইসের সাথে কর্মী যুক্ত না থাকলে সার্ভার <c>progress: null</c> পাঠায় —
+    /// তখন null-ই ফেরে, শূন্য ভরা একটা অবজেক্ট নয়।
+    ///
+    /// ⚠️ <c>monthlyTargetHours ≤ 0</c> হলেও পুরোটা বাতিল। শূন্য টার্গেট নিয়ে
+    /// <see cref="AgentStatus.MonthlyProgress"/> ০ ফেরত দেয়, অর্থাৎ যে মানুষ
+    /// পুরো মাস কাজ করেছে তার প্রগ্রেস বার সারা মাস খালি দেখাত।
+    /// </summary>
+    private static EmployeeProgress? ToProgress(ProgressDto? dto)
+    {
+        if (dto is null) return null;
+        if (dto.MonthlyTargetHours is not { } target || target <= 0) return null;
+
+        return new EmployeeProgress
+        {
+            TodayActiveSec = Math.Max(0, dto.TodayActiveSec ?? 0),
+            MonthActiveSec = Math.Max(0, dto.MonthActiveSec ?? 0),
+            MonthlyTargetHours = target,
+            PaceSec = dto.PaceSec,
         };
     }
 }

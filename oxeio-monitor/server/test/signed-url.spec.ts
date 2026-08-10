@@ -65,6 +65,75 @@ describe('signed URL — সই করা ও যাচাই', () => {
   });
 });
 
+/**
+ * A06 — ৩২০px থাম্বনেইল আসার পর `variant` আর নিছক একটা লেবেল নয়: এখন
+ * সত্যিই **দুটো আলাদা ফাইল** আছে, একটা ~১৫ KB আর একটা ~১৫০ KB। তাই
+ * এখান থেকে variant-এর ভুল মানে হয় দশগুণ বেশি বাইট, নয় অননুমোদিত
+ * ফুল-রেজ়লিউশন ছবি।
+ */
+describe('signed URL — variant (A06)', () => {
+  it('thumb-এর টোকেন thumb হয়েই ফেরত আসে', () => {
+    const result = verifyScreenshotToken(make({ variant: 'thumb' }), KEY, NOW);
+    expect(result.ok && result.claims.variant).toBe('thumb');
+  });
+
+  /**
+   * ⭐ একই ছবি, একই দর্শক, একই মুহূর্ত — তবু দুটো টোকেন **আলাদা**।
+   * এক হয়ে গেলে বুঝতে হবে variant সইয়ের বাইরে চলে গেছে, আর তখন
+   * গ্যালারির thumbUrl দিয়েই ফুল ছবি নামানো যেত।
+   */
+  it('একই ছবির thumb ও full টোকেন কখনো এক নয়', () => {
+    const thumb = make({ variant: 'thumb' });
+    const full = make({ variant: 'full' });
+
+    expect(thumb).not.toBe(full);
+
+    const t = thumb.split('.');
+    const f = full.split('.');
+
+    // আইডি, মেয়াদ, দর্শক — তিনটেই হুবহু এক
+    expect(t.slice(2, 5)).toEqual(f.slice(2, 5));
+    // পার্থক্য শুধু variant আর সই — অর্থাৎ সই variant-টাকে ঢেকে রেখেছে
+    expect(t[1]).not.toBe(f[1]);
+    expect(t[5]).not.toBe(f[5]);
+  });
+
+  /**
+   * ⭐ সবচেয়ে সরল আক্রমণ: গ্যালারি প্রতিটা ছবির জন্য **দুটোই** লিঙ্ক
+   * পাঠায় (thumbUrl, fullUrl)। কেউ যদি ফুলের সইটা কেটে thumb-এর শরীরে
+   * বসায় — বা উল্টোটা — দুটোই ভাঙা চাই। সই পুরো শরীরের উপরে বলেই ভাঙে।
+   */
+  it('এক variant-এর সই অন্য variant-এর শরীরে বসে না', () => {
+    const thumb = make({ variant: 'thumb' }).split('.');
+    const full = make({ variant: 'full' }).split('.');
+
+    const stolen = [...thumb.slice(0, 5), full[5]].join('.');
+    expect(verifyScreenshotToken(stolen, KEY, NOW).ok).toBe(false);
+
+    const reverse = [...full.slice(0, 5), thumb[5]].join('.');
+    expect(verifyScreenshotToken(reverse, KEY, NOW).ok).toBe(false);
+  });
+
+  /**
+   * ⚠️ variant **টোকেনের ভেতরে**, `?variant=thumb` নামের আলাদা ক্যোয়ারি
+   * প্যারামিটারে নয়। প্যারামিটার হলে সইটা তাকে ছুঁতে পারত না, আর এক
+   * শব্দ বদলেই thumb → full হয়ে যেত। এই টেস্টটা সেই নকশাটাকেই আটকে
+   * রাখে: টোকেনের দ্বিতীয় অংশটাই একমাত্র জায়গা যেখানে variant থাকে।
+   */
+  it('variant টোকেনের নির্দিষ্ট অংশেই থাকে — বাইরে নয়', () => {
+    expect(make({ variant: 'thumb' }).split('.')[1]).toBe('t');
+    expect(make({ variant: 'full' }).split('.')[1]).toBe('f');
+  });
+
+  it('অজানা variant কোড কখনো পাশ করে না', () => {
+    for (const code of ['x', 'T', 'F', 'thumb', '']) {
+      const parts = make({ variant: 'full' }).split('.');
+      parts[1] = code;
+      expect(verifyScreenshotToken(parts.join('.'), KEY, NOW).ok).toBe(false);
+    }
+  });
+});
+
 describe('signed URL — মেয়াদ', () => {
   it('৫ মিনিটের এক সেকেন্ড আগেও চলে', () => {
     const token = make();

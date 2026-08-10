@@ -10,12 +10,30 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginThrottleService } from './login-throttle.service';
 import { PasswordService } from './password.service';
+import {
+  decodeEnvelope,
+  encodeEnvelope,
+  verifySecondFactor,
+  type TotpEnvelope,
+} from './totp';
 import type { SessionUser } from './types';
 
-export interface LoginResult {
-  user: Omit<SessionUser, 'issuedAt'>;
-  mustChangePassword: boolean;
-}
+/**
+ * ⭐ লগইনের ফল তিন রকম হতে পারে, তাই discriminated union — একটা optional
+ *    ফিল্ড দিয়ে বোঝালে কল করার জায়গায় "needsTotp true অথচ user-ও আছে"
+ *    এমন অসম্ভব অবস্থাও টাইপ-বৈধ হতো।
+ */
+export type LoginOutcome =
+  | { status: 'needs_totp' }
+  | {
+      status: 'ok';
+      user: Omit<SessionUser, 'issuedAt'>;
+      mustChangePassword: boolean;
+      /** রিকভারি কোড দিয়ে ঢুকেছে — ইউজারকে জানানো দরকার */
+      usedRecoveryCode: boolean;
+      /** 2FA চালু থাকলে আর কটা রিকভারি কোড বাকি; নইলে null */
+      recoveryCodesLeft: number | null;
+    };
 
 export interface MeResult {
   userId: number;
@@ -25,6 +43,8 @@ export interface MeResult {
   employeeId: number | null;
   mustChangePassword: boolean;
   lastLoginAt: Date | null;
+  /** I06 — Security পর্দা এটা দেখেই অবস্থা বোঝায় */
+  twoFactorEnabled: boolean;
 }
 
 @Injectable()
@@ -36,11 +56,20 @@ export class AuthService {
     private readonly audit: AuditService,
   ) {}
 
+  /**
+   * ⭐ 2FA-র দ্বিতীয় ধাপে ইমেইল+পাসওয়ার্ড **আবার** পাঠাতে হয় — মাঝপথের
+   *    কোনো "half-logged-in" টোকেন নেই। সেরকম টোকেন মানেই আরেকটা জিনিস
+   *    যা চুরি হতে পারে, মেয়াদ শেষ হতে পারে, ভুল করে পুরো সেশনের ক্ষমতা
+   *    পেয়ে যেতে পারে। ব্রাউজার পাসওয়ার্ডটা ফর্মেই ধরে রাখে, তাই
+   *    ব্যবহারকারীর দিক থেকে পার্থক্য নেই।
+   */
   async login(
     email: string,
     password: string,
     ip: string,
-  ): Promise<LoginResult> {
+    totp?: string,
+    recoveryCode?: string,
+  ): Promise<LoginOutcome> {
     this.throttle.assertNotLocked(email, ip);
 
     const user = await this.prisma.user.findUnique({
@@ -65,29 +94,73 @@ export class AuthService {
       throw new UnauthorizedException('ইমেইল বা পাসওয়ার্ড ভুল');
     }
 
-    // I06 — 2FA Phase 6-এ। সিক্রেট বসানো থাকলেও যাচাই করার কোড এখনো নেই,
-    // তাই চুপচাপ ঢুকতে দেওয়ার বদলে fail-closed: লগইন আটকে দিই।
-    if (user.totpSecret) {
-      throw new UnauthorizedException(
-        'এই অ্যাকাউন্টে 2FA বসানো আছে, কিন্তু যাচাই এখনো তৈরি হয়নি (Phase 6)। ' +
-          'owner-কে দিয়ে totp_secret সরিয়ে নিন।',
-      );
+    // I06 — 2FA। খাম ভাঙা থাকলে `decodeEnvelope` ছোড়ে, অর্থাৎ fail-closed।
+    const env = decodeEnvelope(user.totpSecret);
+    let usedRecoveryCode = false;
+    let nextEnv: TotpEnvelope | null = null;
+
+    if (env?.enabled) {
+      const result = verifySecondFactor(env, { totp, recoveryCode });
+
+      if (!result.ok && result.reason === 'missing') {
+        // ⚠️ এখানে `recordSuccess` **নয়** — পাসওয়ার্ড ঠিক হলেও লগইন এখনো
+        //    সম্পূর্ণ নয়, তাই ব্যর্থতার কাউন্টার মুছে ফেলা যাবে না।
+        //    ব্যর্থতাও নয়: কোড না দেওয়াটা আক্রমণ নয়, স্বাভাবিক প্রথম ধাপ।
+        return { status: 'needs_totp' };
+      }
+
+      if (!result.ok) {
+        // ⚠️ 2FA ধাপেও throttle — নইলে পাসওয়ার্ড জানা আক্রমণকারী ৬ অঙ্কের
+        //    ১০ লাখ সম্ভাবনা নির্বিঘ্নে চেষ্টা করে যেতে পারত।
+        this.throttle.recordFailure(email, ip);
+        await this.audit.record({
+          userId: user.id,
+          action: '2fa_failed',
+          ipAddress: ip,
+          meta: { reason: result.reason },
+        });
+        throw new UnauthorizedException(
+          result.reason === 'replayed'
+            ? 'এই কোডটা আগেই ব্যবহার হয়েছে — অ্যাপে পরের কোডটার জন্য অপেক্ষা করুন'
+            : 'যাচাই কোড ভুল',
+        );
+      }
+
+      usedRecoveryCode = result.usedRecoveryCode;
+      nextEnv = result.env;
     }
 
     this.throttle.recordSuccess(email, ip);
 
+    // ⚠️ খরচ হওয়া কোড/counter আর `lastLoginAt` একই `UPDATE`-এ — আলাদা করলে
+    //    একটা ব্যর্থ হলে "লগইন হয়েছে কিন্তু কোড খরচ হয়নি" অবস্থা তৈরি হতো,
+    //    অর্থাৎ replay ঠেকানোই ভেঙে যেত।
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        lastLoginAt: new Date(),
+        ...(nextEnv === null ? {} : { totpSecret: encodeEnvelope(nextEnv) }),
+      },
     });
 
     await this.audit.record({
       userId: user.id,
       action: 'login',
       ipAddress: ip,
+      meta: { twoFactor: env?.enabled === true, recovery: usedRecoveryCode },
     });
 
+    if (usedRecoveryCode) {
+      await this.audit.record({
+        userId: user.id,
+        action: '2fa_recovery_used',
+        ipAddress: ip,
+        meta: { left: nextEnv?.recoveryHashes.length ?? 0 },
+      });
+    }
+
     return {
+      status: 'ok',
       user: {
         userId: user.id,
         email: user.email,
@@ -96,6 +169,8 @@ export class AuthService {
         mustChangePw: user.mustChangePw,
       },
       mustChangePassword: user.mustChangePw,
+      usedRecoveryCode,
+      recoveryCodesLeft: nextEnv?.recoveryHashes.length ?? null,
     };
   }
 
@@ -113,6 +188,7 @@ export class AuthService {
       employeeId: user.employeeId,
       mustChangePassword: user.mustChangePw,
       lastLoginAt: user.lastLoginAt,
+      twoFactorEnabled: decodeEnvelope(user.totpSecret)?.enabled === true,
     };
   }
 

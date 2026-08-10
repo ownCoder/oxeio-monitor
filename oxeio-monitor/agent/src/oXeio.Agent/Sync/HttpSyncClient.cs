@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using oXeio.Agent.Storage;
 using oXeio.Core.Agent;
 using oXeio.Core.Models;
 
@@ -382,6 +383,22 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         //    ইচ্ছাকৃতভাবে ASCII (uuid) — ডিস্কের আসল নামে অ-ASCII থাকলে .NET
         //    RFC 5987-এর filename*= রূপ পাঠাত, যেটা সব পার্সার বোঝে না।
         content.Add(filePart, "file", $"{meta.ClientUuid:N}.webp");
+
+        // ── thumb (A06) — ঐচ্ছিক ─────────────────────────────────────────
+        // ⚠️ না থাকলে অনুরোধটা তবু বৈধ; সার্ভার `thumb_path` null রাখে আর
+        //    গ্যালারি ফুল ছবিতে ফেরত যায়। থাম্বনেইলের অভাবে একটা ছবি
+        //    আটকে থাকা বা বাদ যাওয়া চলবে না।
+        var thumbPath = OutboxPaths.ThumbPathFor(webpPath);
+        if (File.Exists(thumbPath))
+        {
+            var thumbStream = new FileStream(
+                thumbPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                bufferSize: 16 * 1024, useAsync: true);
+
+            var thumbPart = new StreamContent(thumbStream);
+            thumbPart.Headers.ContentType = new MediaTypeHeaderValue(SyncLimits.ScreenshotMimeType);
+            content.Add(thumbPart, "thumb", $"{meta.ClientUuid:N}-thumb.webp");
+        }
 
         return new HttpRequestMessage(HttpMethod.Post, "agent/screenshots") { Content = content };
     }

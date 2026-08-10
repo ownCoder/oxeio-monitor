@@ -122,6 +122,14 @@ export function productivityWorkbook(
     },
     { header: 'নাম', width: 24, value: (r) => r.displayName },
     { header: 'ক্যাটাগরি', width: 16, value: (r) => CATEGORY_BN[r.category] },
+    {
+      // ⚠️ পাশের ক্যাটাগরিটা তখন শুধু **সবচেয়ে বড় ভাগ**, একক সত্য নয় —
+      //    chrome.exe-এ github.com আর youtube.com দুটোই থাকে। কলামটা না
+      //    থাকলে "chrome.exe — Productive" পড়ে কেউ নিশ্চিন্ত হয়ে যেতেন।
+      header: 'মিশ্র ক্যাটাগরি',
+      width: 16,
+      value: (r) => (r.mixed ? 'হ্যাঁ' : '—'),
+    },
     hours('সময় (ঘণ্টা)', (r: ProductivityItem) => r.hours),
     {
       header: 'অংশ (%)',
@@ -156,6 +164,23 @@ export function productivityWorkbook(
       width: 18,
       numFmt: NUM_FMT_2,
       value: (r) => r.productiveSharePct,
+    },
+    {
+      // ⭐ স্কোর ও অচিহ্নিত শতাংশ **পাশাপাশি** — ৯০% সময় অচেনা হলে ১০০%
+      //    স্কোরও অর্থহীন, কিন্তু একা স্কোরটা দেখলে সেটা দারুণ দেখাত
+      header: 'Productivity স্কোর (%)',
+      width: 20,
+      numFmt: NUM_FMT_2,
+      // ⚠️ চিহ্নিত সময় শূন্য হলে `null` — শূন্য নয়। Excel-এ ঘরটা **খালি**
+      //    থাকে, আর সেটাই ঠিক: "০%" বলত কেউ কিছুই productive করেনি, অথচ
+      //    সত্যিটা হলো বলার মতো কোনো তথ্যই নেই।
+      value: (r) => r.productivityScorePct,
+    },
+    {
+      header: 'অচিহ্নিত অংশ (%)',
+      width: 18,
+      numFmt: NUM_FMT_2,
+      value: (r) => r.uncategorizedSharePct,
     },
   ];
 

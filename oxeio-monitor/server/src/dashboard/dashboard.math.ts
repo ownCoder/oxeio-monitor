@@ -27,17 +27,38 @@ export const OFFLINE_AFTER_SEC = 90;
 /** কার্ডের চারটি রঙ (E01)। SegmentState-এর `locked` এখানে `idle`-এ মেশে। */
 export type LiveStatus = 'active' | 'idle' | 'offline' | 'agent_down';
 
+/**
+ * একটা ডিভাইস সম্পর্কে বোর্ডের জানা সবটুকু (`devices` সারির তিনটে কলাম)।
+ *
+ * ⚠️ তিনটে তিনটে **আলাদা** প্রশ্নের উত্তর, আর গুলিয়ে ফেললে বোর্ড কোনো এরর
+ *    ছাড়াই ভুল রঙ দেখাবে:
+ *    · `lastSeenAt`  — এজেন্ট বেঁচে আছে কি না (এজেন্টের *যেকোনো* রিকোয়েস্টে বসে)
+ *    · `lastState`   — সে শেষবার কী বলেছিল (শুধু heartbeat-এ বসে)
+ *    · `lastStateAt` — **কখন** বলেছিল, অর্থাৎ কথাটা এখনো বিশ্বাসযোগ্য কি না
+ */
+export interface DeviceReport {
+  lastSeenAt: Date | null;
+  lastState: SegmentState | null;
+  lastStateAt: Date | null;
+}
+
 export interface LiveStatusInput {
   /**
-   * ওই কর্মীর **সব সচল ডিভাইসের মধ্যে সবচেয়ে সাম্প্রতিক** `lastSeenAt`।
-   * ⚠️ ডিভাইসপ্রতি আলাদা করে দেখলে ডেস্কটপ বন্ধ থাকলেই ল্যাপটপে কাজ করা
-   * কর্মীকে offline দেখাত (§ ২.১-গ — একজনের একাধিক ডিভাইস)।
+   * ওই কর্মীর **সব সচল (non-revoked) ডিভাইস**।
+   * ⚠️ ডিভাইসপ্রতি আলাদা করে বিচার করলে ডেস্কটপ বন্ধ থাকলেই ল্যাপটপে কাজ
+   * করা কর্মীকে offline দেখাত (§ ২.১-গ — একজনের একাধিক ডিভাইস)।
    */
-  lastSeenAt: Date | null;
-  /** কোনো সচল (non-revoked) ডিভাইস আদৌ আছে কি না */
-  hasDevice: boolean;
-  /** শেষ পাওয়া সেগমেন্টের state — না জানা থাকলে null */
-  lastState: SegmentState | null;
+  devices: readonly DeviceReport[];
+  /**
+   * শেষ `activity_segments` সারির state — **শুধু fallback**।
+   *
+   * ⚠️ এটাকে প্রথম পছন্দ করা যায় না: এজেন্ট সেগমেন্ট **ব্যাচে** পাঠায়, তাই
+   * সারিটা কয়েক মিনিট পুরোনো হতে পারে — কর্মী তিন মিনিট আগে উঠে গেলেও
+   * কার্ড সবুজ থাকত। আবার একেবারে বাদও দেওয়া যায় না: `last_state` কলামটা
+   * নতুন, তাই মাইগ্রেশনের পরে (বা এখনো heartbeat না পাঠানো এজেন্টে) ওটা
+   * null — তখন এই অনুমানই একমাত্র খবর।
+   */
+  fallbackState: SegmentState | null;
   now: Date;
 }
 
@@ -50,30 +71,100 @@ export interface LiveStatusInput {
  * সেটাই অদৃশ্য থাকত।
  */
 export function decideLiveStatus(input: LiveStatusInput): LiveStatus {
-  const { lastSeenAt, hasDevice, lastState, now } = input;
+  const { devices, fallbackState, now } = input;
 
   // ⚠️ ডিভাইসই নেই মানে এজেন্ট "পড়ে গেছে" নয় — নতুন কর্মী, PC এখনো দেওয়া
   //    হয়নি। এটাকে agent_down দেখালে প্রথম দিন থেকেই ভুয়া লাল অ্যালার্ম
   //    জ্বলত এবং লাল রঙের মানেই হারিয়ে যেত।
-  if (!hasDevice) return 'offline';
+  if (devices.length === 0) return 'offline';
+
+  const lastSeenAt = latestHeartbeat(devices);
 
   // ডিভাইস আছে কিন্তু একবারও সাড়া দেয়নি — ইনস্টল হয়েও চালু হয়নি,
   // অর্থাৎ ঠিক যে জিনিস 🔴 ধরার কথা।
   if (lastSeenAt === null) return 'agent_down';
 
-  const ageSec = (now.getTime() - lastSeenAt.getTime()) / MS;
+  const ageSec = secondsSince(lastSeenAt, now);
 
   if (ageSec > AGENT_DOWN_AFTER_SEC) return 'agent_down';
   if (ageSec > OFFLINE_AFTER_SEC) return 'offline';
 
-  // ⚠️ এজেন্ট জীবিত, কিন্তু সাম্প্রতিক কোনো সেগমেন্ট আসেনি (ব্যাচ এখনো
-  //    পৌঁছায়নি বা সত্যিই কিছু ঘটেনি)। "জানি না"-কে active দেখানো যাবে না —
-  //    না-জানা সময় কখনো কাজের সময় হিসেবে দাবি করা হয় না।
-  if (lastState === null) return 'idle';
+  // ⭐ এজেন্ট নিজে যা বলেছে সেটাই প্রথম সত্য; সেগমেন্ট থেকে অনুমান কেবল
+  //    তখনই, যখন এজেন্ট কিছু বলেনি বা তার কথাটা বাসি হয়ে গেছে।
+  const state = freshReportedState(devices, now) ?? fallbackState;
+
+  // ⚠️ এজেন্ট জীবিত, কিন্তু কেউ কিছু বলেনি (পুরোনো এজেন্ট, আর ব্যাচও এখনো
+  //    পৌঁছায়নি)। "জানি না"-কে active দেখানো যাবে না — না-জানা সময় কখনো
+  //    কাজের সময় হিসেবে দাবি করা হয় না।
+  if (state === null) return 'idle';
 
   // `locked` আলাদা রঙ পায় না — বোর্ডে মাত্র চারটে রঙ, আর স্টাফের দিক থেকে
   // PC লক করা আর নিষ্ক্রিয় বসে থাকা একই: কোনোটাই কাজের সময় নয়।
-  return lastState === 'active' ? 'active' : 'idle';
+  return state === 'active' ? 'active' : 'idle';
+}
+
+/**
+ * কর্মীর সব ডিভাইসের মধ্যে সবচেয়ে সাম্প্রতিক `lastSeenAt`।
+ *
+ * কার্ডের `lastHeartbeatAt`-ও এটাই — এক জায়গায় রাখা হয়েছে যাতে "কত আগে
+ * সাড়া দিয়েছিল" লেখাটা আর রঙটা কোনোদিন দুই হিসাব থেকে না আসে।
+ */
+export function latestHeartbeat(devices: readonly DeviceReport[]): Date | null {
+  let latest: Date | null = null;
+  for (const d of devices) {
+    if (d.lastSeenAt === null) continue;
+    if (latest === null || d.lastSeenAt.getTime() > latest.getTime()) {
+      latest = d.lastSeenAt;
+    }
+  }
+  return latest;
+}
+
+/**
+ * ⭐ heartbeat-এ বলা state, **যদি সেটা এখনো টাটকা হয়** — নইলে null।
+ *
+ * ⚠️ বাসি রিপোর্ট বিশ্বাস করা যায় না। এজেন্ট মরে যাওয়ার মুহূর্তে সে
+ *    `active` বলে গিয়েছিল; ওই মানটা কলামে বসে থাকে চিরকাল। মেয়াদ না বসালে
+ *    বন্ধ PC-র কার্ড **সবুজ হয়েই আটকে থাকত** — আর সেটা offline দেখানোর
+ *    চেয়েও খারাপ, কারণ তখন না-কাজের সময় কাজ বলে দাবি করা হতো।
+ *
+ * ⚠️ মেয়াদ ইচ্ছাকৃতভাবে `OFFLINE_AFTER_SEC`-ই, আলাদা কোনো ধ্রুবক নয়:
+ *    রিপোর্ট এর চেয়ে পুরোনো মানে এজেন্ট ততক্ষণ চুপ ছিল, আর চুপ থাকার
+ *    মানে এই ফাইলে একটাই। দুটো নব থাকলে একদিন একটা বদলাত, আরেকটা নয়।
+ *
+ * ⚠️ একাধিক ডিভাইসে **যেকোনো একটা** সচল রিপোর্ট `active` হলেই কর্মী active
+ *    — "সবচেয়ে সাম্প্রতিকটা নাও" নয়। ডেস্কটপ লক করে ল্যাপটপে কাজ করলে
+ *    দুটো ডিভাইসই প্রতি ৩০ সেকেন্ডে heartbeat পাঠায়, তাই "সবচেয়ে
+ *    সাম্প্রতিক" কার্যত এলোমেলো — কার্ডের রঙ রিফ্রেশে রিফ্রেশে সবুজ-ধূসর
+ *    করত, অথচ কর্মী একটানা কাজ করছে।
+ */
+export function freshReportedState(
+  devices: readonly DeviceReport[],
+  now: Date,
+): SegmentState | null {
+  let bestState: SegmentState | null = null;
+  let bestAtMs = -Infinity;
+
+  for (const { lastState, lastStateAt } of devices) {
+    if (lastState === null || lastStateAt === null) continue;
+    if (secondsSince(lastStateAt, now) > OFFLINE_AFTER_SEC) continue;
+
+    if (lastState === 'active') return 'active';
+    if (lastStateAt.getTime() > bestAtMs) {
+      bestAtMs = lastStateAt.getTime();
+      bestState = lastState;
+    }
+  }
+  return bestState;
+}
+
+/**
+ * ⚠️ ঋণাত্মক হতে পারে এবং সেটাই চাওয়া — ডিভাইসের ঘড়ি সামান্য এগিয়ে থাকলে
+ * (drift) "ভবিষ্যতের" heartbeat আসে, আর `Math.abs` বসালে সেটা পুরোনো মনে
+ * হয়ে সুস্থ এজেন্টকে offline দেখাত।
+ */
+function secondsSince(then: Date, now: Date): number {
+  return (now.getTime() - then.getTime()) / MS;
 }
 
 /** ঢাকার ওই তারিখের স্থানীয় মধ্যরাত, UTC instant হিসেবে। */

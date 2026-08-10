@@ -54,6 +54,18 @@ internal sealed record TrayOptions
     /// </summary>
     public Action? RequestSyncNow { get; init; }
 
+    /// <summary>
+    /// J03 — মাসের লক্ষ্য পূরণের বেলুন কোন মাসে দেখানো হয়েছে, তার স্মৃতি।
+    ///
+    /// ⚠️ null দিলে ফিচারটাই বন্ধ, বেলুন "প্রতিবার" হয়ে যায় না। স্মৃতি ছাড়া
+    /// একবার-দেখানোর প্রতিশ্রুতি রাখা যায় না, আর প্রতি heartbeat-এ বেলুন
+    /// দেখানোর চেয়ে কিছুই না দেখানো নিরাপদ (<see cref="MonthlyMilestone"/>)।
+    ///
+    /// ⚠️ প্রতিটা <see cref="TrayIcon.UpdateOptions"/>-এ <b>একই ইনস্ট্যান্স</b>
+    /// দিতে হবে — নতুন অবজেক্ট দিলে ক্যাশ হারিয়ে ডিস্ক আবার পড়া হতো।
+    /// </summary>
+    public IMilestoneMemory? Milestone { get; init; }
+
     /// <summary>UI-তে ধরা পড়া এক্সসেপশন এখানে যায়। null হলে নীরবে গেলা হয়।</summary>
     public Action<Exception>? OnError { get; init; }
 

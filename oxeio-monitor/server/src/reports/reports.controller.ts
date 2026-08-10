@@ -4,7 +4,6 @@ import { UserRole } from '@prisma/client';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
 import { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
-import { XLSX_MIME } from './reports.excel';
 import { ReportsService } from './reports.service';
 import type {
   AttendanceReport,
@@ -30,33 +29,46 @@ import type {
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 
-  /** F01 — `GET /api/v1/reports/attendance?from=&to=&format=json|xlsx` */
+  /**
+   * F01 · F06 — `GET /api/v1/reports/attendance?from=&to=&format=json|xlsx|pdf`
+   */
   @Get('attendance')
   async attendance(
     @CurrentUser() actor: SessionUser,
     @Ip() ip: string,
     @Query() q: ReportRangeQuery,
   ): Promise<AttendanceReport | StreamableFile> {
-    if (q.format === 'xlsx') {
-      return xlsx(await this.reports.attendanceFile(q, actor.userId, ip));
+    if (q.format === 'xlsx' || q.format === 'pdf') {
+      return download(
+        await this.reports.attendanceFile(q, q.format, actor.userId, ip),
+      );
     }
     return this.reports.attendance(q);
   }
 
-  /** F02 — `GET /api/v1/reports/summary?from=&to=&groupBy=week|month` */
+  /**
+   * F02 · F06 —
+   * `GET /api/v1/reports/summary?from=&to=&groupBy=week|month&format=json|xlsx|pdf`
+   */
   @Get('summary')
   async summary(
     @CurrentUser() actor: SessionUser,
     @Ip() ip: string,
     @Query() q: SummaryQuery,
   ): Promise<SummaryReport | StreamableFile> {
-    if (q.format === 'xlsx') {
-      return xlsx(await this.reports.summaryFile(q, actor.userId, ip));
+    if (q.format === 'xlsx' || q.format === 'pdf') {
+      return download(
+        await this.reports.summaryFile(q, q.format, actor.userId, ip),
+      );
     }
     return this.reports.summary(q);
   }
 
-  /** F04 — `GET /api/v1/reports/productivity?from=&to=` */
+  /**
+   * F04 — `GET /api/v1/reports/productivity?from=&to=&format=json|xlsx`
+   * ⚠️ এখানে `pdf` নেই — `ProductivityQuery` DTO-তেই আটকানো, তাই
+   *    `?format=pdf` একটা পরিষ্কার ৪০০ পায়, চুপচাপ JSON নয়।
+   */
   @Get('productivity')
   async productivity(
     @CurrentUser() actor: SessionUser,
@@ -64,7 +76,7 @@ export class ReportsController {
     @Query() q: ProductivityQuery,
   ): Promise<ProductivityReport | StreamableFile> {
     if (q.format === 'xlsx') {
-      return xlsx(await this.reports.productivityFile(q, actor.userId, ip));
+      return download(await this.reports.productivityFile(q, actor.userId, ip));
     }
     return this.reports.productivity(q);
   }
@@ -75,13 +87,17 @@ export class ReportsController {
  * ধরিয়ে দিলে ওই হ্যান্ডলারে Nest-এর নিজের রেসপন্স-পাইপলাইন (ইন্টারসেপ্টর,
  * সিরিয়ালাইজেশন) বন্ধ হয়ে যায় — অথচ একই মেথডের JSON শাখাটার ওটাই দরকার।
  *
- * ⚠️ ফাইলের নাম ASCII (`reports.excel.ts`-এর `reportFilename`) —
+ * ⚠️ MIME আর নাম **দুটোই সার্ভিসের দেওয়া** (`ReportFile`)। এখানে ফরম্যাট
+ *    দেখে আবার MIME বাছলে একদিন `.pdf` ফাইল `xlsx` MIME নিয়ে যেত, আর
+ *    ব্রাউজার ওটা Excel দিয়ে খুলতে গিয়ে "ফাইল নষ্ট" বলত।
+ *
+ * ⚠️ ফাইলের নাম ASCII (`reports.download.ts`-এর `reportFilename`) —
  *    Content-Disposition-এ বাংলা নাম দিতে হলে RFC 5987 এনকোডিং লাগত,
  *    নইলে ক্লায়েন্ট ভাঙা নামে সেভ করত।
  */
-function xlsx(file: ReportFile): StreamableFile {
+function download(file: ReportFile): StreamableFile {
   return new StreamableFile(file.buffer, {
-    type: XLSX_MIME,
+    type: file.mime,
     disposition: `attachment; filename="${file.filename}"`,
     length: file.buffer.byteLength,
   });

@@ -244,6 +244,53 @@ describe('heartbeat', () => {
       before.lastSeenAt!.getTime(),
     );
   });
+
+  /**
+   * ⭐ Live Board-এর রঙ এই দুটো কলামের উপর দাঁড়ানো। আগে `state` নেওয়া হতো
+   * কিন্তু কোথাও লেখা হতো না, তাই বোর্ড শেষ `activity_segments` সারি থেকে
+   * অনুমান করত — আর এজেন্ট সেগমেন্ট ব্যাচে পাঠায় বলে ওই অনুমান কয়েক মিনিট
+   * পুরোনো। ৩০ সেকেন্ডে রিফ্রেশ হওয়া বোর্ডের জন্য সেটা অর্থহীন।
+   */
+  it('heartbeat-এর state ডিভাইসে জমা হয়', async () => {
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'idle', activeSecToday: 30 })
+      .expect(200);
+
+    const row = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+    expect(row.lastState).toBe('idle');
+    expect(row.lastStateAt).not.toBeNull();
+  });
+
+  /**
+   * ⚠️ `lastState` বদলায়নি বলে `lastStateAt`-ও না বসালে সবচেয়ে খারাপ বাগটা
+   * ফিরে আসত: এজেন্ট একটানা `active` বলতে বলতে মরে গেলে সময়টা তার মৃত্যুর
+   * মুহূর্তে আটকে থাকত না — আটকে থাকত **প্রথমবার active বলার** মুহূর্তে।
+   * বোর্ড তখন সুস্থ, সক্রিয় কর্মীর টাটকা রিপোর্টকেও বাসি ধরে ফেলে দিত।
+   */
+  it('state না বদলালেও lastStateAt প্রতিবার এগোয়', async () => {
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 10 })
+      .expect(200);
+    const first = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 20 })
+      .expect(200);
+    const second = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+
+    expect(second.lastState).toBe('active');
+    expect(second.lastStateAt!.getTime()).toBeGreaterThan(
+      first.lastStateAt!.getTime(),
+    );
+  });
 });
 
 describe('segments — dedupe ও যাচাই (§ ২.১-ঘ)', () => {

@@ -8,12 +8,12 @@ import {
   Post,
   Query,
   Res,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import type { Device } from '@prisma/client';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import type { Device, Prisma, SegmentState } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { Response } from 'express';
@@ -37,7 +37,10 @@ import {
 import { EnrollmentService, type EnrollResult } from './enrollment.service';
 import { IngestService, type IngestResult } from './ingest.service';
 import { ProgressService, type EmployeeProgress } from './progress.service';
-import { ScreenshotIngestService } from './screenshot-ingest.service';
+import {
+  ScreenshotIngestService,
+  type ScreenshotResult,
+} from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
 type AgentCommand =
@@ -110,14 +113,7 @@ export class AgentController {
     //    heartbeat পাঠাত, অর্থাৎ অসীম লুপ ([G59](../../../docs/08-Gap-Analysis.md))।
     const runningVersion = dto.agentVersion?.trim() || device.agentVersion;
 
-    if (runningVersion && runningVersion !== device.agentVersion) {
-      // ⚠️ শুধু বদলালে তবেই লেখা। প্রতি heartbeat-এ UPDATE করলে ১৫টা
-      //    ডিভাইসে দিনে ২১,৬০০ অপ্রয়োজনীয় রাইট হতো।
-      await this.prisma.device.update({
-        where: { id: device.id },
-        data: { agentVersion: runningVersion },
-      });
-    }
+    await this.recordHeartbeatState(device, dto.state, runningVersion);
 
     if (runningVersion) {
       const offer = await this.updates.offerFor(runningVersion);
@@ -133,6 +129,40 @@ export class AgentController {
       : null;
 
     return { commands, configVersion: version, progress };
+  }
+
+  /**
+   * ⭐ heartbeat-এর `state` এখানেই `devices`-এ জমা হয় — Live Board-এর রঙ
+   * এটার উপরেই দাঁড়ানো। এর আগে মানটা নেওয়া হতো কিন্তু কোথাও লেখা হতো না,
+   * তাই বোর্ড শেষ `activity_segments` সারি থেকে **অনুমান** করত; এজেন্ট
+   * সেগমেন্ট ব্যাচে পাঠায় বলে ওই অনুমান কয়েক মিনিট পুরোনো।
+   *
+   * ⚠️ `lastState` ও `agentVersion` দুটোই **বদলালে তবেই** SET-এ ঢোকে, কিন্তু
+   *    `lastStateAt` প্রতিবারই বসে — কারণ "কখন বলেছিল" না জানলে মানটা এখনো
+   *    বিশ্বাসযোগ্য কি না বোঝার কোনো উপায় নেই। বন্ধ হয়ে যাওয়া এজেন্টের শেষ
+   *    কথা ছিল `active`; সময় ছাড়া সেটা কলামে বসে থাকত আর কার্ড **চিরকাল
+   *    সবুজ** দেখাত (`dashboard.math.ts` → `freshReportedState`)।
+   *
+   * ⭐ তিনটে কলামই **একটাই** UPDATE-এ। আলাদা করলে ১৫ ডিভাইস × ৩০ সে. =
+   *    দিনে ২১,৬০০ heartbeat-এ ২১,৬০০ বাড়তি round-trip হতো — G59-এর
+   *    ঠিক একই শিক্ষা, শুধু উল্টো দিক থেকে।
+   */
+  private async recordHeartbeatState(
+    device: Device,
+    state: SegmentState,
+    runningVersion: string | null,
+  ): Promise<void> {
+    const data: Prisma.DeviceUpdateInput = { lastStateAt: new Date() };
+
+    if (state !== device.lastState) data.lastState = state;
+
+    // ⚠️ ভার্সন না এলে আগেরটা **মুছে যায় না** — পুরোনো এজেন্ট ফিল্ডটা
+    //    চেনে না, আর null বসিয়ে দিলে তার আপডেট অফারই বন্ধ হয়ে যেত (G59)।
+    if (runningVersion && runningVersion !== device.agentVersion) {
+      data.agentVersion = runningVersion;
+    }
+
+    await this.prisma.device.update({ where: { id: device.id }, data });
   }
 
   @UseGuards(DeviceAuthGuard)
@@ -174,21 +204,48 @@ export class AgentController {
   @UseGuards(DeviceAuthGuard)
   @Post('screenshots')
   @HttpCode(HttpStatus.CREATED)
+  /**
+   * ⭐ **A06 — `FileInterceptor` নয়, `FileFieldsInterceptor`।** আগেরটা
+   * ঠিক একটাই অংশ নিত, তাই এজেন্টের পাঠানো `thumb` অংশটা multer নীরবে
+   * ফেলে দিত আর `ingest()`-এ কোনোদিন পৌঁছাত না — থাম্বনেইলের পুরো কোডটা
+   * লেখা থাকত, চলত না, আর `thumb_path` চিরকাল null থাকত।
+   *
+   * ⚠️ `maxCount: 1` **দুটোতেই** — নইলে একই নামে অনেকগুলো অংশ পাঠিয়ে
+   *    মেমরিতে যত খুশি বাফার জমানো যেত (`limits.fileSize` প্রতি ফাইলে
+   *    খাটে, মোটে নয়)।
+   *
+   * ⚠️ শুধু `file` থাকা রিকোয়েস্টও এটা মেনে নেয়, তাই থাম্বনেইল না চেনা
+   *    পুরোনো এজেন্ট অক্ষত থাকে — গ্যালারি তখন ফুল ছবিতে ফেরত যায়।
+   */
   @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_SCREENSHOT_BYTES } }),
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 1 },
+        { name: 'thumb', maxCount: 1 },
+      ],
+      { limits: { fileSize: MAX_SCREENSHOT_BYTES } },
+    ),
   )
   async screenshot(
     @CurrentDevice() device: Device,
     @CurrentDrift() drift: Drift,
     @Body('meta') metaRaw: string,
-    @UploadedFile() file?: Express.Multer.File,
-  ): Promise<{ accepted: number; duplicate: boolean; path: string }> {
+    @UploadedFiles()
+    files?: { file?: Express.Multer.File[]; thumb?: Express.Multer.File[] },
+  ): Promise<ScreenshotResult> {
     this.rate.hit(device.id, 'screenshot');
 
-    if (!file) throw new BadRequestException('`file` অংশটি নেই');
+    const full = files?.file?.[0];
+    if (!full) throw new BadRequestException('`file` অংশটি নেই');
 
     const meta = await this.parseMeta(metaRaw);
-    return this.screenshots.ingest(device, drift, meta, file);
+    return this.screenshots.ingest(
+      device,
+      drift,
+      meta,
+      full,
+      files?.thumb?.[0],
+    );
   }
 
   /**

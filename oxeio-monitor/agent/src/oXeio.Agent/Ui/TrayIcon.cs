@@ -197,6 +197,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         if (!_notify.Visible) _notify.Visible = true;
 
         NotifyOnHealthChange(status);
+        NotifyOnMonthlyTarget(status);
 
         _todayForm?.Apply(status);
     }
@@ -260,6 +261,37 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
                 Balloon("sync_restored", "সার্ভারের সাথে সংযোগ ফিরে এসেছে", ToolTipIcon.Info);
                 break;
         }
+    }
+
+    /// <summary>
+    /// J03 — এ মাসের লক্ষ্য পূরণ হলে একবার ✅।
+    ///
+    /// ⭐ <b>মনে রাখা হয় দেখানোর আগে, পরে নয়।</b> বেলুন দেখানো একটা নীরবে
+    /// ব্যর্থ হতে পারা কাজ (Focus Assist, নোটিফিকেশন বন্ধ) — সেটার সফলতার
+    /// উপর স্মৃতি বসালে ওই মেশিনে প্রতিটা heartbeat-এ আবার চেষ্টা হতো, আর
+    /// Focus Assist বন্ধ হওয়ার মুহূর্তে বেলুনের বন্যা নামত।
+    ///
+    /// ⚠️ এখানে কোনো "রেন্ডারের আগে-পরে" তুলনা নেই, ইচ্ছাকৃতভাবে। লক্ষ্যটা
+    /// এজেন্ট বন্ধ থাকা অবস্থায়ও পূর্ণ হতে পারে (কর্মী অন্য PC-তে কাজ করেছে),
+    /// তখন প্রথম heartbeat-এই শর্তটা সত্যি হয়ে আসে — "বদলেছে কি না" দেখলে
+    /// ওই স্টাফ কোনোদিন বেলুনটা পেত না।
+    /// </summary>
+    private void NotifyOnMonthlyTarget(AgentStatus status)
+    {
+        var memory = _options.Milestone;
+        if (memory is null) return;
+
+        if (!MonthlyMilestone.ShouldCelebrate(
+                status, DateTimeOffset.UtcNow, memory.LastCelebrated(), out var monthKey))
+        {
+            return;
+        }
+
+        memory.Remember(monthKey);
+        Balloon(
+            MonthlyMilestone.EventClass,
+            MonthlyMilestone.Text(status.MonthlyTargetHours),
+            ToolTipIcon.Info);
     }
 
     /// <summary>

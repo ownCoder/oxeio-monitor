@@ -119,17 +119,5 @@ export async function buildWorkbook(
   return Buffer.from(written);
 }
 
-/**
- * ⚠️ ফাইলের নাম ASCII-তে রাখা হয় — Content-Disposition-এ বাংলা নাম দিতে হলে
- *    RFC 5987 এনকোডিং লাগত, আর পুরোনো ক্লায়েন্টে ওটা ভাঙা নামে সেভ হতো।
- */
-export function reportFilename(
-  report: string,
-  from: string,
-  to: string,
-): string {
-  return `oxeio-${report}-${from}_${to}.xlsx`;
-}
-
-export const XLSX_MIME =
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// ফাইলের নাম ও MIME এখন `reports.download.ts`-এ — F06-এর পর ওগুলো আর
+// শুধু Excel-এর জিনিস নয়।
