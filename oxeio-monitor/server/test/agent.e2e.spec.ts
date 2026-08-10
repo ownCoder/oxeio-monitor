@@ -141,6 +141,39 @@ describe('heartbeat', () => {
     expect(res.body.commands).toEqual([]);
   });
 
+  /**
+   * ⭐ এজেন্ট নিজে মাসের হিসাব জানে না — রিবুটের পর তার কাউন্টার শূন্য থেকে
+   * শুরু হয়। সংখ্যাটা সার্ভার না দিলে tray-তে "০ ঘ / ২০৮ঘ" দেখাত, আর স্টাফ
+   * ভাবত তার মাসের কাজ মুছে গেছে।
+   */
+  it('heartbeat-এ মাসিক অগ্রগতি ফেরত আসে', async () => {
+    await asAgent(h.http().post('/api/v1/agent/segments'), device.token)
+      .send({
+        segments: [
+          {
+            clientUuid: randomUUID(),
+            state: 'active',
+            startedAt: iso(minutesAgo(30)),
+            endedAt: iso(minutesAgo(20)),
+            durationSec: 600,
+          },
+        ],
+      })
+      .expect(200);
+
+    const res = await asAgent(
+      h.http().post('/api/v1/agent/heartbeat'),
+      device.token,
+    )
+      .send({ state: 'active', activeSecToday: 600, queueDepth: 0 })
+      .expect(200);
+
+    expect(res.body.progress).toBeTruthy();
+    expect(res.body.progress.todayActiveSec).toBe(600);
+    expect(res.body.progress.monthActiveSec).toBe(600);
+    expect(res.body.progress.monthlyTargetHours).toBe(208);
+  });
+
   it('ভার্সন না মিললে reload_config', async () => {
     const res = await asAgent(
       h.http().post('/api/v1/agent/heartbeat'),

@@ -35,6 +35,7 @@ import {
 } from './dto';
 import { EnrollmentService, type EnrollResult } from './enrollment.service';
 import { IngestService, type IngestResult } from './ingest.service';
+import { ProgressService, type EmployeeProgress } from './progress.service';
 import { ScreenshotIngestService } from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
@@ -61,6 +62,7 @@ export class AgentController {
     private readonly screenshots: ScreenshotIngestService,
     private readonly updates: UpdateService,
     private readonly rate: DeviceRateLimitService,
+    private readonly progress: ProgressService,
   ) {}
 
   /** ইনস্টলের সময় একবার — এখানে টোকেন নেই, enrollment code-ই পরিচয় (H05) */
@@ -84,7 +86,11 @@ export class AgentController {
   async heartbeat(
     @CurrentDevice() device: Device,
     @Body() dto: HeartbeatDto,
-  ): Promise<{ commands: AgentCommand[]; configVersion: string }> {
+  ): Promise<{
+    commands: AgentCommand[];
+    configVersion: string;
+    progress: EmployeeProgress | null;
+  }> {
     this.rate.hit(device.id, 'ingest');
 
     const { version } = await this.configs.buildForDevice(device);
@@ -101,7 +107,13 @@ export class AgentController {
 
     // ⏳ capture_now / pause_tracking-এর জন্য একটা কমান্ড-কিউ টেবিল লাগবে —
     //    ড্যাশবোর্ড থেকে চাপা বাটনটা কোথাও জমা থাকতে হয় (A09, Phase 6)।
-    return { commands, configVersion: version };
+    // ⭐ এজেন্ট নিজে মাসের হিসাব জানে না — রিবুটের পর তার কাউন্টার শূন্য।
+    //    tray-তে সত্যি সংখ্যা দেখাতে হলে সেটা এখান থেকেই যেতে হবে।
+    const progress = device.employeeId
+      ? await this.progress.forEmployee(device.employeeId)
+      : null;
+
+    return { commands, configVersion: version, progress };
   }
 
   @UseGuards(DeviceAuthGuard)

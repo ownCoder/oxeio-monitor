@@ -7,12 +7,14 @@ import { DeviceAuthGuard } from './device-auth.guard';
 import { DeviceRateLimitService } from './device-rate-limit.service';
 import { EnrollmentService } from './enrollment.service';
 import { IngestService } from './ingest.service';
+import { ProgressService } from './progress.service';
 import { ScreenshotIngestService } from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
 @Module({
   controllers: [AgentController],
   providers: [
+    ProgressService,
     AgentConfigService,
     ClockDriftService,
     DeviceAuthGuard,

@@ -76,6 +76,25 @@ public sealed record HeartbeatResponse
     public required IReadOnlyList<AgentCommand> Commands { get; init; }
 
     public required string ConfigVersion { get; init; }
+
+    /// <summary>
+    /// ⭐ tray-তে "x ঘ / ২০৮ঘ" দেখানোর সংখ্যা — <b>সার্ভার থেকেই আসে</b>।
+    ///
+    /// এজেন্ট নিজে এটা জানে না: সে শুধু নিজের চালু থাকার সময়টুকু গোনে, তাই
+    /// রিবুট বা আপডেটের পর তার হিসাব শূন্য। স্টাফ তখন দেখত মাসের কাজ মুছে
+    /// গেছে — অথচ ফিচারটার উদ্দেশ্যই আস্থা তৈরি করা।
+    ///
+    /// ডিভাইসের সাথে কোনো কর্মী যুক্ত না থাকলে <c>null</c>।
+    /// </summary>
+    public EmployeeProgress? Progress { get; init; }
+}
+
+/// <summary>সার্ভারের হিসাব — একাধিক PC ব্যবহার করলে সবগুলো যোগ হয়ে আসে (§ ২.১-গ)।</summary>
+public sealed record EmployeeProgress
+{
+    public required int TodayActiveSec { get; init; }
+    public required int MonthActiveSec { get; init; }
+    public required double MonthlyTargetHours { get; init; }
 }
 
 // ── ingest ──────────────────────────────────────────────────────────────────
