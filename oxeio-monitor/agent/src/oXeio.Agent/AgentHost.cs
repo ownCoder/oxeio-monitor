@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 
+using oXeio.Agent.Apps;
 using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
 using oXeio.Agent.Platform.Capture;
@@ -23,7 +24,7 @@ namespace oXeio.Agent;
 /// <list type="bullet">
 /// <item>UI থ্রেড — tray আইকন ও উইন্ডো মেসেজ (lock, power)। কখনো ব্লক করা হয় না।</item>
 /// <item>ট্র্যাকার থ্রেড — প্রতি সেকেন্ডে idle পড়া। ছোট, দ্রুত, কোনো I/O নেই।</item>
-/// <item>ব্যাকগ্রাউন্ড টাস্ক — ক্যাপচার, সিঙ্ক, heartbeat। ধীর কাজ শুধু এখানে।</item>
+/// <item>ব্যাকগ্রাউন্ড টাস্ক — ক্যাপচার, সিঙ্ক, heartbeat, অ্যাপ-ব্যবহার। ধীর কাজ শুধু এখানে।</item>
 /// </list>
 ///
 /// ⚠️ <b>ট্র্যাকিং কখনো নেটওয়ার্ক বা ডিস্কের জন্য থামে না।</b> সার্ভার বন্ধ
@@ -57,6 +58,7 @@ internal sealed class AgentHost : IAsyncDisposable
     private IdleStateMachine? _machine;
     private ScreenCaptureService? _capture;
     private SlotScheduler? _slots;
+    private AppUsageService? _apps;
     private CaptureWindow _window = CaptureWindow.Default;
 
     private volatile bool _sessionSuspended;
@@ -145,6 +147,14 @@ internal sealed class AgentHost : IAsyncDisposable
             new FallbackCapturer(new DuplicationCapturer(), new GdiCapturer()));
         _slots = new SlotScheduler(AgentConfig.Default.SlotMinutes);
 
+        // D01–D04। ⚠️ কনফিগে বন্ধ থাকলে অবজেক্টটাই তৈরি হয় না — তাহলে
+        //    foreground উইন্ডোর নামও কখনো মেমোরিতে আসে না, শুধু "পাঠাচ্ছি না" নয়।
+        if (AgentConfig.Default.AppTracking.Enabled)
+        {
+            _apps = new AppUsageService(
+                TimeSpan.FromSeconds(AgentConfig.Default.AppTracking.MinDurationSec));
+        }
+
         // ── tray ────────────────────────────────────────────────────────────
         _tray = new TrayIcon(BuildTrayOptions());
         _tray.Publish(Snapshot());
@@ -181,6 +191,7 @@ internal sealed class AgentHost : IAsyncDisposable
         tracker.Start();
 
         _ = Task.Run(() => CaptureLoopAsync(_stopping.Token));
+        _ = Task.Run(() => AppUsageLoopAsync(_stopping.Token));
         _ = Task.Run(() => SyncLoopAsync(_stopping.Token));
         _ = Task.Run(() => HeartbeatLoopAsync(_stopping.Token));
         _ = Task.Run(() => EnrollIfNeededAsync(_stopping.Token));
@@ -286,6 +297,36 @@ internal sealed class AgentHost : IAsyncDisposable
 
             await _outbox.EnqueueAsync(
                 OutboxCodec.Item(meta, path, r.Webp.LongLength, DateTimeOffset.UtcNow), ct);
+        }
+    }
+
+    /// <summary>
+    /// কোন অ্যাপ/সাইটে কত সময় (D01–D04)।
+    ///
+    /// ⚠️ <b>ট্র্যাকার থ্রেডে নয়, আলাদা লুপে।</b> address bar পড়তে UI Automation
+    /// লাগে, আর সেটা ব্যস্ত অ্যাপে ৪০০ মি.সে. পর্যন্ত আটকে থাকতে পারে
+    /// (<see cref="Apps.BrowserUrlReader"/>)। ওটা সেকেন্ড গোনার থ্রেডে বসালে
+    /// idle মাপার টিক পিছিয়ে যেত — আর সেকেন্ডের হিসাবই এই সিস্টেমের মূল কাজ।
+    ///
+    /// এই লুপ ব্যর্থ হলে অ্যাপের হিসাব হারায়, সময়ের হিসাব নয়।
+    /// </summary>
+    private async Task AppUsageLoopAsync(CancellationToken ct)
+    {
+        if (_apps is null) return;
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                RecordApps(_apps.Tick(_clock.Now, _machine?.State ?? SegmentState.Idle));
+            }
+            catch (Exception ex)
+            {
+                _log.Error("অ্যাপ-ব্যবহার টিক ব্যর্থ — চলতে থাকছে", ex);
+            }
+
+            try { await Task.Delay(Tick, ct); }
+            catch (OperationCanceledException) { return; }
         }
     }
 
@@ -400,6 +441,17 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    private void RecordApps(IReadOnlyList<AppUsageRecord> closed)
+    {
+        foreach (var a in closed)
+        {
+            _outbox?.EnqueueAsync(OutboxCodec.Item(a, DateTimeOffset.UtcNow))
+                   .ContinueWith(
+                       t => _log.Error("অ্যাপ-ব্যবহার কিউয়ে রাখা গেল না", t.Exception),
+                       TaskContinuationOptions.OnlyOnFaulted);
+        }
+    }
+
     private AgentStatus Snapshot()
     {
         var depth = _worker?.Depth.Total ?? 0;
@@ -454,6 +506,7 @@ internal sealed class AgentHost : IAsyncDisposable
         await _stopping.CancelAsync();
 
         if (_machine is not null) Record(_machine.CloseAll(_clock.Now));
+        if (_apps is not null) RecordApps(_apps.CloseAll(_clock.Now));
 
         // শেষ চেষ্টা — বন্ধ হওয়ার আগে যা আছে পাঠিয়ে দেওয়া
         if (_worker is not null)

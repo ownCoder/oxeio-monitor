@@ -17,6 +17,13 @@
     <!-- NativeWindow-এর জন্য — হাতে CreateWindowExW করলে delegate-এর আয়ু নিয়ে
          CallbackOnCollectedDelegate শ্রেণির বাগের ঝুঁকি থাকে -->
     <UseWindowsForms>true</UseWindowsForms>
+
+    <!-- ⚠️ WPF নিজে ব্যবহার করা হয় **না**। এটা শুধু
+         System.Windows.Automation-এর জন্য (D03 — ব্রাউজারের address bar,
+         ADR-013)। UIAutomationClient WPF-এর অংশ হিসেবেই আসে।
+         আকারে খরচ নেই: self-contained publish-এ WindowsDesktop রানটাইমের
+         WPF অ্যাসেম্বলিগুলো এমনিতেও যায়, শুধু রেফারেন্স করা হতো না। -->
+    <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>oXeio.Agent</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -35,6 +42,16 @@
     -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ⚠️ UseWPF চালু করলে SDK-র implicit using-এর সেটটাই বদলে যায় —
+         System.IO আর System.Net.Http **বাদ পড়ে**, আর তখন HttpClient বা
+         FileStream হঠাৎ "খুঁজে পাওয়া যাচ্ছে না" বলে বিল্ড ভাঙে। ফাইলগুলোতে
+         কিছুই বদলায়নি, শুধু csproj-এ একটা লাইন যোগ হয়েছিল — কারণ খুঁজে
+         পেতে সময় লাগে। তাই স্পষ্ট করে ফিরিয়ে আনা হলো। -->
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\oXeio.Core\oXeio.Core.csproj" />

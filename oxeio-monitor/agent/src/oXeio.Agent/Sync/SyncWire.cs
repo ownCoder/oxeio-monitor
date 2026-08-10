@@ -115,16 +115,29 @@ internal static class SyncWire
                 StartedAt = i.StartedAt,
                 EndedAt = i.EndedAt,
                 DurationSec = i.DurationSec,
-                ProcessName = i.ProcessName,
-                AppName = i.AppName,
-                WindowTitle = i.WindowTitle,
-                Domain = DomainOnly(i.Domain),
+                // ⚠️ সার্ভারের @MaxLength ছাড়ালে পুরো ব্যাচ ৪০০ খায়, আর ৪০০ মানে
+                //    Permanent — ডেটা মুছে ফেলা হয় (G49)। তাই দৈর্ঘ্য এখানেই বাঁধা।
+                ProcessName = Clamp(i.ProcessName, 260)!,
+                AppName = Clamp(i.AppName, 260),
+                WindowTitle = Clamp(i.WindowTitle, 1000),
+                Domain = Clamp(DomainOnly(i.Domain), 260),
                 IsBrowser = i.IsBrowser,
             });
         }
 
         return new AppUsageEnvelope { Items = list };
     }
+
+    /// <summary>
+    /// সার্ভারের সীমার মধ্যে ছাঁটা।
+    ///
+    /// ⚠️ এই স্ট্রিংগুলোর কোনোটাই আমাদের লেখা নয় — <c>appName</c> আসে
+    /// এক্সিকিউটেবলের version resource থেকে, <c>domain</c> আসে address bar থেকে।
+    /// যেকোনো লম্বা মান ঢুকতে পারে, আর একটা লম্বা মান পুরো ব্যাচকে ৪০০ করিয়ে
+    /// দিত। ছাঁটা তথ্য অসম্পূর্ণ, কিন্তু হারানো তথ্যের চেয়ে ভালো।
+    /// </summary>
+    private static string? Clamp(string? value, int max) =>
+        value is null || value.Length <= max ? value : value[..max];
 
     /// <summary>
     /// ⭐ শেষ প্রহরী: পুরো URL কখনোই নেটওয়ার্কে ওঠে না — শুধু ডোমেইন।

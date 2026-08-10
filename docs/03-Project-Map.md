@@ -66,6 +66,8 @@ oxeio-monitor/
 │   │   │   ├── Capture/FrameQuality.cs     ✅ ছবি কালো/এক-রঙা কি না
 │   │   │   ├── Capture/PixelCopy.cs        ✅ RowPitch সামলানো + ঘূর্ণন
 │   │   │   ├── Capture/EngineFallbackPolicy.cs ✅ কতবার ব্যর্থে কত বিরতি
+│   │   │   ├── Apps/AppUsageTracker.cs    ✅ ⭐ D01–D04-এর চারটে নিয়ম
+│   │   │   ├── Apps/DomainParser.cs       ✅ ফুল URL → শুধু ডোমেইন (ADR-013)
 │   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ১৬টা ফাইল
 │   │   │   │   #  IOutboxStore · ISyncClient · SyncOutcome · RetryPolicy
 │   │   │   │   #  OutboxBudget · BatchNarrowing · SyncHealthPolicy · AgentStatus
@@ -105,7 +107,8 @@ oxeio-monitor/
 │   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWorker · SyncWire
 │   │   │   ├── Security/                   ✅ MachineIdentity · DPAPI টোকেন · enrollment
 │   │   │   ├── Ui/                         ✅ TrayIcon · TodayForm · AboutForm (J07)
-│   │   │   └── Apps/                       ⏳ WindowWatcher · BrowserUrlReader
+│   │   │   └── Apps/                       ✅ ForegroundWindowProbe · BrowserUrlReader
+│   │   │       #  AppUsageService — উইন্ডো বদলালে তবেই address bar পড়ে
 │   │   │
 │   │   └── oXeio.Watchdog/                 ✅ আলাদা প্রসেস — শুধু Core-এর উপর নির্ভর
 │   │       ├── WatchdogLoop.cs             ✅ ৩০ সে. চেক, restart storm ঠেকানো (H01)

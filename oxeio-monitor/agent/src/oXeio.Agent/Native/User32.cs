@@ -37,6 +37,21 @@ internal static partial class User32
     [LibraryImport("user32.dll")]
     internal static partial nint GetForegroundWindow();
 
+    /// <summary>
+    /// উইন্ডোর টাইটেল। ⚠️ ফেরত মান = কত অক্ষর লেখা হলো; ০ মানে টাইটেল
+    /// খালি **অথবা** কল ব্যর্থ — দুটো আলাদা করা যায় না, তাই দুটোকেই
+    /// "টাইটেল নেই" ধরা হয়।
+    /// </summary>
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowTextW", SetLastError = true)]
+    internal static unsafe partial int GetWindowText(nint hWnd, char* lpString, int nMaxCount);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowTextLengthW", SetLastError = true)]
+    internal static partial int GetWindowTextLength(nint hWnd);
+
+    /// <summary>উইন্ডোর মালিক প্রসেস। ফেরত মান thread id, যেটা এখানে লাগে না।</summary>
+    [LibraryImport("user32.dll", SetLastError = true)]
+    internal static partial uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
     // ── মনিটর ও ক্যাপচার ────────────────────────────────────────────────────
 
     /// <summary>

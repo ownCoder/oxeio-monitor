@@ -1,9 +1,11 @@
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 
+using oXeio.Agent.Apps;
 using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
 using oXeio.Agent.Platform.Capture;
+using oXeio.Core.Agent;
 using oXeio.Core.Capture;
 using oXeio.Core.Models;
 using oXeio.Core.Time;
@@ -86,6 +88,7 @@ internal static class Diagnostics
         Line("");
 
         TestCapture();
+        TestAppTracking();
 
         Line("চলছে… Ctrl+C দিয়ে থামান। ৬০ সেকেন্ড মাউস/কি-বোর্ড না ছুঁয়ে দেখুন।");
         Line("");
@@ -101,6 +104,59 @@ internal static class Diagnostics
 
         Application.Run();
         return 0;
+    }
+
+    // ── অ্যাপ/সাইট পরীক্ষা ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// D01–D04 এই PC-তে কাজ করছে কি না।
+    ///
+    /// ⭐ <b>ব্রাউজারের address bar পড়া সবচেয়ে ভঙ্গুর অংশ</b> — UI Automation
+    /// ব্রাউজারের ভার্সন, ভাষা আর accessibility সেটিংয়ের ওপর নির্ভর করে।
+    /// প্রতিটা অফিস PC-তে রোল-আউটের আগে এখানেই দেখে নেওয়া যায় ডোমেইন
+    /// আসছে কি না; না এলে অ্যাপের হিসাব তবু চলবে, শুধু সাইটের নাম থাকবে না।
+    ///
+    /// ⚠️ এখানে <b>ডোমেইনই ছাপা হয়, পুরো URL নয়</b> — কনসোলেও নিয়মটা এক
+    /// ([ADR-013](../../../docs/05-Options-Decisions.md))।
+    /// </summary>
+    private static void TestAppTracking()
+    {
+        Line("── অ্যাপ ও সাইট ট্র্যাকিং (D01–D04) ─────────────────");
+
+        var config = AgentConfig.Default.AppTracking;
+        Line($"কনফিগ: {(config.Enabled ? "চালু" : "বন্ধ")}, সর্বনিম্ন {config.MinDurationSec} সে.");
+
+        if (!config.Enabled)
+        {
+            Line("   (বন্ধ — foreground উইন্ডো পড়াই হবে না)");
+            Line("");
+            return;
+        }
+
+        var service = new AppUsageService(TimeSpan.FromSeconds(config.MinDurationSec));
+        Line("৫ সেকেন্ড নমুনা নিচ্ছি — এখন ব্রাউজারে গিয়ে দেখতে পারেন…");
+
+        for (var i = 0; i < 5; i++)
+        {
+            service.Tick(Clock.Now, SegmentState.Active);
+            Thread.Sleep(1000);
+        }
+
+        var closed = service.CloseAll(Clock.Now);
+
+        Line($"   foreground : {service.CurrentProcess ?? "(পড়া গেল না)"}");
+        Line(service.UrlReadingDisabled
+            ? "   address bar: ❌ এই মেশিনে UI Automation কাজ করছে না — সাইটের নাম আসবে না"
+            : "   address bar: ✅ পড়া যাচ্ছে");
+
+        foreach (var r in closed)
+        {
+            // ⚠️ টাইটেল ছাপা হয় না — পড়ার সময় কেউ পাশে থাকতে পারে
+            Line($"   ▸ {r.ProcessName} {r.DurationSec} সে." +
+                 (r.Domain is null ? "" : $"  ডোমেইন: {r.Domain}"));
+        }
+
+        Line("");
     }
 
     // ── ক্যাপচার পরীক্ষা ────────────────────────────────────────────────────
