@@ -93,6 +93,7 @@ oxeio-monitor/
 │   │   │   ├── Platform/SessionMonitor.cs  ✅ lock/logoff/RDP disconnect
 │   │   │   ├── Platform/PowerMonitor.cs    ✅ suspend/resume/display
 │   │   │   ├── Platform/DpiGuard.cs        ✅ ম্যানিফেস্ট কার্যকর হয়েছে কি না
+│   │   │   ├── Platform/LivenessBeacon.cs  ✅ ⭐ agent.lock + agent.alive — watchdog-এর চোখ
 │   │   │   ├── Platform/Capture/
 │   │   │   │   ├── MonitorEnumerator.cs    ✅ প্রতিবার নতুন করে গোনা
 │   │   │   │   ├── DuplicationCapturer.cs  ✅ ⭐ প্রধান ইঞ্জিন — DXGI (ADR-012c)
