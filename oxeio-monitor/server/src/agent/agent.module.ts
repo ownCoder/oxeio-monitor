@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { ActivityModule } from '../activity/activity.module';
+
 import { AgentConfigService } from './agent-config.service';
 import { AgentController } from './agent.controller';
 import { ClockDriftService } from './clock-drift.service';
@@ -12,6 +14,7 @@ import { ScreenshotIngestService } from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
 @Module({
+  imports: [ActivityModule],
   controllers: [AgentController],
   providers: [
     ProgressService,

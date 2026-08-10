@@ -6,8 +6,10 @@ import { hash } from '@node-rs/argon2';
 import { PrismaClient, UserRole } from '@prisma/client';
 import request from 'supertest';
 
+import { AppCategoryService } from '../../src/activity/app-category.service';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
+import { workDateOf } from '../../src/agent/util/dhaka-time';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 export const OWNER_EMAIL = 'owner@test.local';
@@ -51,7 +53,10 @@ export async function createHarness(): Promise<Harness> {
  * প্রতিটি টেস্টের আগে ডাটাবেস পরিষ্কার করে ন্যূনতম fixture বসায়।
  * টেবিলগুলো নির্ভরতার ক্রমে TRUNCATE হয় (CASCADE দিয়ে একবারেই)।
  */
-export async function resetDatabase(prisma: PrismaClient): Promise<void> {
+export async function resetDatabase(
+  prisma: PrismaClient,
+  app?: INestApplication,
+): Promise<void> {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
       time_adjustments, audit_log, alerts, screenshots, app_usage, events,
@@ -60,6 +65,11 @@ export async function resetDatabase(prisma: PrismaClient): Promise<void> {
       app_categories, holidays, agent_versions, settings
     RESTART IDENTITY CASCADE
   `);
+
+  // ⚠️ `app_categories` TRUNCATE ... RESTART IDENTITY-তে id-ও রিসেট হয়।
+  //    ক্যাশে পুরোনো id বসে থাকলে পরের ingest foreign key ভাঙত — টেস্টে
+  //    সেটা '৫০০' হয়ে আসত, আর কারণ খোঁজা কঠিন হতো।
+  app?.get(AppCategoryService).invalidate();
 
   const policy = await prisma.workPolicy.create({
     data: {
@@ -235,3 +245,40 @@ export async function enrollDevice(
 
 export const iso = (d: Date): string => d.toISOString();
 export const minutesAgo = (n: number): Date => new Date(Date.now() - n * 60_000);
+
+/**
+ * আজকের **ঢাকা-দিনের ভেতরে** থাকা একটা সাম্প্রতিক জানালা।
+ *
+ * ⚠️ `minutesAgo(30)` দিয়ে টেস্ট লেখা যায় না, কারণ ঢাকার মধ্যরাতের পরপর
+ * "৩০ মিনিট আগে" মানে **গতকাল**। তখন তিনটে টেস্ট ভাঙত, আর কারণটা কোডে
+ * নয় — ঘড়িতে:
+ *
+ * - আজকের হিসাব ০ আসত (সেগমেন্টটা গতকালের)
+ * - সেশন `logoff` নয়, `day_rollover` হয়ে বন্ধ হতো
+ * - সেগমেন্ট মধ্যরাতে **দু-ভাগ** হতো, আর `findFirstOrThrow` প্রথম ভাগটা
+ *   ফেরত দিত — যার শেষ ঠিক ০০:০০
+ *
+ * রোজ রাত ১২টার পর আধঘণ্টা CI লাল থাকা মানে আসল ভাঙন আর ঘড়ির ভাঙন আলাদা
+ * করা যেত না। তাই জানালাটা মধ্যরাতে **ছেঁটে** দেওয়া হয়, আর টেস্ট
+ * হার্ডকোড করা ৬০০ নয়, ফেরত আসা `durationSec`-ই মেলায়।
+ */
+export function todayWindow(seconds: number): {
+  startedAt: Date;
+  endedAt: Date;
+  durationSec: number;
+} {
+  // ১ সেকেন্ড মার্জিন — endedAt "এখন"-এর ঠিক পরে হয়ে গেলে সার্ভার
+  // ভবিষ্যতের টাইমস্ট্যাম্প দেখত
+  const endedAt = new Date(Date.now() - 1_000);
+  const dhakaMidnight = workDateOf(endedAt).getTime() - 6 * 3_600_000;
+
+  const startedAt = new Date(
+    Math.max(endedAt.getTime() - seconds * 1_000, dhakaMidnight + 1_000),
+  );
+
+  return {
+    startedAt,
+    endedAt,
+    durationSec: Math.round((endedAt.getTime() - startedAt.getTime()) / 1_000),
+  };
+}

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
+import { ActivityModule } from './activity/activity.module';
 import { AgentModule } from './agent/agent.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';

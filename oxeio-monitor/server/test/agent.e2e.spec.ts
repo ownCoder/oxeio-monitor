@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { AppCategoryService } from '../src/activity/app-category.service';
 import {
   createEmployeeWithCode,
   createHarness,
@@ -9,6 +10,7 @@ import {
   iso,
   minutesAgo,
   resetDatabase,
+  todayWindow,
   type EnrolledDevice,
   type Harness,
 } from './setup/harness';
@@ -40,7 +42,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await resetDatabase(h.prisma);
+  await resetDatabase(h.prisma, h.app);
   ({ code } = await createEmployeeWithCode(h.prisma));
   device = await enrollDevice(h, code);
 });
@@ -147,15 +149,17 @@ describe('heartbeat', () => {
    * ভাবত তার মাসের কাজ মুছে গেছে।
    */
   it('heartbeat-এ মাসিক অগ্রগতি ফেরত আসে', async () => {
+    const worked = todayWindow(600);
+
     await asAgent(h.http().post('/api/v1/agent/segments'), device.token)
       .send({
         segments: [
           {
             clientUuid: randomUUID(),
             state: 'active',
-            startedAt: iso(minutesAgo(30)),
-            endedAt: iso(minutesAgo(20)),
-            durationSec: 600,
+            startedAt: iso(worked.startedAt),
+            endedAt: iso(worked.endedAt),
+            durationSec: worked.durationSec,
           },
         ],
       })
@@ -165,12 +169,16 @@ describe('heartbeat', () => {
       h.http().post('/api/v1/agent/heartbeat'),
       device.token,
     )
-      .send({ state: 'active', activeSecToday: 600, queueDepth: 0 })
+      .send({
+        state: 'active',
+        activeSecToday: worked.durationSec,
+        queueDepth: 0,
+      })
       .expect(200);
 
     expect(res.body.progress).toBeTruthy();
-    expect(res.body.progress.todayActiveSec).toBe(600);
-    expect(res.body.progress.monthActiveSec).toBe(600);
+    expect(res.body.progress.todayActiveSec).toBe(worked.durationSec);
+    expect(res.body.progress.monthActiveSec).toBe(worked.durationSec);
     expect(res.body.progress.monthlyTargetHours).toBe(208);
   });
 
@@ -397,7 +405,11 @@ describe('মধ্যরাতে ভাগ (§ ২.১-ক)', () => {
 describe('clock drift (§ ২)', () => {
   it('এজেন্টের ঘড়ি পিছিয়ে থাকলে সার্ভার সময় সংশোধন করে', async () => {
     const clientNow = minutesAgo(10); // PC-র ঘড়ি ১০ মিনিট পিছিয়ে
-    const clientStart = new Date(clientNow.getTime() - 5 * 60_000);
+
+    // ⚠️ সংশোধনের পর সেগমেন্টটা যেন আজকের দিনেই থাকে — মধ্যরাত পেরোলে
+    //    দু-ভাগ হতো, আর নিচের findFirstOrThrow প্রথম ভাগটা (শেষ ০০:০০) দিত
+    const { durationSec } = todayWindow(300);
+    const clientStart = new Date(clientNow.getTime() - durationSec * 1_000);
 
     await h
       .http()
@@ -411,7 +423,7 @@ describe('clock drift (§ ২)', () => {
             state: 'active',
             startedAt: iso(clientStart),
             endedAt: iso(clientNow),
-            durationSec: 300,
+            durationSec,
           },
         ],
       })
@@ -451,15 +463,17 @@ describe('clock drift (§ ২)', () => {
 
 describe('work session', () => {
   it('logoff সেশন বন্ধ করে', async () => {
+    const worked = todayWindow(600);
+
     await asAgent(h.http().post('/api/v1/agent/segments'), device.token)
       .send({
         segments: [
           {
             clientUuid: randomUUID(),
             state: 'active',
-            startedAt: iso(minutesAgo(30)),
-            endedAt: iso(minutesAgo(20)),
-            durationSec: 600,
+            startedAt: iso(worked.startedAt),
+            endedAt: iso(worked.endedAt),
+            durationSec: worked.durationSec,
           },
         ],
       })
@@ -548,6 +562,8 @@ describe('work session', () => {
 
 describe('app usage ও events', () => {
   it('app usage জমা হয়, ডোমেইনসহ', async () => {
+    const used = todayWindow(300);
+
     const res = await asAgent(
       h.http().post('/api/v1/agent/app-usage'),
       device.token,
@@ -556,9 +572,9 @@ describe('app usage ও events', () => {
         items: [
           {
             clientUuid: randomUUID(),
-            startedAt: iso(minutesAgo(9)),
-            endedAt: iso(minutesAgo(4)),
-            durationSec: 300,
+            startedAt: iso(used.startedAt),
+            endedAt: iso(used.endedAt),
+            durationSec: used.durationSec,
             processName: 'chrome.exe',
             appName: 'Google Chrome',
             windowTitle: 'GitHub',
@@ -572,7 +588,104 @@ describe('app usage ও events', () => {
     expect(res.body.accepted).toBe(1);
     const row = await h.prisma.appUsage.findFirstOrThrow();
     expect(row.domain).toBe('github.com');
-    // ক্যাটাগরি মেলানো Phase 4-এ
+    // কোনো নিয়ম বসানো নেই — অচেনা থাকাই ঠিক (null ≠ neutral)
+    expect(row.categoryId).toBeNull();
+  });
+
+  /**
+   * D05 — ⭐ এই টেস্টটাই প্রমাণ করে ক্যাটাগরি **সত্যিই বসছে**।
+   * ম্যাচারের ইউনিট টেস্ট আলাদা; এটা দেখায় ingest পথটা জোড়া লেগেছে।
+   */
+  it('ব্রাউজারের সাইট অনুযায়ী ক্যাটাগরি বসে, ব্রাউজার অনুযায়ী নয়', async () => {
+    const used = todayWindow(300);
+
+    await h.prisma.appCategory.createMany({
+      data: [
+        {
+          matchType: 'process',
+          pattern: 'chrome.exe',
+          displayName: 'Google Chrome',
+          category: 'neutral',
+          priority: 200,
+        },
+        {
+          matchType: 'domain',
+          pattern: 'youtube.com',
+          displayName: 'YouTube',
+          category: 'unproductive',
+          priority: 100,
+        },
+      ],
+    });
+    h.app.get(AppCategoryService).invalidate();
+
+    await asAgent(h.http().post('/api/v1/agent/app-usage'), device.token)
+      .send({
+        items: [
+          {
+            clientUuid: randomUUID(),
+            startedAt: iso(used.startedAt),
+            endedAt: iso(used.endedAt),
+            durationSec: used.durationSec,
+            processName: 'chrome.exe',
+            windowTitle: 'কিছু একটা — YouTube',
+            domain: 'music.youtube.com',
+            isBrowser: true,
+          },
+        ],
+      })
+      .expect(200);
+
+    const row = await h.prisma.appUsage.findFirstOrThrow({
+      include: { category: true },
+    });
+
+    // সাবডোমেইনেও ডোমেইনের নিয়ম চলে, আর সেটা chrome.exe-কে হারায়
+    expect(row.category?.category).toBe('unproductive');
+    expect(row.category?.displayName).toBe('YouTube');
+  });
+
+  /**
+   * ⚠️ নিয়ম মুছে গেলে ক্যাশে তার id বসে থাকে, আর insert foreign key ভাঙে।
+   * তখন ৫০০ দিয়ে পাঁচ মিনিট (TTL) বসে না থেকে একবার ক্যাশ ফেলে আবার চেষ্টা।
+   */
+  it('নিয়ম মুছে গেলেও ব্যাচ ঢোকে', async () => {
+    const used = todayWindow(300);
+
+    const rule = await h.prisma.appCategory.create({
+      data: {
+        matchType: 'process',
+        pattern: 'excel.exe',
+        displayName: 'Excel',
+        category: 'productive',
+        priority: 100,
+      },
+    });
+    h.app.get(AppCategoryService).invalidate();
+
+    // ক্যাশে ঢোকানো, তারপর নিয়মটা উধাও — ক্যাশ কিছুই জানে না
+    await h.app.get(AppCategoryService).rules();
+    await h.prisma.appCategory.delete({ where: { id: rule.id } });
+
+    const res = await asAgent(
+      h.http().post('/api/v1/agent/app-usage'),
+      device.token,
+    )
+      .send({
+        items: [
+          {
+            clientUuid: randomUUID(),
+            startedAt: iso(used.startedAt),
+            endedAt: iso(used.endedAt),
+            durationSec: used.durationSec,
+            processName: 'excel.exe',
+          },
+        ],
+      })
+      .expect(200);
+
+    expect(res.body.accepted).toBe(1);
+    const row = await h.prisma.appUsage.findFirstOrThrow();
     expect(row.categoryId).toBeNull();
   });
 

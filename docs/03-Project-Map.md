@@ -133,6 +133,7 @@ oxeio-monitor/
 │   │   │   ├── login-throttle.service.ts   #   ব্রুট-ফোর্স (I11)
 │   │   │   └── guards/                     #   jwt · csrf · must-change-pw · roles
 │   │   ├── users/                          ✅ reset-password · portal-account
+│   │   ├── activity/                   ✅ ক্যাটাগরি ম্যাচার + রুল ক্যাশ (D05)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   │   ├── agent.controller.ts
 │   │   │   ├── device-auth.guard.ts        #   Bearer → sha256 → device

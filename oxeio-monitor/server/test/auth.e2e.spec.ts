@@ -23,7 +23,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await resetDatabase(h.prisma);
+  await resetDatabase(h.prisma, h.app);
 });
 
 describe('পাবলিক রুট', () => {

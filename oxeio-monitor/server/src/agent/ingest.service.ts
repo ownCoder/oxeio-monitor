@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, Logger, UnprocessableEntityException } from '@nestjs/common';
 import type { Device, Prisma } from '@prisma/client';
 
+import { AppCategoryService } from '../activity/app-category.service';
+import { matchCategory } from '../activity/category-matcher';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClockDriftService, type Drift } from './clock-drift.service';
 import type { AppUsageDto, EventDto, SegmentDto } from './dto';
@@ -25,6 +27,22 @@ interface Span {
 /** সেশন বন্ধ হওয়ার যেসব ইভেন্ট */
 const SESSION_CLOSING = new Set(['logoff', 'shutdown', 'agent_stop']);
 
+/**
+ * Prisma-র foreign key ভাঙার কোড।
+ *
+ * ⚠️ `instanceof PrismaClientKnownRequestError` ব্যবহার করা হয়নি — ওটার
+ * জন্য `@prisma/client` থেকে **রানটাইম** ইমপোর্ট লাগত, আর তাতে জেনারেট
+ * করা ক্লায়েন্টের ভার্সনের সাথে শক্ত বাঁধন তৈরি হতো। কোডটা Prisma-র
+ * প্রকাশ্য চুক্তির অংশ, তাই সেটাই দেখা হয়।
+ */
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: unknown }).code === 'P2003'
+  );
+}
+
 @Injectable()
 export class IngestService {
   private readonly logger = new Logger(IngestService.name);
@@ -32,6 +50,7 @@ export class IngestService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clock: ClockDriftService,
+    private readonly categories: AppCategoryService,
   ) {}
 
   /**
@@ -285,6 +304,10 @@ export class IngestService {
       );
     }
 
+    // ⚠️ নিয়মগুলো একবার — প্রতি সারিতে await করলে ৫০০ সারির ব্যাচে
+    //    ৫০০ বার ক্যাশ-চেক হতো, আর প্রতিটাই একটা microtask।
+    const rules = await this.categories.rules();
+
     const rows: Prisma.AppUsageCreateManyInput[] = [];
     let split = 0;
 
@@ -311,18 +334,70 @@ export class IngestService {
           // ADR-013 — ডোমেইন ছাড়া কিছু জমা হয় না
           domain: item.domain ?? null,
           isBrowser: item.isBrowser ?? false,
-          // ক্যাটাগরি মেলানো Phase 4-এ (D05) — এখন null
-          categoryId: null,
+
+          // D05 — ⚠️ **এখানেই** ক্যাটাগরি বসে, পড়ার সময় নয়। রিপোর্ট
+          //    (D07, D08) মাসের লাখখানেক সারির উপর group by করে; প্রতিবার
+          //    ১০৯টা নিয়ম মেলালে ওই কোয়েরি ব্যবহারের অযোগ্য হতো।
+          //    দাম: নিয়ম বদলালে পুরোনো সারি পুরোনো সিদ্ধান্তেই থাকে —
+          //    সেজন্যই `AppCategoryService.recategorize()`।
+          categoryId: matchCategory(rules, {
+            processName: item.processName,
+            domain: item.domain,
+            windowTitle: item.windowTitle,
+          })?.id ?? null,
         });
       }
     }
 
-    const { count } = await this.prisma.appUsage.createMany({
-      data: rows,
-      skipDuplicates: true,
-    });
+    const count = await this.insertAppUsage(rows);
 
     return { accepted: count, duplicates: rows.length - count, split };
+  }
+
+  /**
+   * ⚠️ ক্যাটাগরির নিয়ম **মুছে ফেলা হলে** ক্যাশে তার id বসে থাকে, আর তখন
+   * প্রতিটা insert foreign key ভেঙে ৫০০ দেয় — TTL ফুরানো পর্যন্ত, অর্থাৎ
+   * পাঁচ মিনিট ধরে ১৫টা PC-র কোনো app-usage ঢুকত না।
+   *
+   * ডেটা হারাত না (৫xx এজেন্টের কাছে transient, সে আবার পাঠায়), কিন্তু
+   * পাঁচ মিনিটের অচলাবস্থা একটা রুল মোছার শাস্তি হিসেবে বেশি। তাই
+   * একবার ক্যাশ ফেলে দিয়ে আবার চেষ্টা — দ্বিতীয়বারেও ব্যর্থ হলে সত্যিই
+   * অন্য কোনো সমস্যা, সেটা উপরে যাক।
+   */
+  private async insertAppUsage(
+    rows: Prisma.AppUsageCreateManyInput[],
+  ): Promise<number> {
+    try {
+      const { count } = await this.prisma.appUsage.createMany({
+        data: rows,
+        skipDuplicates: true,
+      });
+      return count;
+    } catch (error) {
+      if (!isForeignKeyViolation(error)) throw error;
+
+      this.logger.warn(
+        'ক্যাটাগরির নিয়ম বদলে গেছে — ক্যাশ ফেলে আবার চেষ্টা করছি',
+      );
+      this.categories.invalidate();
+
+      const rules = await this.categories.rules();
+      const retried = rows.map((row) => ({
+        ...row,
+        categoryId:
+          matchCategory(rules, {
+            processName: row.processName,
+            domain: row.domain ?? null,
+            windowTitle: row.windowTitle ?? null,
+          })?.id ?? null,
+      }));
+
+      const { count } = await this.prisma.appUsage.createMany({
+        data: retried,
+        skipDuplicates: true,
+      });
+      return count;
+    }
   }
 
   // ── events ────────────────────────────────────────────────────────────────
