@@ -81,7 +81,7 @@ internal sealed class GdiCapturer : IScreenCapturer
                 handle.Free();
             }
 
-            return new CapturedFrame(pixels, w, h, stride, monitor);
+            return new CapturedFrame(pixels, w, h, stride, monitor, Name);
         }
         finally
         {

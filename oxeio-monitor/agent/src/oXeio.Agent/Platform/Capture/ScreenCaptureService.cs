@@ -13,9 +13,15 @@ internal sealed record CaptureResult(
     uint Dpi,
     byte[] Webp,
     FrameQuality.Assessment Quality,
-    TimeSpan Elapsed)
+    TimeSpan Elapsed,
+    string Engine,
+    bool ProtectedContentMasked)
 {
-    public bool Degraded => Quality.Degraded;
+    /// <summary>
+    /// ছবিটা কাজে লাগবে না — হয় প্রায় পুরোটা এক রঙের, নয়তো OS নিজেই
+    /// DRM কনটেন্ট বাদ দিয়েছে বলে জানিয়েছে।
+    /// </summary>
+    public bool Degraded => Quality.Degraded || ProtectedContentMasked;
 }
 
 /// <summary>
@@ -48,7 +54,8 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
 
             results.Add(new CaptureResult(
                 i, monitors[i].DeviceName, frame.Width, frame.Height,
-                monitors[i].Dpi, webp, quality, sw.Elapsed));
+                monitors[i].Dpi, webp, quality, sw.Elapsed,
+                frame.Engine, frame.ProtectedContentMasked));
         }
 
         return results;

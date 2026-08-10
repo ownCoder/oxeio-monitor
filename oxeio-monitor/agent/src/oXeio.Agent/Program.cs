@@ -124,29 +124,86 @@ internal static class Program
         var outDir = Path.Combine(Path.GetTempPath(), "oXeio-capture-test");
         Directory.CreateDirectory(outDir);
 
-        using var service = new ScreenCaptureService(new GdiCapturer());
+        var dxgi = new DuplicationCapturer();
+        using var service = new ScreenCaptureService(
+            new FallbackCapturer(dxgi, new GdiCapturer()));
+
         Line($"");
         Line($"ক্যাপচার ইঞ্জিন: {service.EngineName}");
 
-        var results = service.CaptureAll();
-        if (results.Count == 0)
-        {
+        // ⭐ DXGI ছবি দেয় শুধু তখনই যখন পর্দায় কিছু বদলায়। স্থির ডেস্কটপে ও
+        //    কিছুই দেয় না — সেটা ভুল নয়, নকশা। তাই দুই অবস্থাতেই পরীক্ষা করা হয়:
+        //    একবার পর্দা নড়তে নড়তে, একবার একদম স্থির অবস্থায়।
+        Line("");
+        Line("── ১· পর্দা নড়ছে (DXGI-র কাজের অবস্থা) ─────────────");
+        var moving = RunWithMotion(service.CaptureAll);
+        Report(moving, outDir, "moving", dxgi);
+
+        Line("── ২· পর্দা স্থির (GDI-তে নামার কথা) ────────────────");
+        Thread.Sleep(1200); // সব অ্যানিমেশন থামার সময়
+        var still = service.CaptureAll();
+        Report(still, outDir, "still", dxgi);
+
+        if (moving.Count == 0 && still.Count == 0)
             Line("❌ একটাও ছবি তোলা গেল না");
-            return;
-        }
-
-        foreach (var r in results)
-        {
-            var path = Path.Combine(outDir, $"monitor-{r.MonitorIndex}.webp");
-            File.WriteAllBytes(path, r.Webp);
-
-            Line($"   ▸ মনিটর {r.MonitorIndex}: {r.Width}×{r.Height} → " +
-                 $"{r.Webp.Length / 1024.0:F0} KB  ({r.Elapsed.TotalMilliseconds:F0} ms)  " +
-                 (r.Degraded ? $"⚠️ {r.Quality.Reason}" : $"✅ কালো {r.Quality.BlackRatio:P0}"));
-        }
 
         Line($"   ছবিগুলো: {outDir}");
         Line("");
+    }
+
+    /// <summary>
+    /// ক্যাপচার চলাকালীন কনসোলে লেখা চালিয়ে যাওয়া, যাতে পর্দায় সত্যিই কিছু
+    /// বদলায়। এটা ছাড়া DXGI-র কাজের পথটা পরীক্ষাই করা যায় না — স্থির পর্দায়
+    /// ও ইচ্ছাকৃতভাবেই কিছু দেয় না।
+    /// </summary>
+    private static IReadOnlyList<CaptureResult> RunWithMotion(
+        Func<IReadOnlyList<CaptureResult>> capture)
+    {
+        using var stop = new ManualResetEventSlim(false);
+
+        var spinner = new Thread(() =>
+        {
+            const string frames = "|/-\\";
+            for (var i = 0; !stop.IsSet; i++)
+            {
+                Console.Write($"\r   ছবি তোলা হচ্ছে {frames[i % frames.Length]} ");
+                Thread.Sleep(40);
+            }
+        })
+        { IsBackground = true, Name = "oXeio-motion" };
+
+        spinner.Start();
+        try
+        {
+            return capture();
+        }
+        finally
+        {
+            stop.Set();
+            spinner.Join(500);
+            Console.Write("\r                        \r");
+        }
+    }
+
+    private static void Report(
+        IReadOnlyList<CaptureResult> results, string outDir, string tag, DuplicationCapturer dxgi)
+    {
+        foreach (var r in results)
+        {
+            File.WriteAllBytes(
+                Path.Combine(outDir, $"{tag}-monitor-{r.MonitorIndex}.webp"), r.Webp);
+
+            var verdict = r.ProtectedContentMasked
+                ? "⚠️ DRM কনটেন্ট বাদ পড়েছে (OS জানিয়েছে)"
+                : r.Degraded ? $"⚠️ {r.Quality.Reason}"
+                : $"✅ কালো {r.Quality.BlackRatio:P0}";
+
+            Line($"   ▸ মনিটর {r.MonitorIndex}: {r.Width}×{r.Height} → " +
+                 $"{r.Webp.Length / 1024.0:F0} KB  ({r.Elapsed.TotalMilliseconds:F0} ms)  " +
+                 $"[{r.Engine}]  {verdict}");
+        }
+
+        Line($"     DXGI: {dxgi.LastStep}");
     }
 
     // ── প্রতি সেকেন্ডের কাজ ────────────────────────────────────────────────
