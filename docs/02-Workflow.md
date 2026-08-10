@@ -167,9 +167,15 @@ tray-তে   →  সবসময় দেখা যায়: "এই মা�
 ### নতুন স্টাফ যোগ দিলে
 ```
 ১. ড্যাশবোর্ড → Employees → Add
-   নাম, emp_code, ইমেইল, পদবি, shift, যোগদানের তারিখ
+   নাম, emp_code, ইমেইল, পদবি, যোগদানের তারিখ
 ২. Devices → Generate enrollment code  (২৪ ঘণ্টায় expire, একবার ব্যবহার্য)
-৩. তার PC-তে MSI ইনস্টল → কোড দিন → ডিভাইস লিঙ্ক হয়ে যায়
+৩. তার PC-তে সাইলেন্ট ইনস্টল — কোডটা কমান্ডেই যায়, আলাদা করে বসাতে হয় না:
+
+   msiexec /i oXeioAgent.msi /qn ^
+           SERVERURL="https://oxeio.office.local" ENROLLCODE="OXEIO-XXXXXXXX"
+
+   লগঅনের ১৫ সেকেন্ড পর watchdog উঠে এজেন্ট চালু করে, আর এজেন্ট নিজেই
+   enroll করে নেয়। tray আইকন দেখা গেলেই বোঝা যাবে হয়ে গেছে।
 ৪. Monitoring policy সই করান → ফাইল আপলোড করে employee রেকর্ডে রাখুন
 ৫. তাকে self-view লগইন দিন
 ```
