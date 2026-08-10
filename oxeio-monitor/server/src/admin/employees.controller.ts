@@ -1,0 +1,90 @@
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Ip,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+
+import { CurrentUser, Roles } from '../auth/decorators';
+import type { SessionUser } from '../auth/types';
+import {
+  CreateEmployeeDto,
+  DeactivateEmployeeDto,
+  UpdateEmployeeDto,
+} from './dto';
+import { EmployeesService } from './employees.service';
+import type { EmployeeView } from './redact';
+
+/**
+ * E10 — স্টাফ ম্যানেজমেন্টের **লেখার** দিক। পুরো ক্লাসটাই owner-only,
+ * মেথড-লেভেলে নয় — পরে কেউ নতুন endpoint যোগ করলে সেটাও আপনাআপনি
+ * owner-only থাকবে (স্পেক § ৪.৩)।
+ *
+ * ⚠️ পড়ার রুট (`GET /employees`) এখানে **নেই** — সেগুলো
+ * `employees-read.controller.ts`-এ, কারণ ম্যানেজারেরও তালিকা দেখা লাগে।
+ * এই ফাইলে `@Get` লিখলে ম্যানেজার স্টাফের নামও দেখতে পেত না।
+ *
+ * ⚠️ কোনো `@Delete` নেই — ইচ্ছাকৃত, নিচে `deactivate` দেখুন।
+ */
+@Roles(UserRole.owner)
+@Controller('employees')
+export class EmployeesController {
+  constructor(private readonly employees: EmployeesService) {}
+
+  /** `POST /api/v1/employees` */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(
+    @CurrentUser() actor: SessionUser,
+    @Body() dto: CreateEmployeeDto,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.create(actor, dto, ip);
+  }
+
+  /** `PATCH /api/v1/employees/:id` — শুধু পাঠানো ফিল্ডগুলোই বদলায় */
+  @Patch(':id')
+  update(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateEmployeeDto,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.update(actor, id, dto, ip);
+  }
+
+  /**
+   * `POST /api/v1/employees/:id/deactivate`
+   *
+   * ⚠️ ডিলিটের বদলে এটাই। DELETE রাখা হয়নি যাতে ফ্রন্টএন্ডে ভুল করেও
+   * "মুছে ফেলা" বোতাম বসানোর সুযোগ না থাকে — সারিটা মুছলে ওই কর্মীর মাসের
+   * হিসাব, স্ক্রিনশট আর audit trail সব অনাথ হয়ে যেত।
+   */
+  @Post(':id/deactivate')
+  @HttpCode(HttpStatus.OK)
+  deactivate(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DeactivateEmployeeDto,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.deactivate(actor, id, dto, ip);
+  }
+
+  /** `POST /api/v1/employees/:id/reactivate` */
+  @Post(':id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  reactivate(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.reactivate(actor, id, ip);
+  }
+}

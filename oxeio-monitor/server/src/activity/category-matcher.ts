@@ -44,7 +44,7 @@ export interface UsageFacts {
  * বাঁধা (`AppUsageDto`)। দুটোই সম্পূর্ণ সমাধান নয় — তাই এই ম্যাচ-টাইপটা
  * seed-এ ব্যবহার করা হয়নি, আর D06-এ যোগ করার সময় নিয়মটা audit হবে।
  */
-const MAX_REGEX_LENGTH = 200;
+export const MAX_REGEX_LENGTH = 200;
 
 /**
  * নিয়মগুলোকে একবার সাজিয়ে ও কম্পাইল করে রাখা। ম্যাচ করার সময় শুধু

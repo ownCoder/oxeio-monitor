@@ -247,14 +247,33 @@ describe('heartbeat', () => {
 });
 
 describe('segments — dedupe ও যাচাই (§ ২.১-ঘ)', () => {
-  const segment = (over: Record<string, unknown> = {}) => ({
-    clientUuid: randomUUID(),
-    state: 'active',
-    startedAt: iso(minutesAgo(30)),
-    endedAt: iso(minutesAgo(20)),
-    durationSec: 600,
-    ...over,
-  });
+  /**
+   * ⚠️ টাইমস্ট্যাম্প **সবসময় ঢাকার আজকের দিনের ভেতরে** রাখতে হয়।
+   *
+   * আগে এখানে `minutesAgo(30)` ছিল। মধ্যরাতের ঠিক পরে টেস্ট চালালে সেটা
+   * আগের তারিখে পড়ত, সার্ভার সেগমেন্টটা মধ্যরাতে ভাগ করে দিত (§ ২.১-ক),
+   * আর `accepted` ২-এর বদলে ৩ আসত। টেস্টটা দিনের বেলা পাস করত আর রাত
+   * ১২টার পর ফেল — সবচেয়ে বিরক্তিকর ধরনের ফ্লেকি।
+   */
+  const dayWindow = () => {
+    const w = todayWindow(900);
+    const half = Math.floor(w.durationSec / 2);
+    return { start: w.startedAt, half, total: w.durationSec, end: w.endedAt };
+  };
+
+  const segment = (over: Record<string, unknown> = {}) => {
+    const w = dayWindow();
+    const mid = new Date(w.start.getTime() + w.half * 1_000);
+
+    return {
+      clientUuid: randomUUID(),
+      state: 'active',
+      startedAt: iso(w.start),
+      endedAt: iso(mid),
+      durationSec: w.half,
+      ...over,
+    };
+  };
 
   it('client_uuid না থাকলে 422', async () => {
     const { clientUuid, ...withoutUuid } = segment();
@@ -269,12 +288,17 @@ describe('segments — dedupe ও যাচাই (§ ২.১-ঘ)', () => {
     const batch = {
       segments: [
         segment({ inputScore: 72 }),
-        segment({
-          state: 'idle',
-          startedAt: iso(minutesAgo(20)),
-          endedAt: iso(minutesAgo(18)),
-          durationSec: 120,
-        }),
+        (() => {
+          // প্রথমটার ঠিক পরের অংশ — একই দিনের ভেতরে, ওভারল্যাপ ছাড়া
+          const w = dayWindow();
+          const mid = new Date(w.start.getTime() + w.half * 1_000);
+          return segment({
+            state: 'idle',
+            startedAt: iso(mid),
+            endedAt: iso(w.end),
+            durationSec: w.total - w.half,
+          });
+        })(),
       ],
     };
 

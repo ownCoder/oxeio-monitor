@@ -3,12 +3,18 @@ import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
 import { ActivityModule } from './activity/activity.module';
+import { AdminModule } from './admin/admin.module';
 import { AgentModule } from './agent/agent.module';
+import { AlertsModule } from './alerts/alerts.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PayrollModule } from './payroll/payroll.module';
+import { ReportsModule } from './reports/reports.module';
+import { ScreenshotsModule } from './screenshots/screenshots.module';
+import { SummaryModule } from './summary/summary.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -43,7 +49,17 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     AgentModule,
+    ActivityModule,
+    AdminModule,
+    DashboardModule,
     PayrollModule,
+    ReportsModule,
+    ScreenshotsModule,
+    // ⚠️ SummaryModule নিজের ভেতরে ScheduleModule.forRoot() রাখে (টেস্টে বাদ পড়ে)।
+    // এখানে আলাদা করে forRoot() বসিয়ো না — দুটো explorer একই @Cron দুবার
+    // রেজিস্টার করতে গিয়ে bootstrap-এই "cron job already exists" দিয়ে ভাঙবে।
+    SummaryModule,
+    AlertsModule,
     HealthModule,
   ],
 })
