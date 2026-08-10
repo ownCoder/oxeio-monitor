@@ -48,6 +48,7 @@ internal sealed class AgentHost : IAsyncDisposable
     private readonly SleepGapDetector _sleep = new(Tick);
     private readonly CancellationTokenSource _stopping = new();
 
+    private LivenessBeacon? _beacon;
     private SqliteOutboxStore? _outbox;
     private HttpSyncClient? _sync;
     private SyncWorker? _worker;
@@ -95,6 +96,18 @@ internal sealed class AgentHost : IAsyncDisposable
             error = $"ডেটা ফোল্ডার তৈরি করা গেল না: {dirError}";
             return false;
         }
+
+        // ⭐ লক আগে — অন্য কোনো এজেন্ট চললে এখানেই থেমে যেতে হবে।
+        //    দুটো এজেন্ট এক মেশিনে চললে একই ঘণ্টা দুবার গোনা হতো, আর
+        //    সার্ভারের দিক থেকে সেটা শুধু "খুব বেশি কাজ" দেখাত।
+        _beacon = LivenessBeacon.TryAcquire(AgentDataDirectory.Default);
+        if (_beacon is null)
+        {
+            error = "এই PC-তে oXeio এজেন্ট ইতিমধ্যেই চলছে।";
+            return false;
+        }
+
+        _beacon.Start();
 
         // ── পরিচয় ও টোকেন ──────────────────────────────────────────────────
         var identity = MachineIdentity.Collect();
@@ -449,6 +462,7 @@ internal sealed class AgentHost : IAsyncDisposable
             catch (Exception) { /* বন্ধ হচ্ছে — আর কিছু করার নেই */ }
         }
 
+        _beacon?.Dispose();
         _tray?.Dispose();
         _capture?.Dispose();
         _sync?.Dispose();
