@@ -134,7 +134,15 @@ oxeio-monitor/
 │   │   │   └── guards/                     #   jwt · csrf · must-change-pw · roles
 │   │   ├── users/                          ✅ reset-password · portal-account
 │   │   ├── activity/                   ✅ ক্যাটাগরি ম্যাচার + রুল ক্যাশ (D05)
+│   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
+│   │   ├── alerts/                     ✅ G01–G08 · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
+│   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
+│   │   ├── digest/                     ✅ F07 সন্ধ্যা ৬:৩০-এর ডাইজেস্ট
+│   │   ├── ops/                        ✅ K02 এনক্রিপটেড ব্যাকআপ · K03 কপি · K04 হেলথ
+│   │   ├── reports/                    ✅ F01–F06 · Excel · PDF
+│   │   ├── screenshots/                ✅ E06 গ্যালারি · I07 signed URL · I08 audit
+│   │   ├── summary/                    ✅ K05 দিন-ক্লোজ · K06 rollup · K01 retention
 │   │   │   ├── agent.controller.ts
 │   │   │   ├── device-auth.guard.ts        #   Bearer → sha256 → device
 │   │   │   ├── clock-drift.service.ts      #   ⭐ drift সংশোধন + অ্যালার্ট
@@ -164,28 +172,28 @@ oxeio-monitor/
 │       ├── auth.e2e.spec.ts  agent.e2e.spec.ts
 │       └── setup/harness.ts  setup/global-setup.ts
 │
-├── web/                                    # ── React 19 + Vite ──
+├── web/                                    # ── React 19 + Vite + Tailwind v4 ──
 │   └── src/
 │       ├── api/client.ts                   ✅ cookie · CSRF হেডার · গ্লোবাল 401
-│       ├── api/auth.ts                     ✅
-│       ├── auth/AuthContext.tsx            ✅ সেশনের অবস্থা
-│       ├── components/Layout.tsx           ✅ কালো টপবার + নেভ
-│       ├── components/Brand.tsx  Field.tsx ✅
-│       ├── pages/LoginPage.tsx             ✅
+│       ├── api/{dashboard,activity,screenshots,reports,admin,alerts}.ts
+│       │                                   ✅ ⭐ টাইপগুলো **সার্ভারের সোর্স পড়ে** লেখা, অনুমান নয়
+│       ├── api/useApi.ts                   ✅ useApi · usePolling (ট্যাব লুকোলে থামে)
+│       ├── lib/format.ts                   ✅ ⚠️ তারিখ সবসময় ঢাকার কর্মদিবস
+│       ├── auth/AuthContext.tsx            ✅ সেশন · useIdleLogout (I09)
+│       ├── components/Layout.tsx           ✅ কালো টপবার · নেভ · সার্চ · থিম
+│       ├── components/                     ✅ Page · States · Card · ProgressRing ·
+│       │                                      StatusDot · DatePicker · Table · Duration ·
+│       │                                      EmployeePicker · ThemeToggle · GlobalSearch
+│       ├── pages/LoginPage.tsx             ✅ + TOTP দ্বিতীয় ধাপ (I06)
 │       ├── pages/ChangePasswordPage.tsx    ✅ বাধ্যতামূলক প্রথম-বদল (G33)
-│       ├── pages/HomePage.tsx              ✅ প্লেসহোল্ডার
-│       ├── pages/
-│       │   ├── LiveBoard.tsx               ⏳ ⭐ হোম — ১৫টা কার্ড
-│       │   ├── EmployeeDetail.tsx          ⏳ টাইমলাইন + চার্ট
-│       │   ├── Gallery.tsx                 ⏳ স্ক্রিনশট গ্রিড + লাইটবক্স
-│       │   ├── Monthly.tsx                 ⏳ মাসিক হিটম্যাপ
-│       │   ├── Reports.tsx  Settings.tsx   ⏳
-│       │   └── MyData.tsx                  ⏳ স্টাফের নিজের ভিউ
-│       ├── components/
-│       │   ├── TimelineBar.tsx             ⏳ ⭐ active/idle রঙিন বার
-│       │   ├── StatusCard.tsx  ScreenshotGrid.tsx  ⏳
-│       │   └── TargetRing.tsx              ⏳ মাসিক ২০৮ঘ প্রগ্রেস রিং
-│       └── hooks/  lib/                    ⏳
+│       ├── pages/LiveBoardPage.tsx         ✅ ⭐ হোম — E01 · E02 রিং · E03 থাম্বনেইল
+│       ├── pages/EmployeeDetailPage.tsx    ✅ E04 টাইমলাইন · E05 চার্ট · D07 · D08
+│       ├── pages/GalleryPage.tsx           ✅ E06 গ্রিড + লাইটবক্স + কি-বোর্ড নেভ
+│       ├── pages/MonthlyPage.tsx           ✅ E07 হিটম্যাপ
+│       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
+│       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
+│       └── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
+│       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
 │
 ├── docs/                                   # ← এই ডকুমেন্টগুলো
 │   └── monitoring-policy-template.md       # স্টাফের সই করার পলিসি

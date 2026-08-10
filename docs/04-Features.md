@@ -138,7 +138,7 @@
 | H01 | Watchdog সার্ভিস — ৩০ সে.-এ চেক ও রিস্টার্ট | 🔴 | 6 | Task Manager থেকে kill → ৩০ সে.-এ ফিরে আসে |
 | H02 | Task Scheduler দিয়ে logon-এ auto start | 🔴 | 6 | রিবুটের পরও চলে |
 | H03 | MSI ইনস্টলার (সাইলেন্ট মোড) | 🔴 | 6 | `msiexec /i /qn` কাজ করে |
-| H04 | Auto-update + rollback | 🟡 | 6 | নতুন ভার্সন heartbeat না দিলে পুরোনোটায় ফেরে |
+| H04 | Auto-update **নামানো ও যাচাই** (বসানো হাতে) | 🟡 | 6 | canary→partial→all · sha256 না মিললে ফাইল মুছে যায় · ⚠️ rollback **নেই** ([09 § ৩ঈ](09-Build-Log.md)) |
 | H05 | Enrollment code দিয়ে নিরাপদ রেজিস্ট্রেশন | 🔴 | 2 | একবার ব্যবহার্য, ২৪ঘ expire |
 | H06 | Device revoke — দূর থেকে বন্ধ | 🔴 | 6 | revoke করলে এজেন্ট থেমে যায় |
 | H07 | পারফরম্যান্স সীমা (CPU<১%, RAM<১২০MB) | 🔴 | 2 | ৮ ঘণ্টা চালিয়ে যাচাই |
