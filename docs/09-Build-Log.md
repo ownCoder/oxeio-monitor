@@ -8,7 +8,7 @@
 >
 > 🔨 **Phase 2 প্রায় শেষ** — এজেন্টের সব মডিউল দাঁড়িয়ে গেছে ও জোড়া লেগেছে:
 > Win32 স্তর, DXGI ক্যাপচার, SQLite outbox, sync worker, DPAPI টোকেন, tray,
-> watchdog। **২৮৮টি টেস্ট** (২১৮ Core · ৯ Agent · ৬১ server), পুরো সলিউশন
+> watchdog। **২৯৬টি টেস্ট** (২২৬ Core · ৯ Agent · ৬১ server), পুরো সলিউশন
 > `-warnaserror`-এ পরিষ্কার।
 >
 > ✅ **পূর্ণ এজেন্ট আসল মেশিনে চালিয়ে যাচাই করা** — enroll → ট্র্যাক →
@@ -245,7 +245,7 @@ push ও PR-এ দুটি job চলে:
 |---|---|
 | **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৬১টি) → **build** |
 | **web** | `npm ci` → **lint** → **build** (`tsc -b` বিল্ডের ভেতরেই) |
-| **agent-core** | `dotnet build -warnaserror` → **test** (২১৮টি) · ubuntu-তেই চলে, কারণ Core-এ Win32 নেই |
+| **agent-core** | `dotnet build -warnaserror` → **test** (২২৬টি) · ubuntu-তেই চলে, কারণ Core-এ Win32 নেই |
 | **docker** | `docker build` — Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, তখনই ধরা পড়ে |
 
 Postgres আসে **service container** হিসেবে (`postgres:16-alpine`) — লোকালে docker compose যা দেয়,
@@ -542,7 +542,7 @@ lease নেয়, পাঠায়, তারপর ack / retry / abandon �
 সংখ্যাটা সার্ভার থেকে আসে, কারণ এজেন্ট রিবুটের পর নিজের হিসাব ভুলে যায়
 ([G52](08-Gap-Analysis.md))।
 
-**টেস্ট:** ২১৮ (Core) + ৯ (Agent) + ৬১ (server) = **২৮৮**, সবই পাস।
+**টেস্ট:** ২২৬ (Core) + ৯ (Agent) + ৬১ (server) = **২৯৬**, সবই পাস।
 নতুন `tests/oXeio.Agent.Tests` — Win32-নির্ভর মডিউলগুলোর জন্য, CI-র
 windows job-এ চলে।
 

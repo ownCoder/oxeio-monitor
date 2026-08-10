@@ -111,7 +111,7 @@ oxeio-monitor/
 │   │       ├── Platform/                   ✅ heartbeat · instance lock · rolling log
 │   │       └── Deployment/                 ✅ Task Scheduler XML (H02)
 │   ├── installer/                          ⏳ WiX → oXeioAgent.msi
-│   ├── tests/oXeio.Core.Tests/             ✅ ২১৮টি ইউনিট টেস্ট (net8.0)
+│   ├── tests/oXeio.Core.Tests/             ✅ ২২৬টি ইউনিট টেস্ট (net8.0)
 │   └── tests/oXeio.Agent.Tests/            ✅ ৯টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
