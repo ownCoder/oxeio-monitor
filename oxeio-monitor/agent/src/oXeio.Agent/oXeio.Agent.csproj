@@ -1,8 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- এখন কনসোল — এটা প্রথমে একটা ডায়াগনস্টিক টুল। tray UI যোগ হলে WinExe হবে। -->
-    <OutputType>Exe</OutputType>
+    <!-- WinExe = কনসোল উইন্ডো নেই। tray আইকনই এজেন্টের একমাত্র মুখ।
+         Exe দিলে প্রতিবার লগঅনে ১৫টা PC-তে একটা কালো কনসোল খুলে বসে থাকত,
+         আর স্টাফ সেটা বন্ধ করলেই এজেন্ট মরত।
+         diagnose মোডে Program.cs নিজে কনসোল জুড়ে নেয়। -->
+    <OutputType>WinExe</OutputType>
     <!-- 10.0.17763 = Windows 10 1809, আমাদের সর্বনিম্ন লক্ষ্য।
          খালি `net8.0-windows` দিলে platform version 7.0 ধরে নেয়, আর তখন
          SupportedOSPlatformVersion বসানো যায় না। -->

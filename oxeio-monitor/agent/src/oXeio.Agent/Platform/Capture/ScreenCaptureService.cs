@@ -35,9 +35,20 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
 {
     public string EngineName => capturer.Name;
 
+    /// <summary>
+    /// শেষ চেষ্টায় যে মনিটরগুলো কোনো ছবিই দেয়নি।
+    ///
+    /// ⚠️ আগে ব্যর্থ মনিটর নীরবে বাদ পড়ত। তাতে একটা মনিটর চিরতরে ছবি দেওয়া
+    /// বন্ধ করলেও কেউ জানত না — বাকিগুলোর ছবি ঠিকই আসত, তাই সব স্বাভাবিক
+    /// দেখাত। ভুলটা ধরা পড়ত কেবল তখনই যখন কারো ওই পর্দার ছবি খুঁজতে গিয়ে
+    /// কেউ দেখত যে সেটা কোনোদিনই ছিল না।
+    /// </summary>
+    public IReadOnlyList<string> LastFailedMonitors { get; private set; } = [];
+
     public IReadOnlyList<CaptureResult> CaptureAll()
     {
         var results = new List<CaptureResult>();
+        var failed = new List<string>();
 
         // ⚠️ প্রতিবার নতুন করে গোনা — ডক/আনডক হলেও ঠিক থাকে
         var monitors = MonitorEnumerator.Enumerate();
@@ -46,7 +57,12 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
         {
             var sw = Stopwatch.StartNew();
             var frame = capturer.Capture(monitors[i]);
-            if (frame is null) continue;
+
+            if (frame is null)
+            {
+                failed.Add(monitors[i].DeviceName);
+                continue;
+            }
 
             var quality = FrameQuality.Assess(frame.Pixels, frame.Width, frame.Height, frame.Stride);
             var webp = WebpEncoder.Encode(frame);
@@ -58,6 +74,7 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
                 frame.Engine, frame.ProtectedContentMasked));
         }
 
+        LastFailedMonitors = failed;
         return results;
     }
 
