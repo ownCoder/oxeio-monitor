@@ -112,11 +112,23 @@ describe('enrollment code — hash', () => {
   });
 
   /**
-   * ⚠️ কেস-সংবেদনশীল — জানা সীমাবদ্ধতা। এজেন্ট normalize করে না, তাই
-   * কোড **বড় হাতের অক্ষরেই** টাইপ করতে হবে। বর্ণমালাটাও তাই বড় হাতের।
+   * ⭐ **আগে এই টেস্টটা বাগটাকেই assert করত** — "ছোট হাতে অন্য hash হয়"
+   * লেখা ছিল, আর মন্তব্যে সেটাকে "জানা সীমাবদ্ধতা" বলা হয়েছিল।
+   *
+   * বাস্তবে সীমাবদ্ধতাটার দাম ছিল বেশি: কেউ কোড ছোট হাতে টাইপ করলে
+   * সার্ভার "enrollment code ভুল বা মেয়াদোত্তীর্ণ" বলত — আর ওই একই বার্তা
+   * আসে "কোড নেই", "ব্যবহার হয়ে গেছে" আর "মেয়াদ শেষ" তিনটেতেও (H05 · G18)।
+   * ফলে আসল কারণ খুঁজে পাওয়া প্রায় অসম্ভব ছিল।
+   *
+   * ⚠️ বর্ণমালা পুরোটাই বড় হাতের, তাই `toUpperCase()` তৈরি হওয়া কোডে
+   * no-op — অর্থাৎ **আগের কোডগুলোর hash অক্ষত থাকে**, পুরোনো enrollment
+   * ভাঙে না।
    */
-  it('ছোট হাতের অক্ষরে অন্য hash হয় — কোড uppercase-ই থাকতে হবে', () => {
-    expect(hashEnrollmentCode('abcd1234wxyz')).not.toBe(
+  it('ছোট-বড় হাত যাই হোক, একই hash', () => {
+    expect(hashEnrollmentCode('abcd1234wxyz')).toBe(
+      hashEnrollmentCode('ABCD1234WXYZ'),
+    );
+    expect(hashEnrollmentCode('  AbCd1234WxYz  ')).toBe(
       hashEnrollmentCode('ABCD1234WXYZ'),
     );
     expect([...CODE_ALPHABET].every((ch) => ch === ch.toUpperCase())).toBe(true);

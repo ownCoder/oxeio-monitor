@@ -1,12 +1,14 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ReadStream } from 'node:fs';
 
 import { PrismaService } from '../prisma/prisma.service';
+
+import { storageRoot } from "../common/storage.config";
 
 export interface UpdateOffer {
   version: string;
@@ -37,8 +39,7 @@ export class UpdateService {
     config: ConfigService,
   ) {
     this.root = resolve(
-      config.get<string>('STORAGE_ROOT') ??
-        join(process.cwd(), '..', '.data', 'storage'),
+      storageRoot(config),
     );
   }
 

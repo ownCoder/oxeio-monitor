@@ -1,10 +1,11 @@
 import { rmdir, unlink } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 
+import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { JOB_TIMEZONE, RunLock, SCHEDULING_ENABLED } from './scheduling';
 import { isInsideRoot, retentionCutoff } from './summary.math';
@@ -71,11 +72,10 @@ export class RetentionJob {
   ) {
     // ⚠️ `screenshot-ingest.service.ts`-এর সাথে হুবহু একই হিসাব। দুই জায়গায়
     //    আলাদা হয়ে গেলে এই জব ভুল ফোল্ডারে খুঁজত — একটাও ফাইল মুছত না,
-    //    অথচ সারি ঠিকই মুছে যেত। (সাধারণ একটা `storage.config.ts`-এ নেওয়া
-    //    উচিত, কিন্তু ওটা `src/agent/`-এর ফাইল, এই কাজের এখতিয়ারের বাইরে।)
+    //    অথচ সারি ঠিকই মুছে যেত। এখন সংজ্ঞাটা এক জায়গায় —
+    //    `src/common/storage.config.ts`।
     this.root = resolve(
-      config.get<string>('STORAGE_ROOT') ??
-        join(process.cwd(), '..', '.data', 'storage'),
+      storageRoot(config),
     );
   }
 

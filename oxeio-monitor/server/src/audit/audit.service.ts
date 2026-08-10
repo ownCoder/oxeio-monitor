@@ -23,7 +23,20 @@ export type AuditAction =
   | 'revoke_device'
   | 'upload_policy_doc'
   | 'time_adjustment'
-  | 'time_adjustment_revoke';
+  | 'time_adjustment_revoke'
+  /** ⭐ বেতন **বদলানো** — দেখার (`payroll_view`) চেয়েও ভারী, কারণ এটা
+   *  কারো আয় বদলে দেয়। মান বদলালে meta-তে আগে/পরে দুটোই রাখা হয়। */
+  | 'salary_change'
+  | 'employee_create'
+  | 'employee_update'
+  | 'employee_deactivate'
+  | 'employee_reactivate'
+  | 'device_restore'
+  | 'alert_acknowledge'
+  /** D06 — মালিকের ক্যাটাগরি রুল বদলানো। `change_setting` দিয়ে লিখলে
+   *  কে কবে কোন সাইটকে "unproductive" বানাল সেটা ফিল্টার করা যেত না। */
+  | 'change_category_rule'
+  | 'recategorize';
 
 export interface AuditEntry {
   userId?: number | null;

@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { join, resolve, sep } from 'node:path';
+import { resolve, sep } from 'node:path';
 
 import {
   BadRequestException,
@@ -18,6 +18,8 @@ import type { SessionUser } from '../auth/types';
 import type { GalleryQueryDto } from './dto';
 import { formatWorkDate, pageSlice, parseWorkDate } from './gallery.math';
 import { SignedUrlService } from './signed-url.service';
+
+import { storageRoot } from "../common/storage.config";
 
 export interface GalleryItem {
   /** ⚠️ string, number নয় — `screenshots.id` BigInt, আর BigInt JSON-এ যায় না */
@@ -73,8 +75,7 @@ export class ScreenshotsService {
     //    হিসাব। এখানে ডিফল্টটা আলাদা হলে আপলোড হতো এক ফোল্ডারে আর খোঁজা
     //    হতো আরেক ফোল্ডারে — সব ছবি ৪০৪, অথচ DB-তে সারি আছে।
     this.root = resolve(
-      config.get<string>('STORAGE_ROOT') ??
-        join(process.cwd(), '..', '.data', 'storage'),
+      storageRoot(config),
     );
   }
 

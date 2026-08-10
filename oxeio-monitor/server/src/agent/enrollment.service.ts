@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import {
   ConflictException,
@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { hashEnrollmentCode } from '../admin/enrollment-code';
 import { PrismaService } from '../prisma/prisma.service';
 import { AgentConfigService, type AgentConfig } from './agent-config.service';
 import { hashToken } from './device-auth.guard';
@@ -32,9 +33,9 @@ export class EnrollmentService {
   ) {}
 
   async enroll(dto: EnrollDto): Promise<EnrollResult> {
-    const codeHash = createHash('sha256')
-      .update(dto.enrollmentCode.trim())
-      .digest('hex');
+    // ⚠️ hash তৈরি ও যাচাই — দুই পাশে **একই ফাংশন**। আলাদা লিখলে একদিন
+    //    একটা বদলাত আর সব enrollment নীরবে ভাঙত।
+    const codeHash = hashEnrollmentCode(dto.enrollmentCode);
 
     const code = await this.prisma.enrollmentCode.findUnique({
       where: { codeHash },

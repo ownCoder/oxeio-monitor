@@ -66,7 +66,14 @@ export function formatEnrollmentCode(bytes: Uint8Array): string {
  * ফলে আসল কারণ খুঁজে পেতে কেউ দিনের পর দিন ঘুরত।
  */
 export function hashEnrollmentCode(code: string): string {
-  return createHash('sha256').update(code.trim()).digest('hex');
+  // ⚠️ `toUpperCase()` ছাড়া কোডটা **case-sensitive** ছিল। CODE_ALPHABET
+  //    পুরোটাই বড় হাতের, তাই তৈরি হওয়া কোডে এটা no-op — অর্থাৎ আগের
+  //    কোডগুলোর hash অক্ষত থাকে। কিন্তু কেউ ছোট হাতে টাইপ করলে আগে
+  //    "ভুল বা মেয়াদোত্তীর্ণ কোড" বলত, আর তিনটে আলাদা কারণের একই বার্তা
+  //    দেখে আসল সমস্যা খুঁজে পেতে দিন লেগে যেত (H05 · G18)।
+  // ⚠️ দুই পাশে **একই ফাংশন** ব্যবহার করতেই হবে — একদিকে বদলালে
+  //    সব enrollment ভাঙবে। সেজন্যই enrollment.service.ts এটাই import করে।
+  return createHash('sha256').update(code.trim().toUpperCase()).digest('hex');
 }
 
 /** এখন থেকে ২৪ ঘণ্টা পর */

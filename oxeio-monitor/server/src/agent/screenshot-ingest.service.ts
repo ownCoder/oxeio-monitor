@@ -19,6 +19,8 @@ import { ClockDriftService, type Drift } from './clock-drift.service';
 import type { ScreenshotMetaDto } from './dto';
 import { dhakaPathParts, workDateOf } from './util/dhaka-time';
 
+import { storageRoot } from "../common/storage.config";
+
 export interface ScreenshotResult {
   accepted: number;
   duplicate: boolean;
@@ -36,7 +38,7 @@ export class ScreenshotIngestService {
     config: ConfigService,
   ) {
     this.root = resolve(
-      config.get<string>('STORAGE_ROOT') ?? join(process.cwd(), '..', '.data', 'storage'),
+      storageRoot(config),
     );
   }
 

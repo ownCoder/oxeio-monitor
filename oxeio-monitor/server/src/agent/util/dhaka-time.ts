@@ -31,6 +31,17 @@ export function nextLocalMidnight(instant: Date): Date {
   return new Date(localMidnightUtc + DAY_MS);
 }
 
+/**
+ * ওই instant ঢাকার সময়ে কত ঘণ্টায় (০–২৩)।
+ *
+ * ⚠️ `getHours()` সার্ভারের টাইমজোন ধরে — সার্ভার UTC-তে চললে ঢাকার রাত
+ * ২টা এখানে সন্ধ্যা ৮টা দেখাত। retention আর দিন-ক্লোজ দুটোই এই সংখ্যার
+ * উপর দাঁড়ানো, তাই ভুল হলে জব ভুল সময়ে চলত।
+ */
+export function dhakaHourOf(instant: Date): number {
+  return new Date(instant.getTime() + OFFSET_MS).getUTCHours();
+}
+
 export function sameWorkDate(a: Date, b: Date): boolean {
   return workDateOf(a).getTime() === workDateOf(b).getTime();
 }

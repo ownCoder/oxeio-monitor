@@ -199,6 +199,11 @@ model Device {
   monitors        Int          @default(1)
   status          DeviceStatus @default(active)
   lastSeenAt      DateTime?    @map("last_seen_at") @db.Timestamptz(3)
+  /// ⭐ শেষ heartbeat-এ এজেন্ট কী বলেছিল। এটা ছাড়া Live Board শেষ
+  /// activity_segments সারি থেকে **অনুমান** করত, আর এজেন্ট সেগমেন্ট
+  /// ব্যাচে পাঠায় বলে বোর্ডের স্ট্যাটাস কয়েক মিনিট পুরোনো দেখাত।
+  lastState       SegmentState? @map("last_state")
+  lastStateAt     DateTime?    @map("last_state_at") @db.Timestamptz(3)
   lastDriftSec    Int          @default(0) @map("last_drift_sec")
   maxDriftSec     Int          @default(0) @map("max_drift_sec")
   enrolledAt      DateTime     @default(now()) @map("enrolled_at") @db.Timestamptz(3)
