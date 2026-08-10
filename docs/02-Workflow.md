@@ -245,7 +245,7 @@ main          ← শুধু রিলিজ, ট্যাগ করা (v1.0.
 | স্তর | কী টেস্ট হবে | টুল |
 |---|---|---|
 | Unit | Idle state machine, idle গণিত, ঘুম-শনাক্তকরণ, স্লট র‍্যান্ডমাইজার, ক্যাপচার উইন্ডো, ঢাকার সময় | **xUnit — ৫২টি চলছে** ✅ |
-| Integration | Agent → API → DB পুরো পথ | **Vitest + supertest**, আলাদা `oxeio_test` ডাটাবেস ✅ *(৬০টি চলছে)* |
+| Integration | Agent → API → DB পুরো পথ | **Vitest + supertest**, আলাদা `oxeio_test` ডাটাবেস ✅ *(৬১টি চলছে)* |
 | E2E | লগইন → Live Board → gallery → রিপোর্ট এক্সপোর্ট | Playwright |
 | **Manual (গুরুত্বপূর্ণ)** | নিচের চেকলিস্ট | হাতে |
 

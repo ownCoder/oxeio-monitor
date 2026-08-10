@@ -68,7 +68,7 @@ oxeio-monitor/
 │   │   │   ├── Capture/EngineFallbackPolicy.cs ✅ কতবার ব্যর্থে কত বিরতি
 │   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ১৬টা ফাইল
 │   │   │   │   #  IOutboxStore · ISyncClient · SyncOutcome · RetryPolicy
-│   │   │   │   #  OutboxBudget · AgentStatus · রেকর্ড টাইপ
+│   │   │   │   #  OutboxBudget · BatchNarrowing · SyncHealthPolicy · AgentStatus
 │   │   │   ├── Watchdog/                   ✅ RestartLadder · WatchdogPolicy · AgentHeartbeat
 │   │   │   └── Models/                     ✅ SegmentState, ActivitySegment
 │   │   │   # ⚠️ Native/ ইচ্ছাকৃতভাবে এখানে **নয়** — Win32 ঢুকলে নিয়মগুলো
@@ -76,7 +76,10 @@ oxeio-monitor/
 │   │   │
 │   │   ├── oXeio.Agent/                    # 🔨 net8.0-windows10.0.17763.0
 │   │   │   ├── app.manifest                ✅ PerMonitorV2 DPI
-│   │   │   ├── Program.cs                  ✅ আপাতত ডায়াগনস্টিক টুল
+│   │   │   ├── Program.cs                  ✅ এজেন্ট চালু করে · --diagnose = টুল
+│   │   │   ├── AgentHost.cs                ✅ ⭐ সব মডিউল এখানে জোড়া লাগে
+│   │   │   ├── AgentSettings.cs            ✅ সার্ভারের ঠিকানা (MSI লিখে দেয়)
+│   │   │   ├── Diagnostics.cs              ✅ Win32 ও ক্যাপচার যাচাইয়ের টুল
 │   │   │   ├── Native/{Win32,Structs}.cs   ✅ ধ্রুবক ও লেআউট
 │   │   │   ├── Native/Kernel32.cs          ✅ GetTickCount64, QueryUnbiasedInterruptTime
 │   │   │   ├── Native/User32.cs            ✅ GetLastInputInfo, power notifications
@@ -97,8 +100,8 @@ oxeio-monitor/
 │   │   │   │   ├── FallbackCapturer.cs     ✅ DXGI → GDI শৃঙ্খল
 │   │   │   │   ├── WebpEncoder.cs          ✅ SkiaSharp q70, ≤১৯২০px
 │   │   │   │   └── ScreenCaptureService.cs ✅ সব মনিটর + গুণমান যাচাই
-│   │   │   ├── Storage/                    ✅ SQLite outbox — lease/ack, WAL, বাজেট
-│   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWire · rate gate
+│   │   │   ├── Storage/                    ✅ SQLite outbox — lease/ack, WAL, OutboxCodec
+│   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWorker · SyncWire
 │   │   │   ├── Security/                   ✅ MachineIdentity · DPAPI টোকেন · enrollment
 │   │   │   ├── Ui/                         ✅ TrayIcon · TodayForm · AboutForm (J07)
 │   │   │   └── Apps/                       ⏳ WindowWatcher · BrowserUrlReader
@@ -108,7 +111,8 @@ oxeio-monitor/
 │   │       ├── Platform/                   ✅ heartbeat · instance lock · rolling log
 │   │       └── Deployment/                 ✅ Task Scheduler XML (H02)
 │   ├── installer/                          ⏳ WiX → oXeioAgent.msi
-│   └── tests/oXeio.Core.Tests/             ✅ ১৯৯টি ইউনিট টেস্ট
+│   ├── tests/oXeio.Core.Tests/             ✅ ২১৮টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ৯টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -149,7 +153,7 @@ oxeio-monitor/
 │   │       ├── backup.job.ts               #   ০২:৩০
 │   │       └── health.job.ts               #   ডিস্ক, এজেন্ট চুপ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৬০টি টেস্ট (৫১ e2e + ৯ ইউনিট)
+│   └── test/                               ✅ Vitest + supertest — ৬১টি টেস্ট (৫২ e2e + ৯ ইউনিট)
 │       ├── auth.e2e.spec.ts  agent.e2e.spec.ts
 │       └── setup/harness.ts  setup/global-setup.ts
 │
