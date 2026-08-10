@@ -22,7 +22,7 @@
   <Package
       Name="oXeio Agent"
       Manufacturer="oXeio"
-      Version="$(var.AgentVersion)"
+      Version="$(var.Version)"
       UpgradeCode="7A1E4C2B-9D33-4E51-8F0A-2C6B5D9E1A47"
       Scope="perMachine"
       Compressed="yes"
