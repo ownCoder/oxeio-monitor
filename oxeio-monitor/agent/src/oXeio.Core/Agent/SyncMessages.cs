@@ -68,6 +68,16 @@ public sealed record HeartbeatRequest
 
     /// <summary>নিজের কনফিগের ভার্সন। না মিললে সার্ভার <see cref="AgentCommand.ReloadConfig"/> পাঠায়।</summary>
     public string? ConfigVersion { get; init; }
+
+    /// <summary>
+    /// ⭐ এজেন্ট এখন কোন ভার্সনে চলছে।
+    ///
+    /// enroll-এর সময় একবার পাঠানো হয়, কিন্তু আপগ্রেডের পর সার্ভারে সেটা
+    /// পুরোনোই থেকে যেত। ⚠️ সার্ভার **এই সংখ্যা দেখেই** ঠিক করে আপডেট অফার
+    /// করবে কি না — স্টেল থাকলে আপডেট হয়ে যাওয়া এজেন্টকেও একই আপডেট
+    /// বারবার অফার করা হতো ([G59](../../../../docs/08-Gap-Analysis.md))।
+    /// </summary>
+    public string? AgentVersion { get; init; }
 }
 
 public sealed record HeartbeatResponse

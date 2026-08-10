@@ -174,6 +174,40 @@ describe('heartbeat', () => {
     expect(res.body.progress.monthlyTargetHours).toBe(208);
   });
 
+  /**
+   * ⭐ enroll-এ ভার্সন একবার বসে, তারপর আর হালনাগাদ হতো না। ⚠️ এটা শুধু
+   * ড্যাশবোর্ডের সংখ্যা নয় — heartbeat **এই মান দেখেই** ঠিক করে আপডেট
+   * অফার করবে কি না, তাই স্টেল থাকলে আপডেট হয়ে যাওয়া এজেন্টকেও একই
+   * আপডেট বারবার অফার করা হতো (G59)।
+   */
+  it('heartbeat-এ পাঠানো নতুন ভার্সন ডিভাইসে বসে যায়', async () => {
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 10, agentVersion: '9.9.9' })
+      .expect(200);
+
+    const row = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+    expect(row.agentVersion).toBe('9.9.9');
+  });
+
+  it('ভার্সন না পাঠালে আগেরটাই থাকে — মুছে যায় না', async () => {
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 10, agentVersion: '1.2.3' })
+      .expect(200);
+
+    // ⚠️ পুরোনো এজেন্ট (যে ফিল্ডটা চেনেই না) heartbeat পাঠালে ভার্সন
+    //    null হয়ে যাওয়া চলবে না — তাতে আপডেট অফার বন্ধ হয়ে যেত।
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 20 })
+      .expect(200);
+
+    const row = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+    expect(row.agentVersion).toBe('1.2.3');
+  });
+
   it('ভার্সন না মিললে reload_config', async () => {
     const res = await asAgent(
       h.http().post('/api/v1/agent/heartbeat'),

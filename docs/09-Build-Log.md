@@ -8,14 +8,14 @@
 >
 > 🔨 **Phase 2 প্রায় শেষ** — এজেন্টের সব মডিউল দাঁড়িয়ে গেছে ও জোড়া লেগেছে:
 > Win32 স্তর, DXGI ক্যাপচার, SQLite outbox, sync worker, DPAPI টোকেন, tray,
-> watchdog। **২৯৬টি টেস্ট** (২২৬ Core · ৯ Agent · ৬১ server), পুরো সলিউশন
+> watchdog। **২৯৮টি টেস্ট** (২২৬ Core · ৯ Agent · ৬৩ server), পুরো সলিউশন
 > `-warnaserror`-এ পরিষ্কার।
 >
 > ✅ **MSI দিয়ে বসিয়ে পুরো পথ যাচাই করা** — ইনস্টল → লগঅন টাস্ক → watchdog →
 > এজেন্ট → enroll → ট্র্যাক → ক্যাপচার → কিউ → আপলোড → আনইনস্টল
 > (§ ৩অ.৭–৩অ.৯)।
 >
-> ⭐ **চালাতে ও বসাতে গিয়ে ছয়টা বাগ বেরিয়েছে** — একটাও বিল্ড বা ২৯৬টা
+> ⭐ **চালাতে ও বসাতে গিয়ে ছয়টা বাগ বেরিয়েছে** — একটাও বিল্ড বা ২৯৮টা
 > টেস্টে ধরা পড়েনি। সবচেয়ে গুরুতর দুটো: watchdog একটার পর একটা এজেন্ট
 > চালু করছিল (একই ঘণ্টা দুবার গোনা), আর আপগ্রেড-আনইনস্টল দুটোই চিরতরে
 > আটকে যেত।
@@ -70,7 +70,7 @@
 | `server/src/audit/` | `audit_log`-এ লেখা — login, login_failed, change_password, reset_password… |
 | `server/src/users/` | `POST /users/:id/reset-password` · `POST /employees/:id/portal-account` (দুটোই owner-only) |
 | `server/src/agent/` | ⭐ **Agent ingest** — ৯টি endpoint, device token guard, clock-drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট আপলোড, rate limit |
-| `server/test/` | ৬১টি টেস্ট (৫২ e2e + ৯ পে-রোল ইউনিট) |
+| `server/test/` | ৬৩টি টেস্ট (৫৪ e2e + ৯ পে-রোল ইউনিট) |
 | `web/` | ⭐ **লগইন শেল** — React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে |
 | `server/Dockerfile` | ৩-স্তরের বিল্ড, non-root `node` ইউজার, `Asia/Dhaka` |
 | `server/tsconfig.build.json` | `prisma/` বাদ — নইলে বিল্ড `dist/src/main.js`-এ যেত |
@@ -645,6 +645,10 @@ watchdog মডিউল একটা liveness চুক্তি ঠিক ক�
 ### ⚠️ যা এখনো বাকি — এবং যা আমি যাচাই করতে পারব না
 
 বাকি: অ্যাপ/সাইট ট্র্যাকিং (D গ্রুপ), আর auto-update (H04)।
+
+> ✅ H04-এর পথের কাঁটাটা সরানো হয়েছে — [G59](08-Gap-Analysis.md) ঠিক করায়
+> সার্ভার এখন জানে কোন PC-তে সত্যিকারের কোন ভার্সন চলছে। ওটা ছাড়া ধাপে ধাপে
+> রোলআউট বা auto-rollback কোনোটাই সম্ভব ছিল না।
 
 > ⚠️ **পূর্ণ এজেন্টটা একবারও চালানো হয়নি।** বিল্ড হয়, টেস্ট পাস করে,
 > `--diagnose` চলে — কিন্তু `AgentHost` চালু করলে সেটা `%ProgramData%\oXeio`

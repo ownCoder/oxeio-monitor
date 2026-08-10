@@ -316,6 +316,7 @@ internal sealed class AgentHost : IAsyncDisposable
                             Interlocked.Read(ref _activeTodaySec), 0, 86_400),
                         QueueDepth = _worker?.Depth.ForHeartbeat,
                         ConfigVersion = _configVersion,
+                        AgentVersion = _version,
                     }, ct);
 
                     if (result.IsSuccess && result.Value is { } body)

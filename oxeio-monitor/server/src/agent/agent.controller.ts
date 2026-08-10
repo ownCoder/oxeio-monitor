@@ -19,6 +19,7 @@ import { validate } from 'class-validator';
 import type { Response } from 'express';
 
 import { Public } from '../auth/decorators';
+import { PrismaService } from '../prisma/prisma.service';
 import { MAX_SCREENSHOT_BYTES } from './agent.constants';
 import { AgentConfigService, type AgentConfig } from './agent-config.service';
 import type { Drift } from './clock-drift.service';
@@ -63,6 +64,7 @@ export class AgentController {
     private readonly updates: UpdateService,
     private readonly rate: DeviceRateLimitService,
     private readonly progress: ProgressService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /** ইনস্টলের সময় একবার — এখানে টোকেন নেই, enrollment code-ই পরিচয় (H05) */
@@ -100,8 +102,25 @@ export class AgentController {
       commands.push('reload_config');
     }
 
-    if (device.agentVersion) {
-      const offer = await this.updates.offerFor(device.agentVersion);
+    // ⭐ এজেন্ট যে ভার্সন বলছে সেটাই সত্য — ডাটাবেসেরটা নয়।
+    //
+    // ⚠️ ক্রমটা গুরুত্বপূর্ণ: **আগে** হালনাগাদ, **তারপর** আপডেট অফারের
+    //    সিদ্ধান্ত। উল্টো করলে সদ্য আপডেট হওয়া এজেন্টকেও পুরোনো ভার্সন
+    //    ধরে আরেকবার একই আপডেট অফার করা হতো — আর সে আপডেট করে আবার
+    //    heartbeat পাঠাত, অর্থাৎ অসীম লুপ ([G59](../../../docs/08-Gap-Analysis.md))।
+    const runningVersion = dto.agentVersion?.trim() || device.agentVersion;
+
+    if (runningVersion && runningVersion !== device.agentVersion) {
+      // ⚠️ শুধু বদলালে তবেই লেখা। প্রতি heartbeat-এ UPDATE করলে ১৫টা
+      //    ডিভাইসে দিনে ২১,৬০০ অপ্রয়োজনীয় রাইট হতো।
+      await this.prisma.device.update({
+        where: { id: device.id },
+        data: { agentVersion: runningVersion },
+      });
+    }
+
+    if (runningVersion) {
+      const offer = await this.updates.offerFor(runningVersion);
       if (offer) commands.push('update_agent');
     }
 
