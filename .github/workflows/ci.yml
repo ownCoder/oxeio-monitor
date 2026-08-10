@@ -129,9 +129,13 @@ jobs:
         run: dotnet test tests/oXeio.Core.Tests/oXeio.Core.Tests.csproj --verbosity normal
 
   agent-windows:
-    name: agent full — build (windows)
-    # Win32 স্তর শুধু Windows runner-এ বিল্ড হয়। টেস্ট নেই — এই স্তরের আচরণ
-    # আসল ডেস্কটপ ছাড়া যাচাই করা যায় না, তাই বিল্ড ভাঙেনি সেটুকুই দেখা।
+    name: agent full — build + test (windows)
+    # Win32 স্তর শুধু Windows runner-এ বিল্ড হয়।
+    #
+    # ⚠️ এখানকার টেস্টগুলো **আসল ডেস্কটপ ছোঁয় না** — ক্যাপচার, tray বা DPAPI
+    #    হেডলেস runner-এ যাচাই করা যায় না। যেগুলো চলে সেগুলো নকল store ও নকল
+    #    সার্ভার দিয়ে সিঙ্ক লুপের সিদ্ধান্তগুলো পরীক্ষা করে — অর্থাৎ ঠিক সেই
+    #    জায়গাটা যেখানে ভুল হলে ডেটা নীরবে মুছে যায়।
     runs-on: windows-latest
 
     defaults:
@@ -147,6 +151,9 @@ jobs:
 
       - name: Build solution
         run: dotnet build -warnaserror
+
+      - name: Test
+        run: dotnet test -warnaserror --no-build
 
   docker:
     name: docker image builds

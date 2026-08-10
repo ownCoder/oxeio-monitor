@@ -38,6 +38,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- এখানকার সব টাইপ `internal` — টেস্ট প্রজেক্টকে দেখতে দেওয়া ছাড়া
+         Win32-নির্ভর মডিউলগুলোর কোনো টেস্ট লেখা যেত না। শুধু টেস্ট
+         লেখার জন্য টাইপগুলো `public` করা হয়নি; ওতে API surface বেড়ে যেত। -->
+    <InternalsVisibleTo Include="oXeio.Agent.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="SkiaSharp" Version="4.151.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.151.1" />
 
