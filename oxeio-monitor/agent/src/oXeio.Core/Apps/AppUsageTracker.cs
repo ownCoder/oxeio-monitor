@@ -62,6 +62,15 @@ public sealed class AppUsageTracker(
     private WindowSample? _open;
     private DateTimeOffset _openedAt;
 
+    /// <summary>
+    /// এখন যে উইন্ডোটা গোনা হচ্ছে — ডায়াগনস্টিক ও A07-এর জন্য।
+    ///
+    /// ⚠️ ACTIVE ছাড়া এটা সবসময় <c>null</c>, কারণ <see cref="Observe"/>
+    /// অন্য স্টেটে খোলা রেকর্ড বন্ধ করে দেয়। স্ক্রিনশটও শুধু ACTIVE-এ ওঠে
+    /// (A04), তাই ছবির সাথে জোড়া লাগাতে গিয়ে আলাদা কোনো শর্ত লাগে না।
+    /// </summary>
+    public WindowSample? Current => _open;
+
     /// <summary>এখন কোন উইন্ডো গোনা হচ্ছে — ডায়াগনস্টিকের জন্য।</summary>
     public string? CurrentProcess => _open?.ProcessName;
 

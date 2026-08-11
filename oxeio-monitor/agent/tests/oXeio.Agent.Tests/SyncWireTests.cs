@@ -108,4 +108,53 @@ public class SyncWireTests
     public void অচেনা_অবস্থা_চুপচাপ_পাঠানো_হয়_না() =>
         Assert.Throws<ArgumentOutOfRangeException>(
             () => SyncWire.StateToWire((SegmentState)99));
+
+    // ── স্ক্রিনশটের meta · A07 ──────────────────────────────────────────────
+
+    private static SyncWire.ScreenshotMetaDto Shot(string? app = null, string? title = null) =>
+        SyncWire.ScreenshotMeta(new ScreenshotRecord
+        {
+            ClientUuid = Guid.NewGuid(),
+            SlotStart = T0,
+            CapturedAt = T0.AddSeconds(137),
+            MonitorIndex = 0,
+            ActiveApp = app,
+            ActiveTitle = title,
+        });
+
+    /// <summary>
+    /// A07 — ঘরগুলো তারে ছিল অনেক আগে থেকেই, কিন্তু কেউ ভরত না
+    /// ([G71](../../../../docs/08-Gap-Analysis.md))। এখন ভরে, তাই এটাই পাহারা।
+    /// </summary>
+    [Fact]
+    public void ছবির_সাথে_অ্যাপ_ও_টাইটেল_তারে_ওঠে()
+    {
+        var dto = Shot("excel.exe", "Q3 budget.xlsx");
+
+        Assert.Equal("excel.exe", dto.ActiveApp);
+        Assert.Equal("Q3 budget.xlsx", dto.ActiveTitle);
+    }
+
+    /// <summary>অ্যাপ ট্র্যাকিং বন্ধ থাকলে কিছুই জানা যায় না — তখন খালি যাওয়াই ঠিক।</summary>
+    [Fact]
+    public void না_জানা_থাকলে_ঘর_খালিই_যায়()
+    {
+        var dto = Shot();
+
+        Assert.Null(dto.ActiveApp);
+        Assert.Null(dto.ActiveTitle);
+    }
+
+    /// <summary>
+    /// ⚠️ G60-এর একই ফাঁদ, এবারে স্ক্রিনশটে: টাইটেল আমাদের লেখা নয়, আর
+    /// সার্ভারের সীমা ছাড়ালে ৪০০ — যেটা Permanent, অর্থাৎ ছবিটাই মুছে যেত।
+    /// </summary>
+    [Fact]
+    public void লম্বা_টাইটেল_বা_নাম_সীমায়_ছাঁটা_হয়()
+    {
+        var dto = Shot(new string('a', 400), new string('b', 1500));
+
+        Assert.Equal(260, dto.ActiveApp!.Length);
+        Assert.Equal(1000, dto.ActiveTitle!.Length);
+    }
 }

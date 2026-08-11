@@ -312,6 +312,17 @@ internal sealed class AgentHost : IAsyncDisposable
 
         var results = _capture!.CaptureAll();
 
+        // A07 — ছবির সাথে ওই মুহূর্তের অ্যাপ ও উইন্ডো টাইটেল।
+        //
+        // ⚠️ লুপের **বাইরে**, ইচ্ছাকৃতভাবে: ছবি প্রতি মনিটরে একটা, কিন্তু
+        //    foreground উইন্ডো গোটা ডেস্কটপে একটাই। ভেতরে পড়লে দুই মনিটরের
+        //    দুই সারিতে দু-রকম নাম বসতে পারত (মাঝপথে উইন্ডো বদলালে), অথচ
+        //    ছবিগুলো একই মুহূর্তের।
+        //
+        // ⚠️ কনফিগে অ্যাপ ট্র্যাকিং বন্ধ থাকলে `_apps` তৈরিই হয় না, তাই
+        //    নামটাও বসে না — "পাঠাচ্ছি না" নয়, জানাই হয় না (উপরে § ট্র্যাকিং)।
+        var front = _apps?.Current;
+
         foreach (var r in results)
         {
             // ⚠️ uuid আগে তৈরি — ফাইলের নাম আর সারির clientUuid এক হতে হবে,
@@ -346,6 +357,8 @@ internal sealed class AgentHost : IAsyncDisposable
                 MonitorIndex = r.MonitorIndex,
                 Width = r.Width,
                 Height = r.Height,
+                ActiveApp = front?.ProcessName,
+                ActiveTitle = front?.WindowTitle,
             };
 
             await _outbox.EnqueueAsync(

@@ -35,6 +35,17 @@ internal sealed class AppUsageService
     /// <summary>ডায়াগনস্টিকে দেখানোর জন্য — এখন কোন অ্যাপ গোনা হচ্ছে।</summary>
     public string? CurrentProcess => _tracker.CurrentProcess;
 
+    /// <summary>
+    /// A07 — ছবি তোলার মুহূর্তে সামনে কোন উইন্ডো।
+    ///
+    /// ⚠️ নতুন করে Win32-এ জিজ্ঞেস করা হয় <b>না</b> — যা <see cref="Tick"/>
+    /// শেষবার পড়েছে সেটাই ফেরে (সর্বোচ্চ এক টিক পুরোনো)। তাতে ছবির পাশের
+    /// নামটা আর <c>app_usage</c>-এর সারি <b>একই</b> নমুনা থেকে আসে; আলাদা
+    /// করে পড়লে দুটোয় দু-রকম অ্যাপ বসতে পারত, আর "ছবিতে Excel অথচ
+    /// রিপোর্টে Chrome" ধরনের অমিল ব্যাখ্যা করা যেত না।
+    /// </summary>
+    public WindowSample? Current => _tracker.Current;
+
     /// <summary>UI Automation এই মেশিনে কাজ করছে কি না।</summary>
     public bool UrlReadingDisabled => _urls.Disabled;
 
