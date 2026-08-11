@@ -1,0 +1,8 @@
+# ⚠️ node_modules বাদ — না দিলে হোস্টের (Windows) বাইনারিগুলো ইমেজে
+#    কপি হতো, আর `npm ci` তার উপরে বসে alpine-এ ভুল প্ল্যাটফর্মের
+#    esbuild/rollup নিয়ে ভাঙত।
+node_modules
+dist
+*.tsbuildinfo
+.env
+.env.*
