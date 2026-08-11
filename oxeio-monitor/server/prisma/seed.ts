@@ -8,6 +8,9 @@
  *
  * বারবার চালানো নিরাপদ — সব কিছু upsert।
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { hash } from '@node-rs/argon2';
 import { MatchType, PrismaClient, Productivity, UserRole } from '@prisma/client';
 
@@ -214,7 +217,7 @@ async function seedHolidays(): Promise<number> {
 
 // ── 4 · কর্মী তালিকা ────────────────────────────────────────────────────────
 //
-// অফিসের বর্তমান ১২ জন। emp_code দেওয়া হয়েছে তালিকার ক্রম অনুযায়ী।
+// তালিকাটা `staff.local.json` থেকে আসে (gitignore করা) — নিচে দেখুন।
 //
 // ⚠️ `policySignedAt` ইচ্ছাকৃতভাবে ফাঁকা — কেউ এখনো monitoring policy-তে সই
 //    করেনি। রোলআউটের আগে এটা পূরণ হওয়া বাধ্যতামূলক শর্ত, তাই আগেভাগে ভরে
@@ -225,20 +228,36 @@ async function seedHolidays(): Promise<number> {
 
 type Staff = [code: string, name: string, designation: string, salary: number];
 
-const STAFF: Staff[] = [
-  ['OX-01', 'Example 1', 'Researcher', 0],
-  ['OX-02', 'Example 2', 'Designer', 0],
-  ['OX-03', 'Example 3', 'Manager', 0],
-  ['OX-04', 'Example 4', 'Designer', 0],
-  ['OX-05', 'Example 5', 'Designer', 0],
-  ['OX-06', 'Example 6', 'Designer', 0],
-  ['OX-07', 'Example 7', 'Researcher', 0],
-  ['OX-08', 'Example 8', 'Intern', 0],
-  ['OX-09', 'Example 9', 'Intern', 0],
-  ['OX-10', 'Example 10', 'Intern', 0],
-  ['OX-11', 'Example 11', 'Intern', 0],
-  ['OX-12', 'Example 12', 'Intern', 0],
-];
+/**
+ * ⭐ **আসল কর্মী তালিকা রিপোতে থাকে না** — `prisma/staff.local.json`-এ,
+ * আর সেটা gitignore করা।
+ *
+ * ⚠️ কারণটা কোডের নয়, মানুষের: এই তালিকায় ১২ জনের **নাম ও বেতন** আছে,
+ * আর ওটা তাঁদের তথ্য, আমাদের নয়। রিপো GitHub-এ গেলে — private হলেও —
+ * সেটা তৃতীয় পক্ষের সার্ভারে চলে যায়, আর কাউকে collaborator করলে সে-ও
+ * দেখে ফেলে। git-এর ইতিহাস থেকে কিছু মুছে ফেলাও কঠিন, তাই প্রথম থেকেই
+ * বাইরে রাখা।
+ *
+ * ফাইলটা না থাকলে seed `staff.example.json` দিয়ে চলে (নমুনা নাম, বেতন ০)
+ * — অর্থাৎ নতুন কেউ রিপো ক্লোন করলে প্রকল্পটা চলে, কিন্তু কারো বেতন
+ * জানা যায় না।
+ */
+function loadStaff(): Staff[] {
+  const local = join(__dirname, 'staff.local.json');
+  const example = join(__dirname, 'staff.example.json');
+  const file = existsSync(local) ? local : example;
+
+  if (file === example) {
+    console.warn(
+      '⚠  staff.local.json নেই — staff.example.json দিয়ে seed হচ্ছে। ' +
+        'আসল তালিকা বসাতে staff.local.json বানান।',
+    );
+  }
+
+  return JSON.parse(readFileSync(file, 'utf8')) as Staff[];
+}
+
+const STAFF: Staff[] = loadStaff();
 
 /** designation থেকে বিভাগ — রিপোর্টে দল ধরে ভাগ করার জন্য (D09, E07)। */
 function departmentOf(designation: string): string {

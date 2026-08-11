@@ -30,3 +30,7 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# ⚠️ আসল কর্মী তালিকা — নাম ও বেতন। কখনো কমিট হবে না।
+#    seed এটা না পেলে staff.example.json দিয়ে চলে।
+**/staff.local.json
