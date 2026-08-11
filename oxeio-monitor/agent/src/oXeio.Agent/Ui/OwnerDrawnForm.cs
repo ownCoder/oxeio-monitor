@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 
@@ -30,6 +31,8 @@ internal abstract class OwnerDrawnForm : Form
     private readonly int _baseHeight;
     private bool _resizing;
 
+    private readonly TrayTheme _theme = TrayTheme.Current;
+
     protected OwnerDrawnForm(TrayFonts fonts, string title, int baseWidth, int baseHeight)
     {
         _fonts = fonts;
@@ -49,8 +52,8 @@ internal abstract class OwnerDrawnForm : Form
         //    দুটো একসাথে চললে ১৫০% মনিটরে সব কিছু দুবার স্কেল হতো।
         AutoScaleMode = AutoScaleMode.None;
 
-        BackColor = SystemColors.Window;
-        ForeColor = SystemColors.WindowText;
+        BackColor = _theme.Surface;
+        ForeColor = _theme.Ink;
         DoubleBuffered = true;
 
         SetStyle(
@@ -68,11 +71,14 @@ internal abstract class OwnerDrawnForm : Form
 
     protected Font FontFor(TrayFontRole role) => _fonts.Get(role, DeviceDpi);
 
-    protected static Color Muted => SystemColors.GrayText;
+    protected TrayTheme Theme => _theme;
+
+    protected Color Muted => _theme.Ink3;
 
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
+        TrayNative.TryUseDarkTitleBar(Handle);
         ApplyDpi();
     }
 
@@ -243,7 +249,7 @@ internal abstract class OwnerDrawnForm : Form
             TextRenderer.DrawText(
                 _g, label, font,
                 new Rectangle(_bounds.Left, _y, labelWidth, height),
-                Muted, TextFlags);
+                _form.Theme.Ink2, TextFlags);
 
             TextRenderer.DrawText(
                 _g, value, font,
@@ -257,7 +263,7 @@ internal abstract class OwnerDrawnForm : Form
         public void Rule()
         {
             Gap(6);
-            using var pen = new Pen(SystemColors.ControlLight, 1f);
+            using var pen = new Pen(_form.Theme.Line, 1f);
             _g.DrawLine(pen, _bounds.Left, _y, _bounds.Right, _y);
             Gap(8);
         }
@@ -273,7 +279,7 @@ internal abstract class OwnerDrawnForm : Form
             var height = _form.Scale(baseHeight);
             var track = new Rectangle(_bounds.Left, _y, _bounds.Width, height);
 
-            using (var brush = new SolidBrush(SystemColors.ControlLight))
+            using (var brush = new SolidBrush(_form.Theme.Track))
             {
                 _g.FillRectangle(brush, track);
             }
@@ -288,6 +294,298 @@ internal abstract class OwnerDrawnForm : Form
             }
 
             _y += height + _form.Scale(6);
+        }
+
+        // ── নতুন প্রিমিটিভ ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// হিরো সারি — বড় সংখ্যা, তার পাশে একক, আর ডানে অবস্থার চিপ।
+        ///
+        /// ⭐ অবস্থাটা এখানে, কারণ জানালার একমাত্র <b>এটাই</b> মিনিটে মিনিটে
+        /// বদলায়। আগে এটা চার সারির তালিকার চতুর্থ সারি ছিল ("Now: Working"),
+        /// অর্থাৎ "Queued: 0"-র সমান ওজনে।
+        /// </summary>
+        public void Hero(string figure, string unit, string? chip, Color chipDot)
+        {
+            var heroFont = _form.FontFor(TrayFontRole.Hero);
+            var unitFont = _form.FontFor(TrayFontRole.Body);
+
+            var heroSize = TextRenderer.MeasureText(
+                _g, figure, heroFont, new Size(_bounds.Width, int.MaxValue), TextFlags);
+
+            TextRenderer.DrawText(
+                _g, figure, heroFont,
+                new Rectangle(_bounds.Left, _y, _bounds.Width, heroSize.Height),
+                _form.Theme.Ink, TextFlags);
+
+            // ⚠️ একক বসে সংখ্যার baseline-এ, উপরে নয় — নইলে "hours today"
+            //    সংখ্যাটার মাথার সাথে ভাসত।
+            var unitSize = TextRenderer.MeasureText(
+                _g, unit, unitFont, new Size(_bounds.Width, int.MaxValue), TextFlags);
+
+            var unitY = _y + heroSize.Height - unitSize.Height - _form.Scale(6);
+
+            TextRenderer.DrawText(
+                _g, unit, unitFont,
+                new Rectangle(
+                    _bounds.Left + heroSize.Width + _form.Scale(8), unitY,
+                    _bounds.Width - heroSize.Width, unitSize.Height),
+                _form.Theme.Ink2, TextFlags);
+
+            if (!string.IsNullOrEmpty(chip))
+            {
+                DrawChip(chip, chipDot, _y + ((heroSize.Height - _form.Scale(24)) / 2));
+            }
+
+            _y += heroSize.Height + _form.Scale(2);
+        }
+
+        /// <summary>ডান দিকে একটা পিল — ভেতরে রঙিন বিন্দু আর অবস্থার নাম।</summary>
+        private void DrawChip(string text, Color dot, int top)
+        {
+            var font = _form.FontFor(TrayFontRole.Small);
+            var height = _form.Scale(24);
+            var padX = _form.Scale(9);
+            var dotSize = _form.Scale(8);
+
+            var textSize = TextRenderer.MeasureText(
+                _g, text, font, new Size(_bounds.Width, int.MaxValue), TextFlags);
+
+            var width = padX + dotSize + _form.Scale(6) + textSize.Width + padX;
+            var box = new Rectangle(_bounds.Right - width, top, width, height);
+
+            var mode = _g.SmoothingMode;
+            _g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            using (var path = Pill(box))
+            using (var pen = new Pen(_form.Theme.Line, 1f))
+            {
+                _g.DrawPath(pen, path);
+            }
+
+            using (var brush = new SolidBrush(dot))
+            {
+                _g.FillEllipse(brush, new Rectangle(
+                    box.Left + padX, box.Top + ((height - dotSize) / 2), dotSize, dotSize));
+            }
+
+            _g.SmoothingMode = mode;
+
+            TextRenderer.DrawText(
+                _g, text, font,
+                new Rectangle(
+                    box.Left + padX + dotSize + _form.Scale(6),
+                    box.Top + ((height - textSize.Height) / 2),
+                    textSize.Width + _form.Scale(2), textSize.Height),
+                _form.Theme.Ink2, TextFlags);
+        }
+
+        /// <summary>
+        /// মাসের মিটার — ভরাটের সাথে "আজ পর্যন্ত যতটা হওয়ার কথা" দাগ।
+        ///
+        /// ⭐ দাগটাই এই জানালার সবচেয়ে বড় বদল। "৭৯:২০ hours behind" সংখ্যাটা
+        /// একা একটা অভিযোগ — কতটা পিছিয়ে, আর পোষাতে কতটা মাস বাকি, কোনোটাই
+        /// বলে না। দাগ থাকলে ফাঁকটা পড়ার <b>আগেই</b> দেখা যায়।
+        ///
+        /// ⚠️ ভরাটের সর্বনিম্ন ৩px। ০:৩৯ / ২০৮ ঘণ্টা মানে ০.৩% — ৩৬০px-এ
+        /// ১.১px, যা GDI গোল করে <b>শূন্য</b> করে দিত। তখন "একটু কাজ হয়েছে"
+        /// আর "কিছুই হয়নি" হুবহু এক দেখাত। সত্যিকারের শূন্য অবশ্য শূন্যই।
+        /// </summary>
+        public void Meter(double ratio, double? expected, Color fill, int baseHeight = 10)
+        {
+            var height = _form.Scale(baseHeight);
+            var radius = height / 2;
+
+            // দাগের লেবেলটা মিটারের উপরে বসে, তাই আগে জায়গা রাখা
+            var labelFont = _form.FontFor(TrayFontRole.Micro);
+            var labelHeight = expected is null
+                ? 0
+                : TextRenderer.MeasureText(
+                    _g, "Ag", labelFont, new Size(_bounds.Width, int.MaxValue), TextFlags).Height
+                  + _form.Scale(3);
+
+            _y += labelHeight;
+
+            var track = new Rectangle(_bounds.Left, _y, _bounds.Width, height);
+
+            var mode = _g.SmoothingMode;
+            _g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            using (var path = Pill(track))
+            using (var brush = new SolidBrush(_form.Theme.Track))
+            {
+                _g.FillPath(brush, path);
+            }
+
+            var clamped = double.IsNaN(ratio) ? 0 : Math.Min(1.0, Math.Max(0.0, ratio));
+            if (clamped > 0)
+            {
+                var filled = Math.Max(_form.Scale(3), (int)Math.Round(track.Width * clamped));
+                filled = Math.Min(filled, track.Width);
+
+                using var path = Pill(new Rectangle(track.X, track.Y, filled, height));
+                using var brush = new SolidBrush(fill);
+                _g.FillPath(brush, path);
+            }
+
+            _g.SmoothingMode = mode;
+
+            if (expected is { } mark and >= 0 and <= 1)
+            {
+                var x = track.Left + (int)Math.Round(track.Width * mark);
+                var tickTop = track.Top - _form.Scale(3);
+                var tickBottom = track.Bottom + _form.Scale(3);
+
+                using (var pen = new Pen(_form.Theme.Ink2, _form.Scale(2)))
+                {
+                    _g.DrawLine(pen, x, tickTop, x, tickBottom);
+                }
+
+                const string caption = "expected by today";
+                var capSize = TextRenderer.MeasureText(
+                    _g, caption, labelFont, new Size(_bounds.Width, int.MaxValue), TextFlags);
+
+                // ⚠️ দুই প্রান্তে ক্ল্যাম্প — মাসের শুরুতে বা শেষে লেখাটা
+                //    জানালার বাইরে চলে যেত।
+                var capX = Math.Min(
+                    Math.Max(_bounds.Left, x - (capSize.Width / 2)),
+                    _bounds.Right - capSize.Width);
+
+                TextRenderer.DrawText(
+                    _g, caption, labelFont,
+                    new Rectangle(capX, _y - labelHeight, capSize.Width, capSize.Height),
+                    _form.Theme.Ink3, TextFlags);
+            }
+
+            _y += height + _form.Scale(6);
+        }
+
+        /// <summary>বাঁয়ে-ডানে দুটো ছোট লেখা — মিটারের নিচের লাইন।</summary>
+        public void Legend(string left, string right, Color rightColor)
+        {
+            var font = _form.FontFor(TrayFontRole.Small);
+            var height = TextRenderer.MeasureText(
+                _g, "Ag", font, new Size(_bounds.Width, int.MaxValue), TextFlags).Height;
+
+            TextRenderer.DrawText(
+                _g, left, font,
+                new Rectangle(_bounds.Left, _y, _bounds.Width / 2, height),
+                _form.Theme.Ink3, TextFlags);
+
+            TextRenderer.DrawText(
+                _g, right, font,
+                new Rectangle(
+                    _bounds.Left + (_bounds.Width / 2), _y, _bounds.Width / 2, height),
+                rightColor,
+                TextFlags | TextFormatFlags.Right);
+
+            _y += height + _form.Scale(3);
+        }
+
+        /// <summary>
+        /// যন্ত্রের তিনটে তথ্য এক সারিতে — বড়-হাতের ছোট লেবেল, নিচে mono মান।
+        ///
+        /// ⭐ আগে এগুলো ছিল তিনটে আলাদা সারি, প্রতিটাই বাকি সব লাইনের সমান
+        /// ওজনে। এগুলো <b>পড়ার</b> জিনিস নয়, <b>দেখে নেওয়ার</b> জিনিস।
+        /// </summary>
+        public void Readout((string Key, string Value, Color? Color)[] cells)
+        {
+            if (cells.Length == 0) return;
+
+            var keyFont = _form.FontFor(TrayFontRole.Micro);
+            var valueFont = _form.FontFor(TrayFontRole.Mono);
+
+            var keyHeight = TextRenderer.MeasureText(
+                _g, "AG", keyFont, new Size(_bounds.Width, int.MaxValue), TextFlags).Height;
+            var valueHeight = TextRenderer.MeasureText(
+                _g, "Ag", valueFont, new Size(_bounds.Width, int.MaxValue), TextFlags).Height;
+
+            var column = _bounds.Width / cells.Length;
+            var gap = _form.Scale(8);
+
+            for (var i = 0; i < cells.Length; i++)
+            {
+                var x = _bounds.Left + (i * column);
+                var w = column - gap;
+
+                TextRenderer.DrawText(
+                    _g, cells[i].Key.ToUpperInvariant(), keyFont,
+                    new Rectangle(x, _y, w, keyHeight),
+                    _form.Theme.Ink3,
+                    TextFlags | TextFormatFlags.EndEllipsis);
+
+                TextRenderer.DrawText(
+                    _g, cells[i].Value, valueFont,
+                    new Rectangle(x, _y + keyHeight + _form.Scale(2), w, valueHeight),
+                    cells[i].Color ?? _form.Theme.Ink,
+                    TextFlags | TextFormatFlags.EndEllipsis);
+            }
+
+            _y += keyHeight + valueHeight + _form.Scale(6);
+        }
+
+        /// <summary>
+        /// শুধু গোলমালের সময় — বাক্সে ঘেরা এক বাক্য।
+        ///
+        /// ⚠️ লাল এই জানালায় <b>একমাত্র এখানেই</b>। "পিছিয়ে আছে" লাল নয়:
+        /// ওটা কর্মীর হিসাব, আর এটা সিস্টেমের ব্যর্থতা।
+        /// </summary>
+        public void Alert(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            var font = _form.FontFor(TrayFontRole.Small);
+            var padX = _form.Scale(10);
+            var padY = _form.Scale(8);
+            var inner = _bounds.Width - (2 * padX);
+
+            var size = TextRenderer.MeasureText(
+                _g, text, font, new Size(inner, int.MaxValue), TextFlags);
+
+            var box = new Rectangle(
+                _bounds.Left, _y, _bounds.Width, size.Height + (2 * padY));
+
+            var mode = _g.SmoothingMode;
+            _g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            using (var path = Rounded(box, _form.Scale(6)))
+            using (var pen = new Pen(_form.Theme.Brand, 1f))
+            {
+                _g.DrawPath(pen, path);
+            }
+
+            _g.SmoothingMode = mode;
+
+            TextRenderer.DrawText(
+                _g, text, font,
+                new Rectangle(box.Left + padX, box.Top + padY, inner, size.Height),
+                _form.Theme.Ink, TextFlags);
+
+            _y += box.Height + _form.Scale(6);
+        }
+
+        private static GraphicsPath Pill(Rectangle box) =>
+            Rounded(box, box.Height / 2);
+
+        /// <summary>
+        /// ⚠️ <c>Graphics.FillRoundedRectangle</c> .NET 8-এ নেই, তাই হাতে পথ।
+        /// ব্যাসার্ধ উচ্চতা/প্রস্থের অর্ধেকের বেশি হলে arc-গুলো একে অন্যের
+        /// ভেতরে ঢুকে আকৃতিটা উল্টে যেত, তাই আগেই ছেঁটে নেওয়া।
+        /// </summary>
+        private static GraphicsPath Rounded(Rectangle box, int radius)
+        {
+            var path = new GraphicsPath();
+
+            var r = Math.Max(1, Math.Min(radius, Math.Min(box.Width, box.Height) / 2));
+            var d = r * 2;
+
+            path.AddArc(box.Left, box.Top, d, d, 180, 90);
+            path.AddArc(box.Right - d, box.Top, d, d, 270, 90);
+            path.AddArc(box.Right - d, box.Bottom - d, d, d, 0, 90);
+            path.AddArc(box.Left, box.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+
+            return path;
         }
     }
 }
