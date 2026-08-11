@@ -16,7 +16,7 @@
     "test:watch": "dotenv -e ../.env -- vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "dotenv -e ../.env -- prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy",
+    "prisma:deploy": "dotenv -e ../.env -- prisma migrate deploy",
     "prisma:studio": "dotenv -e ../.env -- prisma studio",
     "seed": "dotenv -e ../.env -- tsx prisma/seed.ts"
   },
