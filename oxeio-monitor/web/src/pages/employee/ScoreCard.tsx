@@ -130,15 +130,41 @@ function Numbers({ score }: { score: ProductivityScore }) {
 }
 
 function Explain({ score }: { score: ProductivityScore }) {
+  /*
+    ⚠️ অচেনা সময় শূন্য হলে `categorizedSec` আর `totalSec` **সমান**, তাই
+       "not on the full …" তুলনাটা তখন নিজেকেই নিজে তুলনা করত — পর্দায়
+       দাঁড়াত "the 3h 20m of known time …, not on the full 3h 20m"। সংখ্যা
+       ঠিকই ছিল, বাক্যটা অর্থহীন। তাই তুলনার অংশটুকু শর্তসাপেক্ষ।
+    ⭐ কিন্তু নিচের "…% uncategorised" **শর্তহীনই থাকে** — সেটা ইচ্ছাকৃত,
+       কারণ ব্যাখ্যা নিচে দেওয়া আছে।
+  */
+  const hasUnknown = score.categorizedSec < score.totalSec;
+
   return (
     <p className="mt-4 rounded-md border border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-3">
-      The score sits on the{' '}
-      <Duration
-        seconds={score.categorizedSec}
-        className="font-semibold text-ink-2"
-      />{' '}
-      of <b>known</b> time in this day, not on the full{' '}
-      <Duration seconds={score.totalSec} className="font-semibold text-ink-2" />
+      {hasUnknown ? (
+        <>
+          The score sits on the{' '}
+          <Duration
+            seconds={score.categorizedSec}
+            className="font-semibold text-ink-2"
+          />{' '}
+          of <b>known</b> time in this day, not on the full{' '}
+          <Duration
+            seconds={score.totalSec}
+            className="font-semibold text-ink-2"
+          />
+        </>
+      ) : (
+        <>
+          The score sits on all{' '}
+          <Duration
+            seconds={score.totalSec}
+            className="font-semibold text-ink-2"
+          />{' '}
+          of tracked time in this day
+        </>
+      )}
       {' — '}
       {/*
         ⭐⚠️ "…% uncategorised" বাক্যটা **শর্তহীন**, স্কোরের ঠিক নিচেই।
