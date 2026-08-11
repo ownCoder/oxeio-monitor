@@ -52,6 +52,7 @@
 | 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো (৪৭টি, তিন দফায়) |
 | 09 | [Build Log](docs/09-Build-Log.md) | ⭐ **এখন পর্যন্ত কী হয়েছে, কী আটকে আছে, পরের ধাপ** |
 | 🎨 | [UI Mockup](docs/mockup/dashboard-mockup.html) | ৭টি স্ক্রিনের ক্লিকযোগ্য ডিজাইন মকআপ |
+| 🎨 | [Tray Mockup](docs/mockup/tray-today-mockup.html) | এজেন্টের "Today's hours" জানালার রি-ডিজাইন — আগে/পরে, চারটে স্টেট, দুই থিম |
 
 **নতুন হলে পড়ার ক্রম:** `09 → 01 → মকআপ → 04 → 07`
 
