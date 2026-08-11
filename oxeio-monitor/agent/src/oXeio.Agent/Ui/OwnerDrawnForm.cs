@@ -41,8 +41,21 @@ internal abstract class OwnerDrawnForm : Form
 
         Text = title;
         FormBorderStyle = FormBorderStyle.FixedDialog;
+
+        // ⭐ মিনিমাইজ আছে — কাজ করতে করতে জানালাটা সরিয়ে রাখা যায়।
+        //
+        // ⚠️ ম্যাক্সিমাইজ নেই: ভেতরের সব মাপ ৪০০px চওড়ার ধরে আঁকা
+        //    (owner-drawn, কোনো লেআউট ইঞ্জিন নেই), তাই বড় করলে লেখা বাঁ
+        //    কোণে জড়ো হয়ে বাকিটা ফাঁকা পড়ে থাকত।
+        //
+        // ⚠️ তবু টাইটেল বারে বাটনটা **দেখা যাবে, ধূসর অবস্থায়** — এটা
+        //    Windows-এর আচরণ, আমাদের নয়: minimize বা maximize-এর একটা
+        //    থাকলে সে দুটোই আঁকে, অনুপস্থিতটা নিষ্ক্রিয় করে। স্টাইল-বিট
+        //    (`WS_MAXIMIZEBOX`) হাতে মুছেও লাভ হয় না — চেষ্টা করে দেখা হয়েছে।
+        //    সরাতে হলে গোটা টাইটেল বার নিজে আঁকতে হবে, যা এই জানালার জন্য
+        //    অসমানুপাতিক।
+        MinimizeBox = true;
         MaximizeBox = false;
-        MinimizeBox = false;
         ShowInTaskbar = true;
         ShowIcon = false;
         KeyPreview = true;
@@ -562,6 +575,140 @@ internal abstract class OwnerDrawnForm : Form
                 _form.Theme.Ink, TextFlags);
 
             _y += box.Height + _form.Scale(6);
+        }
+
+        /// <summary>
+        /// একটা টার্গেটের সারি — বাঁয়ে নাম, ডানে "কত / কত", নিচে বার।
+        ///
+        /// ⭐ তিনটে টার্গেট (আজ · ৭ দিন · মাস) একই আকৃতিতে সাজানো, ইচ্ছাকৃতভাবে:
+        /// তিন রকম দেখালে চোখকে প্রতিবার নতুন করে পড়তে হতো, অথচ প্রশ্ন একটাই —
+        /// "কতটা হয়েছে"।
+        ///
+        /// <paramref name="ratio"/> <c>null</c> হলে বার আঁকাই হয় না — "জানি না"
+        /// অবস্থায় খালি বার দেখানো মানে "কিছুই করোনি" বলা।
+        /// </summary>
+        public void TargetRow(
+            string label, string value, double? ratio, Color fill,
+            double? expected = null, string? note = null, Color? noteColor = null)
+        {
+            var labelFont = _form.FontFor(TrayFontRole.Body);
+            var height = TextRenderer.MeasureText(
+                _g, "Ag", labelFont, new Size(_bounds.Width, int.MaxValue), TextFlags).Height;
+
+            TextRenderer.DrawText(
+                _g, label, labelFont,
+                new Rectangle(_bounds.Left, _y, _bounds.Width / 2, height),
+                _form.Theme.Ink2, TextFlags);
+
+            TextRenderer.DrawText(
+                _g, value, labelFont,
+                new Rectangle(_bounds.Left + (_bounds.Width / 2), _y, _bounds.Width / 2, height),
+                _form.Theme.Ink,
+                TextFlags | TextFormatFlags.Right);
+
+            _y += height + _form.Scale(4);
+
+            if (ratio is { } r)
+            {
+                Meter(r, expected, fill, 8);
+            }
+            else
+            {
+                Line("Waiting for the server…", TrayFontRole.Small, _form.Theme.Ink3);
+            }
+
+            if (!string.IsNullOrEmpty(note))
+            {
+                _y -= _form.Scale(3);
+                Line(note, TrayFontRole.Small, noteColor ?? _form.Theme.Ink3);
+            }
+        }
+
+        /// <summary>
+        /// শেষ কয়েকটা ৫-মিনিটের ঘরে কত শতাংশ সময় হাত চলেছে (B13)।
+        ///
+        /// ⭐⚠️ এটা <b>কীস্ট্রোক গোনা নয়</b> — গুনলে সেটা কীলগিং হতো
+        /// (04-Features § L · G46)। প্রতিটা স্তম্ভ বলে "ওই ৫ মিনিটের কত ভাগ
+        /// সময়ে কি-বোর্ড বা মাউস নড়েছে", কী নড়েছে তা নয়।
+        ///
+        /// ⚠️ শূন্য স্কোরেও ১px-এর একটা রেখা আঁকা হয় — নইলে "০% ব্যস্ত" আর
+        /// "এই ঘরের কোনো তথ্যই নেই" পর্দায় হুবহু এক দেখাত।
+        /// </summary>
+        public void BusyBlocks(IReadOnlyList<int> scores, int blocks, int baseHeight = 26)
+        {
+            var height = _form.Scale(baseHeight);
+            var gap = _form.Scale(3);
+            var width = (_bounds.Width - (gap * (blocks - 1))) / blocks;
+
+            // ⚠️ ডান দিকে সবচেয়ে নতুন — ঘর কম থাকলে বাঁ দিক ফাঁকা যায়,
+            //    নইলে সদ্য চালু হওয়া এজেন্টে স্তম্ভগুলো লাফিয়ে জায়গা বদলাত।
+            var missing = Math.Max(0, blocks - scores.Count);
+
+            for (var i = 0; i < blocks; i++)
+            {
+                var x = _bounds.Left + (i * (width + gap));
+                var slot = new Rectangle(x, _y, width, height);
+
+                using (var back = new SolidBrush(_form.Theme.Track))
+                {
+                    _g.FillRectangle(back, slot);
+                }
+
+                if (i < missing) continue;
+
+                var score = Math.Clamp(scores[i - missing], 0, 100);
+                var filled = Math.Max(_form.Scale(1), (int)Math.Round(height * score / 100.0));
+
+                using var brush = new SolidBrush(
+                    score == 0 ? _form.Theme.Ink3 : _form.Theme.Ink);
+
+                _g.FillRectangle(
+                    brush, new Rectangle(x, slot.Bottom - filled, width, filled));
+            }
+
+            _y += height + _form.Scale(5);
+        }
+
+        /// <summary>
+        /// শেষ তোলা ছবিটা। ⚠️ থাম্বনেইল, পুরো ছবি নয় — জানালার কাজ "কী গেছে
+        /// তা দেখানো", ছবি বিশ্লেষণ নয়।
+        ///
+        /// ফাইল না থাকলে বা পড়া না গেলে <c>false</c> ফেরে আর কিছুই আঁকে না;
+        /// কলার তখন অন্য কিছু লিখতে পারে।
+        /// </summary>
+        public bool Thumbnail(string? path, int baseWidth)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return false;
+
+            // ⚠️⚠️ `Image.FromStream` এখানে চলে **না** — ছবিটা WebP, আর GDI+-এ
+            //    ওই কোডেক নেই। সে "Parameter is not valid" বলে, যেটা পড়ে মনে হয়
+            //    ফাইল নষ্ট। ডিকোড করে SkiaSharp (WebpImage), যেটা এমনিতেই আছে।
+            using var image = WebpImage.Load(path);
+            if (image is null) return false;
+
+            try
+            {
+                var width = _form.Scale(baseWidth);
+                var height = (int)Math.Round(width * (double)image.Height / image.Width);
+
+                var box = new Rectangle(_bounds.Left, _y, width, height);
+
+                _g.DrawImage(image, box);
+
+                using (var pen = new Pen(_form.Theme.Line, 1f))
+                {
+                    _g.DrawRectangle(pen, box);
+                }
+
+                _y += height + _form.Scale(6);
+                return true;
+            }
+            catch (Exception e) when (e is IOException or ArgumentException or OutOfMemoryException)
+            {
+                // GDI+ ভাঙা ছবিতে OutOfMemoryException ছোড়ে — সত্যিই মেমরি
+                // ফুরোয়নি, ওটা ওদের ঐতিহাসিক অদ্ভুততা
+                return false;
+            }
         }
 
         private static GraphicsPath Pill(Rectangle box) =>

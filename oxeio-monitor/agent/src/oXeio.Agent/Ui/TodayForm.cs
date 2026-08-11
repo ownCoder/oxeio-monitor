@@ -19,6 +19,12 @@ namespace oXeio.Agent.Ui;
 [SupportedOSPlatform("windows")]
 internal sealed class TodayForm : OwnerDrawnForm
 {
+    /// <summary>শেষ ৩০ মিনিট = ৬টা ৫-মিনিটের ঘর (<c>AgentHost.BusyBlocks</c>-এর সমান)।</summary>
+    private const int BusyBlockCount = 6;
+
+    /// <summary>থাম্বনেইলের প্রস্থ, ৯৬ DPI-তে। জানালার ভেতরের চওড়া ৩৬৮px।</summary>
+    private const int ThumbWidth = 220;
+
     private readonly Func<TrayOptions> _options;
     private AgentStatus _status = AgentStatus.Starting;
 
@@ -79,7 +85,15 @@ internal sealed class TodayForm : OwnerDrawnForm
 
         stack.Rule();
 
-        PaintMonth(stack, status, now);
+        PaintTargets(stack, status, now);
+
+        stack.Rule();
+
+        PaintBusy(stack, status);
+
+        stack.Rule();
+
+        PaintLatestShot(stack, status);
 
         stack.Rule();
 
@@ -135,7 +149,17 @@ internal sealed class TodayForm : OwnerDrawnForm
     /// "0 / 208 hours · 0%" দেখত — অর্থাৎ মনে হতো মাসের কাজ মুছে গেছে।
     /// তাই তিনটে অবস্থা: জানা নেই / জানা আছে / লক্ষ্য নেই।
     /// </summary>
-    private void PaintMonth(TextStack stack, AgentStatus status, DateTimeOffset now)
+    /// <summary>
+    /// তিনটে টার্গেট — আজ · গত ৭ দিন · এই মাস। তিনটেই একই আকৃতির বার।
+    ///
+    /// ⭐ ক্রমটা ছোট থেকে বড়: মানুষ আগে জানতে চায় "আজ কেমন গেল", তারপর
+    /// "সপ্তাহটা", তারপর "মাসটা"। উল্টো করলে সবচেয়ে দূরের সংখ্যাটা আগে
+    /// চোখে পড়ত, অথচ আজকের কাজে ওটা দিয়ে কিছু করার নেই।
+    ///
+    /// ⚠️ <b>একমাত্র চুক্তি মাসিক ২০৮ ঘণ্টা</b> (§ ৪ · O8)। আজ ও ৭ দিনের
+    /// টার্গেট নিছক দেখানোর জিনিস — বেতন বা কাটাকাটির সাথে এদের সম্পর্ক নেই।
+    /// </summary>
+    private void PaintTargets(TextStack stack, AgentStatus status, DateTimeOffset now)
     {
         if (!status.MonthlyKnown)
         {
@@ -148,21 +172,118 @@ internal sealed class TodayForm : OwnerDrawnForm
             return;
         }
 
-        stack.Pair("This month",
-            $"{UiText.Duration(status.ActiveThisMonth)} / " +
-            $"{UiText.Number((int)Math.Round(status.MonthlyTargetHours))} hours",
-            TrayFontRole.Strong);
+        // ── আজ ────────────────────────────────────────────────────────────
+        // ⚠️ টার্গেট শূন্য মানে ছুটি — বার নয়, একটা বাক্য। ছুটির দিনে
+        //    খালি বার দেখালে সেটা "আজও ৮ ঘণ্টা বাকি" বলে তাড়া দিত।
+        if (status.DailyTarget is { } daily && daily == TimeSpan.Zero)
+        {
+            stack.TargetRow(
+                "Today", UiText.Duration(status.ActiveToday), null, Theme.Ink,
+                note: "Day off — anything you do today still counts toward the month.");
+        }
+        else
+        {
+            stack.TargetRow(
+                "Today",
+                status.DailyTarget is { } t
+                    ? $"{UiText.Duration(status.ActiveToday)} / {UiText.Duration(t)}"
+                    : UiText.Duration(status.ActiveToday),
+                status.DailyProgress,
+                ProgressColor(status.DailyProgress ?? 0));
+        }
 
-        stack.Gap(2);
+        stack.Gap(6);
 
+        // ── গত ৭ দিন ──────────────────────────────────────────────────────
+        stack.TargetRow(
+            "Last 7 days",
+            status.ActiveLast7 is { } worked && status.Last7Target is { } target
+                ? $"{UiText.Duration(worked)} / {UiText.Duration(target)}"
+                : "—",
+            status.Last7Progress,
+            ProgressColor(status.Last7Progress ?? 0));
+
+        stack.Gap(6);
+
+        // ── এই মাস ────────────────────────────────────────────────────────
         var pace = PaceOf(status, now);
 
-        stack.Meter(
+        stack.TargetRow(
+            "This month",
+            $"{UiText.Duration(status.ActiveThisMonth)} / " +
+            $"{UiText.Number((int)Math.Round(status.MonthlyTargetHours))} hours",
             status.MonthlyProgress,
-            ExpectedRatio(status, pace),
-            ProgressColor(status.MonthlyProgress));
+            ProgressColor(status.MonthlyProgress),
+            expected: ExpectedRatio(status, pace));
 
         PaintLegend(stack, status, pace);
+    }
+
+    /// <summary>
+    /// "প্রতি ৫ মিনিটে কতটা হাত চলেছে" — মালিকের চাওয়া, তবে <b>কতবার নয়</b>।
+    ///
+    /// ⭐⚠️ কতবার কি-বোর্ড চাপা হয়েছে সেটা এই সিস্টেম জানতেই পারে না, আর
+    /// জানার চেষ্টাও করবে না: তার জন্য low-level hook লাগত, যেটা কীলগিং
+    /// (04-Features § L) আর G46-এ স্পষ্টভাবে প্রত্যাখ্যাত। এখানে যা দেখা যায়
+    /// তা হলো <b>কত শতাংশ সময়</b> হাত চলেছে — সংখ্যাটা প্রতিটা সেগমেন্টের
+    /// <c>input_score</c>, যা আগে থেকেই সার্ভারে যাচ্ছিল।
+    /// </summary>
+    private void PaintBusy(TextStack stack, AgentStatus status)
+    {
+        stack.Pair("Keyboard & mouse", "last 30 min", TrayFontRole.Body);
+        stack.Gap(4);
+
+        stack.BusyBlocks(status.RecentBusy, BusyBlockCount);
+
+        stack.Line(
+            status.RecentBusy.Count == 0
+                ? "Each block is 5 minutes. The first one appears after five minutes of tracking."
+                : "Each block is 5 minutes — how much of it your keyboard or mouse moved. " +
+                  "What you typed is never recorded.",
+            TrayFontRole.Small, Muted);
+    }
+
+    /// <summary>
+    /// শেষ যে ছবিটা গেছে — স্টাফ নিজের চোখে দেখুক ঠিক কী পাঠানো হয়েছে।
+    ///
+    /// ⭐ এটাই এই জানালার মূল কথার সবচেয়ে সরাসরি রূপ: নজরদারি লুকোনো নয়।
+    /// ⚠️ থাম্বনেইল, তাই পড়া যায় না — উদ্দেশ্য "কী ছবি গেছে" বোঝানো,
+    /// ছবিটা আবার পড়া নয়। পুরোটা দেখতে হলে "My data" পাতা আছে (J05)।
+    /// </summary>
+    private void PaintLatestShot(TextStack stack, AgentStatus status)
+    {
+        var when = status.LatestShotAt is { } at ? UiText.Clock(at) : null;
+
+        stack.Pair(
+            "Latest screenshot",
+            when ?? "None yet",
+            TrayFontRole.Body);
+
+        if (when is null)
+        {
+            stack.Gap(2);
+            stack.Line(
+                "Pictures are taken once every 5 minutes, at a random moment, and only " +
+                "between 07:00 and 23:00 while you are working.",
+                TrayFontRole.Small, Muted);
+            return;
+        }
+
+        stack.Gap(4);
+
+        if (!stack.Thumbnail(status.LatestShotThumb, ThumbWidth))
+        {
+            stack.Line("The preview could not be loaded — the picture itself was still sent.",
+                TrayFontRole.Small, Muted);
+            return;
+        }
+
+        if (status.LatestShotMonitors > 1)
+        {
+            stack.Line(
+                $"Screen 1 of {UiText.Number(status.LatestShotMonitors)} — every screen is captured.",
+                TrayFontRole.Small, Muted);
+        }
     }
 
     /// <summary>

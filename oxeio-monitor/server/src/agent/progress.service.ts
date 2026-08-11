@@ -5,6 +5,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { paceSecOf } from './progress.math';
 import { workDateOf } from './util/dhaka-time';
 
+/**
+ * ⚠️ `work_date` সবসময় UTC-মধ্যরাতের `@db.Date`, তাই দিন যোগ-বিয়োগে DST বা
+ * ঘণ্টার ঝামেলা নেই — এটা নিছক পাটিগণিত, কোনো টাইমজোন নিয়ম নয়।
+ */
+const MS_PER_DAY = 86_400_000;
+
 export interface EmployeeProgress {
   /** ঢাকার আজকের দিনে গোনা সেকেন্ড */
   todayActiveSec: number;
@@ -27,6 +33,30 @@ export interface EmployeeProgress {
    * `null` পেলে নিজের আন্দাজে ফিরে যায়। তাই কখনো ভাঙে না।
    */
   paceSec: number;
+
+  /**
+   * আজকের টার্গেট, সেকেন্ডে — মাসিক টার্গেট ÷ ওই মাসের কর্মদিবস।
+   *
+   * ⚠️ **ছুটির দিনে ০** (সাপ্তাহিক ছুটি বা `holidays`)। ০ মানে "আজ কিছু
+   * করার দরকার নেই", আর সেদিন কেউ কাজ করলে সেটা এমনিতেই মাসের হিসাবে যোগ
+   * হয় — নিয়মটা "যেকোনো দিন গোনা হয়" (§ ৪)।
+   *
+   * ⭐ DB-তে দৈনিক টার্গেট বলে কোনো কলাম নেই, ইচ্ছাকৃতভাবে — একমাত্র
+   * চুক্তি মাসিক ২০৮ ঘণ্টা (O8)। এটা শুধু **দেখানোর** সংখ্যা, কাটার নয়।
+   */
+  dailyTargetSec: number;
+
+  /** গত ৭ দিনে (আজ ধরে) গোনা সেকেন্ড */
+  week7ActiveSec: number;
+
+  /**
+   * ওই ৭ দিনের মধ্যে যতগুলো কর্মদিবস, তত × দৈনিক টার্গেট।
+   *
+   * ⚠️ "চলতি সপ্তাহ" নয়, **রোলিং ৭ দিন** — এই সিস্টেমে সপ্তাহের কোনো
+   * সীমানাই নেই (§ ৪: যেকোনো দিন গোনা হয়)। "এই সপ্তাহ" বানাতে গেলে
+   * সপ্তাহ কবে শুরু সেই নতুন ধারণা আমদানি করতে হতো।
+   */
+  week7TargetSec: number;
 }
 
 /**
@@ -63,7 +93,18 @@ export class ProgressService {
       Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
     );
 
-    const [todayRow, monthRow, employee, adjustmentRow, holidayRows] =
+    // রোলিং ৭ দিন — আজ ধরে, তাই ৬ দিন পিছিয়ে
+    const week7Start = new Date(today.getTime() - 6 * MS_PER_DAY);
+
+    /**
+     * ⚠️ ছুটির তালিকা **মাসের শুরু নয়, ৭ দিনের জানালাটাও ধরে** আনতে হয়।
+     * মাসের ১–৬ তারিখে ৭ দিনের জানালা আগের মাসে ঢুকে পড়ে; শুধু চলতি মাসের
+     * ছুটি আনলে আগের মাসের ঈদের দিনগুলো "কর্মদিবস" হিসেবে গোনা হতো, আর
+     * ৭ দিনের টার্গেট বেশি দেখাত।
+     */
+    const holidayFrom = week7Start < monthStart ? week7Start : monthStart;
+
+    const [todayRow, monthRow, week7Row, employee, adjustmentRow, holidayRows] =
       await Promise.all([
         this.prisma.activitySegment.aggregate({
           _sum: { durationSec: true },
@@ -75,6 +116,14 @@ export class ProgressService {
             employeeId,
             countsAsWork: true,
             workDate: { gte: monthStart, lte: today },
+          },
+        }),
+        this.prisma.activitySegment.aggregate({
+          _sum: { durationSec: true },
+          where: {
+            employeeId,
+            countsAsWork: true,
+            workDate: { gte: week7Start, lte: today },
           },
         }),
         this.prisma.employee.findUnique({
@@ -103,7 +152,7 @@ export class ProgressService {
           },
         }),
         this.prisma.holiday.findMany({
-          where: { holidayDate: { gte: monthStart, lte: monthEnd } },
+          where: { holidayDate: { gte: holidayFrom, lte: monthEnd } },
           select: { holidayDate: true },
         }),
       ]);
@@ -120,10 +169,27 @@ export class ProgressService {
     const expectedWorkdays = countWorkdays(monthStart, monthEnd, off, holidays);
     const workdaysElapsed = countWorkdays(monthStart, today, off, holidays);
 
+    /**
+     * এক কর্মদিবসের ভাগ। ⚠️ `expectedWorkdays` ০ হতে পারে না বাস্তবে, তবু
+     * ভাগ করার আগে পাহারা — নইলে একটা ভুল পলিসিতে `Infinity` তারে উঠে
+     * এজেন্টের প্রোগ্রেস বার অসীম হয়ে যেত।
+     */
+    const perWorkdayTargetSec =
+      expectedWorkdays > 0
+        ? Math.round((monthlyTargetHours * 3600) / expectedWorkdays)
+        : 0;
+
+    // আজ কর্মদিবস কি না — countWorkdays দুই প্রান্তই ধরে, তাই একদিনের রেঞ্জ
+    const todayIsWorkday = countWorkdays(today, today, off, holidays) > 0;
+
     return {
       todayActiveSec: todayRow._sum.durationSec ?? 0,
       monthActiveSec,
       monthlyTargetHours,
+      dailyTargetSec: todayIsWorkday ? perWorkdayTargetSec : 0,
+      week7ActiveSec: week7Row._sum.durationSec ?? 0,
+      week7TargetSec:
+        perWorkdayTargetSec * countWorkdays(week7Start, today, off, holidays),
       paceSec: paceSecOf({
         /**
          * ⚠️ `credited`, `worked` নয় — § ২.১-ঙ (G35)। সার্ভারের দোষে ঘণ্টা

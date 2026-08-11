@@ -180,6 +180,58 @@ describe('heartbeat', () => {
     expect(res.body.progress.todayActiveSec).toBe(worked.durationSec);
     expect(res.body.progress.monthActiveSec).toBe(worked.durationSec);
     expect(res.body.progress.monthlyTargetHours).toBe(208);
+
+    // ── আজ ও ৭ দিনের টার্গেট — tray-র তিনটে বারের জন্য ──────────────────
+
+    const { dailyTargetSec, week7ActiveSec, week7TargetSec } = res.body.progress;
+
+    /**
+     * ⚠️ নির্দিষ্ট সংখ্যা মেলানো হয় না — মাসের কর্মদিবস কয়টা সেটা টেস্ট
+     * কোন তারিখে চলছে তার উপর নির্ভর করে, আর সেটা বাঁধলে টেস্টটা মাসে
+     * একবার নিজে থেকেই ভাঙত (G62-র মতোই সময়ের বোমা)।
+     * তাই **সম্পর্কগুলো** যাচাই করা হয়, মানগুলো নয়।
+     */
+    expect(typeof dailyTargetSec).toBe('number');
+
+    // ছুটির দিনে ০, নইলে এক কর্মদিবসের ভাগ — ২৪ ঘণ্টার বেশি কখনো নয়
+    expect(dailyTargetSec).toBeGreaterThanOrEqual(0);
+    expect(dailyTargetSec).toBeLessThanOrEqual(86_400);
+
+    // ৭ দিনের কাজ আজকের কাজের চেয়ে কম হতে পারে না (আজ ওই ৭ দিনের ভেতরেই)
+    expect(week7ActiveSec).toBeGreaterThanOrEqual(worked.durationSec);
+
+    // ৭ দিনে সর্বোচ্চ ৭টা কর্মদিবস, তাই টার্গেটও তার বেশি নয়
+    expect(week7TargetSec).toBeLessThanOrEqual(dailyTargetSec * 7);
+
+    // ⚠️ মাসের টার্গেটের চেয়ে বড় হতে পারে না — হলে বুঝতে হবে দৈনিক ভাগটা
+    //    ভুল হরে ভাগ হচ্ছে, আর tray-তে ৭ দিনের বার সবসময় ভরা দেখাত
+    expect(week7TargetSec).toBeLessThanOrEqual(208 * 3600);
+  });
+
+  /**
+   * ⭐ ছুটির দিনে দৈনিক টার্গেট **০**, আর সেটা "সার্ভার বলেনি" (null) থেকে
+   * আলাদা। ⚠️ দুটো এক করে ফেললে tray ছুটির দিনেও "৮ ঘণ্টা বাকি" বলে তাড়া
+   * দিত — অথচ নিয়ম হলো ছুটির দিনে কাজ করলে সেটা গোনা হয়, কিন্তু করতেই
+   * হবে এমন নয় (§ ৪)।
+   */
+  it('ছুটির দিনে দৈনিক টার্গেট শূন্য, null নয়', async () => {
+    const today = new Date();
+    const workDate = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+    );
+
+    await h.prisma.holiday.create({
+      data: { holidayDate: workDate, name: 'Test holiday' },
+    });
+
+    const res = await asAgent(
+      h.http().post('/api/v1/agent/heartbeat'),
+      device.token,
+    )
+      .send({ state: 'active', activeSecToday: 0, queueDepth: 0 })
+      .expect(200);
+
+    expect(res.body.progress.dailyTargetSec).toBe(0);
   });
 
   /**
