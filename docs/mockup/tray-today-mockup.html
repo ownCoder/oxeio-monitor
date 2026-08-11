@@ -1,0 +1,596 @@
+<title>oXeio — Today's hours · tray window redesign</title>
+<style>
+  /* ─────────────────────────────────────────────────────────────────────
+     টোকেনগুলো web/src/index.css থেকে হুবহু নেওয়া — নতুন কোনো রং বানানো
+     হয়নি। ডিফল্ট Midnight, কারণ পণ্যের ডিফল্টও তাই (`color-scheme: dark`)।
+     ───────────────────────────────────────────────────────────────────── */
+  :root {
+    --paper:   #0e1116;
+    --surface: #161b22;
+    --line:    #242b35;
+    --chrome:  #000000;
+    --ink:     #e8ecf1;
+    --ink-2:   #a6b0bd;
+    --ink-3:   #6e7885;
+    --brand:   #ff4d54;
+    --ok:      #3fb950;
+    --idle:    #d9a406;
+    --track:   #242b35;
+
+    --sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    --display: 'Segoe UI Variable Display', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --paper:   #f4f5f7;
+      --surface: #ffffff;
+      --line:    #e4e6ea;
+      --chrome:  #191c22;
+      --ink:     #14171c;
+      --ink-2:   #4e5661;
+      --ink-3:   #8b93a0;
+      --brand:   #ed1c24;
+      --ok:      #1f9d55;
+      --idle:    #b8860b;
+      --track:   #e4e6ea;
+      color-scheme: light;
+    }
+  }
+
+  /* ভিউয়ারের টগল — দুই দিকেই media query-কে হারাতে হবে */
+  :root[data-theme='light'] {
+    --paper: #f4f5f7; --surface: #ffffff; --line: #e4e6ea; --chrome: #191c22;
+    --ink: #14171c; --ink-2: #4e5661; --ink-3: #8b93a0;
+    --brand: #ed1c24; --ok: #1f9d55; --idle: #b8860b; --track: #e4e6ea;
+    color-scheme: light;
+  }
+  :root[data-theme='dark'] {
+    --paper: #0e1116; --surface: #161b22; --line: #242b35; --chrome: #000000;
+    --ink: #e8ecf1; --ink-2: #a6b0bd; --ink-3: #6e7885;
+    --brand: #ff4d54; --ok: #3fb950; --idle: #d9a406; --track: #242b35;
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    padding: 40px 24px 72px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .page { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+
+  header h1 {
+    margin: 0 0 8px;
+    font-family: var(--display);
+    font-size: 30px;
+    font-weight: 650;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  header p { margin: 0; max-width: 62ch; color: var(--ink-2); }
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0 0 10px;
+  }
+
+  h2 {
+    margin: 0 0 4px; font-family: var(--display);
+    font-size: 19px; font-weight: 620; letter-spacing: -0.01em;
+  }
+  h2 + .note { margin: 0 0 20px; color: var(--ink-2); max-width: 68ch; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+
+  .specimen { display: flex; flex-direction: column; gap: 10px; }
+  .specimen figcaption {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .specimen figcaption b { color: var(--ink-2); font-weight: 600; letter-spacing: 0.12em; }
+
+  /* ── জানালাটা ঠিক ৪০০px, কারণ TodayForm-এ baseWidth 400 ────────────── */
+  .win {
+    width: 400px; flex: none;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.65);
+  }
+  .win.is-light {
+    --surface: #ffffff; --line: #e4e6ea; --chrome: #191c22; --track: #e4e6ea;
+    --ink: #14171c; --ink-2: #4e5661; --ink-3: #8b93a0;
+    --brand: #ed1c24; --ok: #1f9d55; --idle: #b8860b;
+    background: var(--surface); border-color: var(--line); color: var(--ink);
+  }
+
+  .titlebar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 10px 9px 12px;
+    background: var(--chrome); color: #ffffff;
+    font-size: 12px;
+  }
+  .titlebar .mark { width: 9px; height: 9px; border-radius: 2px; background: var(--brand); flex: none; }
+  .titlebar .name { flex: 1; opacity: 0.92; }
+  .titlebar .x { opacity: 0.55; font-size: 13px; }
+
+  .body { padding: 18px 20px 16px; display: flex; flex-direction: column; }
+
+  .zone { display: flex; flex-direction: column; gap: 2px; }
+  .zone + .zone { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+
+  /* ── জোন ১ · হিরো ──────────────────────────────────────────────────── */
+  .who { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .when { font-size: 12px; color: var(--ink-3); }
+
+  .hero { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; }
+  .hero .figure {
+    font-family: var(--display);
+    font-size: 44px; font-weight: 600; line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero .unit { font-size: 15px; color: var(--ink-2); }
+  .hero-sub { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-left: auto; align-self: center;
+    padding: 4px 10px 4px 8px;
+    border: 1px solid var(--line); border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+  .dot.working { background: var(--ok); }
+  .dot.idle { background: var(--idle); }
+  .dot.locked { background: var(--ink-3); }
+
+  /* ── জোন ২ · মাসের মিটার ───────────────────────────────────────────── */
+  .month-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .month-head .label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .month-head .value { font-size: 14px; font-weight: 620; font-variant-numeric: tabular-nums; }
+
+  .meter {
+    position: relative; height: 10px; margin: 10px 0 8px;
+    background: var(--track); border-radius: 5px; overflow: visible;
+  }
+  /* ⚠️ min-width ইচ্ছাকৃত: ০.৩% মানে ৩৬০px-এ ১.১px, GDI-তে যা গোল হয়ে
+     **শূন্য** হয়ে যেত — অর্থাৎ "কিছু কাজ হয়েছে" আর "কিছুই হয়নি" হুবহু
+     এক দেখাত। শূন্য হলে অবশ্যই শূন্যই থাকবে (`:not([style*="width:0%"])`
+     নয় — বাস্তবায়নে `ratio > 0` শর্ত)। */
+  .meter .fill { position: absolute; inset: 0 auto 0 0; min-width: 3px; border-radius: 5px; background: var(--ink); }
+  .meter .fill[style*='width:0%'] { min-width: 0; }
+  .meter.is-met .fill { background: var(--ok); }
+  .meter .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink-2); border-radius: 1px; }
+  .meter .tick::after {
+    content: attr(data-label);
+    position: absolute; top: -17px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.04em; color: var(--ink-3); white-space: nowrap;
+  }
+
+  .meter-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .meter-legend .pace { font-weight: 600; }
+  .meter-legend .pace.behind { color: var(--idle); }
+  .meter-legend .pace.ahead { color: var(--ok); }
+
+  /* ── জোন ৩ · রিডআউট ───────────────────────────────────────────────── */
+  .readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .readout .cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .readout .k { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .readout .v {
+    font-family: var(--mono); font-size: 13px; color: var(--ink);
+    font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .readout .v.bad { color: var(--brand); }
+
+  .alert {
+    display: flex; gap: 8px; margin-top: 12px; padding: 10px 12px;
+    border: 1px solid var(--brand); border-radius: 6px;
+    font-size: 12px; color: var(--ink);
+  }
+  .alert .bang { color: var(--brand); font-weight: 700; }
+
+  .footnotes { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+  .footnotes p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); }
+
+  .loading { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+
+  /* ── "আগে" জানালাটা — বর্তমান কোড যা আঁকে ──────────────────────────── */
+  .before { background: #ffffff; color: #000000; border-color: #d7d9dd; }
+  .before .titlebar { background: #f3f3f3; color: #1a1a1a; }
+  .before .titlebar .mark { display: none; }
+  .before .body { padding: 16px 18px; font-size: 13.5px; display: block; }
+  .before .b-strong { font-weight: 700; font-size: 16px; }
+  .before .b-small { font-size: 12px; color: #6d6d6d; }
+  .before .b-big { font-weight: 700; font-size: 30px; margin: 8px 0 0; }
+  .before hr { border: 0; border-top: 1px solid #e2e2e2; margin: 12px 0; }
+  .before .b-pair { display: flex; justify-content: space-between; gap: 12px; }
+  .before .b-bar { height: 10px; background: #e6e6e6; margin: 4px 0 8px; }
+  .before .b-bar i { display: block; height: 100%; width: 0.3%; background: #4a6fa5; }
+  .before .b-note { font-size: 12px; color: #6d6d6d; margin-top: 10px; }
+
+  /* ── সিদ্ধান্তের টেবিল ─────────────────────────────────────────────── */
+  .decisions { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .decisions .d {
+    display: grid; grid-template-columns: 190px 1fr; gap: 20px;
+    padding: 16px 18px;
+  }
+  .decisions .d + .d { border-top: 1px solid var(--line); }
+  .decisions .d h3 { margin: 0; font-size: 14px; font-weight: 640; letter-spacing: -0.005em; }
+  .decisions .d p { margin: 0; color: var(--ink-2); font-size: 14px; }
+  .decisions .d p + p { margin-top: 8px; }
+  .decisions em { color: var(--ink); font-style: normal; font-weight: 600; }
+  .keep { border-color: var(--line); }
+  .keep .d h3 { color: var(--ink-2); }
+
+  code {
+    font-family: var(--mono); font-size: 0.9em;
+    background: color-mix(in srgb, var(--ink) 8%, transparent);
+    padding: 1px 5px; border-radius: 4px;
+  }
+
+  @media (max-width: 700px) {
+    .decisions .d { grid-template-columns: 1fr; gap: 8px; }
+    .win { width: 100%; max-width: 400px; }
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <p class="eyebrow">oXeio agent · tray</p>
+    <h1>“Today's hours” — the one screen every staff member sees</h1>
+    <p>
+      This window is the whole transparency promise made visible: the number that
+      decides someone's pay, on their own screen, without asking anyone. Right now
+      it looks like a system dialog, and the most loaded number on it —
+      <em>79:20 hours behind</em> — is drawn in exactly the same weight as
+      <em>Queued: 0</em>. The redesign below changes the treatment, not the rules.
+    </p>
+  </header>
+
+  <section>
+    <h2>Now, and proposed</h2>
+    <p class="note">
+      Both at 1:1 — 400&nbsp;px wide, the width <code>TodayForm</code> already asks for.
+      Real numbers from the 11 August run.
+    </p>
+
+    <div class="row">
+
+      <figure class="specimen" style="margin:0">
+        <figcaption><b>Now</b> — SystemColors, flat list</figcaption>
+        <div class="win before">
+          <div class="titlebar"><span class="name">oXeio — Today's hours</span><span class="x">✕</span></div>
+          <div class="body">
+            <div class="b-strong">This device</div>
+            <div class="b-small">11 August 2026 · Dhaka</div>
+            <div class="b-big">0:04 hours</div>
+            <div class="b-small">Counted so far today</div>
+            <hr>
+            <div class="b-pair b-strong"><span>This month</span><span>0:39 / 208 hours</span></div>
+            <div class="b-bar"><i></i></div>
+            <div class="b-pair"><span>Progress</span><span>0%</span></div>
+            <div class="b-pair"><span>Remaining</span><span>207:20 hours</span></div>
+            <div class="b-pair"><span>Pace</span><span>⚠ 79:20 hours behind</span></div>
+            <hr>
+            <div class="b-pair"><span>Now</span><span>Working</span></div>
+            <div class="b-pair"><span>Sync</span><span>OK</span></div>
+            <div class="b-pair"><span>Last sync</span><span>19:40</span></div>
+            <div class="b-pair"><span>Queued</span><span>0</span></div>
+            <hr>
+            <div class="b-note">Counting stops after 60 seconds without mouse or keyboard, and that idle time is removed from the total.</div>
+            <div class="b-note">Nothing is lost without internet — it waits in the queue and is sent automatically once the connection is back.</div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="specimen" style="margin:0">
+        <figcaption><b>Proposed</b> — Midnight, the product's default theme</figcaption>
+        <div class="win">
+          <div class="titlebar"><span class="mark"></span><span class="name">oXeio — Today's hours</span><span class="x">✕</span></div>
+          <div class="body">
+
+            <div class="zone">
+              <div class="who">This device</div>
+              <div class="when">Tuesday, 11 August 2026 · Dhaka</div>
+              <div class="hero">
+                <span class="figure">0:04</span>
+                <span class="unit">hours today</span>
+                <span class="chip"><span class="dot working"></span>Working</span>
+              </div>
+              <div class="hero-sub">Counted so far — idle time already removed</div>
+            </div>
+
+            <div class="zone">
+              <div class="month-head">
+                <span class="label">This month</span>
+                <span class="value">0:39 <span style="color:var(--ink-3)">/ 208 hours</span></span>
+              </div>
+              <div class="meter">
+                <span class="fill" style="width:0.3%"></span>
+                <span class="tick" style="left:38.5%" data-label="expected by today"></span>
+              </div>
+              <div class="meter-legend">
+                <span>207:20 left</span>
+                <span class="pace behind">79:20 behind</span>
+              </div>
+            </div>
+
+            <div class="zone">
+              <div class="readout">
+                <div class="cell"><span class="k">Sync</span><span class="v">OK</span></div>
+                <div class="cell"><span class="k">Last sync</span><span class="v">19:40</span></div>
+                <div class="cell"><span class="k">Queued</span><span class="v">0</span></div>
+              </div>
+            </div>
+
+            <div class="footnotes">
+              <p>Counting stops after 60 seconds without mouse or keyboard, and that idle time is removed from the total.</p>
+              <p>Nothing is lost without internet — it waits in the queue and is sent automatically once the connection is back.</p>
+            </div>
+
+          </div>
+        </div>
+      </figure>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>The four states it has to hold</h2>
+    <p class="note">
+      Every one of these already exists in <code>TodayForm.PaintBody</code>. The
+      redesign has to survive all of them — including the one where the month is
+      not known yet, which is the state a staff member sees for the first few
+      seconds after every logon.
+    </p>
+
+    <div class="row">
+
+      <figure class="specimen" style="margin:0">
+        <figcaption><b>Month not known yet</b></figcaption>
+        <div class="win">
+          <div class="titlebar"><span class="mark"></span><span class="name">oXeio — Today's hours</span><span class="x">✕</span></div>
+          <div class="body">
+            <div class="zone">
+              <div class="who">Sumaiya (OX-07)</div>
+              <div class="when">Tuesday, 11 August 2026 · Dhaka</div>
+              <div class="hero">
+                <span class="figure">1:12</span>
+                <span class="unit">hours today</span>
+                <span class="chip"><span class="dot working"></span>Working</span>
+              </div>
+              <div class="hero-sub">Counted so far — idle time already removed</div>
+            </div>
+            <div class="zone">
+              <div class="month-head">
+                <span class="label">This month</span>
+                <span class="value" style="color:var(--ink-3)">Loading…</span>
+              </div>
+              <p class="loading">
+                The monthly total comes from the server — every PC added together.
+                It appears as soon as the connection is made.
+              </p>
+            </div>
+            <div class="zone">
+              <div class="readout">
+                <div class="cell"><span class="k">Sync</span><span class="v">OK</span></div>
+                <div class="cell"><span class="k">Last sync</span><span class="v">09:02</span></div>
+                <div class="cell"><span class="k">Queued</span><span class="v">0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="specimen" style="margin:0">
+        <figcaption><b>Not reaching the server</b></figcaption>
+        <div class="win">
+          <div class="titlebar"><span class="mark"></span><span class="name">oXeio — Today's hours</span><span class="x">✕</span></div>
+          <div class="body">
+            <div class="zone">
+              <div class="who">Sumaiya (OX-07)</div>
+              <div class="when">Tuesday, 11 August 2026 · Dhaka</div>
+              <div class="hero">
+                <span class="figure">5:48</span>
+                <span class="unit">hours today</span>
+                <span class="chip"><span class="dot idle"></span>Idle</span>
+              </div>
+              <div class="hero-sub">Counted so far — idle time already removed</div>
+            </div>
+            <div class="zone">
+              <div class="month-head">
+                <span class="label">This month</span>
+                <span class="value">96:20 <span style="color:var(--ink-3)">/ 208 hours</span></span>
+              </div>
+              <div class="meter">
+                <span class="fill" style="width:46.3%"></span>
+                <span class="tick" style="left:38.5%" data-label="expected by today"></span>
+              </div>
+              <div class="meter-legend">
+                <span>111:40 left</span>
+                <span class="pace ahead">16:20 ahead</span>
+              </div>
+            </div>
+            <div class="zone">
+              <div class="readout">
+                <div class="cell"><span class="k">Sync</span><span class="v bad">Not reaching</span></div>
+                <div class="cell"><span class="k">Last sync</span><span class="v">17:04</span></div>
+                <div class="cell"><span class="k">Queued</span><span class="v">2,481</span></div>
+              </div>
+              <div class="alert">
+                <span class="bang">!</span>
+                <span>Your hours are being saved on this PC and will be sent when the
+                connection is back. Nothing is lost.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="specimen" style="margin:0">
+        <figcaption><b>Target met</b> · light theme</figcaption>
+        <div class="win is-light">
+          <div class="titlebar"><span class="mark"></span><span class="name">oXeio — Today's hours</span><span class="x">✕</span></div>
+          <div class="body">
+            <div class="zone">
+              <div class="who">Belal (OX-03)</div>
+              <div class="when">Sunday, 30 August 2026 · Dhaka</div>
+              <div class="hero">
+                <span class="figure">7:26</span>
+                <span class="unit">hours today</span>
+                <span class="chip"><span class="dot locked"></span>Locked</span>
+              </div>
+              <div class="hero-sub">Counted so far — idle time already removed</div>
+            </div>
+            <div class="zone">
+              <div class="month-head">
+                <span class="label">This month</span>
+                <span class="value">211:15 <span style="color:var(--ink-3)">/ 208 hours</span></span>
+              </div>
+              <div class="meter is-met">
+                <span class="fill" style="width:100%"></span>
+              </div>
+              <div class="meter-legend">
+                <span>Target met</span>
+                <span class="pace ahead">3:15 ahead</span>
+              </div>
+            </div>
+            <div class="zone">
+              <div class="readout">
+                <div class="cell"><span class="k">Sync</span><span class="v">OK</span></div>
+                <div class="cell"><span class="k">Last sync</span><span class="v">21:12</span></div>
+                <div class="cell"><span class="k">Queued</span><span class="v">0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed, and why</h2>
+    <p class="note">Five changes. Each one is a rule the product already decided somewhere else and this window was not following.</p>
+
+    <div class="decisions">
+
+      <div class="d">
+        <h3>It joins the product</h3>
+        <p>
+          <code>OwnerDrawnForm</code> paints with <code>SystemColors.Window</code> and
+          <code>SystemColors.GrayText</code>, so the window inherits whatever Windows
+          is wearing and carries no identity at all. It now uses the same tokens as
+          the dashboard, and defaults to <em>Midnight</em> — because
+          <code>index.css</code> sets <code>color-scheme: dark</code> as the product's
+          default, not <code>light dark</code>.
+        </p>
+      </div>
+
+      <div class="d">
+        <h3>The blue bar was not ours</h3>
+        <p>
+          <code>ProgressColor</code> fills the month bar with <code>#4A6FA5</code>, a
+          blue that appears nowhere else in oXeio. The dashboard already settled this
+          argument: a ring in progress is neutral <em>ink</em>, and only turns
+          <em>green</em> when the target is met — because a red-ish “attention” ring
+          burning on every working person's card all day makes the colour mean nothing
+          within two days.
+        </p>
+      </div>
+
+      <div class="d">
+        <h3>“79:20 behind” gets a picture</h3>
+        <p>
+          The number alone is an accusation with no scale. The meter now carries a
+          tick at <em>expected by today</em>, so the gap is something you see before
+          you read it — and the same glance also shows how much of the month is left
+          to close it in.
+        </p>
+        <p>
+          It stays amber, never red. Red is reserved for “your data is not reaching
+          the server”, which is the system's fault; being behind is not an incident.
+        </p>
+      </div>
+
+      <div class="d">
+        <h3>State becomes a chip, not a row</h3>
+        <p>
+          <em>Now: Working</em> was the fourth row of a four-row list, all equal
+          weight. It is the only line that changes minute to minute, so it moves up
+          beside the figure it explains and gets the dot vocabulary the Live Board
+          already uses — green working, amber idle, grey locked.
+        </p>
+      </div>
+
+      <div class="d">
+        <h3>A sliver, not nothing</h3>
+        <p>
+          At 0:39 of 208 hours the fill is <em>0.3%</em> — 1.1&nbsp;px on a 360&nbsp;px
+          meter, which GDI rounds away to nothing. “I have worked a little” would
+          look identical to “I have worked none”. The fill keeps a 3&nbsp;px minimum
+          whenever the ratio is above zero, and only a true zero draws empty.
+        </p>
+      </div>
+
+      <div class="d">
+        <h3>Sync stops being prose</h3>
+        <p>
+          Three facts about the machine — <em>Sync · Last sync · Queued</em> — become
+          three small monospace readouts on one line instead of three sentences in the
+          middle of the window. The full explanation appears only when something is
+          actually wrong, which is when a person needs a sentence rather than a label.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>What deliberately did not change</h2>
+    <p class="note">These are load-bearing product decisions, not layout.</p>
+
+    <div class="decisions keep">
+      <div class="d">
+        <h3>Still no buttons</h3>
+        <p>
+          Not a break button, not “claim time”, not a refresh. One control here is the
+          first step of an approval workflow, and this system has no approvals.
+        </p>
+      </div>
+      <div class="d">
+        <h3>Sync is shown when it is fine</h3>
+        <p>
+          Hiding it while healthy would mean the most reassuring fact — your hours
+          arrived — is invisible exactly when it is true.
+        </p>
+      </div>
+      <div class="d">
+        <h3>Both footnotes stay, in full</h3>
+        <p>
+          “Where did my time go” has to be answered before it is asked, or people
+          assume the system is eating their hours. They are quieter now, not shorter.
+        </p>
+      </div>
+      <div class="d">
+        <h3>“Pace (estimated)” keeps its word</h3>
+        <p>
+          When the server has not sent the exact figure, the label still says
+          estimated — that word is the admission that we do not know this month's
+          holidays.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</div>
