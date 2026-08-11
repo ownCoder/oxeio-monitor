@@ -41,24 +41,24 @@ import {
 
 /** ISO দিন — সোম = ১ … রবি = ৭ (`weeklyOffDay`) */
 const OFF_DAY_OPTIONS = [
-  { value: '', label: 'নেই — প্রতিদিনই কর্মদিবস' },
-  { value: '1', label: 'সোমবার' },
-  { value: '2', label: 'মঙ্গলবার' },
-  { value: '3', label: 'বুধবার' },
-  { value: '4', label: 'বৃহস্পতিবার' },
-  { value: '5', label: 'শুক্রবার' },
-  { value: '6', label: 'শনিবার' },
-  { value: '7', label: 'রবিবার' },
+  { value: '', label: 'None — every day is a workday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+  { value: '7', label: 'Sunday' },
 ];
 
 const OFF_DAY_LABEL: Record<number, string> = {
-  1: 'সোম',
-  2: 'মঙ্গল',
-  3: 'বুধ',
-  4: 'বৃহস্পতি',
-  5: 'শুক্র',
-  6: 'শনি',
-  7: 'রবি',
+  1: 'Mon',
+  2: 'Tue',
+  3: 'Wed',
+  4: 'Thu',
+  5: 'Fri',
+  6: 'Sat',
+  7: 'Sun',
 };
 
 export function PoliciesTab() {
@@ -82,7 +82,7 @@ function WorkPoliciesSection() {
   const columns: Column<WorkPolicyView>[] = [
     {
       key: 'name',
-      header: 'নাম',
+      header: 'Name',
       render: (policy) => (
         <div className="min-w-0">
           <div className="truncate font-medium text-ink">{policy.name}</div>
@@ -94,34 +94,34 @@ function WorkPoliciesSection() {
     },
     {
       key: 'target',
-      header: 'মাসিক টার্গেট',
+      header: 'Monthly target',
       align: 'right',
       render: (policy) => (
         <span className="num">
           {policy.monthlyTargetHours}
-          <small className="ml-1 text-[11px] text-ink-3">ঘণ্টা</small>
+          <small className="ml-1 text-[11px] text-ink-3">h</small>
         </span>
       ),
     },
     {
       key: 'workdays',
-      header: 'কর্মদিবস',
+      header: 'Workdays',
       align: 'right',
       render: (policy) => <span className="num">{policy.expectedWorkdays}</span>,
     },
     {
       key: 'off',
-      header: 'সাপ্তাহিক ছুটি',
+      header: 'Weekly off',
       render: (policy) =>
         policy.weeklyOffDay === null ? (
-          <span className="text-ink-3">নেই</span>
+          <span className="text-ink-3">None</span>
         ) : (
           (OFF_DAY_LABEL[policy.weeklyOffDay] ?? String(policy.weeklyOffDay))
         ),
     },
     {
       key: 'window',
-      header: 'ছবির উইন্ডো',
+      header: 'Screenshot window',
       render: (policy) => (
         <span className="num">
           {policy.screenshotFrom ?? '07:00'}–{policy.screenshotTo ?? '23:00'}
@@ -130,7 +130,7 @@ function WorkPoliciesSection() {
     },
     {
       key: 'idle',
-      header: 'idle থ্রেশহোল্ড',
+      header: 'Idle threshold',
       align: 'right',
       render: (policy) => (
         <span className="num">{formatDuration(policy.idleThresholdSec)}</span>
@@ -138,29 +138,29 @@ function WorkPoliciesSection() {
     },
     {
       key: 'slot',
-      header: 'স্লট',
+      header: 'Slot',
       align: 'right',
       render: (policy) => (
         <span className="num">
           {policy.slotMinutes}
-          <small className="ml-1 text-[11px] text-ink-3">মি</small>
+          <small className="ml-1 text-[11px] text-ink-3">min</small>
         </span>
       ),
     },
     {
       key: 'people',
-      header: 'কর্মী',
+      header: 'Staff',
       align: 'right',
       render: (policy) => <span className="num">{policy.employeeCount}</span>,
     },
     {
       key: 'status',
-      header: 'অবস্থা',
+      header: 'Status',
       render: (policy) =>
         policy.isActive ? (
-          <Chip tone="counted">চালু</Chip>
+          <Chip tone="counted">Open</Chip>
         ) : (
-          <Chip>বন্ধ</Chip>
+          <Chip>Closed</Chip>
         ),
     },
     {
@@ -169,18 +169,18 @@ function WorkPoliciesSection() {
       align: 'right',
       render: (policy) => (
         <RowActions>
-          <MiniButton onClick={() => setEditing(policy)}>সম্পাদনা</MiniButton>
+          <MiniButton onClick={() => setEditing(policy)}>Edit</MiniButton>
           {policy.isActive && (
             <MiniButton
               tone="danger"
               onClick={() => setClosing(policy)}
               title={
                 policy.employeeCount > 0
-                  ? 'আগে এই পলিসির কর্মীদের অন্য পলিসিতে সরাতে হবে'
+                  ? 'Move the people on this policy to another one first'
                   : undefined
               }
             >
-              বন্ধ করুন
+              Close
             </MiniButton>
           )}
         </RowActions>
@@ -193,15 +193,15 @@ function WorkPoliciesSection() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold tracking-tight">
-            work policy
+            Work policies
           </h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            মাসের টার্গেট, ছবির উইন্ডো আর idle থ্রেশহোল্ড — একজন কর্মীর সবকিছু
-            এখান থেকেই আসে
+            Monthly target, screenshot window and idle threshold — everything
+            about a person's day comes from here
           </p>
         </div>
         <Button tone="primary" onClick={() => setCreating(true)}>
-          নতুন policy
+          New policy
         </Button>
       </div>
 
@@ -210,9 +210,10 @@ function WorkPoliciesSection() {
            থাকে সত্যিকারের বিপদের জন্য (নিশ্চিতকরণের বাক্সগুলো দেখুন)।
       */}
       <Notice>
-        এখানকার সংখ্যা বদলালে পরের config sync-এ{' '}
-        <strong>প্রতিটা PC-র আচরণ</strong> বদলে যায় — idle কখন ধরা হবে, ছবি
-        কখন উঠবে। আর মাসিক টার্গেট বদলালে সবার অগ্রগতির শতাংশও বদলে যায়।
+        Change a number here and the next config sync changes{' '}
+        <strong>how every PC behaves</strong> — when idle starts counting, when
+        screenshots are taken. Change the monthly target and everyone's progress
+        percentage moves with it.
       </Notice>
 
       {policies.loading && !policies.data && <Loading />}
@@ -222,11 +223,11 @@ function WorkPoliciesSection() {
 
       {!policies.loading && !policies.error && rows.length === 0 && (
         <Empty
-          title="কোনো work policy নেই"
-          hint="অন্তত একটা policy দরকার — নইলে কারো মাসিক টার্গেট নেই, আর অগ্রগতির রিং কখনো ভরবে না। ডিফল্ট ২০৮ ঘণ্টা দিয়ে একটা বানিয়ে নিন।"
+          title="No work policy yet"
+          hint="At least one policy is needed — without it nobody has a monthly target and the progress ring never fills. Create one with the default 208 hours."
           action={
             <Button tone="primary" onClick={() => setCreating(true)}>
-              নতুন policy
+              New policy
             </Button>
           }
         />
@@ -338,24 +339,24 @@ function PolicyForm({
 
   return (
     <Modal
-      title={policy ? `${policy.name} — সম্পাদনা` : 'নতুন work policy'}
+      title={policy ? `${policy.name} — edit` : 'New work policy'}
       hint={
         policy && policy.employeeCount > 0
-          ? `${policy.employeeCount} জন কর্মী এই policy-তে আছেন`
+          ? `${policy.employeeCount} people are on this policy`
           : undefined
       }
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
             onClick={submit}
             disabled={busy || form.name.trim() === ''}
           >
-            {busy ? 'সংরক্ষণ হচ্ছে…' : 'সংরক্ষণ করুন'}
+            {busy ? 'Saving…' : 'Save'}
           </Button>
         </>
       }
@@ -364,18 +365,18 @@ function PolicyForm({
         <FormGrid>
           <FullWidth>
             <TextField
-              label="নাম"
+              label="Name"
               value={form.name}
               onChange={set('name')}
               required
               autoFocus
               maxLength={120}
-              placeholder="সাধারণ কর্মী"
+              placeholder="General staff"
             />
           </FullWidth>
 
           <TextField
-            label="মাসিক টার্গেট (ঘণ্টা)"
+            label="Monthly target (hours)"
             type="number"
             value={form.monthlyTargetHours}
             onChange={set('monthlyTargetHours')}
@@ -383,62 +384,62 @@ function PolicyForm({
             min={1}
             max={744}
             step="0.01"
-            hint="⭐ একমাত্র টার্গেট — দৈনিক কোনো টার্গেট নেই। ডিফল্ট 208।"
+            hint="The only target that is stored. The daily target is derived from this — monthly target ÷ workdays. Default 208."
           />
           <TextField
-            label="প্রত্যাশিত কর্মদিবস"
+            label="Expected workdays"
             type="number"
             value={form.expectedWorkdays}
             onChange={set('expectedWorkdays')}
             mono
             min={1}
             max={31}
-            hint="মাসে কত দিন কাজ হবে ধরে নেওয়া হচ্ছে — pace হিসাবের জন্য"
+            hint="How many days of work the month is assumed to hold — used for pace, and it divides the daily target"
           />
 
           <SelectField
-            label="সাপ্তাহিক ছুটি"
+            label="Weekly off"
             value={form.weeklyOffDay}
             onChange={set('weeklyOffDay')}
             options={OFF_DAY_OPTIONS}
-            hint="⚠️ এটা কোনো বাধা নয় — ছুটির দিনে কাজ করলেও ঘণ্টা পুরোপুরি গোনা হয়"
+            hint="This is not a block — hours worked on a day off still count in full"
           />
           <TextField
-            label="idle থ্রেশহোল্ড"
+            label="Idle threshold"
             type="number"
             value={form.idleThresholdSec}
             onChange={set('idleThresholdSec')}
             mono
             min={10}
             max={3600}
-            hint="সেকেন্ড। এত সময় কি-বোর্ড/মাউস চুপ থাকলে সময়টা আর গোনা হবে না।"
+            hint="Seconds. Once the keyboard and mouse have been quiet this long, the time stops counting."
           />
 
           <TextField
-            label="ছবি শুরু"
+            label="Screenshots from"
             type="time"
             value={form.screenshotFrom}
             onChange={set('screenshotFrom')}
             mono
           />
           <TextField
-            label="ছবি শেষ"
+            label="Screenshots until"
             type="time"
             value={form.screenshotTo}
             onChange={set('screenshotTo')}
             mono
-            hint="এই উইন্ডোর বাইরে কোনো স্ক্রিনশট তোলা হয় না"
+            hint="No screenshot is ever taken outside this window"
           />
 
           <TextField
-            label="স্লট (মিনিট)"
+            label="Slot (minutes)"
             type="number"
             value={form.slotMinutes}
             onChange={set('slotMinutes')}
             mono
             min={1}
             max={60}
-            hint="সময়রেখার প্রতিটা ঘরের দৈর্ঘ্য"
+            hint="How long each cell of the timeline is"
           />
         </FormGrid>
 
@@ -462,14 +463,14 @@ function ClosePolicyDialog({
 
   return (
     <ConfirmDialog
-      title={`"${policy.name}" বন্ধ করবেন?`}
-      intro="policy-টা মোছা হয় না, শুধু বন্ধ হয় — পুরোনো মাসের হিসাব এর উপরেই দাঁড়িয়ে আছে, তাই সারিটা থেকে যায়।"
+      title={`Close "${policy.name}"?`}
+      intro="The policy is not deleted, only closed — past months rest on it, so the record stays."
       warning={
         occupied
-          ? `${policy.employeeCount} জন কর্মী এখনো এই policy-তে আছেন। সার্ভার এটা বন্ধ করতে দেবে না — আগে তাঁদের অন্য policy-তে সরান।`
-          : 'নতুন কর্মীকে আর এই policy দেওয়া যাবে না।'
+          ? `${policy.employeeCount} people are still on this policy. The server will refuse to close it — move them to another policy first.`
+          : 'No new staff member can be put on this policy again.'
       }
-      confirmLabel="বন্ধ করুন"
+      confirmLabel="Close"
       busy={busy}
       error={error}
       onClose={onClose}

@@ -85,9 +85,16 @@ export async function api<T>(
       mustChangePassword?: boolean;
     } | null;
 
+    /**
+     * ⚠️ `p.message` **সার্ভারের** বার্তা, আর সার্ভার এখনো বাংলায় বলে —
+     *    তাই পর্দায় ওটা বাংলাতেই যাবে (`<ErrorBox>` দেখুন)। এখানে অনুবাদ
+     *    করা হয় না: টেবিল বানালে সার্ভারের নতুন বার্তাগুলো নীরবে
+     *    অনূদিত-না-হয়ে বেরোত, আর কেউ টেরও পেত না। নিচের fallback-টা
+     *    আমাদের নিজেদের লেখা, তাই সেটা ইংরেজি।
+     */
     const message = Array.isArray(p?.message)
       ? p.message.join(', ')
-      : (p?.message ?? `রিকোয়েস্ট ব্যর্থ (${res.status})`);
+      : (p?.message ?? `Request failed (${res.status})`);
 
     if (res.status === 401 && !silent401) onUnauthorized();
 

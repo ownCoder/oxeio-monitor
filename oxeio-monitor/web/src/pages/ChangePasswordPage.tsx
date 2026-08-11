@@ -32,7 +32,8 @@ export function ChangePasswordPage() {
       await changePassword(current, next);
       await refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'বদলানো যায়নি');
+      // ⚠️ `err.message` সার্ভারের বার্তা — এখনো বাংলায় আসে, সেভাবেই যায়
+      setError(err instanceof ApiError ? err.message : "Couldn't change it");
       setBusy(false);
     }
   }
@@ -40,7 +41,7 @@ export function ChangePasswordPage() {
   return (
     <div className="grid min-h-full place-items-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2.5 rounded-lg bg-black px-4 py-3 text-white">
+        <div className="mb-6 flex items-center justify-center gap-2.5 rounded-lg bg-chrome px-4 py-3 text-white">
           <Wordmark className="text-lg" />
         </div>
 
@@ -49,10 +50,10 @@ export function ChangePasswordPage() {
           className="space-y-4 rounded-xl border border-line bg-surface p-6 shadow-sm"
         >
           <div>
-            <h1 className="text-lg font-semibold">পাসওয়ার্ড বদলান</h1>
+            <h1 className="text-lg font-semibold">Change your password</h1>
             <p className="mt-1 text-sm text-ink-3">
-              {user?.email} — প্রথমবার ঢোকার সময় পাসওয়ার্ড বদলাতেই হয়। এর আগে
-              অন্য কিছু করা যাবে না।
+              {user?.email} — the password has to be changed on first sign-in.
+              Nothing else can be done until then.
             </p>
           </div>
 
@@ -60,7 +61,7 @@ export function ChangePasswordPage() {
 
           <Field
             id="current"
-            label="বর্তমান পাসওয়ার্ড"
+            label="Current password"
             type="password"
             autoComplete="current-password"
             required
@@ -71,19 +72,19 @@ export function ChangePasswordPage() {
 
           <Field
             id="next"
-            label="নতুন পাসওয়ার্ড"
+            label="New password"
             type="password"
             autoComplete="new-password"
             required
             minLength={MIN_LENGTH}
             value={next}
             onChange={(e) => setNext(e.target.value)}
-            hint={`অন্তত ${MIN_LENGTH} অক্ষর, আর আগেরটার মতো নয়`}
+            hint={`At least ${MIN_LENGTH} characters, and not the old one`}
           />
 
           <Field
             id="confirm"
-            label="নতুন পাসওয়ার্ড আবার"
+            label="New password again"
             type="password"
             autoComplete="new-password"
             required
@@ -91,10 +92,10 @@ export function ChangePasswordPage() {
             onChange={(e) => setConfirm(e.target.value)}
           />
 
-          {mismatch && <ErrorNote>দুটো পাসওয়ার্ড মিলছে না</ErrorNote>}
+          {mismatch && <ErrorNote>The two passwords don't match</ErrorNote>}
 
           <SubmitButton busy={busy} disabled={mismatch}>
-            বদলে ফেলুন
+            Change password
           </SubmitButton>
 
           <button
@@ -102,7 +103,7 @@ export function ChangePasswordPage() {
             onClick={() => void signOut()}
             className="w-full text-center text-xs text-ink-3 underline-offset-2 hover:underline"
           >
-            লগআউট
+            Sign out
           </button>
         </form>
       </div>

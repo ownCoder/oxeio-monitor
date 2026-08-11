@@ -43,13 +43,13 @@ export function ProductivityTab({
     [from, to, employeeId, limit],
   );
 
-  if (loading && !data) return <Loading label="ব্যবহারের হিসাব আনা হচ্ছে…" />;
+  if (loading && !data) return <Loading label="Loading app and site usage…" />;
   if (error) return <ErrorBox error={error} retry={reload} />;
   if (!data || (data.top.length === 0 && data.byEmployee.length === 0)) {
     return (
       <Empty
-        title="এই রেঞ্জে কোনো অ্যাপ বা সাইটের হিসাব নেই"
-        hint="এজেন্ট চালু থাকলে কাজের সময় নিজে থেকেই জমা হয়। নতুন অফিসে প্রথম কয়েক দিন এই পাতা খালি থাকা স্বাভাবিক।"
+        title="No app or site usage in this range"
+        hint="While the agent runs, working time is collected on its own. In a new office it is normal for this page to stay empty for the first few days."
       />
     );
   }
@@ -57,7 +57,7 @@ export function ProductivityTab({
   const topColumns: Column<ProductivityItem>[] = [
     {
       key: 'name',
-      header: 'অ্যাপ / সাইট',
+      header: 'App / site',
       render: (item) => (
         <div className="min-w-0">
           <div className="truncate font-medium text-ink">
@@ -72,14 +72,14 @@ export function ProductivityTab({
     },
     {
       key: 'kind',
-      header: 'ধরন',
+      header: 'Type',
       render: (item) => (
-        <Pill muted>{item.kind === 'site' ? 'সাইট' : 'অ্যাপ'}</Pill>
+        <Pill muted>{item.kind === 'site' ? 'Site' : 'App'}</Pill>
       ),
     },
     {
       key: 'category',
-      header: 'ক্যাটাগরি',
+      header: 'Category',
       render: (item) => (
         <Pill muted={item.category === 'uncategorized'}>
           {CATEGORY_LABEL[item.category]}
@@ -88,18 +88,23 @@ export function ProductivityTab({
     },
     {
       key: 'hours',
-      header: 'সময়',
+      header: 'Time',
       align: 'right',
       render: (item) => <Hours hours={item.hours} />,
     },
     {
       key: 'share',
-      header: 'অংশ',
+      header: 'Share',
       align: 'right',
       className: 'w-32',
       render: (item) => (
         <div className="flex items-center justify-end gap-2">
-          <ProgressBar value={item.sharePct} max={100} className="w-16" />
+          <ProgressBar
+            value={item.sharePct}
+            max={100}
+            className="w-16"
+            ariaLabel="Share"
+          />
           <span className="num w-11 text-right text-ink-2">
             {formatPct(item.sharePct)}
           </span>
@@ -111,14 +116,14 @@ export function ProductivityTab({
   const employeeColumns: Column<ProductivityEmployeeRow>[] = [
     {
       key: 'person',
-      header: 'স্টাফ',
+      header: 'Staff',
       render: (row) => (
         <PersonCell fullName={row.fullName} empCode={row.empCode} />
       ),
     },
     {
       key: 'productive',
-      header: 'উৎপাদনশীল',
+      header: 'Productive',
       align: 'right',
       render: (row) => (
         <Hours hours={row.productiveHours} className="font-semibold" />
@@ -126,37 +131,42 @@ export function ProductivityTab({
     },
     {
       key: 'neutral',
-      header: 'নিরপেক্ষ',
+      header: 'Neutral',
       align: 'right',
       render: (row) => <Hours hours={row.neutralHours} />,
     },
     {
       key: 'unproductive',
-      header: 'অনুৎপাদনশীল',
+      header: 'Unproductive',
       align: 'right',
       render: (row) => <Hours hours={row.unproductiveHours} />,
     },
     {
       // ⚠️ ধূসর — এগুলো এখনো কোনো নিয়মে পড়েনি, খারাপ কিছু নয়
       key: 'uncategorized',
-      header: 'অচিহ্নিত',
+      header: 'Uncategorized',
       align: 'right',
       render: (row) => <Hours hours={row.uncategorizedHours} tone="muted" />,
     },
     {
       key: 'tracked',
-      header: 'মোট ট্র্যাক',
+      header: 'Total tracked',
       align: 'right',
       render: (row) => <Hours hours={row.trackedHours} tone="muted" />,
     },
     {
       key: 'share',
-      header: 'উৎপাদনশীল অংশ',
+      header: 'Productive share',
       align: 'right',
       className: 'w-32',
       render: (row) => (
         <div className="flex items-center justify-end gap-2">
-          <ProgressBar value={row.productiveSharePct} max={100} className="w-16" />
+          <ProgressBar
+            value={row.productiveSharePct}
+            max={100}
+            className="w-16"
+            ariaLabel="Productive share"
+          />
           <span className="num w-11 text-right">
             {formatPct(row.productiveSharePct)}
           </span>
@@ -168,14 +178,14 @@ export function ProductivityTab({
   return (
     <>
       <StatRow>
-        <Stat label="মোট ট্র্যাক করা" value={<Hours hours={data.totalTrackedHours} />} />
+        <Stat label="Total tracked" value={<Hours hours={data.totalTrackedHours} />} />
         <Stat
-          label="অচিহ্নিত"
+          label="Uncategorized"
           value={<Hours hours={data.uncategorizedHours} />}
           tone="muted"
         />
         <Stat
-          label="অচিহ্নিতের অংশ"
+          label="Uncategorized share"
           value={formatPct(
             data.totalTrackedHours > 0
               ? (data.uncategorizedHours / data.totalTrackedHours) * 100
@@ -187,13 +197,13 @@ export function ProductivityTab({
 
       <div className="mt-4 space-y-4">
         <Card
-          title="শীর্ষ অ্যাপ ও সাইট"
-          hint="সাইটের ক্ষেত্রে শুধু ডোমেইন — ফুল ঠিকানা কোথাও রাখা হয় না"
+          title="Top apps and sites"
+          hint="Sites show the domain only — the full address is never stored"
           padded={false}
         >
           {data.top.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-ink-3">
-              এই রেঞ্জে কোনো অ্যাপ বা সাইট জমা হয়নি।
+              No apps or sites were recorded in this range.
             </p>
           ) : (
             <Table
@@ -205,10 +215,10 @@ export function ProductivityTab({
           )}
         </Card>
 
-        <Card title="কর্মীভিত্তিক" padded={false}>
+        <Card title="By staff" padded={false}>
           {data.byEmployee.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-ink-3">
-              এই রেঞ্জে কারো ব্যবহারের হিসাব নেই।
+              No usage was recorded for anyone in this range.
             </p>
           ) : (
             <Table
@@ -228,9 +238,10 @@ export function ProductivityTab({
            হুবহু মিলবে না, সেটা ভুল নয়।
       */}
       <Caveat>
-        উৎপাদনশীল অংশ = উৎপাদনশীল ÷ মোট ট্র্যাক করা সময়, আর হরে অচিহ্নিত সময়ও
-        ধরা আছে। ক্যাটাগরির নিয়ম যত বাড়ে, সংখ্যাটাও তত বাড়ে — তাই ড্যাশবোর্ডের
-        দৈনিক স্কোরের সাথে হুবহু না মিললেও অবাক হওয়ার কিছু নেই।
+        Productive share = productive ÷ total tracked time, and the denominator
+        includes uncategorized time too. The more category rules there are, the
+        higher this number climbs — so do not be surprised if it does not match
+        the dashboard's daily score exactly.
       </Caveat>
 
       <MetaNote meta={data.meta} />

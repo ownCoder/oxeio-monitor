@@ -62,7 +62,7 @@ export function GalleryPage() {
 
   const items = data?.items ?? [];
 
-  /** ফিল্টার বদলালে পাতা ১-এ ফেরা — নইলে "পাতা ৩" খালি দেখাত */
+  /** ফিল্টার বদলালে পাতা ১-এ ফেরা — নইলে "Page 3" খালি দেখাত */
   const changeDate = useCallback((next: string) => {
     setDate(next);
     setPage(1);
@@ -84,10 +84,12 @@ export function GalleryPage() {
 
   return (
     <Page
-      title="স্ক্রিনশট"
+      title="Screenshots"
       subtitle={
         data
-          ? `${formatDate(data.date)} · ${formatCount(data.total)}টি ছবি`
+          ? `${formatDate(data.date)} · ${formatCount(data.total)} ${
+              data.total === 1 ? 'image' : 'images'
+            }`
           : formatDate(date)
       }
       actions={
@@ -96,31 +98,40 @@ export function GalleryPage() {
             <EmployeePicker
               value={employeeId}
               onChange={changeEmployee}
+              // ⚠️ `label`/`allLabel` স্পষ্ট করে দেওয়া — কম্পোনেন্টের ডিফল্ট
+              //    দুটো এখনো বাংলা, আর সেগুলো অন্য মালিকের ফাইলে
+              label="Staff"
               allowAll
-              allLabel="সবাই"
+              allLabel="Everyone"
               // ⚠️ চলে যাওয়া কর্মীর পুরোনো দিনও দেখতে হয় — নইলে তার
               //    স্ক্রিনশট থাকা সত্ত্বেও নামটাই বাছা যেত না
               includeInactive
             />
           )}
-          <DatePicker value={date} onChange={changeDate} withArrows />
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={changeDate}
+            withArrows
+          />
         </>
       }
     >
       <AuditNote isEmployee={isEmployee} />
 
       {loading && !data ? (
-        <Loading label="স্ক্রিনশট আসছে…" />
+        <Loading label="Loading screenshots…" />
       ) : error ? (
         <ErrorBox error={error} retry={reload} />
       ) : items.length === 0 ? (
         <Empty
-          title="এই দিনে কোনো স্ক্রিনশট নেই"
+          title="No screenshots on this day"
           hint={
             <>
-              স্ক্রিনশট ওঠে শুধু <b>কাজের সময়ে</b> — কেউ সারাদিন নিষ্ক্রিয়
-              থাকলে বা এজেন্ট বন্ধ থাকলে ওই দিনের ঘর খালিই থাকে। ছুটির দিন
-              হলে এটাই স্বাভাবিক। অন্য একটা তারিখ বেছে দেখুন।
+              Screenshots are taken only while someone is <b>working</b> — if
+              a person stayed idle all day, or the agent was down, the day
+              stays empty. On a weekly off or a holiday that is exactly what
+              you should see. Try another date.
             </>
           }
         />
@@ -129,7 +140,7 @@ export function GalleryPage() {
           <ShotGrid
             items={items}
             urls={urls}
-            // ⚠️ "সবাই" দেখা হলে নাম ছাড়া কোন ছবি কার বোঝার উপায় নেই
+            // ⚠️ "Everyone" দেখা হলে নাম ছাড়া কোন ছবি কার বোঝার উপায় নেই
             showName={!isEmployee && employeeId === null}
             onOpen={setOpenIndex}
           />
@@ -172,11 +183,13 @@ export function GalleryPage() {
 function AuditNote({ isEmployee }: { isEmployee: boolean }) {
   return (
     <p className="mb-3 rounded-lg border border-brand/30 bg-brand-bg px-3.5 py-2.5 text-xs text-ink-2">
-      স্ক্রিনশট দেখা হলে সেটা <b>audit log-এ থাকে</b> — কে, কখন, কার ছবি
-      দেখল।{' '}
+      {/* ⚠️ বাক্যটা হুবহু এই — "Opening a screenshot is recorded in the audit
+          log." <b> শুধু জোর দেয়, লেখাটা ভাঙে না */}
+      Opening a screenshot is <b>recorded in the audit log</b> — who opened
+      it, when, and whose screen it was.{' '}
       {isEmployee
-        ? 'আপনি শুধু নিজের স্ক্রিনশটই দেখতে পান।'
-        : 'আপনি এই পাতাটা খুললেও একটা সারি লেখা হয়।'}
+        ? 'You can only see your own screenshots.'
+        : 'Even opening this page writes a row.'}
     </p>
   );
 }
@@ -194,17 +207,18 @@ function Pager({
     <Card padded={false}>
       <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
         <Button onClick={() => onChange(page - 1)} disabled={page <= 1}>
-          ◀ আগের পাতা
+          ◀ Previous
         </Button>
         <Button
           onClick={() => onChange(page + 1)}
           disabled={page >= totalPages}
         >
-          পরের পাতা ▶
+          Next ▶
         </Button>
-        {/* ⚠️ `.num` শুধু সংখ্যার উপরে — মনো ফন্টে বাংলা গ্লিফ নেই */}
+        {/* ⚠️ `.num` শুধু সংখ্যার উপরে, শব্দের উপরে নয় — ওটা tabular-nums
+            আনার জন্য, আর মনো ফন্টে গোটা বাক্য বসালে পট্টিটা বেঢপ দেখাত */}
         <span className="ml-auto text-xs text-ink-3">
-          পাতা <span className="num">{formatCount(page)}</span> /{' '}
+          Page <span className="num">{formatCount(page)}</span> /{' '}
           <span className="num">{formatCount(totalPages)}</span>
         </span>
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * I09 — "আর ১ মিনিট পর বেরিয়ে যাবেন"।
+ * I09 — "Signing out in 60 seconds"।
  *
  * ⚠️ `settings/ui.tsx`-এর `Modal` ব্যবহার করা হয়নি, ইচ্ছাকৃতভাবে: ওটা
  *    `document.body`-র স্ক্রল বন্ধ করে আর পুরো পর্দা ঢেকে দেয়। আধঘণ্টা ধরে
@@ -55,31 +55,35 @@ export function IdleWarning({
       ref={boxRef}
       role="alertdialog"
       aria-live="assertive"
-      aria-label="সেশনের মেয়াদ শেষ হতে চলেছে"
+      aria-label="Your session is about to end"
       className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-sm rounded-xl border border-brand/40 bg-surface p-4 shadow-lg sm:inset-x-auto sm:right-4 sm:bottom-4"
     >
+      {/*
+        ⚠️ একবচন/বহুবচন — "1 seconds" লেখাটা কাউন্টডাউনের শেষ সেকেন্ডে
+           প্রতিবারই চোখে পড়ত।
+      */}
       <h2 className="text-[14px] font-semibold text-brand-ink">
-        আর {secondsLeft} সেকেন্ড পর বেরিয়ে যাবেন
+        Signing out in {secondsLeft} second{secondsLeft === 1 ? '' : 's'}
       </h2>
       <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
-        অনেকক্ষণ কোনো কাজ হয়নি, তাই নিরাপত্তার জন্য সেশন বন্ধ হয়ে যাবে।
-        পর্দায় যেকোনো ক্লিক বা কি-বোর্ড চাপলেই এটা বাতিল হবে।
+        Nothing has happened for a while, so the session will close for
+        security. Any click or key press cancels this.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onStay}
-          className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[13px] font-medium text-white transition hover:bg-black focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="rounded-md border border-ink bg-ink px-3 py-1.5 text-[13px] font-medium text-on-ink transition hover:bg-ink-strong focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
-          এখানেই থাকি
+          Stay signed in
         </button>
         <button
           type="button"
           onClick={onLogoutNow}
           className="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
-          এখনই বেরোই
+          Sign out now
         </button>
       </div>
     </div>

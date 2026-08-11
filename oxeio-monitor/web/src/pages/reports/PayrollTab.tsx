@@ -28,17 +28,17 @@ export function PayrollTab({ month }: { month: string }) {
     [month],
   );
 
-  if (loading && !data) return <Loading label="পে-রোল আনা হচ্ছে…" />;
+  if (loading && !data) return <Loading label="Loading payroll…" />;
   if (error) return <ErrorBox error={error} retry={reload} />;
 
   if (!data || data.rows.length === 0) {
     return (
       <Empty
-        title={`${formatMonth(month)} মাসের কোনো সারি নেই`}
+        title={`No rows for ${formatMonth(month)}`}
         hint={
           data && data.missingSummary.length > 0
-            ? `এই ${data.missingSummary.length} জনের মাসিক হিসাব এখনো তৈরি হয়নি: ${data.missingSummary.join(', ')}। মাস শেষ হলে বা রাতের হিসাব চললে সারিগুলো আসবে।`
-            : 'ওই মাসের মাসিক হিসাব এখনো তৈরি হয়নি। আগের কোনো মাস বেছে দেখুন।'
+            ? `The monthly figures for these ${data.missingSummary.length} are not built yet: ${data.missingSummary.join(', ')}. The rows appear once the month ends or the nightly rollup runs.`
+            : 'The monthly figures for that month are not built yet. Try an earlier month.'
         }
       />
     );
@@ -47,7 +47,7 @@ export function PayrollTab({ month }: { month: string }) {
   const columns: Column<PayrollRow>[] = [
     {
       key: 'person',
-      header: 'স্টাফ',
+      header: 'Staff',
       render: (row) => (
         <PersonCell
           fullName={row.fullName}
@@ -58,13 +58,13 @@ export function PayrollTab({ month }: { month: string }) {
     },
     {
       key: 'target',
-      header: 'টার্গেট',
+      header: 'Target',
       align: 'right',
       render: (row) => <Hours hours={row.targetHours} tone="muted" />,
     },
     {
       key: 'credited',
-      header: 'গোনা হয়েছে',
+      header: 'Counted',
       align: 'right',
       render: (row) => (
         <Hours hours={row.creditedHours} className="font-semibold" />
@@ -72,18 +72,19 @@ export function PayrollTab({ month }: { month: string }) {
     },
     {
       key: 'pace',
-      header: 'অগ্রগতি',
+      header: 'Progress',
       className: 'w-24',
       render: (row) => (
         <ProgressBar
           value={hoursToSeconds(row.creditedHours)}
           max={hoursToSeconds(row.targetHours)}
+          ariaLabel="Target"
         />
       ),
     },
     {
       key: 'shortfall',
-      header: 'ঘাটতি',
+      header: 'Shortfall',
       align: 'right',
       render: (row) =>
         Number(row.shortfallHours) > 0 ? (
@@ -101,7 +102,7 @@ export function PayrollTab({ month }: { month: string }) {
        *    "× ১.৫" বসিয়ে দিলে সেটাই নীরবে কোম্পানির নীতি হয়ে যেত।
        */
       key: 'overtime',
-      header: 'অতিরিক্ত ঘণ্টা',
+      header: 'Overtime',
       align: 'right',
       render: (row) =>
         Number(row.overtimeHours) > 0 ? (
@@ -112,20 +113,20 @@ export function PayrollTab({ month }: { month: string }) {
     },
     {
       key: 'salary',
-      header: 'মাসিক বেতন',
+      header: 'Monthly salary',
       align: 'right',
       // ⚠️ `null` = বেতন **বসানো নেই**, শূন্য নয়। `—` লিখলে দুটো এক দেখাত,
       //    আর তখন কারো বেতন বসাতে ভুলে যাওয়া ধরাই পড়ত না।
       render: (row) =>
         row.monthlySalary === null ? (
-          <span className="text-[11.5px] text-ink-3">বসানো নেই</span>
+          <span className="text-[11.5px] text-ink-3">Not set</span>
         ) : (
           <span className="num">{formatTaka(row.monthlySalary)}</span>
         ),
     },
     {
       key: 'rate',
-      header: 'ঘণ্টার হার',
+      header: 'Hourly rate',
       align: 'right',
       render: (row) => (
         <span className="num text-ink-3">{formatTaka(row.hourlyRate)}</span>
@@ -133,7 +134,7 @@ export function PayrollTab({ month }: { month: string }) {
     },
     {
       key: 'deduction',
-      header: 'কর্তন',
+      header: 'Deduction',
       align: 'right',
       render: (row) =>
         row.deduction !== null && Number(row.deduction) > 0 ? (
@@ -144,7 +145,7 @@ export function PayrollTab({ month }: { month: string }) {
     },
     {
       key: 'payable',
-      header: 'প্রদেয়',
+      header: 'Payable',
       align: 'right',
       render: (row) => (
         <span className="num font-semibold">{formatTaka(row.payable)}</span>
@@ -155,8 +156,8 @@ export function PayrollTab({ month }: { month: string }) {
   return (
     <>
       <Card
-        title={`পে-রোল ঘণ্টা · ${formatMonth(month)}`}
-        hint="কর্তন = বেতন × ঘাটতি ÷ টার্গেট। এই শিট কে কখন দেখল, তা audit log-এ লেখা থাকে।"
+        title={`Payroll hours · ${formatMonth(month)}`}
+        hint="Deduction = salary × shortfall ÷ target. Every view of this sheet is written to the audit log."
         padded={false}
       >
         <Table
@@ -169,23 +170,24 @@ export function PayrollTab({ month }: { month: string }) {
 
       {/* ⭐ O4 — সার্ভারের `payroll.math.ts`-ও ঠিক এই কথাটাই বলে */}
       <Caveat>
-        অতিরিক্ত ঘণ্টার টাকা হিসাব করা হয়নি — হার এখনো নির্ধারিত নয় (open
-        question O4)। উপরের "প্রদেয়" শুধু বেতন থেকে ঘাটতির কর্তন বাদ দেওয়া অঙ্ক।
+        No money is calculated for overtime — the rate is still undecided (open
+        question O4). “Payable” above is only the salary minus the shortfall
+        deduction.
       </Caveat>
 
       {data.missingSalary.length > 0 && (
         <Caveat>
-          এই <span className="num">{data.missingSalary.length}</span> জনের বেতন
-          বসানো নেই, তাই তাঁদের কর্তন ও প্রদেয় হিসাব করা যায়নি (শূন্য ধরা
-          হয়নি): {data.missingSalary.join(', ')}
+          These <span className="num">{data.missingSalary.length}</span> have no
+          salary on file, so no deduction or payable could be worked out for
+          them (they are not treated as zero): {data.missingSalary.join(', ')}
         </Caveat>
       )}
 
       {data.missingSummary.length > 0 && (
         <Caveat>
-          এই <span className="num">{data.missingSummary.length}</span> জনের ওই
-          মাসের হিসাব এখনো তৈরি হয়নি, তাই তাঁরা উপরের তালিকায় <b>নেই</b>:{' '}
-          {data.missingSummary.join(', ')}
+          These <span className="num">{data.missingSummary.length}</span> have
+          no figures for that month yet, so they are <b>not</b> in the table
+          above: {data.missingSummary.join(', ')}
         </Caveat>
       )}
     </>

@@ -14,11 +14,11 @@ import { ApiError } from '../api/client';
  * if (loading && !data) return <Loading />;
  * if (error) return <ErrorBox error={error} retry={reload} />;
  * if (!data || data.rows.length === 0)
- *   return <Empty title="এই দিনে কিছু নেই" hint="…" />;
+ *   return <Empty title="No activity on this day" hint="…" />;
  * ```
  */
 
-export function Loading({ label = 'লোড হচ্ছে…' }: { label?: string }) {
+export function Loading({ label = 'Loading…' }: { label?: string }) {
   return (
     <div
       className="grid place-items-center rounded-xl border border-line bg-surface px-6 py-14 text-sm text-ink-3"
@@ -41,12 +41,22 @@ export function Loading({ label = 'লোড হচ্ছে…' }: { label?: st
  * ভুলের বাক্স।
  *
  * ⭐ **৪০৩ আলাদা করে দেখানো হয়** — ম্যানেজার owner-only ডেটা চাইলে
- * "সার্ভারে সমস্যা" নয়, "আপনার এই অংশে ঢোকার অনুমতি নেই" বলা দরকার।
- * আর তখন "আবার চেষ্টা করুন" বোতামটাও দেখানো হয় না: বারবার চাপলেও
- * অনুমতি আসবে না, শুধু বিভ্রান্তি বাড়ত।
+ * "সার্ভারে সমস্যা" নয়, "You don't have access" বলা দরকার। আর তখন
+ * "Retry" বোতামটাও দেখানো হয় না: বারবার চাপলেও অনুমতি আসবে না, শুধু
+ * বিভ্রান্তি বাড়ত।
  *
  * ⚠️ ৪০৩ যেন প্রথমেই না আসে — owner-only জিনিস ম্যানেজারকে **দেখানোই
  *    হবে না** (`useAuth().user.role`)। এই বাক্সটা শেষ রক্ষাকবচ।
+ *
+ * ⚠️⚠️ **`error.message` সার্ভারের নিজের বার্তা** — ৪০৩/৪০৪ ছাড়া বাকি
+ *    ভুলে পর্দায় ওটাই হুবহু বসে। ইচ্ছাকৃত: বার্তাটা এখানে বানানো হয় না,
+ *    শুধু দেখানো হয়, কারণ "কী ভুল হলো" সবচেয়ে ভালো জানে সার্ভারই।
+ *    সার্ভারের ব্যবহারকারী-মুখী বার্তাগুলো এখন ইংরেজি (একসাথে অনুবাদ করা
+ *    হয়েছে), তাই পর্দা মিশ্র ভাষায় থাকে না।
+ *
+ * ⚠️ ক্লায়েন্টে অনুবাদের টেবিল **বসাবেন না** — তাহলে সার্ভারে নতুন কোনো
+ *    বার্তা যোগ হলে সেটা নীরবে অনূদিত-না-হয়ে বেরোত আর কেউ ধরতে পারত না।
+ *    ভাষা ঠিক করার জায়গা সার্ভার, এখানে নয়।
  */
 export function ErrorBox({
   error,
@@ -60,10 +70,10 @@ export function ErrorBox({
   const notFound = status === 404;
 
   const message = forbidden
-    ? 'আপনার এই অংশে ঢোকার অনুমতি নেই'
+    ? "You don't have access"
     : notFound
-      ? 'যা খুঁজছেন সেটা নেই'
-      : (error?.message ?? 'কিছু একটা ভুল হয়েছে');
+      ? "What you're looking for isn't here"
+      : (error?.message ?? 'Something went wrong');
 
   return (
     <div
@@ -74,7 +84,7 @@ export function ErrorBox({
 
       {!forbidden && (
         <p className="mt-1 text-xs text-ink-3">
-          সার্ভারে পৌঁছানো না গেলে একটু পরে আবার দেখুন।
+          If the server can't be reached, try again in a moment.
         </p>
       )}
 
@@ -84,7 +94,7 @@ export function ErrorBox({
           onClick={retry}
           className="mt-3 rounded-md border border-brand/40 bg-surface px-3 py-1.5 text-[13px] font-medium text-brand-ink transition hover:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
-          আবার চেষ্টা করুন
+          Retry
         </button>
       )}
     </div>
@@ -105,7 +115,7 @@ export function Empty({
 }: {
   title: ReactNode;
   hint?: ReactNode;
-  /** "স্টাফ যোগ করুন" ধরনের পরের পদক্ষেপ */
+  /** "Add staff" ধরনের পরের পদক্ষেপ */
   action?: ReactNode;
 }) {
   return (
@@ -120,9 +130,10 @@ export function Empty({
 /**
  * ছোট্ট সতর্কবার্তা — সার্ভারের `caveat` ফিল্ড দেখানোর জন্য।
  *
- * ⭐ কিছু রেসপন্সে `caveat` আসে: "একজনের একাধিক ডিভাইস চললে সময় যোগ হয়ে
- * যায়"। ⚠️ ওটা **লুকিয়ে ফেলা যাবে না** — অনুপাত ঠিক থাকলেও পরম সেকেন্ডকে
- * কাজের ঘণ্টা ধরা যায় না, আর সেটা না জানালে কেউ ভুল সিদ্ধান্ত নেবে।
+ * ⭐ কিছু রেসপন্সে `caveat` আসে: "When one person runs more than one device
+ * the time is added up…"। ⚠️ ওটা **লুকিয়ে ফেলা যাবে না** — অনুপাত ঠিক
+ * থাকলেও পরম সেকেন্ডকে কাজের ঘণ্টা ধরা যায় না, আর সেটা না জানালে কেউ ভুল
+ * সিদ্ধান্ত নেবে।
  * সরু আউটলাইন, সলিড লাল নয় — এটা ভুল নয়, শুধু একটা শর্ত।
  */
 export function Caveat({ children }: { children: ReactNode }) {

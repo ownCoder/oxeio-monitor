@@ -42,13 +42,13 @@ export function AttendanceTab({
     [from, to, employeeId],
   );
 
-  if (loading && !data) return <Loading label="অ্যাটেনডেন্স আনা হচ্ছে…" />;
+  if (loading && !data) return <Loading label="Loading attendance…" />;
   if (error) return <ErrorBox error={error} retry={reload} />;
   if (!data || data.rows.length === 0) {
     return (
       <Empty
-        title="এই রেঞ্জে কোনো সারি নেই"
-        hint="কর্মীদের কর্মকাল এই তারিখগুলোর বাইরে হতে পারে, নয়তো এজেন্ট এখনো কোনো ডেটা পাঠায়নি। অন্য তারিখ বেছে দেখুন।"
+        title="No rows in this range"
+        hint="Staff may have joined or left outside these dates, or the agent has not sent anything yet. Try other dates."
       />
     );
   }
@@ -59,7 +59,7 @@ export function AttendanceTab({
   const columns: Column<AttendanceRow>[] = [
     {
       key: 'person',
-      header: 'স্টাফ',
+      header: 'Staff',
       render: (row) => (
         <PersonCell
           fullName={row.fullName}
@@ -70,7 +70,7 @@ export function AttendanceTab({
     },
     {
       key: 'date',
-      header: 'তারিখ',
+      header: 'Date',
       render: (row) => (
         <span className="whitespace-nowrap">
           <span className="num">{formatDateShort(row.date)}</span>
@@ -82,7 +82,7 @@ export function AttendanceTab({
     },
     {
       key: 'dayType',
-      header: 'দিন',
+      header: 'Day',
       render: (row) => (
         <Pill muted={row.dayType !== 'workday'}>
           {DAY_TYPE_LABEL[row.dayType]}
@@ -91,7 +91,7 @@ export function AttendanceTab({
     },
     {
       key: 'worked',
-      header: 'কাজ',
+      header: 'Worked',
       align: 'right',
       render: (row) => <Hours hours={row.workedHours} />,
     },
@@ -99,20 +99,20 @@ export function AttendanceTab({
       // ⚠️ ধূসর — idle সময় **গোনা হয়নি**। কালোয় দেখালে মনে হতো এটাও
       //    কাজের ঘণ্টার সাথে যোগ হয়েছে।
       key: 'idle',
-      header: 'অলস',
+      header: 'Idle',
       align: 'right',
       render: (row) => <Hours hours={row.idleHours} tone="muted" />,
     },
     {
       key: 'adjustment',
-      header: 'সমন্বয়',
+      header: 'Adjustment',
       align: 'right',
       render: (row) => <SignedHours hours={row.adjustmentHours} />,
     },
     {
       // ⭐ এই কলামটাই আসল — worked + adjustment, টার্গেটের সাথে এটাই মেলে
       key: 'credited',
-      header: 'গোনা হয়েছে',
+      header: 'Counted',
       align: 'right',
       render: (row) => (
         <Hours hours={row.creditedHours} className="font-semibold" />
@@ -120,7 +120,7 @@ export function AttendanceTab({
     },
     {
       key: 'target',
-      header: 'টার্গেট',
+      header: 'Target',
       align: 'right',
       render: (row) => <Hours hours={row.targetHours} tone="muted" />,
     },
@@ -129,26 +129,26 @@ export function AttendanceTab({
   return (
     <>
       <StatRow>
-        <Stat label="স্টাফ" value={formatCount(totals.employees)} />
-        <Stat label="সারি" value={formatCount(totals.rows)} />
-        <Stat label="কাজ হওয়া দিন" value={formatCount(totals.daysWithWork)} />
+        <Stat label="Staff" value={formatCount(totals.employees)} />
+        <Stat label="Rows" value={formatCount(totals.rows)} />
+        <Stat label="Days with work" value={formatCount(totals.daysWithWork)} />
         <Stat
-          label="মোট কাজ"
+          label="Total worked"
           value={<Hours hours={totals.workedHours} />}
         />
         <Stat
-          label="মোট গোনা"
+          label="Total counted"
           value={<Hours hours={totals.creditedHours} />}
         />
         <Stat
-          label="মোট টার্গেট"
+          label="Total target"
           value={<Hours hours={totals.targetHours} />}
           tone="muted"
         />
       </StatRow>
 
       <div className="mt-4">
-        <Card title="দিনে দিনে" padded={false}>
+        <Card title="Day by day" padded={false}>
           <Table
             columns={columns}
             rows={shown}
@@ -159,7 +159,7 @@ export function AttendanceTab({
             footer={
               <tr>
                 <td className="px-3 py-2" colSpan={3}>
-                  মোট
+                  Total
                 </td>
                 <td className="num px-3 py-2 text-right">
                   <Hours hours={totals.workedHours} />

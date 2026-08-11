@@ -12,24 +12,25 @@ import { Empty } from '../components/States';
  *    পারে না যে সেটিংস বলে একটা পর্দা আছে। ৪০৩ বললে উল্টো নিশ্চিত করে
  *    দেওয়া হতো যে জিনিসটা আছে, শুধু তার নাগালের বাইরে।
  *
- * ⚠️ "ফিরে যান" লিঙ্কটা ভূমিকা বুঝে — স্টাফের জন্য `/` মানে লাইভ বোর্ড,
- *    আর ওটা তার জন্য ৪০৩। তাকে সেদিকে ঠেলে দেওয়ার মানে হয় না।
+ * ⚠️ ফেরার লিঙ্কটা ভূমিকা বুঝে — স্টাফের জন্য `/` মানে লাইভ বোর্ড, আর ওটা
+ *    তার জন্য ৪০৩। তাকে সেদিকে ঠেলে দেওয়ার মানে হয় না, তাই তার লেখাটাও
+ *    আলাদা: "My screenshots"।
  */
 export function NotFoundPage() {
   const { user } = useAuth();
   const home = user?.role === 'employee' ? '/screenshots' : '/';
 
   return (
-    <Page title="পাওয়া যায়নি">
+    <Page title="Not found">
       <Empty
-        title="এই ঠিকানায় কিছু নেই"
-        hint="লিঙ্কটা পুরোনো হতে পারে, বা ঠিকানায় টাইপো আছে।"
+        title="There's nothing at this address"
+        hint="The link may be old, or the address has a typo."
         action={
           <Link
             to={home}
             className="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            {user?.role === 'employee' ? 'আমার স্ক্রিনশট' : 'লাইভ বোর্ডে ফিরুন'}
+            {user?.role === 'employee' ? 'My screenshots' : 'Back to Live Board'}
           </Link>
         }
       />

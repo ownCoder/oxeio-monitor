@@ -11,7 +11,8 @@ import { formatDuration } from '../../lib/format';
  *
  * ⭐ SVG হাতে আঁকা, কোনো চার্ট লাইব্রেরি নেই — একটা বার-চার্টের জন্য
  * ২০০ কিলোবাইট নির্ভরতা টানার মানে হয় না, আর ব্র্যান্ডের রঙ-নিয়ম
- * (কালো = গোনা হওয়া কাজ) লাইব্রেরির ডিফল্ট প্যালেটের সাথে লড়ত।
+ * (নিরেট `ink` = গোনা হওয়া কাজ) লাইব্রেরির ডিফল্ট প্যালেটের সাথে লড়ত।
+ * ⚠️ `ink` মানে "কালো" নয় — Midnight থিমে ওটা প্রায় সাদা (#e8ecf1)।
  *
  * ⚠️ সার্ভার শুধু `countsAsWork` সেগমেন্ট গোনে — idle বা locked এই চার্টে
  * নেই। তাই টাইমলাইনের মোট সময়ের চেয়ে এখানকার যোগফল ছোট হবে, এবং সেটাই ঠিক।
@@ -46,8 +47,8 @@ export function HourlyChart({
   return (
     <section>
       <SectionHead
-        title="ঘণ্টাভিত্তিক কাজ"
-        hint="শুধু গোনা হওয়া সময় · ঢাকার ঘড়ি ধরে 24টা ঘণ্টা"
+        title="Work by hour"
+        hint="Counted time only · 24 hours on the Dhaka clock"
       />
 
       {loading && !data ? (
@@ -56,8 +57,8 @@ export function HourlyChart({
         <ErrorBox error={error} retry={reload} />
       ) : !data || data.buckets.length === 0 || data.totalActiveSec === 0 ? (
         <Empty
-          title="এই দিনে গোনা হওয়ার মতো কোনো কাজ নেই"
-          hint="নিষ্ক্রিয় বা লক থাকা সময় এই চার্টে আসে না। উপরের টাইমলাইনে ধূসর দাগ থাকলে PC চলছিল, কিন্তু কাজ গোনা হয়নি।"
+          title="No counted work on this day"
+          hint="Idle and locked time never reaches this chart. Grey bands in the timeline above mean the PC was on, but the work wasn't counted."
         />
       ) : (
         <Body data={data} />
@@ -90,7 +91,7 @@ function Body({ data }: { data: HourlyData }) {
             viewBox={`0 0 ${W} ${H}`}
             className="block w-full min-w-[620px]"
             role="img"
-            aria-label={`ঘণ্টাভিত্তিক কাজ — মোট ${formatDuration(data.totalActiveSec)}`}
+            aria-label={`Work by hour — ${formatDuration(data.totalActiveSec)} in total`}
           >
             {/* এক ঘণ্টার রেফারেন্স রেখা — বারগুলো কীসের তুলনায় লম্বা */}
             <line
@@ -108,7 +109,7 @@ function Body({ data }: { data: HourlyData }) {
               fontSize={9}
               className="num fill-ink-3"
             >
-              60মি
+              60m
             </text>
 
             {data.buckets.map((b) => {
@@ -156,9 +157,9 @@ function Body({ data }: { data: HourlyData }) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line px-4 py-2.5 text-[11.5px] text-ink-3">
-          <span>নিচের সংখ্যা = ঢাকার ঘণ্টা (0–23)</span>
+          <span>Numbers below = hour of the Dhaka day (0–23)</span>
           <span>
-            দিনের মোট গোনা কাজ{' '}
+            Counted work this day{' '}
             <Duration seconds={data.totalActiveSec} className="text-ink-2" />
           </span>
         </div>
@@ -166,8 +167,8 @@ function Body({ data }: { data: HourlyData }) {
 
       {overFull && (
         <Caveat>
-          কোনো কোনো ঘণ্টায় <b>60 মিনিটের বেশি</b> জমেছে — ওই সময়ে একজনেরই
-          দুটো PC চলেছে, আর সময়টা দুবার গোনা হয়েছে।
+          Some hours hold <b>more than 60 minutes</b> — one person had two PCs
+          running then, and that time is counted twice.
         </Caveat>
       )}
     </>

@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
    *    কোনো উপায় থাকবে না। নীরবে গিলে ফেললে বাগটা কখনো খুঁজে পাওয়া যেত না।
    */
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('[oXeio] পেজ render করতে গিয়ে ভুল:', error, info.componentStack);
+    console.error('[oXeio] Error while rendering the page:', error, info.componentStack);
   }
 
   /**
@@ -65,11 +65,11 @@ export class ErrorBoundary extends Component<Props, State> {
         className="mx-auto max-w-xl rounded-xl border border-brand/30 bg-brand-bg px-5 py-6 text-center"
       >
         <p className="text-sm font-medium text-brand-ink">
-          এই পাতাটা দেখাতে গিয়ে সমস্যা হয়েছে
+          This page couldn't be displayed
         </p>
         <p className="mt-1.5 text-xs text-ink-3">
-          অন্য কোনো ট্যাবে গেলে সেটা ঠিকই কাজ করবে। সমস্যাটা বারবার হলে
-          স্ক্রিনশট নিয়ে জানান — এটা সিস্টেমের একটা বাগ, আপনার কিছু ভুল নয়।
+          The other tabs will still work. If it keeps happening, send a
+          screenshot — this is a bug in the system, not something you did wrong.
         </p>
         {/* ⚠️ কারিগরি বার্তাটা লুকোনো হয় না — ওটাই বাগটা খুঁজে পাওয়ার একমাত্র সূত্র */}
         <pre className="num mt-3 overflow-x-auto rounded-md border border-line bg-surface px-3 py-2 text-left text-[11px] whitespace-pre-wrap text-ink-2">

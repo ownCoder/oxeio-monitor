@@ -54,10 +54,16 @@ import {
  * আর সেটা দেখে মনে হতো বেতন বসানোই নেই।
  */
 
+/**
+ * ⚠️ কর্মীর `inactive` মানে **চাকরি ছেড়েছেন বা বন্ধ করা হয়েছে** — লাইভ
+ *    বোর্ডের "নিষ্ক্রিয়" (Idle, কি-বোর্ড চুপ) নয়। তাই এখানে "Idle" নয়,
+ *    "Inactive"; দুটোকে এক শব্দে মেলালে ছুটিতে থাকা কর্মী আর চাকরি ছাড়া
+ *    কর্মী একই রকম দেখাত।
+ */
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'সক্রিয়' },
-  { value: 'inactive', label: 'নিষ্ক্রিয়' },
-  { value: 'all', label: 'সবাই' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'all', label: 'Everyone' },
 ] as const;
 
 type StatusFilter = EmployeeStatus | 'all';
@@ -100,7 +106,7 @@ export function StaffTab() {
   const columns: Column<EmployeeView>[] = [
     {
       key: 'name',
-      header: 'নাম',
+      header: 'Name',
       render: (emp) => (
         <PersonCell
           fullName={emp.fullName}
@@ -111,17 +117,17 @@ export function StaffTab() {
     },
     {
       key: 'department',
-      header: 'বিভাগ',
+      header: 'Department',
       render: (emp) => emp.department ?? '—',
     },
     {
       key: 'policy',
-      header: 'work policy',
+      header: 'Work policy',
       render: (emp) => policyName(emp.policyId),
     },
     {
       key: 'joined',
-      header: 'যোগদান',
+      header: 'Joined',
       render: (emp) => (
         <span className="num">
           {emp.joinedOn ? formatDate(emp.joinedOn) : '—'}
@@ -133,7 +139,7 @@ export function StaffTab() {
       ? [
           {
             key: 'salary',
-            header: 'মাসিক বেতন',
+            header: 'Monthly salary',
             align: 'right' as const,
             render: (emp: EmployeeView) => (
               <span className="num">{formatTaka(emp.monthlySalary)}</span>
@@ -143,12 +149,12 @@ export function StaffTab() {
       : []),
     {
       key: 'status',
-      header: 'অবস্থা',
+      header: 'Status',
       render: (emp) =>
         emp.status === 'active' ? (
-          <Chip tone="counted">সক্রিয়</Chip>
+          <Chip tone="counted">Active</Chip>
         ) : (
-          <Chip>নিষ্ক্রিয়{emp.leftOn ? ` · ${formatDate(emp.leftOn)}` : ''}</Chip>
+          <Chip>Inactive{emp.leftOn ? ` · ${formatDate(emp.leftOn)}` : ''}</Chip>
         ),
     },
     {
@@ -157,22 +163,22 @@ export function StaffTab() {
       align: 'right',
       render: (emp) => (
         <RowActions>
-          <MiniButton onClick={() => setEditing(emp)}>সম্পাদনা</MiniButton>
+          <MiniButton onClick={() => setEditing(emp)}>Edit</MiniButton>
           {emp.status === 'active' ? (
             <>
               <MiniButton
                 onClick={() => setPortalFor(emp)}
-                title="স্টাফ নিজের হিসাব দেখার জন্য লগইন পাবে"
+                title="Gives them a login to see their own hours"
               >
-                পোর্টাল অ্যাকাউন্ট
+                Portal account
               </MiniButton>
               <MiniButton tone="danger" onClick={() => setDeactivating(emp)}>
-                নিষ্ক্রিয় করুন
+                Deactivate
               </MiniButton>
             </>
           ) : (
             <MiniButton onClick={() => setReactivating(emp)}>
-              আবার চালু করুন
+              Reactivate
             </MiniButton>
           )}
         </RowActions>
@@ -189,18 +195,18 @@ export function StaffTab() {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink-3">খুঁজুন</span>
+            <span className="mb-1 block text-[11.5px] text-ink-3">Search</span>
             <input
               type="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="নাম, কোড বা ইমেইল"
+              placeholder="Name, code or email"
               className="w-56 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none placeholder:text-ink-3 focus:border-brand focus:ring-2 focus:ring-brand/25"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink-3">অবস্থা</span>
+            <span className="mb-1 block text-[11.5px] text-ink-3">Status</span>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusFilter)}
@@ -216,7 +222,7 @@ export function StaffTab() {
         </div>
 
         <Button tone="primary" onClick={() => setCreating(true)}>
-          স্টাফ যোগ করুন
+          Add staff
         </Button>
       </div>
 
@@ -225,15 +231,15 @@ export function StaffTab() {
 
       {!staff.loading && !staff.error && rows.length === 0 && (
         <Empty
-          title={search ? 'এই খোঁজে কাউকে পাওয়া গেল না' : 'এখনো কোনো স্টাফ নেই'}
+          title={search ? 'No one matches that search' : 'No staff yet'}
           hint={
             search
-              ? 'নাম, কোড বা ইমেইলের অংশ দিয়ে খুঁজুন — অথবা "অবস্থা" বদলে নিষ্ক্রিয়দেরও দেখুন।'
-              : 'প্রথমে স্টাফ যোগ করুন, তারপর "ডিভাইস" ট্যাব থেকে তার PC-র জন্য এনরোলমেন্ট কোড বানান — ওটা ছাড়া এজেন্ট কোনো ডেটা পাঠাবে না।'
+              ? 'Try part of a name, code or email — or change "Status" to include inactive people.'
+              : 'Add someone first, then create an enrolment code for their PC on the "Devices" tab — without it the agent sends nothing.'
           }
           action={
             <Button tone="primary" onClick={() => setCreating(true)}>
-              স্টাফ যোগ করুন
+              Add staff
             </Button>
           }
         />
@@ -242,10 +248,10 @@ export function StaffTab() {
       {rows.length > 0 && (
         <Card
           padded={false}
-          title={`স্টাফ · ${staff.data?.total ?? rows.length} জন`}
+          title={`Staff · ${staff.data?.total ?? rows.length}`}
           hint={
             canSeeSalary
-              ? 'বেতন দেখা ও বদলানো — দুটোই audit log-এ লেখা থাকে'
+              ? 'Viewing or changing salary is recorded in the audit log.'
               : undefined
           }
         >
@@ -267,7 +273,7 @@ export function StaffTab() {
           canSeeSalary={canSeeSalary}
           policies={policies.data?.rows.map((p) => ({
             value: String(p.id),
-            label: p.isActive ? p.name : `${p.name} (নিষ্ক্রিয়)`,
+            label: p.isActive ? p.name : `${p.name} (closed)`,
           }))}
           onClose={() => {
             setCreating(false);
@@ -316,11 +322,11 @@ export function StaffTab() {
 
       {tempPassword && (
         <SecretModal
-          title="অস্থায়ী পাসওয়ার্ড"
-          label="পাসওয়ার্ড"
+          title="Temporary password"
+          label="password"
           secret={tempPassword.password}
           note={tempPassword.email}
-          meta="প্রথম লগইনেই তাকে পাসওয়ার্ড বদলাতে হবে।"
+          meta="They must change this password at their first sign-in."
           onClose={() => setTempPassword(null)}
         />
       )}
@@ -456,21 +462,23 @@ function EmployeeForm({
 
   return (
     <Modal
-      title={employee ? `${employee.fullName} — সম্পাদনা` : 'নতুন স্টাফ'}
-      hint={employee ? `কোড ${employee.empCode}` : 'কোড আর নাম বাধ্যতামূলক'}
+      title={employee ? `${employee.fullName} — edit` : 'New staff member'}
+      hint={
+        employee ? `Code ${employee.empCode}` : 'Code and name are required'
+      }
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
             onClick={submit}
             disabled={busy || incomplete}
-            title={incomplete ? 'কোড আর নাম দুটোই লাগবে' : undefined}
+            title={incomplete ? 'Both code and name are required' : undefined}
           >
-            {busy ? 'সংরক্ষণ হচ্ছে…' : 'সংরক্ষণ করুন'}
+            {busy ? 'Saving…' : 'Save'}
           </Button>
         </>
       }
@@ -478,57 +486,57 @@ function EmployeeForm({
       <div className="space-y-3.5">
         <FormGrid>
           <TextField
-            label="কর্মী কোড"
+            label="Employee code"
             value={form.empCode}
             onChange={set('empCode')}
             required
             mono
             maxLength={32}
             autoFocus={!employee}
-            hint="শুধু অক্ষর, সংখ্যা, হাইফেন ও আন্ডারস্কোর — যেমন OX-001"
+            hint="Letters, digits, hyphen and underscore only — for example OX-001"
           />
           <TextField
-            label="পুরো নাম"
+            label="Full name"
             value={form.fullName}
             onChange={set('fullName')}
             required
             maxLength={120}
           />
           <TextField
-            label="ইমেইল"
+            label="Email"
             type="email"
             value={form.email}
             onChange={set('email')}
-            hint="পোর্টাল অ্যাকাউন্ট বানাতে লাগবে"
+            hint="Needed to create a portal account"
           />
           <TextField
-            label="পদবি"
+            label="Designation"
             value={form.designation}
             onChange={set('designation')}
             maxLength={120}
           />
           <TextField
-            label="বিভাগ"
+            label="Department"
             value={form.department}
             onChange={set('department')}
             maxLength={120}
           />
           <TextField
-            label="যোগদানের তারিখ"
+            label="Joined on"
             type="date"
             value={form.joinedOn}
             onChange={set('joinedOn')}
             max={todayInDhaka()}
           />
           <SelectField
-            label="work policy"
+            label="Work policy"
             value={form.policyId}
             onChange={set('policyId')}
             options={[
-              { value: '', label: '— ডিফল্ট —' },
+              { value: '', label: '— Default —' },
               ...(policies ?? []),
             ]}
-            hint="মাসের টার্গেট, ছবির উইন্ডো ও idle থ্রেশহোল্ড এখান থেকেই আসে"
+            hint="The monthly target, screenshot window and idle threshold all come from here"
           />
 
           {/*
@@ -539,12 +547,12 @@ function EmployeeForm({
           {canSeeSalary && (
             <FullWidth>
               <TextField
-                label="মাসিক বেতন (৳)"
+                label="Monthly salary (৳)"
                 value={form.monthlySalary}
                 onChange={set('monthlySalary')}
                 mono
                 placeholder="13000"
-                hint='⭐ বেতন দেখা ও বদলানো — দুটোই audit log-এ থাকে। "13000" বা "13000.50" ধাঁচে লিখুন; ফাঁকা রাখলে বসানো বেতনটা মুছে যাবে।'
+                hint='Viewing or changing salary is recorded in the audit log. Write it as "13000" or "13000.50"; leave it empty to clear the salary that is set.'
               />
             </FullWidth>
           )}
@@ -572,20 +580,20 @@ function DeactivateDialog({
 
   return (
     <ConfirmDialog
-      title={`${employee.fullName}-কে নিষ্ক্রিয় করবেন?`}
-      intro="তার পুরোনো হিসাব, স্ক্রিনশট আর রিপোর্ট সব থেকে যাবে — কিছুই মোছা হয় না। পরে আবার চালু করা যাবে।"
-      warning="একই সাথে তার সব ডিভাইস revoke হবে, না-ব্যবহার করা এনরোলমেন্ট কোড বাতিল হবে আর পোর্টাল অ্যাকাউন্ট বন্ধ হবে। ওই PC-গুলো থেকে নতুন কোনো ডেটা আর আসবে না।"
-      confirmLabel="নিষ্ক্রিয় করুন"
+      title={`Deactivate ${employee.fullName}?`}
+      intro="Their past hours, screenshots and reports all stay — nothing is deleted. You can reactivate them later."
+      warning="All their devices will be revoked at the same time, any unused enrolment code is cancelled, and their portal account is closed. No new data will arrive from those PCs."
+      confirmLabel="Deactivate"
       withReason
       extra={
         <div className="max-w-xs">
           <TextField
-            label="শেষ কর্মদিবস"
+            label="Last workday"
             type="date"
             value={leftOn}
             onChange={setLeftOn}
             max={todayInDhaka()}
-            hint="ডিফল্ট আজ — মাসের হিসাব এই তারিখ পর্যন্তই গোনা হবে"
+            hint="Defaults to today — the month is counted only up to this date"
           />
         </div>
       }
@@ -615,10 +623,10 @@ function ReactivateDialog({
 
   return (
     <ConfirmDialog
-      title={`${employee.fullName}-কে আবার চালু করবেন?`}
-      intro="সে আবার সক্রিয় তালিকায় আসবে আর মাসের টার্গেটে গোনা হবে।"
-      warning="⚠️ ডিভাইসগুলো নিজে থেকে ফিরে আসে না — তার PC-র জন্য নতুন এনরোলমেন্ট কোড বানাতে হবে (ডিভাইস ট্যাব), নইলে এজেন্ট চুপ করে থাকবে।"
-      confirmLabel="আবার চালু করুন"
+      title={`Reactivate ${employee.fullName}?`}
+      intro="They come back to the active list and count towards the monthly target again."
+      warning="Devices do not come back on their own — create a new enrolment code for their PC on the Devices tab, otherwise the agent stays silent."
+      confirmLabel="Reactivate"
       tone="primary"
       busy={busy}
       error={error}
@@ -636,8 +644,8 @@ function ReactivateDialog({
 // ── পোর্টাল অ্যাকাউন্ট ──────────────────────────────────────────────────────
 
 const PORTAL_ROLES: { value: Role; label: string }[] = [
-  { value: 'employee', label: 'স্টাফ — শুধু নিজের হিসাব' },
-  { value: 'manager', label: 'ম্যানেজার — সবার লাইভ ভিউ ও রিপোর্ট' },
+  { value: 'employee', label: 'Staff — their own hours only' },
+  { value: 'manager', label: "Manager — everyone's Live Board and reports" },
 ];
 
 /**
@@ -662,13 +670,13 @@ function PortalAccountForm({
 
   return (
     <Modal
-      title={`${employee.fullName} — পোর্টাল অ্যাকাউন্ট`}
-      hint="সে নিজের ঘণ্টা ও অগ্রগতি দেখতে পারবে"
+      title={`${employee.fullName} — portal account`}
+      hint="They will be able to see their own hours and progress"
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
@@ -684,33 +692,33 @@ function PortalAccountForm({
             }
             disabled={busy || email.trim() === ''}
           >
-            {busy ? 'তৈরি হচ্ছে…' : 'অ্যাকাউন্ট বানান'}
+            {busy ? 'Creating…' : 'Create account'}
           </Button>
         </>
       }
     >
       <div className="space-y-3.5">
         <Notice>
-          অস্থায়ী পাসওয়ার্ডটা তৈরির পর <strong>একবারই</strong> দেখানো হবে।
-          প্রথম লগইনেই তাকে সেটা বদলাতে হবে।
+          The temporary password is shown <strong>only once</strong> after it
+          is created. They must change it at their first sign-in.
         </Notice>
 
         <TextField
-          label="ইমেইল"
+          label="Email"
           type="email"
           value={email}
           onChange={setEmail}
           required
           autoFocus
-          hint="এই ইমেইল দিয়েই সে লগইন করবে"
+          hint="This is the email they will sign in with"
         />
 
         <SelectField
-          label="ভূমিকা"
+          label="Role"
           value={role}
           onChange={(value) => setRole(value as Role)}
           options={PORTAL_ROLES}
-          hint="স্টাফের পর্দায় কোনো বোতাম থাকে না — শুধু নিজের হিসাব দেখা যায়"
+          hint="A staff screen has no buttons — they can only look at their own hours"
         />
 
         <ServerError error={error} />

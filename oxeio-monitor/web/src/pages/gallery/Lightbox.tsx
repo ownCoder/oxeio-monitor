@@ -112,7 +112,7 @@ export function Lightbox({
       ref={dialogRef}
       role="dialog"
       aria-modal="true"
-      aria-label={`${item.fullName}-এর স্ক্রিনশট, ${formatTime(item.capturedAt)}`}
+      aria-label={`${item.fullName}, screenshot at ${formatTime(item.capturedAt)}`}
       tabIndex={-1}
       className="fixed inset-0 z-50 flex flex-col bg-black/85 outline-none"
     >
@@ -124,9 +124,10 @@ export function Lightbox({
               {item.empCode}
             </span>
           </div>
-          {/* ⚠️ `.num` **শুধু** ঘড়ির সংখ্যার উপরে। তারিখে মাসের বাংলা নাম
-              থাকে ("10 আগস্ট 2026"), আর Cascadia Mono-তে বাংলা গ্লিফ নেই —
-              পুরোটা `.num` করলে অক্ষরগুলো অদ্ভুত fallback ফন্টে গিয়ে বসত। */}
+          {/* ⚠️ `.num` **শুধু** ঘড়ির সংখ্যার উপরে। তারিখে মাসের নাম থাকে
+              ("10 August 2026") — গোটাটা `.num` করলে মাসের নামটাও মনো
+              ফন্টে চলে যেত, আর tabular-nums-এর সমান-প্রস্থ অক্ষরে শব্দটা
+              টেলিগ্রামের মতো ছড়িয়ে বসত। অঙ্ক মনোয়, শব্দ নয়। */}
           <div className="text-[11.5px] text-white/55">
             {formatDate(workDateOf(item.capturedAt))}
             {' · '}
@@ -137,10 +138,10 @@ export function Lightbox({
         <button
           type="button"
           onClick={onClose}
-          aria-label="বন্ধ করুন"
+          aria-label="Close"
           className="ml-auto rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-white/85 transition hover:border-brand hover:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
         >
-          বন্ধ ✕
+          Close ✕
         </button>
       </header>
 
@@ -155,10 +156,10 @@ export function Lightbox({
       >
         {dead ? (
           <p className="max-w-sm text-center text-[13px] text-white/70">
-            ছবিটা আর নেই
+            Image no longer available
             <span className="mt-1 block text-[11.5px] text-white/45">
-              মেয়াদ শেষ হওয়া লিঙ্কটা নতুন করে আনা হয়েছিল, তবু ফাইলটা পাওয়া
-              যায়নি।
+              The expired link was fetched again, but the file still wasn't
+              there.
             </span>
           </p>
         ) : (
@@ -175,7 +176,7 @@ export function Lightbox({
               //    চেপে মনে হতো কিছুই বদলায়নি।
               key={src}
               src={src}
-              alt={`${item.fullName}-এর স্ক্রিনশট, ${formatTime(item.capturedAt)}`}
+              alt={`${item.fullName}, screenshot at ${formatTime(item.capturedAt)}`}
               decoding="async"
               onLoad={() => {
                 setLoadedSrc(src);
@@ -197,7 +198,7 @@ export function Lightbox({
           disabled={!hasPrev}
           className={NAV_BUTTON}
         >
-          ◀ আগের
+          ◀ Previous
         </button>
         <button
           type="button"
@@ -205,7 +206,7 @@ export function Lightbox({
           disabled={!hasNext}
           className={NAV_BUTTON}
         >
-          পরের ▶
+          Next ▶
         </button>
 
         <span className="num text-[11.5px] text-white/55">
@@ -216,12 +217,13 @@ export function Lightbox({
           {/* ⭐ স্লট আর তোলার সময় আলাদা করে দেখানো — এটাই বোঝায় ছবিটা ৫
               মিনিটের ঘরে **এলোমেলো মুহূর্তে** তোলা, ঘড়ি ধরে নয় (§ ২.৩) */}
           <span>
-            স্লট <span className="num">{formatTime(item.slotStart)}</span> · তোলা{' '}
+            Slot <span className="num">{formatTime(item.slotStart)}</span> ·
+            captured{' '}
             <span className="num">{formatTime(item.capturedAt)}</span>
           </span>
           {item.monitorIndex > 0 && (
             <span>
-              মনিটর <span className="num">{item.monitorIndex + 1}</span>
+              Monitor <span className="num">{item.monitorIndex + 1}</span>
             </span>
           )}
           {/* ⚠️ রেজ়লিউশনে হাজারের কমা বসে না — `formatCount` দিলে
@@ -242,7 +244,7 @@ export function Lightbox({
           {item.activeApp ?? '—'}
           {item.activeTitle ? ` · ${item.activeTitle}` : ''}
           <span className="ml-2 hidden sm:inline">
-            ← → দিয়ে আগের/পরের · Esc-এ বন্ধ
+            ← → previous/next · Esc to close
           </span>
         </p>
       </footer>

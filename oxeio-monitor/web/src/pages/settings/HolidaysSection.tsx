@@ -36,15 +36,15 @@ import {
  */
 
 const TYPE_OPTIONS = [
-  { value: 'public', label: 'সরকারি' },
-  { value: 'optional', label: 'ঐচ্ছিক' },
-  { value: 'company', label: 'কোম্পানির' },
+  { value: 'public', label: 'Public' },
+  { value: 'optional', label: 'Optional' },
+  { value: 'company', label: 'Company' },
 ];
 
 const TYPE_LABEL: Record<string, string> = {
-  public: 'সরকারি',
-  optional: 'ঐচ্ছিক',
-  company: 'কোম্পানির',
+  public: 'Public',
+  optional: 'Optional',
+  company: 'Company',
 };
 
 export function HolidaysSection() {
@@ -62,7 +62,7 @@ export function HolidaysSection() {
   const columns: Column<HolidayView>[] = [
     {
       key: 'date',
-      header: 'তারিখ',
+      header: 'Date',
       render: (holiday) => (
         <span className="num">
           {formatDate(holiday.holidayDate)}
@@ -74,12 +74,12 @@ export function HolidaysSection() {
     },
     {
       key: 'name',
-      header: 'নাম',
+      header: 'Name',
       render: (holiday) => holiday.name,
     },
     {
       key: 'type',
-      header: 'ধরন',
+      header: 'Type',
       render: (holiday) => (
         <Chip>{TYPE_LABEL[holiday.type] ?? holiday.type}</Chip>
       ),
@@ -90,9 +90,9 @@ export function HolidaysSection() {
       align: 'right',
       render: (holiday) => (
         <RowActions>
-          <MiniButton onClick={() => setEditing(holiday)}>সম্পাদনা</MiniButton>
+          <MiniButton onClick={() => setEditing(holiday)}>Edit</MiniButton>
           <MiniButton tone="danger" onClick={() => setRemoving(holiday)}>
-            মুছুন
+            Delete
           </MiniButton>
         </RowActions>
       ),
@@ -103,9 +103,11 @@ export function HolidaysSection() {
     <section className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight">ছুটি</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight">
+            Holidays
+          </h2>
           <p className="mt-0.5 text-xs text-ink-3">
-            ছুটির দিন বাদ দিয়েই মাসের কর্মদিবস গোনা হয়
+            Workdays for the month are counted with these days taken out
           </p>
         </div>
 
@@ -117,10 +119,10 @@ export function HolidaysSection() {
                আগেরটায় ফিরে যেত। বছর বদলানো এমনিতেই এক-দুই ধাপের কাজ।
           */}
           <div>
-            <span className="mb-1 block text-[11.5px] text-ink-3">বছর</span>
+            <span className="mb-1 block text-[11.5px] text-ink-3">Year</span>
             <div className="flex items-center gap-1">
               <YearArrow
-                label="আগের বছর"
+                label="Previous year"
                 disabled={year <= 2000}
                 onClick={() => setYear((y) => y - 1)}
               >
@@ -130,7 +132,7 @@ export function HolidaysSection() {
                 {year}
               </span>
               <YearArrow
-                label="পরের বছর"
+                label="Next year"
                 disabled={year >= 2100}
                 onClick={() => setYear((y) => y + 1)}
               >
@@ -140,7 +142,7 @@ export function HolidaysSection() {
           </div>
 
           <Button tone="primary" onClick={() => setCreating(true)}>
-            ছুটি যোগ করুন
+            Add holiday
           </Button>
         </div>
       </div>
@@ -152,18 +154,18 @@ export function HolidaysSection() {
 
       {!holidays.loading && !holidays.error && rows.length === 0 && (
         <Empty
-          title={`${year} সালে কোনো ছুটি বসানো নেই`}
-          hint="ছুটি না বসালে সব দিনই কর্মদিবস ধরা হবে, ফলে মাসের pace সবার জন্যই কঠিন দেখাবে। বছরের শুরুতেই সরকারি ছুটিগুলো বসিয়ে নেওয়া ভালো।"
+          title={`No holidays are set for ${year}`}
+          hint="With no holidays every day counts as a workday, which makes the month's pace look harsh for everyone. It is best to enter the public holidays at the start of the year."
           action={
             <Button tone="primary" onClick={() => setCreating(true)}>
-              ছুটি যোগ করুন
+              Add holiday
             </Button>
           }
         />
       )}
 
       {rows.length > 0 && (
-        <Card padded={false} title={`${year} · ${rows.length} দিন`}>
+        <Card padded={false} title={`${year} · ${rows.length} days`}>
           <Table
             columns={columns}
             rows={rows}
@@ -247,19 +249,21 @@ function HolidayForm({
 
   const { busy, error, run } = useMutation();
 
-  // ⚠️ `weekdayOf()` অচেনা তারিখে `''` দেয় — সরাসরি জুড়ে দিলে শিরোনামের
-  //    নিচে নিছক "বার" লেখা বসত
+  // ⚠️ `weekdayOf()` অচেনা তারিখে `''` দেয় — তাই ফাঁকা হলে hint বসানোই
+  //    হয় না, নইলে শিরোনামের নিচে একটা শূন্য লাইন ঝুলে থাকত।
+  // ⚠️ আগে এর সাথে "বার" প্রত্যয় জোড়া হতো; ইংরেজি UI-তে বারের নামটাই
+  //    যথেষ্ট, আর `format.ts` ইংরেজিতে গেলে "Monবার" হয়ে যেত।
   const weekday = weekdayOf(holidayDate);
 
   return (
     <Modal
-      title={holiday ? 'ছুটি সম্পাদনা' : 'নতুন ছুটি'}
-      hint={weekday ? `${weekday}বার` : undefined}
+      title={holiday ? 'Edit holiday' : 'New holiday'}
+      hint={weekday === '' ? undefined : weekday}
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
@@ -283,7 +287,7 @@ function HolidayForm({
               })
             }
           >
-            {busy ? 'সংরক্ষণ হচ্ছে…' : 'সংরক্ষণ করুন'}
+            {busy ? 'Saving…' : 'Save'}
           </Button>
         </>
       }
@@ -291,34 +295,35 @@ function HolidayForm({
       <div className="space-y-3.5">
         <FormGrid>
           <TextField
-            label="তারিখ"
+            label="Date"
             type="date"
             value={holidayDate}
             onChange={setHolidayDate}
             required
             mono
-            hint="⚠️ ভবিষ্যতের ছুটিও বসানো যায় — বছরের শুরুতেই সব বসিয়ে নেওয়াই নিয়ম"
+            hint="Future holidays can be entered too — entering the whole year up front is the norm"
           />
           <SelectField
-            label="ধরন"
+            label="Type"
             value={type}
             onChange={setType}
             options={TYPE_OPTIONS}
           />
           <TextField
-            label="নাম"
+            label="Name"
             value={name}
             onChange={setName}
             required
             autoFocus
             maxLength={120}
-            placeholder="বিজয় দিবস"
+            placeholder="Victory Day"
           />
         </FormGrid>
 
         <Notice>
-          ছুটি যোগ করলে ওই মাসের কর্মদিবস কমে যায়, ফলে সবার pace একটু সহজ হয়।
-          সংখ্যাটা তখনই বদলে যাবে — কেউ বাড়তি কাজ না করেও।
+          Adding a holiday lowers the workday count for that month, so everyone's
+          pace gets a little easier. The numbers move the moment you save it —
+          without anyone working an extra minute.
         </Notice>
 
         <ServerError error={error} />
@@ -340,10 +345,10 @@ function RemoveHolidayDialog({
 
   return (
     <ConfirmDialog
-      title={`"${holiday.name}" মুছবেন?`}
-      intro={`${formatDate(holiday.holidayDate)} · ${weekdayOf(holiday.holidayDate)}বার`}
-      warning="ছুটি মুছলে ওই মাসের কর্মদিবস বেড়ে যায় — ফলে সবার pace পিছিয়ে যাবে, কেউ এক মিনিট কম কাজ না করেও। মাসের রিপোর্ট ইতিমধ্যে কেউ দেখে থাকলে সংখ্যাগুলো আর মিলবে না।"
-      confirmLabel="মুছে ফেলুন"
+      title={`Delete "${holiday.name}"?`}
+      intro={`${formatDate(holiday.holidayDate)} · ${weekdayOf(holiday.holidayDate)}`}
+      warning="Deleting a holiday raises the workday count for that month — everyone falls behind on pace without working a minute less. If anyone has already read the monthly report, the numbers will no longer match."
+      confirmLabel="Delete"
       busy={busy}
       error={error}
       onClose={onClose}

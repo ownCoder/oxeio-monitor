@@ -46,10 +46,26 @@ const OFF_PATTERN: CSSProperties = {
 };
 
 const DAY_TYPE_LABEL = {
-  workday: 'কর্মদিবস',
-  weekly_off: 'সাপ্তাহিক ছুটি',
-  holiday: 'সরকারি ছুটি',
+  workday: 'Workday',
+  weekly_off: 'Weekly off',
+  holiday: 'Holiday',
 } as const;
+
+/**
+ * ⚠️ `1st / 2nd / 3rd / 4th` — ইংরেজিতে "since day 5" যন্ত্রের মতো শোনায়,
+ *    আর সরু কলামে মাসের নাম বসানোর জায়গা নেই (নিচে `partial` দেখুন)।
+ *    11–13 আলাদা করে ধরা, নইলে "11st" হতো।
+ */
+function ordinal(day: number): string {
+  const tens = day % 100;
+  if (tens >= 11 && tens <= 13) return `${day}th`;
+
+  const ones = day % 10;
+  if (ones === 1) return `${day}st`;
+  if (ones === 2) return `${day}nd`;
+  if (ones === 3) return `${day}rd`;
+  return `${day}th`;
+}
 
 export function HeatGrid({
   grid,
@@ -78,7 +94,7 @@ export function HeatGrid({
                 scope="col"
                 className="sticky left-0 z-10 bg-surface px-3 py-2 text-left font-medium text-ink-3"
               >
-                স্টাফ
+                Staff
               </th>
 
               {grid.days.map((date) => (
@@ -99,20 +115,20 @@ export function HeatGrid({
               ))}
 
               <th scope="col" className="px-3 py-2 pl-5 text-right font-medium text-ink-3">
-                হয়েছে
+                Counted
               </th>
               <th
                 scope="col"
-                title="এ পর্যন্ত যতটুকু হওয়ার কথা ছিল"
+                title="How much should have been done by today"
                 className="px-3 py-2 text-right font-medium text-ink-3"
               >
-                হওয়ার কথা
+                Expected
               </th>
               <th scope="col" className="px-3 py-2 text-right font-medium text-ink-3">
-                পিছিয়ে / এগিয়ে
+                Behind / Ahead
               </th>
               <th scope="col" className="px-3 py-2 text-right font-medium text-ink-3">
-                মাসের টার্গেট
+                Monthly target
               </th>
             </tr>
           </thead>
@@ -142,10 +158,10 @@ export function HeatGrid({
                         {/*
                           ⚠️ এখানে `formatDateShort()` নয়। গোটা গ্রিডটাই এক
                              মাসের, তাই মাসের নাম বাড়তি — আর সরু কলামে
-                             "5 আগস্ট থেকে" লিখলে ঘাটতির সংখ্যাটাই কেটে যেত।
+                             "since 5 August" লিখলে ঘাটতির সংখ্যাটাই কেটে যেত।
                         */}
                         {row.partial &&
-                          ` · ${Number(row.partial.from.slice(8, 10))} তারিখ থেকে`}
+                          ` · since the ${ordinal(Number(row.partial.from.slice(8, 10)))}`}
                       </>
                     }
                   />
@@ -191,7 +207,7 @@ export function HeatGrid({
           <tfoot className="border-t border-line bg-paper font-medium">
             <tr>
               <td className="sticky left-0 z-10 border-r border-line bg-paper px-3 py-2 text-[12px] text-ink-2">
-                সবাই মিলে
+                Everyone
               </td>
               <td colSpan={grid.days.length} />
               <td className="px-3 py-2 pl-5 text-right">
@@ -276,16 +292,16 @@ function Cell({
 function cellLabel(cell: DayCell, fullName: string): string {
   const when = `${fullName} · ${formatDate(cell.date)} (${weekdayOf(cell.date)})`;
 
-  if (cell.kind === 'future') return `${when} · দিনটা এখনো আসেনি`;
-  if (cell.kind === 'outside') return `${when} · কর্মকালের বাইরে`;
+  if (cell.kind === 'future') return `${when} · day has not arrived yet`;
+  if (cell.kind === 'outside') return `${when} · outside their time here`;
 
   const type = cell.dayType ? DAY_TYPE_LABEL[cell.dayType] : '';
   const target =
     cell.targetHours > 0
-      ? `টার্গেট ${formatHoursAsDuration(cell.targetHours)}`
-      : 'কোনো টার্গেট নেই';
+      ? `target ${formatHoursAsDuration(cell.targetHours)}`
+      : 'no target';
 
-  return `${when} · ${type} · গোনা হয়েছে ${formatHoursAsDuration(cell.creditedHours)} · ${target}`;
+  return `${when} · ${type} · counted ${formatHoursAsDuration(cell.creditedHours)} · ${target}`;
 }
 
 // ── বেছে নেওয়া ঘরের পুরো হিসাব (ফোনে এটাই একমাত্র উপায়) ────────────────────
@@ -302,7 +318,7 @@ function CellDetail({
   if (!row || !cell) {
     return (
       <p className="border-t border-line px-4 py-2.5 text-xs text-ink-3">
-        কোনো ঘরে চাপ দিন — ওই দিনের পুরো হিসাব এখানে আসবে।
+        Tap any cell — that day's full breakdown appears here.
       </p>
     );
   }
@@ -314,9 +330,11 @@ function CellDetail({
         {formatDate(cell.date)} · {weekdayOf(cell.date)}
       </span>
 
-      {cell.kind === 'future' && <span className="text-ink-3">দিনটা এখনো আসেনি</span>}
+      {cell.kind === 'future' && (
+        <span className="text-ink-3">This day has not arrived yet</span>
+      )}
       {cell.kind === 'outside' && (
-        <span className="text-ink-3">ওই দিনে ইনি অফিসে ছিলেন না</span>
+        <span className="text-ink-3">They were not with the office that day</span>
       )}
 
       {cell.kind === 'day' && (
@@ -324,10 +342,10 @@ function CellDetail({
           <span className="text-ink-3">
             {cell.dayType ? DAY_TYPE_LABEL[cell.dayType] : ''}
           </span>
-          <Field label="কাজ" value={<Hours hours={cell.workedHours} />} />
+          <Field label="Worked" value={<Hours hours={cell.workedHours} />} />
           {cell.adjustmentHours !== 0 && (
             <Field
-              label="owner-এর সংশোধন"
+              label="Owner adjustment"
               value={
                 <span className="num">
                   {cell.adjustmentHours > 0 ? '+' : '−'}
@@ -337,16 +355,16 @@ function CellDetail({
             />
           )}
           <Field
-            label="গোনা হয়েছে"
+            label="Counted"
             value={<Hours hours={cell.creditedHours} className="font-semibold" />}
           />
           <Field
-            label="টার্গেট"
+            label="Target"
             value={
               cell.targetHours > 0 ? (
                 <Hours hours={cell.targetHours} tone="muted" />
               ) : (
-                <span className="text-ink-3">নেই</span>
+                <span className="text-ink-3">None</span>
               )
             }
           />
@@ -373,7 +391,7 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
  */
 function Pace({ hours, compact = false }: { hours: number; compact?: boolean }) {
   if (Math.abs(hours) <= PACE_EPSILON) {
-    return <span className="num text-ink-3">সমান</span>;
+    return <span className="num text-ink-3">On track</span>;
   }
 
   const behind = hours < 0;
@@ -382,7 +400,7 @@ function Pace({ hours, compact = false }: { hours: number; compact?: boolean }) 
   // ⚠️ সরু কলামে `−`/`+` চিহ্নটা অনেকের চোখেই পড়ে না, তাই ওখানে কথায় লেখা
   return (
     <span className={`num ${behind ? 'font-semibold text-brand-ink' : 'text-ink'}`}>
-      {compact ? `${behind ? 'পিছিয়ে' : 'এগিয়ে'} ${amount}` : `${behind ? '−' : '+'}${amount}`}
+      {compact ? `${behind ? 'Behind' : 'Ahead'} ${amount}` : `${behind ? '−' : '+'}${amount}`}
     </span>
   );
 }
@@ -392,7 +410,7 @@ function MonthTarget({ row }: { row: EmployeeGridRow }) {
     return (
       <span
         className="num text-ink-3"
-        title="মাসের সাপ্তাহিক ছুটির দিনটা এখনো আসেনি, তাই পুরো মাসের টার্গেট এখনই বলা যাচ্ছে না"
+        title="The whole month's target cannot be worked out for this person yet"
       >
         —
       </span>
@@ -405,12 +423,13 @@ function MonthTarget({ row }: { row: EmployeeGridRow }) {
         value={row.creditedHours}
         max={row.monthTargetHours}
         className="w-14"
+        ariaLabel="This month"
       />
       <span
         className="num text-ink-3"
         title={
           row.monthTargetEstimated
-            ? 'মাস এখনো শেষ হয়নি — বাকি দিনে নতুন ছুটি ঘোষণা হলে টার্গেট কমবে'
+            ? 'The month is not over — the target drops if a new holiday is declared on a remaining day'
             : undefined
         }
       >
@@ -432,32 +451,32 @@ function Legend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-4 py-3 text-[11px] text-ink-3">
       <span className="flex items-center gap-1.5">
-        কম
+        Less
         {RAMP.map((tone) => (
           <i key={tone} className={`size-3 rounded-[3px] ${tone}`} />
         ))}
-        দিনের টার্গেট পূর্ণ
+        Day's target met
       </span>
 
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] bg-brand-bg ring-1 ring-brand/25 ring-inset" />
-        কর্মদিবস, <span className="num">0</span> ঘণ্টা
+        Workday, <span className="num">0</span> hours
       </span>
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] border border-line" style={OFF_PATTERN} />
-        সাপ্তাহিক / সরকারি ছুটি
+        Weekly off / holiday
       </span>
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] bg-ink/45 ring-1 ring-brand ring-inset" />
-        ছুটির দিনে কাজ
+        Worked on a day off
       </span>
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] border border-dashed border-line" />
-        এখনো আসেনি
+        Not here yet
       </span>
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] border border-dotted border-line/60 opacity-50" />
-        কর্মকালের বাইরে
+        Outside their time here
       </span>
     </div>
   );

@@ -34,19 +34,23 @@ interface NavItem {
 const NAV: NavItem[] = [
   {
     to: '/',
-    label: 'লাইভ বোর্ড',
+    label: 'Live Board',
     end: true,
     roles: ['owner', 'manager'],
   },
   {
     to: '/screenshots',
-    label: 'স্ক্রিনশট',
+    label: 'Screenshots',
     roles: ['owner', 'manager', 'employee'],
   },
-  { to: '/monthly', label: 'মাসিক অগ্রগতি', roles: ['owner', 'manager'] },
-  { to: '/reports', label: 'রিপোর্ট', roles: ['owner', 'manager'] },
+  /**
+   * ⚠️ শুধু "Monthly" — "Monthly progress" নয়। নেভের সব ট্যাব এক-দুই শব্দে,
+   *    আর ৩৭৫px-এ লম্বা লেবেলগুলোই প্রথমে সারিটাকে স্ক্রল করায়।
+   */
+  { to: '/monthly', label: 'Monthly', roles: ['owner', 'manager'] },
+  { to: '/reports', label: 'Reports', roles: ['owner', 'manager'] },
   // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
-  { to: '/settings', label: 'সেটিংস', roles: ['owner'] },
+  { to: '/settings', label: 'Settings', roles: ['owner'] },
   /**
    * ⭐ I06 — **তিনটে ভূমিকারই**, owner-only নয়: এটা ট্র্যাকিংয়ের পর্দা নয়,
    *    নিজের অ্যাকাউন্টের 2FA সেটিং। owner-only করলে ম্যানেজারের অ্যাকাউন্ট
@@ -55,13 +59,17 @@ const NAV: NavItem[] = [
    * ⚠️ ইচ্ছাকৃতভাবে **সবার শেষে**, সেটিংসের পরেও: এটা রোজকার কাজের পর্দা
    *    নয়, বছরে দু-একবার খোলার জায়গা।
    */
-  { to: '/security', label: 'নিরাপত্তা', roles: ['owner', 'manager', 'employee'] },
+  { to: '/security', label: 'Security', roles: ['owner', 'manager', 'employee'] },
 ];
 
+/**
+ * ⚠️ ভূমিকার নাম **সার্ভারের `role` মান নয়**, পর্দার লেখা। `employee` →
+ *    "Staff", কারণ পুরো ড্যাশবোর্ডে মানুষগুলোকে Staff বলা হয় (অভিধান § ১)।
+ */
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Owner',
   manager: 'Manager',
-  employee: 'স্টাফ',
+  employee: 'Staff',
 };
 
 export function Layout() {
@@ -72,18 +80,19 @@ export function Layout() {
   return (
     <div className="flex min-h-full flex-col">
       {/*
-        লোগোর কালো ফিল্ড — দুই থিমেই এক।
+        লোগোর গাঢ় ফিল্ড — `chrome`, `paper` নয়।
 
-        ⭐ E13 — এই একটা জায়গাতেই রং টোকেন নয়, হার্ডকোড কালো-সাদা। কারণ
-           এটা পটভূমি নয়, **লোগোর ফিল্ড**: লোগোটা কালোর উপরেই আঁকা, তাই
-           থিমের সাথে উল্টে গেলে ব্র্যান্ডটাই বদলে যেত। ডার্কে পাতার
-           পটভূমি #141517, হেডার #000 — এক ধাপ গাঢ়, তাই কিনারাটা থাকে।
+        ⭐ E13 — এটা পটভূমি নয়, **লোগোর ফিল্ড**: লোগোটা কালোর উপরেই আঁকা,
+           তাই থিমের সাথে উল্টে গেলে ব্র্যান্ডটাই বদলে যেত। `chrome`
+           টোকেনটা তাই দুই থিমেই গাঢ় (ডার্কে #000, লাইটে #191c22)।
+        ⚠️ এর উপরের লেখা তাই `text-white`, `text-on-ink` নয় — ফিল্ডটা
+           কখনো হালকা হয় না, তাই উল্টে যাওয়ার কিছু নেই।
 
         ⚠️ E12 — `flex-wrap`: ফোনে সার্চ বাক্সটা নিজের একটা সারিতে নেমে
            যায়। একই সারিতে লোগো, নাম, সার্চ আর দুটো বোতাম রাখলে ৩৭৫px-এ
            সবকটাই চেপে গিয়ে অপঠ্য হতো।
       */}
-      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-black px-4 py-2.5 text-white">
+      <header className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-chrome px-4 py-2.5 text-white">
         <div className="flex items-center gap-2.5">
           <BrandMark />
           <div className="leading-tight">
@@ -108,7 +117,7 @@ export function Layout() {
             onClick={() => void signOut()}
             className="rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-white/85 transition hover:border-brand hover:text-white"
           >
-            লগআউট
+            Sign out
           </button>
         </div>
       </header>

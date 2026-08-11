@@ -60,7 +60,7 @@ export function ShotLightbox({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`${card.fullName}-এর সর্বশেষ স্ক্রিনশট`}
+        aria-label={`Latest screenshot of ${card.fullName}`}
         // ⚠️ ভেতরে ক্লিক করলে যেন বন্ধ না হয় — ছবিটা দেখতে গিয়ে ভুল করে
         //    মোডাল বন্ধ হয়ে যাওয়াটা বিরক্তিকর।
         onClick={(e) => e.stopPropagation()}
@@ -75,18 +75,18 @@ export function ShotLightbox({
               <span className="num">{card.empCode}</span>
               {shot ? ` · ${formatDateTime(shot.capturedAt)}` : ''}
               {shot && shot.monitorIndex > 0
-                ? ` · মনিটর ${shot.monitorIndex + 1}`
+                ? ` · Monitor ${shot.monitorIndex + 1}`
                 : ''}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button onClick={onRefresh}>আবার আনুন</Button>
+            <Button onClick={onRefresh}>Fetch again</Button>
             <button
               ref={closeRef}
               type="button"
               onClick={onClose}
-              aria-label="বন্ধ করুন"
+              aria-label="Close"
               className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
               ✕
@@ -97,21 +97,21 @@ export function ShotLightbox({
         <div className="min-h-0 flex-1 overflow-auto bg-paper">
           {!shot ? (
             <p className="px-6 py-14 text-center text-sm text-ink-3">
-              ছবিটি আর সর্বশেষ তালিকায় নেই। স্ক্রিনশট পাতায় ওই দিনের সবগুলো
-              ছবি দেখা যাবে।
+              This shot is no longer in the latest set. Every shot from the day
+              is on the Screenshots page.
             </p>
           ) : broken ? (
             <div className="px-6 py-14 text-center">
-              <p className="text-sm text-ink-2">লিঙ্কের মেয়াদ শেষ (৫ মিনিট)</p>
+              <p className="text-sm text-ink-2">Link expired (5 minutes)</p>
               <p className="mt-1 text-xs text-ink-3">
-                ছবির লিঙ্ক অল্প সময়ের জন্য বানানো হয় — "আবার আনুন" চাপলে নতুন
-                লিঙ্ক আসবে।
+                Image links are made to be short-lived — “Fetch again” gets a
+                fresh one.
               </p>
             </div>
           ) : (
             <img
               src={shot.fullUrl}
-              alt={`${card.fullName}-এর সর্বশেষ স্ক্রিনশট`}
+              alt={`Latest screenshot of ${card.fullName}`}
               onError={() => setBroken(true)}
               className="mx-auto block h-auto w-full"
             />

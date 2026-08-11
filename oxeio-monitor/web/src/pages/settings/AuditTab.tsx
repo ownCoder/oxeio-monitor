@@ -31,18 +31,18 @@ import { Chip, FilterChip, MiniButton, Notice } from './ui';
 
 /** ⚠️ সার্ভারে যে যে `action` সত্যিই বসানো হয় — অনুমান নয়, সোর্স থেকে নেওয়া */
 const ACTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'সব ঘটনা' },
-  { value: 'view_screenshot', label: 'স্ক্রিনশট দেখা' },
-  { value: 'payroll_view', label: 'বেতন দেখা' },
-  { value: 'change_setting', label: 'সেটিংস বদল' },
-  { value: 'revoke_device', label: 'ডিভাইস revoke' },
-  { value: 'create_enrollment_code', label: 'এনরোলমেন্ট কোড' },
-  { value: 'export_report', label: 'রিপোর্ট এক্সপোর্ট' },
-  { value: 'create_portal_account', label: 'পোর্টাল অ্যাকাউন্ট' },
-  { value: 'reset_password', label: 'পাসওয়ার্ড রিসেট' },
-  { value: 'change_password', label: 'পাসওয়ার্ড বদল' },
-  { value: 'login', label: 'লগইন' },
-  { value: 'login_failed', label: 'ব্যর্থ লগইন' },
+  { value: '', label: 'All events' },
+  { value: 'view_screenshot', label: 'Screenshot viewed' },
+  { value: 'payroll_view', label: 'Salary viewed' },
+  { value: 'change_setting', label: 'Setting changed' },
+  { value: 'revoke_device', label: 'Device revoked' },
+  { value: 'create_enrollment_code', label: 'Enrolment code' },
+  { value: 'export_report', label: 'Report exported' },
+  { value: 'create_portal_account', label: 'Portal account' },
+  { value: 'reset_password', label: 'Password reset' },
+  { value: 'change_password', label: 'Password changed' },
+  { value: 'login', label: 'Sign-in' },
+  { value: 'login_failed', label: 'Failed sign-in' },
 ];
 
 const ACTION_LABEL: Record<string, string> = Object.fromEntries(
@@ -52,7 +52,7 @@ const ACTION_LABEL: Record<string, string> = Object.fromEntries(
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Owner',
   manager: 'Manager',
-  employee: 'স্টাফ',
+  employee: 'Staff',
 };
 
 const PAGE_SIZE = 50;
@@ -111,7 +111,7 @@ export function AuditTab() {
   const columns: Column<AuditLogRow>[] = [
     {
       key: 'time',
-      header: 'কখন',
+      header: 'When',
       render: (row) => (
         // ⚠️ সময়টা ঢাকার — `formatTime()` অফসেটটা স্পষ্ট করে বসায়।
         //    `toLocaleTimeString()` হলে VPN-এ থাকা কেউ ভুল সময় দেখত, আর
@@ -127,13 +127,13 @@ export function AuditTab() {
     },
     {
       key: 'user',
-      header: 'কে',
+      header: 'Who',
       render: (row) => {
         const actor = row.user;
         // ⚠️ ইউজার মুছে গেলেও সারিটা থেকে যায় — লগ প্রমাণ, তাই কখনো
         //    ফাঁকা করে দেওয়া হয় না
         if (!actor) {
-          return <span className="text-ink-3">মুছে ফেলা অ্যাকাউন্ট</span>;
+          return <span className="text-ink-3">Deleted account</span>;
         }
 
         return (
@@ -143,7 +143,7 @@ export function AuditTab() {
               setUser({ id: actor.id, name: actor.fullName });
               setPage(1);
             }}
-            title="শুধু এই ইউজারের ঘটনা দেখুন"
+            title="Show only this user's events"
             className="min-w-0 text-left transition hover:text-brand-ink"
           >
             <span className="block truncate font-medium">{actor.fullName}</span>
@@ -156,7 +156,7 @@ export function AuditTab() {
     },
     {
       key: 'action',
-      header: 'কী',
+      header: 'What',
       // ⭐ লাল **শুধু** ব্যর্থ লগইনে। স্ক্রিনশট বা বেতন দেখাও লাল করে দিলে
       //    ওই ফিল্টারে গোটা টেবিলটাই লাল হয়ে যেত, আর তখন সত্যিকারের
       //    সমস্যাটা (কেউ বারবার ভুল পাসওয়ার্ড দিচ্ছে) আর চোখে পড়ত না।
@@ -168,7 +168,7 @@ export function AuditTab() {
     },
     {
       key: 'target',
-      header: 'কার / কীসের উপর',
+      header: 'On whom / what',
       render: (row) =>
         row.targetType === null ? (
           <span className="text-ink-3">—</span>
@@ -190,7 +190,7 @@ export function AuditTab() {
     },
     {
       key: 'meta',
-      header: 'বিস্তারিত',
+      header: 'Details',
       render: (row) => <Meta meta={row.meta} />,
     },
   ];
@@ -198,9 +198,9 @@ export function AuditTab() {
   return (
     <div className="space-y-3">
       <Notice>
-        এই লগ শুধু পড়া যায় — বদলানো বা মোছার কোনো পথ নেই। স্ক্রিনশট দেখা ও
-        বেতন দেখা দুটোই এখানে লেখা থাকে, অর্থাৎ{' '}
-        <strong>যে দেখছে, তার দেখাটাও দেখা হচ্ছে</strong>।
+        This log is read-only — there is no way to edit or delete it. Viewing a
+        screenshot and viewing a salary are both written here, which means{' '}
+        <strong>whoever is watching is watched too</strong>.
       </Notice>
 
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -214,7 +214,7 @@ export function AuditTab() {
             }}
           />
           <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink-3">ঘটনা</span>
+            <span className="mb-1 block text-[11.5px] text-ink-3">Event</span>
             <select
               value={action}
               onChange={(e) => changeAction(e.target.value)}
@@ -232,9 +232,9 @@ export function AuditTab() {
         {/* ⭐ এই পেজের সবচেয়ে জরুরি প্রশ্নটা এক ক্লিক দূরে */}
         <MiniButton
           onClick={() => changeAction('view_screenshot')}
-          title="শুধু স্ক্রিনশট দেখার ঘটনাগুলো"
+          title="Only the screenshot-viewing events"
         >
-          কে কার স্ক্রিনশট দেখল
+          Who viewed whose screenshots
         </MiniButton>
       </div>
 
@@ -246,7 +246,7 @@ export function AuditTab() {
               setPage(1);
             }}
           >
-            ইউজার: {user.name}
+            User: {user.name}
           </FilterChip>
         </div>
       )}
@@ -256,29 +256,29 @@ export function AuditTab() {
 
       {!log.loading && !log.error && rows.length === 0 && (
         <Empty
-          title="এই ছাঁকনিতে কোনো ঘটনা নেই"
-          hint="তারিখের রেঞ্জটা বাড়িয়ে দেখুন, বা 'সব ঘটনা' বেছে নিন। নতুন সিস্টেমে প্রথম কয়েক দিন লগে শুধু লগইনই থাকে।"
+          title="No events match this filter"
+          hint="Try widening the date range, or pick 'All events'. On a new system the log holds nothing but sign-ins for the first few days."
         />
       )}
 
       {rows.length > 0 && (
         <Card
           padded={false}
-          title={`${formatCount(total)}টি ঘটনা`}
-          hint={`পাতা ${page} / ${lastPage} · নতুনগুলো আগে`}
+          title={`${formatCount(total)} events`}
+          hint={`Page ${page} of ${lastPage} · newest first`}
           actions={
             <div className="flex gap-1.5">
               <MiniButton
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1 || log.loading}
               >
-                ← আগের
+                ← Previous
               </MiniButton>
               <MiniButton
                 onClick={() => setPage((p) => p + 1)}
                 disabled={!log.data?.hasMore || log.loading}
               >
-                পরের →
+                Next →
               </MiniButton>
             </div>
           }
@@ -317,7 +317,7 @@ function Meta({ meta }: { meta: unknown }) {
   if (!open) {
     return (
       <MiniButton onClick={() => setOpen(true)} title={text}>
-        দেখুন
+        Show
       </MiniButton>
     );
   }
@@ -332,7 +332,7 @@ function Meta({ meta }: { meta: unknown }) {
         onClick={() => setOpen(false)}
         className="mt-1 text-[11px] text-ink-3 transition hover:text-ink"
       >
-        গুটিয়ে নিন
+        Hide
       </button>
     </div>
   );

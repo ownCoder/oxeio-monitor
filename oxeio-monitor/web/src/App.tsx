@@ -23,7 +23,7 @@ function Router() {
   if (loading) {
     return (
       <div className="grid min-h-full place-items-center text-sm text-ink-3">
-        লোড হচ্ছে…
+        Loading…
       </div>
     );
   }

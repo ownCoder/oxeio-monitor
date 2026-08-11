@@ -1,12 +1,15 @@
 /**
  * সংখ্যা ও তারিখ দেখানোর একমাত্র জায়গা।
  *
- * ⭐ ছ-টা পেজ একই ফাংশন ব্যবহার করে বলেই "৭.৫ ঘণ্টা" আর "7ঘ 32মি" দুই
+ * ⭐ ছ-টা পেজ একই ফাংশন ব্যবহার করে বলেই "৭.৫ ঘণ্টা" আর "7h 32m" দুই
  *    পর্দায় দুই রকম দেখাবে না। নিজের পেজে আলাদা করে ফরম্যাট লিখবেন না।
  *
- * ⚠️ **সংখ্যা ইংরেজি অঙ্কে** (7ঘ 32মি), বাংলা অঙ্কে নয় — মকআপ § দেখুন।
- *    মাস ও বারের নাম বাংলায়, কিন্তু অঙ্ক সবসময় ইংরেজি: `.num` ক্লাসের
- *    tabular-nums তখনই কাজ করে।
+ * ⚠️ **পর্দার ভাষা ইংরেজি** (মালিকের সিদ্ধান্ত) — মাস, বার আর একক সবই
+ *    ইংরেজি: `7h 32m`, `11 August 2026`। অঙ্ক আগেও ইংরেজি ছিল, এখনো তাই;
+ *    `.num` ক্লাসের tabular-nums তখনই কাজ করে।
+ *
+ * ⚠️ এই ফাইলের **মন্তব্য বাংলাতেই থাকে** — ওগুলো প্রকল্পের ডকুমেন্টেশন,
+ *    পর্দার লেখা নয়। শুধু return-করা স্ট্রিংগুলো ইংরেজি।
  */
 
 /**
@@ -17,49 +20,52 @@ const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR = 3600;
 
-const MONTHS_BN = [
-  'জানুয়ারি',
-  'ফেব্রুয়ারি',
-  'মার্চ',
-  'এপ্রিল',
-  'মে',
-  'জুন',
-  'জুলাই',
-  'আগস্ট',
-  'সেপ্টেম্বর',
-  'অক্টোবর',
-  'নভেম্বর',
-  'ডিসেম্বর',
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 /**
  * ⭐⚠️ সরু কলামের জন্য মাসের **হাতে লেখা** সংক্ষিপ্ত রূপ।
  *
- * আগে এখানে `MONTHS_BN[i].slice(0, 3)` করা হতো, আর সেটা বাংলায় ভুল:
+ * ইংরেজিতে `MONTHS[i].slice(0, 3)` লিখলে কাজ করত, তবু তালিকাটা হাতে লেখা
+ * রইল — কারণ বাংলা তালিকার সময় ঠিক ওই `slice()`-ই নীরবে লেখা ভেঙে দিত:
  * JS-এর `slice()` UTF-16 একক গোনে, যুক্তাক্ষর বা কার-চিহ্ন চেনে না।
  *   · `'অক্টোবর'.slice(0,3)` → `'অক্'` — **হসন্তে শেষ**, ভাঙা লেখা
  *   · `'ডিসেম্বর'.slice(0,3)` → `'ডিস'` — ঠিক, কিন্তু কাকতালীয়
  *   · `'ফেব্রুয়ারি'.slice(0,3)` → `'ফেব্'` — আবার হসন্ত
  * অর্থাৎ বছরে অন্তত তিনটে মাস অ্যাটেনডেন্স, সারাংশ আর audit log-এর
- * প্রতিটা সারিতে ভাঙা দেখাত — কোনো এরর ছাড়াই।
+ * প্রতিটা সারিতে ভাঙা দেখাত — কোনো এরর ছাড়াই। কোনোদিন আবার বাংলা (বা
+ * অন্য কোনো ইন্ডিক লিপি) ফিরলে যেন ফাঁদটা আবার পাতা না হয়, তাই দুটো
+ * তালিকা আলাদা করেই রাখা।
  */
-const MONTHS_SHORT_BN = [
-  'জানু',
-  'ফেব',
-  'মার্চ',
-  'এপ্রি',
-  'মে',
-  'জুন',
-  'জুলা',
-  'আগ',
-  'সেপ্ট',
-  'অক্টো',
-  'নভে',
-  'ডিসে',
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
-/** রবি = 0 … শনি = 6 (JS-এর `getUTCDay()` ক্রম) */
-const WEEKDAYS_BN = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
+/** Sun = 0 … Sat = 6 (JS-এর `getUTCDay()` ক্রম) */
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ── কর্মদিবস (`YYYY-MM-DD`) ─────────────────────────────────────────────────
 
@@ -163,32 +169,37 @@ export function thisMonthRange(now: Date = new Date()): {
 
 // ── তারিখ দেখানো ────────────────────────────────────────────────────────────
 
-/** `'2026-08-10'` → `'10 আগস্ট 2026'` */
+/** `'2026-08-10'` → `'10 August 2026'` */
 export function formatDate(date: string): string {
   const parsed = parseWorkDate(date);
   if (!parsed) return date;
-  return `${parsed.getUTCDate()} ${MONTHS_BN[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
+  return `${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()]} ${parsed.getUTCFullYear()}`;
 }
 
-/** `'2026-08-10'` → `'10 আগ'` — টেবিলের সরু কলামে */
+/** `'2026-08-10'` → `'10 Aug'` — টেবিলের সরু কলামে */
 export function formatDateShort(date: string): string {
   const parsed = parseWorkDate(date);
   if (!parsed) return date;
-  return `${parsed.getUTCDate()} ${MONTHS_SHORT_BN[parsed.getUTCMonth()]}`;
+  return `${parsed.getUTCDate()} ${MONTHS_SHORT[parsed.getUTCMonth()]}`;
 }
 
-/** `'2026-08-10'` → `'সোম'` */
+/**
+ * `'2026-08-10'` → `'Mon'`
+ *
+ * ⚠️ বাংলায় এর পরে "বার" জুড়ে দেওয়া হতো (`সোম` + `বার`)। ইংরেজিতে সেটা
+ *    করবেন না — `Mon` নিজেই সম্পূর্ণ, আর জুড়লে "Monবার" ধরনের কিছু হতো।
+ */
 export function weekdayOf(date: string): string {
   const parsed = parseWorkDate(date);
   if (!parsed) return '';
-  return WEEKDAYS_BN[parsed.getUTCDay()];
+  return WEEKDAYS[parsed.getUTCDay()];
 }
 
-/** `'2026-08'` → `'আগস্ট 2026'` */
+/** `'2026-08'` → `'August 2026'` */
 export function formatMonth(monthKey: string): string {
   const month = Number(monthKey.slice(5, 7));
   if (!Number.isFinite(month) || month < 1 || month > 12) return monthKey;
-  return `${MONTHS_BN[month - 1]} ${monthKey.slice(0, 4)}`;
+  return `${MONTHS[month - 1]} ${monthKey.slice(0, 4)}`;
 }
 
 /**
@@ -205,7 +216,7 @@ export function formatTime(iso: string | null): string {
   return `${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}`;
 }
 
-/** ISO instant → `'10 আগস্ট 2026, 14:32'` (ঢাকার সময়) */
+/** ISO instant → `'10 August 2026, 14:32'` (ঢাকার সময়) */
 export function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
   const at = new Date(iso);
@@ -214,30 +225,41 @@ export function formatDateTime(iso: string | null): string {
 }
 
 /**
- * "কত আগে" — `'3 মিনিট আগে'`।
+ * "কত আগে" — `'3 minutes ago'`।
  *
  * লাইভ বোর্ডে heartbeat-এর বয়স দেখাতে। ⚠️ ভবিষ্যতের সময় (ঘড়ি এদিক-ওদিক)
- * এলে `'এইমাত্র'` — ঋণাত্মক সংখ্যা দেখালে মনে হতো সিস্টেম ভেঙে গেছে।
+ * এলে `'Just now'` — ঋণাত্মক সংখ্যা দেখালে মনে হতো সিস্টেম ভেঙে গেছে।
+ *
+ * ⚠️ ইংরেজিতে **একবচন/বহুবচন** মেলাতে হয় (বাংলায় লাগত না): `1 minute ago`,
+ *    `2 minutes ago`। "1 minutes ago" দেখলে লেখাটা যন্ত্রের মতো শোনায়, আর
+ *    সংখ্যাগুলোর উপর ভরসাও কমে।
  */
 export function formatAgo(iso: string | null, now: Date = new Date()): string {
-  if (!iso) return 'কখনো নয়';
+  if (!iso) return 'Never';
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '—';
 
   const sec = Math.floor((now.getTime() - at.getTime()) / 1000);
-  if (sec < 45) return 'এইমাত্র';
-  if (sec < 3600) return `${Math.round(sec / 60)} মিনিট আগে`;
-  if (sec < 86400) return `${Math.round(sec / 3600)} ঘণ্টা আগে`;
-  return `${Math.round(sec / 86400)} দিন আগে`;
+  if (sec < 45) return 'Just now';
+  if (sec < 3600) return ago(Math.round(sec / 60), 'minute');
+  if (sec < 86400) return ago(Math.round(sec / 3600), 'hour');
+  return ago(Math.round(sec / 86400), 'day');
+}
+
+function ago(count: number, unit: string): string {
+  return `${count} ${unit}${count === 1 ? '' : 's'} ago`;
 }
 
 // ── সময়কাল ─────────────────────────────────────────────────────────────────
 
 /**
- * ⭐ সেকেন্ড → `'7ঘ 32মি'`। এক ঘণ্টার কম হলে শুধু `'32মি'`।
+ * ⭐ সেকেন্ড → `'7h 32m'`। এক ঘণ্টার কম হলে শুধু `'32m'`, শূন্য হলে `'0m'`।
  *
- * ⚠️ মিনিট round করার পর ৬০ হয়ে যেতে পারে (৩৫৯৮ সেকেন্ড → 0ঘ 60মি)।
- *    তখন ঘণ্টায় তুলে না দিলে পর্দায় "60মি" বসে থাকত — দেখতে ভুল না হলেও
+ * ⚠️ শূন্যে **খালি স্ট্রিং নয়** — `'0m'`। খালি ঘর দেখলে বোঝা যায় না ডেটা
+ *    নেই না কি সত্যিই শূন্য, আর "তথ্য নেই" বোঝাতে এই ফাইলে `'—'` আছে।
+ *
+ * ⚠️ মিনিট round করার পর ৬০ হয়ে যেতে পারে (৩৫৯৮ সেকেন্ড → 0h 60m)।
+ *    তখন ঘণ্টায় তুলে না দিলে পর্দায় "60m" বসে থাকত — দেখতে ভুল না হলেও
  *    কেউ সেটাকে সংখ্যা হিসেবে বিশ্বাস করত না।
  */
 export function formatDuration(seconds: number | null | undefined): string {
@@ -254,7 +276,7 @@ export function formatDuration(seconds: number | null | undefined): string {
     minutes = 0;
   }
 
-  return hours === 0 ? `${minutes}মি` : `${hours}ঘ ${minutes}মি`;
+  return hours === 0 ? `${minutes}m` : `${hours}h ${minutes}m`;
 }
 
 /** সেকেন্ড → দশমিক ঘণ্টা, `'7.5'` — চার্টের অক্ষ ও তুলনার জন্য */
@@ -269,7 +291,7 @@ export function formatHours(
 }
 
 /**
- * দশমিক ঘণ্টা → `'7ঘ 32মি'`।
+ * দশমিক ঘণ্টা → `'7h 32m'`।
  *
  * ⚠️ রিপোর্টের API ঘণ্টা পাঠায় (`workedHours: 7.53`), লাইভ বোর্ড সেকেন্ড
  *    (`todayWorkedSec`)। দুই পর্দায় একই লেখা দেখাতে এই সেতুটা দরকার।

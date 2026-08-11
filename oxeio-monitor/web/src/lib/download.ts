@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * কোনো উপায় থাকত না**। এক বছরের রেঞ্জে সার্ভারের কয়েক সেকেন্ড লাগে; ওই
  * সময়টুকুতে বোতাম চুপচাপ বসে থাকলে মানুষ বারবার চাপে, আর প্রতিবার সার্ভারে
  * নতুন করে পুরো রিপোর্ট তৈরি হয়। fetch করলে বোতামটা নিষ্ক্রিয় রাখা যায় আর
- * "তৈরি হচ্ছে…" বলা যায়। ব্যর্থ হলে বার্তাটাও পর্দায় দেখানো যায় — `<a>`-এ
+ * "Preparing…" বলা যায়। ব্যর্থ হলে বার্তাটাও পর্দায় দেখানো যায় — `<a>`-এ
  * ৪০৩ এলে ব্রাউজার নীরবে একটা JSON ফাইল নামিয়ে রাখত।
  */
 
@@ -60,7 +60,7 @@ export function useXlsxDownload(): XlsxDownload {
         saveBlob(await res.blob(), filenameOf(res) ?? fallbackName);
       } catch (err) {
         if (!alive.current) return;
-        setError(err instanceof Error ? err.message : 'ফাইল নামানো যায়নি');
+        setError(err instanceof Error ? err.message : "Couldn't download the file");
       } finally {
         if (alive.current) setBusy(false);
       }
@@ -74,12 +74,15 @@ export function useXlsxDownload(): XlsxDownload {
 
 /**
  * ⚠️ ব্যর্থ হলে সার্ভার JSON পাঠায় (বাইনারি নয়), তাই বার্তাটা তুলে আনা যায়।
- *    ৪০৩-এর নিজস্ব বাক্য — `<ErrorBox>` যা বলে, হুবহু সেটাই, যাতে দুই
- *    জায়গায় দুই রকম শোনায় না।
+ *    ৪০৩-এর নিজস্ব বাক্য — `<ErrorBox>` যা বলে, **হুবহু** সেটাই ("You don't
+ *    have access"), যাতে দুই জায়গায় দুই রকম শোনায় না। ওখানে বদলালে এখানেও।
+ *
+ * ⚠️ মাঝের `body.message` সার্ভারের নিজের লেখা — যেমন আসে তেমনই দেখানো হয়
+ *    (`<ErrorBox>`-এর মতোই; ভাষা ঠিক করার জায়গা সার্ভার, ক্লায়েন্ট নয়)।
  */
 async function messageOf(res: Response): Promise<string> {
-  if (res.status === 403) return 'আপনার এই অংশে ঢোকার অনুমতি নেই';
-  if (res.status === 401) return 'সেশন শেষ হয়ে গেছে — আবার লগইন করুন';
+  if (res.status === 403) return "You don't have access";
+  if (res.status === 401) return 'Your session ended — please sign in again';
 
   try {
     const body = (await res.json()) as { message?: string | string[] } | null;
@@ -90,7 +93,7 @@ async function messageOf(res: Response): Promise<string> {
     // বডি খালি বা বাইনারি — নিচের সাধারণ বার্তাটাই যাবে
   }
 
-  return `ফাইল তৈরি করা যায়নি (${res.status})`;
+  return `Couldn't build the file (${res.status})`;
 }
 
 /**

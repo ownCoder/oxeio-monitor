@@ -24,22 +24,33 @@ export type AlertType =
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
 
-/** পর্দায় দেখানোর বাংলা নাম — সব পেজে এক থাকুক */
+/**
+ * পর্দায় দেখানোর নাম — সব পেজে এক থাকুক।
+ *
+ * ⚠️ এখনো কোনো পেজ এগুলো render করে না (অ্যালার্টের পাতাটা এখনো নেই)।
+ *    তবু বাকি UI-র সাথে **একই ভাষায়** রাখা হলো, নইলে পাতাটা যেদিন লেখা
+ *    হতো সেদিন গোটা ড্যাশবোর্ড ইংরেজি অথচ অ্যালার্টের তালিকা বাংলা —
+ *    আর ততদিনে কেউ মনে রাখত না এই ফাইলটা অনুবাদ বাকি ছিল।
+ *
+ * ⚠️ `agent_down`-এর লেখাটা `StatusDot`-এর `STATUS_LABEL`-এর সাথে **হুবহু
+ *    এক** ("Agent down") — একই ঘটনা দুই পর্দায় দুই নামে ডাকলে ওগুলো
+ *    আলাদা জিনিস মনে হতো।
+ */
 export const ALERT_TYPE_LABEL: Record<AlertType, string> = {
-  agent_down: 'এজেন্ট চুপ',
-  agent_killed: 'এজেন্ট বন্ধ করা হয়েছে',
-  disk_warning: 'ডিস্ক ভরে আসছে',
-  disk_critical: 'ডিস্ক প্রায় ভর্তি',
-  backup_failed: 'ব্যাকআপ ব্যর্থ',
-  clock_drift: 'ঘড়ির গরমিল',
-  no_activity_today: 'আজ কোনো কাজ নেই',
-  device_overlap: 'একসাথে দুই ডিভাইস',
+  agent_down: 'Agent down',
+  agent_killed: 'Agent was stopped',
+  disk_warning: 'Disk filling up',
+  disk_critical: 'Disk almost full',
+  backup_failed: 'Backup failed',
+  clock_drift: 'Clock drift',
+  no_activity_today: 'No activity today',
+  device_overlap: 'Two devices at once',
 };
 
 export const ALERT_SEVERITY_LABEL: Record<AlertSeverity, string> = {
-  info: 'তথ্য',
-  warning: 'সতর্কতা',
-  critical: 'জরুরি',
+  info: 'Info',
+  warning: 'Warning',
+  critical: 'Critical',
 };
 
 export interface AlertRow {

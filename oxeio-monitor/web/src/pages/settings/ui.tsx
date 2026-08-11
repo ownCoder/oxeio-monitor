@@ -36,11 +36,11 @@ const INPUT =
  */
 export function messageOf(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 403) return 'আপনার এই অংশে ঢোকার অনুমতি নেই';
+    if (error.status === 403) return "You don't have access";
     return error.message;
   }
   if (error instanceof Error) return error.message;
-  return 'কিছু একটা ভুল হয়েছে';
+  return 'Something went wrong';
 }
 
 /**
@@ -220,8 +220,8 @@ export function Modal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="বন্ধ করুন"
-              title="বন্ধ করুন"
+              aria-label="Close"
+              title="Close"
               className="rounded-md border border-line px-2 py-1 text-[13px] text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
               ✕
@@ -504,7 +504,7 @@ export function FilterChip({
       <button
         type="button"
         onClick={onClear}
-        aria-label="ফিল্টার সরান"
+        aria-label="Remove filter"
         className="rounded-full px-1 leading-none transition hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
       >
         ✕
@@ -529,8 +529,8 @@ export function ConfirmDialog({
   confirmLabel,
   tone = 'danger',
   withReason = false,
-  reasonLabel = 'কারণ',
-  reasonHint = 'অন্তত ৩ অক্ষর — audit log-এ এটাই লেখা থাকবে',
+  reasonLabel = 'Reason',
+  reasonHint = 'At least 3 characters — this is what the audit log will keep',
   extra,
   busy,
   error,
@@ -563,15 +563,15 @@ export function ConfirmDialog({
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone={tone}
             disabled={busy || tooShort}
             onClick={() => onConfirm(reason.trim())}
-            title={tooShort ? 'কারণ লিখুন (অন্তত ৩ অক্ষর)' : undefined}
+            title={tooShort ? 'Write a reason (at least 3 characters)' : undefined}
           >
-            {busy ? 'অপেক্ষা করুন…' : confirmLabel}
+            {busy ? 'Please wait…' : confirmLabel}
           </Button>
         </>
       }
@@ -655,14 +655,14 @@ export function SecretModal({
       onClose={onClose}
       footer={
         <Button tone="primary" disabled={!saved} onClick={onClose}>
-          বন্ধ করুন
+          Close
         </Button>
       }
     >
       <div className="space-y-3">
         <Notice tone="attention">
-          এই {label} আর কখনো দেখানো হবে না — সার্ভারে শুধু এর hash জমা থাকে।
-          এখনই কপি করে নিন।
+          This {label} will not be shown again — the server keeps only its
+          hash. Copy it now.
         </Notice>
 
         <div className="rounded-lg border border-line bg-paper px-4 py-4 text-center">
@@ -673,13 +673,13 @@ export function SecretModal({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={copy}>কপি করুন</Button>
+          <Button onClick={copy}>Copy</Button>
           {copyState === 'ok' && (
-            <span className="text-xs text-ink-3">কপি হয়েছে</span>
+            <span className="text-xs text-ink-3">Copied</span>
           )}
           {copyState === 'failed' && (
             <span className="text-xs text-brand-ink">
-              কপি করা গেল না — লেখাটা নির্বাচন করে হাতে কপি করুন
+              Could not copy — select the text and copy it by hand
             </span>
           )}
         </div>
@@ -693,7 +693,7 @@ export function SecretModal({
             onChange={(e) => setSaved(e.target.checked)}
             className="mt-0.5 accent-brand"
           />
-          <span>আমি {label}টি কপি বা লিখে রেখেছি</span>
+          <span>I have copied or written down the {label}</span>
         </label>
       </div>
     </Modal>

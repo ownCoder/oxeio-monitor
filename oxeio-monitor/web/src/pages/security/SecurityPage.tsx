@@ -42,24 +42,24 @@ export function SecurityPage() {
 
   return (
     <Page
-      title="নিরাপত্তা"
-      subtitle={`${user?.email ?? ''} — দুই ধাপের যাচাই ও সেশন`}
+      title="Security"
+      subtitle={`${user?.email ?? ''} — two-factor authentication and sessions`}
     >
       <Card>
         <SectionHead
-          title="দুই ধাপের যাচাই (2FA)"
+          title="Two-factor authentication (2FA)"
           hint={
             data.enabled
-              ? `চালু · ${data.recoveryCodesLeft}টি রিকভারি কোড বাকি`
-              : 'বন্ধ'
+              ? `On · ${data.recoveryCodesLeft} recovery codes left`
+              : 'Off'
           }
         />
 
         {data.enabled ? (
           <div className="space-y-3">
             <Notice>
-              লগইনের সময় পাসওয়ার্ডের পর authenticator অ্যাপের ৬ অঙ্কের কোড
-              লাগবে। পাসওয়ার্ড ফাঁস হলেও কেউ ঢুকতে পারবে না।
+              Signing in needs a 6-digit code from your authenticator app after
+              the password. Even a leaked password will not let anyone in.
             </Notice>
 
             {/*
@@ -68,33 +68,34 @@ export function SecurityPage() {
             */}
             {data.recoveryCodesLeft <= 2 && (
               <Notice tone="attention">
-                রিকভারি কোড প্রায় ফুরিয়ে এসেছে ({data.recoveryCodesLeft}টি
-                বাকি)। এখনই নতুন সেট বানিয়ে রাখুন — ফোন হারালে এগুলোই
-                একমাত্র পথ।
+                You are nearly out of recovery codes ({data.recoveryCodesLeft}{' '}
+                left). Generate a fresh set now — if you lose your phone, these
+                are the only way back in.
               </Notice>
             )}
 
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => setConfirming('regenerate')}>
-                নতুন রিকভারি কোড
+                New recovery codes
               </Button>
               <Button tone="danger" onClick={() => setConfirming('disable')}>
-                2FA বন্ধ করুন
+                Turn off 2FA
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             <Notice>
-              Google Authenticator, Microsoft Authenticator, Authy — যেকোনো
-              TOTP অ্যাপ চলবে। চালু করার সময় ১০টি রিকভারি কোড পাবেন, ফোন
-              হারালে সেগুলো দিয়েই ঢুকবেন।
+              Google Authenticator, Microsoft Authenticator, Authy — any TOTP
+              app works. You get 10 recovery codes when you turn it on; those
+              are what you sign in with if you lose your phone.
             </Notice>
 
             {data.pendingSetup && (
               <Notice tone="attention">
-                আগে একবার শুরু করে শেষ করা হয়নি। আবার শুরু করলে নতুন QR
-                আসবে — পুরোনোটা স্ক্যান করে থাকলে অ্যাপ থেকে মুছে দিন।
+                Setup was started once before and never finished. Starting again
+                gives you a new QR code — if you already scanned the old one,
+                delete it from your app.
               </Notice>
             )}
 
@@ -109,7 +110,7 @@ export function SecurityPage() {
                 })
               }
             >
-              {start.busy ? 'অপেক্ষা করুন…' : '2FA চালু করি'}
+              {start.busy ? 'Please wait…' : 'Turn on 2FA'}
             </Button>
           </div>
         )}
@@ -183,45 +184,55 @@ function EnableModal({
 
   return (
     <Modal
-      title="2FA চালু করুন"
-      hint="QR স্ক্যান করে অ্যাপের কোডটি দিন"
+      title="Turn on 2FA"
+      hint="Scan the QR code, then enter the code from your app"
       onClose={onCancel}
       footer={
         <>
-          <Button onClick={onCancel}>বাতিল</Button>
+          <Button onClick={onCancel}>Cancel</Button>
           <Button tone="primary" disabled={m.busy} onClick={submit}>
-            {m.busy ? 'যাচাই হচ্ছে…' : 'যাচাই করে চালু করুন'}
+            {m.busy ? 'Verifying…' : 'Verify and turn on'}
           </Button>
         </>
       }
     >
       <div className="space-y-3">
         <ol className="list-inside list-decimal space-y-1 text-[13px] text-ink-2">
-          <li>ফোনে authenticator অ্যাপ খুলুন</li>
-          <li>নিচের QR কোডটি স্ক্যান করুন</li>
-          <li>অ্যাপে যে ৬ অঙ্ক দেখাচ্ছে সেটা এখানে লিখুন</li>
+          <li>Open the authenticator app on your phone</li>
+          <li>Scan the QR code below</li>
+          <li>Type the 6 digits your app is showing</li>
         </ol>
 
-        <div className="flex justify-center rounded-lg border border-line bg-white p-3">
-          {/*
-            ⚠️ ছবিটা data URL — বাইরের কোনো সার্ভারে যায় না। QR-এর ভেতরে
-               সিক্রেট আছে; তৃতীয় পক্ষের API দিয়ে আঁকালে সেটা তাদের লগে বসত।
-            ⚠️ সাদা পটভূমি হার্ডকোড: QR স্ক্যানার গাঢ়-হালকার বৈসাদৃশ্য
-               খোঁজে, তাই ডার্ক থিমেও এই বাক্সটা সাদাই থাকবে।
-          */}
-          <img
-            src={setup.qrDataUrl}
-            alt="2FA QR কোড"
-            width={240}
-            height={240}
-            className="h-auto max-w-full"
-          />
+        {/*
+          ⚠️ ছবিটা data URL — বাইরের কোনো সার্ভারে যায় না। QR-এর ভেতরে
+             সিক্রেট আছে; তৃতীয় পক্ষের API দিয়ে আঁকালে সেটা তাদের লগে বসত।
+          ⚠️ সাদা পটভূমি হার্ডকোড: QR স্ক্যানার গাঢ়-হালকার বৈসাদৃশ্য খোঁজে,
+             তাই ডার্ক থিমেও ছবির চারপাশের quiet zone সাদাই থাকতে হবে।
+          ⚠️ সাদা বাক্সটা **ভেতরের** div-এ, বাইরের বর্ডারওয়ালা div-এ নয় —
+             ইচ্ছে করেই আলাদা রাখা। `index.css`-এ একসময় একটা সেতু-নিয়ম ছিল
+             যা `border-line bg-white` জোড়াটাকে ডার্কে `surface` করে দিত;
+             ইনপুট দুটো `bg-surface`-এ সরে যাওয়ায় নিয়মটা এখন মুছে গেছে।
+             তবু ক্লাস দুটো আলাদা এলিমেন্টে রাখা হলো: ভবিষ্যতে কেউ ওই
+             ধরনের নিয়ম আবার লিখলেও এই quiet zone সাদাই থাকবে — গাঢ় হলে
+             স্ক্যানার আটকাত, আর 2FA চালু করার একমাত্র পথ ওই স্ক্যান।
+        */}
+        <div className="flex justify-center rounded-lg border border-line bg-paper p-3">
+          <div className="rounded bg-white p-2">
+            <img
+              src={setup.qrDataUrl}
+              alt="2FA QR code"
+              width={240}
+              height={240}
+              className="h-auto max-w-full"
+            />
+          </div>
         </div>
 
         <details className="rounded-md border border-line bg-paper px-3 py-2 text-[13px] text-ink-2">
-          <summary className="cursor-pointer">QR স্ক্যান করা যাচ্ছে না?</summary>
+          <summary className="cursor-pointer">Can&rsquo;t scan the QR?</summary>
           <p className="mt-2">
-            অ্যাপে &ldquo;কোড হাতে লিখুন&rdquo; বেছে নিয়ে এই সিক্রেটটি দিন:
+            Choose &ldquo;enter a setup key&rdquo; in your app and give it this
+            secret:
           </p>
           <p className="num mt-1.5 break-all text-ink select-all">
             {setup.secret}
@@ -232,7 +243,7 @@ function EnableModal({
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-ink-2">
-            অ্যাপের ৬ অঙ্কের কোড
+            The 6-digit code from your app
           </span>
           <input
             type="text"
@@ -245,14 +256,15 @@ function EnableModal({
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !m.busy) submit();
             }}
-            placeholder="১২৩৪৫৬"
-            className="num w-full rounded-md border border-line bg-white px-3 py-2 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+            placeholder="123456"
+            className="num w-full rounded-md border border-line bg-surface px-3 py-2 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
           />
         </label>
 
         <Notice tone="attention">
-          কোড না মেলা পর্যন্ত 2FA চালু হবে না। এই মোডাল বন্ধ করলেও কিছুই
-          বদলাবে না — তাই স্ক্যান করতে ভুলে গিয়ে আটকে যাওয়ার ভয় নেই।
+          2FA is not turned on until the code matches. Closing this dialog
+          changes nothing — so there is no risk of locking yourself out by
+          forgetting to scan.
         </Notice>
       </div>
     </Modal>
@@ -292,17 +304,17 @@ function PasswordConfirmModal({
 
   return (
     <Modal
-      title={isDisable ? '2FA বন্ধ করবেন?' : 'নতুন রিকভারি কোড'}
+      title={isDisable ? 'Turn off 2FA?' : 'New recovery codes'}
       onClose={onCancel}
       footer={
         <>
-          <Button onClick={onCancel}>বাতিল</Button>
+          <Button onClick={onCancel}>Cancel</Button>
           <Button
             tone={isDisable ? 'danger' : 'primary'}
             disabled={m.busy || password === ''}
             onClick={submit}
           >
-            {m.busy ? 'অপেক্ষা করুন…' : isDisable ? 'বন্ধ করুন' : 'বানান'}
+            {m.busy ? 'Please wait…' : isDisable ? 'Turn off' : 'Generate'}
           </Button>
         </>
       }
@@ -310,15 +322,15 @@ function PasswordConfirmModal({
       <div className="space-y-3">
         <Notice tone="attention">
           {isDisable
-            ? 'বন্ধ করলে শুধু পাসওয়ার্ড দিয়েই ঢোকা যাবে, আর রিকভারি কোডগুলোও মুছে যাবে।'
-            : 'নতুন সেট বানালে পুরোনো সব রিকভারি কোড সাথে সাথেই অচল হয়ে যাবে।'}
+            ? 'Once it is off, a password alone gets you in, and your recovery codes are deleted.'
+            : 'Generating a new set makes every old recovery code stop working immediately.'}
         </Notice>
 
         <ServerError error={m.error} />
 
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-ink-2">
-            আপনার পাসওয়ার্ড
+            Your password
           </span>
           <input
             type="password"
@@ -329,7 +341,7 @@ function PasswordConfirmModal({
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !m.busy && password !== '') submit();
             }}
-            className="w-full rounded-md border border-line bg-white px-3 py-2 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
           />
         </label>
       </div>

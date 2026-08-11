@@ -42,7 +42,7 @@ export function Page({
 
 /**
  * পেজের ভেতরের অংশের শিরোনাম।
- * ডানদিকে ছোট ব্যাখ্যা (`hint`) — যেমন "রিং = মাসের 208 ঘণ্টার অংশ"।
+ * ডানদিকে ছোট ব্যাখ্যা (`hint`) — যেমন "Ring = today's target"।
  */
 export function SectionHead({
   title,
@@ -67,7 +67,8 @@ export function SectionHead({
  *
  * ⚠️ **সলিড লাল বোতাম বানাবেন না** — সলিড লাল মানে "মনোযোগ দরকার"
  *    (ভুল, এজেন্ট বন্ধ)। বিপজ্জনক কাজে `tone="danger"`, বাকি সব জায়গায়
- *    ডিফল্ট। প্রধান কাজে `tone="primary"` (কালো, লাল নয়)।
+ *    ডিফল্ট। প্রধান কাজে `tone="primary"` (নিরেট `ink`, লাল নয় — ⚠️ ওটা
+ *    "কালো" নয়, Midnight থিমে `ink` প্রায় সাদা)।
  */
 export function Button({
   children,
@@ -84,11 +85,16 @@ export function Button({
   disabled?: boolean;
   title?: string;
 }) {
+  /**
+   * ⚠️ রং তিনটেই টোকেন থেকে — `text-on-ink` / `text-on-brand` **জোড়া**
+   *    টোকেন, `text-white` নয়। ডার্ক থিমে `bg-ink` প্রায় সাদা হয়ে যায়,
+   *    তখন সাদা লেখা বসলে বোতামটাই অদৃশ্য হতো (index.css § সেতু দেখুন)।
+   */
   const style =
     tone === 'primary'
-      ? 'bg-ink text-white border-ink hover:bg-black'
+      ? 'bg-ink text-on-ink border-ink hover:bg-ink-strong'
       : tone === 'danger'
-        ? 'bg-brand text-white border-brand hover:bg-brand-ink'
+        ? 'bg-attention text-on-brand border-attention hover:bg-brand-ink'
         : 'bg-surface text-ink-2 border-line hover:border-brand hover:text-ink';
 
   return (

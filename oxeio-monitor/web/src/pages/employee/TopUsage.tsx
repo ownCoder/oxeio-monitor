@@ -22,18 +22,21 @@ import { formatCount, formatPct } from '../../lib/format';
 
 const TOP_LIMIT = 10;
 
+/** ⚠️ শব্দগুলো D07-এর `ScoreCard`-এর ব্রেকডাউনের সাথে হুবহু এক রাখতে হবে */
 const CAT_LABEL: Record<Productivity | 'unknown', string> = {
-  productive: 'কাজের',
-  neutral: 'নিরপেক্ষ',
-  unproductive: 'কাজের বাইরে',
-  unknown: 'অচেনা',
+  productive: 'Productive',
+  neutral: 'Neutral',
+  unproductive: 'Unproductive',
+  unknown: 'Uncategorised',
 };
 
 /**
- * ⚠️ মকআপের `--st-*` মেনে: কালো · ধূসর · গাঢ় লাল · খালি।
+ * ⚠️ মকআপের `--st-*` মেনে: নিরেট `ink` · ধূসর · গাঢ় লাল · খালি।
  *
- * ⚠️ "অচেনা" বিন্দুটা `bg-paper`, `bg-surface` নয় — কার্ডটাই সাদা, তাই
- *    সাদা বিন্দু দিলে সারিটা দেখে মনে হতো বিন্দুটা বসাতেই ভুলে গেছি।
+ * ⚠️ "Uncategorised" বিন্দুটা `bg-paper`, `bg-surface` নয় — কার্ডের
+ *    পটভূমিই `surface`, তাই surface বিন্দু দিলে সারিটা দেখে মনে হতো
+ *    বিন্দুটা বসাতেই ভুলে গেছি। (Midnight থিমেও নিয়মটা একই: paper গাঢ়,
+ *    surface তার চেয়ে হালকা — তফাতটা দুই থিমেই টিকে থাকে।)
  */
 const CAT_CLASS: Record<Productivity | 'unknown', string> = {
   productive: 'bg-ink',
@@ -68,8 +71,8 @@ export function TopUsage({
   return (
     <section>
       <SectionHead
-        title="সবচেয়ে বেশি ব্যবহৃত"
-        hint={`এই দিনের সেরা ${TOP_LIMIT}টি`}
+        title="Most used"
+        hint={`Top ${TOP_LIMIT} for this day`}
       />
 
       {loading && !data ? (
@@ -78,25 +81,29 @@ export function TopUsage({
         <ErrorBox error={error} retry={reload} />
       ) : !data || nothing ? (
         <Empty
-          title="এই দিনে অ্যাপ বা সাইটের কোনো রেকর্ড নেই"
-          hint="এজেন্ট প্রতি স্লটে সামনের অ্যাপের নাম পাঠায়। কিছুই না এলে হয় PC চলেনি, নয়তো এজেন্ট চলেনি।"
+          title="No app or site records on this day"
+          hint="The agent reports the foreground app once per slot. Nothing at all means either the PC or the agent wasn't running."
         />
       ) : (
         <>
           <div className="grid gap-3 lg:grid-cols-2">
             <UsagePanel
-              title="টপ অ্যাপ"
-              hint="প্রসেসের নাম ধরে"
+              title="Top apps"
+              hint="By process name"
               report={data.apps}
-              emptyText="এই দিনে কোনো অ্যাপের সারি নেই"
-              unitLabel="অ্যাপ"
+              emptyText="No app rows on this day"
+              unitLabel="app"
             />
+            {/*
+              ⚠️ hint-টা পর্দাতেই থাকতে হবে (docs/09 § ৪) — যার ডেটা দেখা
+                 হচ্ছে তার জানার অধিকার আছে যে পুরো URL কোথাও জমা হয় না।
+            */}
             <UsagePanel
-              title="টপ সাইট"
-              hint="শুধু ডোমেইন — পুরো URL কখনো জমা হয় না"
+              title="Top sites"
+              hint="Domains only — full URLs are never stored"
               report={data.sites}
-              emptyText="ব্রাউজারে কাটানো কোনো সময় পাওয়া যায়নি"
-              unitLabel="ডোমেইন"
+              emptyText="No browser time found"
+              unitLabel="domain"
             />
           </div>
           <Caveat>{data.caveat}</Caveat>
@@ -117,7 +124,10 @@ function UsagePanel({
   hint: string;
   report: UsageReport;
   emptyText: string;
-  /** "10টি অ্যাপ" / "10টি ডোমেইন" */
+  /**
+   * **একবচনে** — `'app'` / `'domain'`। বহুবচনের `s` নিচে নিজে বসে, তাই
+   * ⚠️ একটামাত্র ডোমেইন হলেও "1 apps" ধরনের ভাঙা ইংরেজি বেরোয় না।
+   */
   unitLabel: string;
 }) {
   return (
@@ -134,8 +144,9 @@ function UsagePanel({
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-2.5 text-[11.5px] text-ink-3">
         <span>
-          মোট <span className="num">{formatCount(report.distinctKeys)}</span>টি{' '}
-          {unitLabel} · <Duration seconds={report.totalSec} tone="muted" />
+          <span className="num">{formatCount(report.distinctKeys)}</span>{' '}
+          {report.distinctKeys === 1 ? unitLabel : `${unitLabel}s`} in total ·{' '}
+          <Duration seconds={report.totalSec} tone="muted" />
         </span>
         {/*
           ⭐ তালিকার বাইরে পড়ে যাওয়া সময় না দেখালে "টপ ১০"-ই যেন গোটা দিন
@@ -143,7 +154,8 @@ function UsagePanel({
         */}
         {report.otherSec > 0 && (
           <span>
-            তালিকার বাইরে <Duration seconds={report.otherSec} tone="muted" />
+            Outside this list{' '}
+            <Duration seconds={report.otherSec} tone="muted" />
           </span>
         )}
       </div>
@@ -157,7 +169,7 @@ function UsageRow({ row }: { row: UsageTally }) {
   return (
     <div
       className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-x-2.5"
-      title={`${row.label} · ${CAT_LABEL[cat]} · ${formatPct(row.sharePct, 1)} সময় · ${formatCount(row.records)} সারি`}
+      title={`${row.label} · ${CAT_LABEL[cat]} · ${formatPct(row.sharePct, 1)} of time · ${formatCount(row.records)} rows`}
     >
       <span
         aria-hidden
@@ -176,7 +188,7 @@ function UsageRow({ row }: { row: UsageTally }) {
           */}
           {row.mixed && (
             <span className="flex-none rounded border border-line px-1 text-[10px] text-ink-3">
-              মিশ্র
+              Mixed
             </span>
           )}
         </div>

@@ -11,10 +11,14 @@ import { formatPct, pctOf } from '../../lib/format';
 /**
  * D07 — একদিনের productivity স্কোর।
  *
- * ⭐⚠️ **স্কোরের পাশে "কত শতাংশ সময় অচেনা" সবসময় থাকে।** ৯০% সময় অচেনা
- * হলে ৮০% স্কোর কার্যত অর্থহীন — অথচ শুধু বড় করে "80%" লিখে দিলে কেউ
- * সেটাকে দিনের রায় ধরে নিত, আর তার ভিত্তিতে কথা শোনাত। দুটো সংখ্যা
- * পাশাপাশি না থাকলে এই পর্দাটা মিথ্যে বলে।
+ * ⭐⚠️ **স্কোরের পাশে "কত শতাংশ সময় অচেনা" সবসময় থাকে** — ইংরেজি পর্দায়
+ * "… % uncategorised"। ৯০% সময় অচেনা হলে ৮০% স্কোর কার্যত অর্থহীন — অথচ
+ * শুধু বড় করে "80%" লিখে দিলে কেউ সেটাকে দিনের রায় ধরে নিত, আর তার
+ * ভিত্তিতে কথা শোনাত। দুটো সংখ্যা পাশাপাশি না থাকলে এই পর্দাটা মিথ্যে বলে।
+ *
+ * ⚠️ পুরো ড্যাশবোর্ডে একটাই শব্দ — **uncategorised** (uncategorized,
+ * unknown বা unmatched নয়)। D07-এর টাইল, ব্রেকডাউনের ভাগ আর D08-এর
+ * ক্যাটাগরি-লেবেল তিন জায়গাতেই এক, নইলে পাঠক ভাবত তিনটে আলাদা জিনিস।
  *
  * ⭐ `scorePct === null` মানে **তথ্য নেই**, শূন্য নয়। `formatPct()` সেটা
  * `'—'` দেখায়; কোথাও `?? 0` লেখা হয়নি।
@@ -61,8 +65,8 @@ export function ScoreCard({
   return (
     <section>
       <SectionHead
-        title="productivity স্কোর"
-        hint="ক্যাটাগরির নিয়ম থেকে · বেতনের হিসাবে এই সংখ্যা ঢোকে না"
+        title="Productivity score"
+        hint="From the category rules · this number never touches pay"
       />
 
       {loading && !data ? (
@@ -71,8 +75,8 @@ export function ScoreCard({
         <ErrorBox error={error} retry={reload} />
       ) : !score || score.totalSec === 0 ? (
         <Empty
-          title="এই দিনে অ্যাপ বা সাইটের কোনো রেকর্ড নেই"
-          hint="স্কোরটা অ্যাপ-ব্যবহারের সারি থেকে বের হয়। সারি না থাকলে স্কোর বানানো যায় না — শূন্য দেখানো হয় না, কারণ শূন্য মানে হতো 'কিছুই কাজের ছিল না'।"
+          title="No app or site records on this day"
+          hint="The score comes from app-usage rows. With no rows there is nothing to score — and zero is not shown, because zero would claim that none of the day was work."
         />
       ) : (
         <>
@@ -97,19 +101,19 @@ function Numbers({ score }: { score: ProductivityScore }) {
   return (
     <div className="flex flex-wrap gap-x-10 gap-y-4">
       <div>
-        <div className="text-[11.5px] text-ink-3">স্কোর</div>
+        <div className="text-[11.5px] text-ink-3">Score</div>
         <div className="num mt-0.5 text-3xl leading-none font-semibold text-ink">
           {formatPct(score.scorePct)}
         </div>
         <div className="mt-1 text-[11px] text-ink-3">
           {score.scorePct === null
-            ? 'হিসাব করার মতো চেনা সময় নেই'
-            : 'চেনা সময়ের মধ্যে কাজের অংশ'}
+            ? 'No known time to score'
+            : 'Share of known time spent on work'}
         </div>
       </div>
 
       <div>
-        <div className="text-[11.5px] text-ink-3">অচেনা সময়</div>
+        <div className="text-[11.5px] text-ink-3">Uncategorised</div>
         <div
           className={`num mt-0.5 text-3xl leading-none font-semibold ${
             alarming ? 'text-brand-ink' : 'text-ink-3'
@@ -118,7 +122,7 @@ function Numbers({ score }: { score: ProductivityScore }) {
           {formatPct(score.unknownPct)}
         </div>
         <div className="mt-1 text-[11px] text-ink-3">
-          কোনো নিয়মে মেলেনি — স্কোরের হিসাবেই নেই
+          of the day matched no rule — left out of the score
         </div>
       </div>
     </div>
@@ -128,20 +132,27 @@ function Numbers({ score }: { score: ProductivityScore }) {
 function Explain({ score }: { score: ProductivityScore }) {
   return (
     <p className="mt-4 rounded-md border border-line bg-paper px-3 py-2 text-xs leading-relaxed text-ink-3">
-      স্কোরটা দিনের{' '}
+      The score sits on the{' '}
       <Duration
         seconds={score.categorizedSec}
         className="font-semibold text-ink-2"
       />{' '}
-      <b>চেনা</b> সময়ের উপর বসানো, পুরো{' '}
+      of <b>known</b> time in this day, not on the full{' '}
       <Duration seconds={score.totalSec} className="font-semibold text-ink-2" />
-      -এর উপর নয়।
+      {' — '}
+      {/*
+        ⭐⚠️ "…% uncategorised" বাক্যটা **শর্তহীন**, স্কোরের ঠিক নিচেই।
+           আগে এটা শুধু ৩০%+ হলে দেখাত, ফলে ২৯% অচেনা থাকলে পর্দায় সংখ্যাটা
+           কোথাও লেখাই থাকত না — অথচ দিনের প্রায় এক-তৃতীয়াংশ তখনো অজানা।
+           টাইলটা উপরে আছে বটে, কিন্তু ওখানে লেবেল আগে আর সংখ্যা পরে; পুরো
+           কথাটা এক টানে পড়া যায় শুধু এই লাইনে।
+      */}
+      <b>{formatPct(score.unknownPct)} uncategorised</b>.
       {score.unknownPct >= 30 && (
         <>
           {' '}
-          এই দিনের <b>{formatPct(score.unknownPct)}</b> সময় অচেনা — এত বড় অংশ
-          অচেনা থাকলে সংখ্যাটাকে দিনের রায় ধরা যাবে না। নতুন ক্যাটাগরির নিয়ম
-          যোগ করলে হিসাবটা পাল্টাবে।
+          With that much of the day unmatched, the number cannot stand as a
+          verdict on anyone. Adding category rules will change it.
         </>
       )}
     </p>
@@ -152,29 +163,29 @@ function Breakdown({ score }: { score: ProductivityScore }) {
   const slices: Slice[] = [
     {
       key: 'productive',
-      label: 'কাজের (productive)',
-      hint: 'নিয়মে productive হিসেবে চিহ্নিত',
+      label: 'Productive',
+      hint: 'Marked productive by a rule',
       seconds: score.productiveSec,
       className: 'bg-ink',
     },
     {
       key: 'neutral',
-      label: 'নিরপেক্ষ (neutral)',
-      hint: 'জানা, কিন্তু কোনো দিকেই নয়',
+      label: 'Neutral',
+      hint: 'Known, but neither way',
       seconds: score.neutralSec,
       className: 'bg-ink-3/45',
     },
     {
       key: 'unproductive',
-      label: 'কাজের বাইরে (unproductive)',
-      hint: 'নিয়মে unproductive — তবু ঘণ্টা কাটা যায় না',
+      label: 'Unproductive',
+      hint: 'Marked unproductive by a rule — hours are still never cut',
       seconds: score.unproductiveSec,
       className: 'bg-brand-ink',
     },
     {
       key: 'unknown',
-      label: 'অচেনা',
-      hint: 'কোনো নিয়মে মেলেনি',
+      label: 'Uncategorised',
+      hint: 'Matched no rule',
       seconds: score.unknownSec,
       className: 'bg-paper',
       style: UNKNOWN_STRIPES,

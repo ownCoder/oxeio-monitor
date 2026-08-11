@@ -14,7 +14,7 @@ export function Field({ label, hint, id, ...props }: FieldProps) {
       <input
         id={id}
         {...props}
-        className="w-full rounded-md border border-line bg-white px-3 py-2 text-[15px] outline-none placeholder:text-ink-3 focus:border-brand focus:ring-2 focus:ring-brand/25 disabled:opacity-60"
+        className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[15px] outline-none placeholder:text-ink-3 focus:border-brand focus:ring-2 focus:ring-brand/25 disabled:opacity-60"
       />
       {hint && <span className="mt-1.5 block text-xs text-ink-3">{hint}</span>}
     </label>
@@ -34,14 +34,20 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={busy || disabled}
-      className="w-full rounded-md bg-ink px-4 py-2.5 text-[15px] font-medium text-white transition hover:bg-black focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-md bg-ink px-4 py-2.5 text-[15px] font-medium text-on-ink transition hover:bg-ink-strong focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {busy ? 'অপেক্ষা করুন…' : children}
+      {busy ? 'Please wait…' : children}
     </button>
   );
 }
 
-/** ভুলের বার্তা — সলিড লাল, কারণ এটা মনোযোগ দাবি করে */
+/**
+ * ভুলের বার্তা — লাল, কারণ এটা মনোযোগ দাবি করে।
+ *
+ * ⚠️ ভরাট নয়, **আভা + লাল লেখা** (`brand-bg` / `brand-ink`)। ফর্মে একটার
+ *    পর একটা ভুল আসতে পারে; ভরাট লাল বাক্স পরপর দুটো বসলে পুরো পর্দাটাই
+ *    সংকটের মতো দেখাত।
+ */
 export function ErrorNote({ children }: { children: React.ReactNode }) {
   return (
     <p

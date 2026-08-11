@@ -30,8 +30,8 @@ import { TopUsage } from './employee/TopUsage';
  * পাতা সাদা হয়ে যেত।
  *
  * ⚠️ চারটে endpoint-ই owner + manager (`role = employee` ৪০৩ পাবে, আর
- * `<ErrorBox>` তখন "অনুমতি নেই" দেখায়)। এই পাতায় owner-only কিছু নেই —
- * বেতন এখানে দেখানোই হয় না, চাওয়াও হয় না।
+ * `<ErrorBox>` তখন "You don't have access" দেখায়)। এই পাতায় owner-only কিছু
+ * নেই — বেতন এখানে দেখানোই হয় না, চাওয়াও হয় না।
  *
  * ⚠️ J08 (ঘণ্টা-সংশোধনের তালিকা) এখানে নেই: সার্ভারে
  * `GET /employees/:id/time-adjustments` বলে কোনো রুট নেই। `time_adjustments`
@@ -63,7 +63,7 @@ export function EmployeeDetailPage() {
       validId
         ? getEmployee(employeeId, signal)
         : // ⚠️ NaN পাঠালে সার্ভারের ParseIntPipe ৪০০ দিত — নেটওয়ার্কেই যাওয়া হয় না
-          Promise.reject(new Error('স্টাফের ঠিকানাটা ঠিক নয়')),
+          Promise.reject(new Error("That staff link isn't valid")),
     [employeeId, validId, nonce],
   );
 
@@ -73,10 +73,10 @@ export function EmployeeDetailPage() {
 
   if (!validId) {
     return (
-      <Page title="স্টাফের দিন">
+      <Page title="Staff member">
         <Empty
-          title="ঠিকানাটা ঠিক নয়"
-          hint="এই পাতার ঠিকানা `/staff/3` ধরনের হওয়ার কথা। লাইভ বোর্ড থেকে কারো কার্ডে ক্লিক করে আসুন।"
+          title="That link isn't valid"
+          hint="This page's address should look like `/staff/3`. Open it by clicking someone's card on the Live Board."
         />
       </Page>
     );
@@ -86,7 +86,7 @@ export function EmployeeDetailPage() {
   //    এরর বাক্স পরপর সাজিয়ে রাখার চেয়ে একটাই যথেষ্ট।
   if (loading && !employee) {
     return (
-      <Page title="স্টাফের দিন">
+      <Page title="Staff member">
         <Loading />
       </Page>
     );
@@ -94,7 +94,7 @@ export function EmployeeDetailPage() {
 
   if (error || !employee) {
     return (
-      <Page title="স্টাফের দিন">
+      <Page title="Staff member">
         <ErrorBox error={error} retry={reload} />
       </Page>
     );
@@ -110,23 +110,34 @@ export function EmployeeDetailPage() {
           {employee.department ? ` · ${employee.department}` : ''}
           {' — '}
           <span className="num">{formatDate(date)}</span>, {weekdayOf(date)}
-          {date === today ? ' (আজ)' : ''}
-          {employee.status === 'inactive' ? ' · নিষ্ক্রিয় কর্মী' : ''}
+          {date === today ? ' (Today)' : ''}
+          {/*
+            ⚠️ এখানে "Inactive", "Idle" নয়। অভিধানে নিষ্ক্রিয় → Idle, কিন্তু
+               ওটা লাইভ বোর্ডের **এই মুহূর্তের অবস্থা**। এখানকার `status`
+               কর্মীর রেকর্ড চালু আছে কি না — কেউ চাকরি ছেড়ে গেলে "Idle"
+               লেখা হতো, আর ম্যানেজার ভাবত লোকটা এখন বসে আছে।
+          */}
+          {employee.status === 'inactive' ? ' · Inactive staff' : ''}
         </>
       }
       actions={
         <>
+          {/*
+            ⚠️ `label` স্পষ্ট করে পাঠানো — `<DatePicker>`-এর ডিফল্ট লেবেলটা
+               অন্য ফাইলে, আর সেটা বদলানোর আগেই এই পাতাটা যেন পুরো ইংরেজি থাকে।
+          */}
           <DatePicker
             value={date}
             onChange={setDate}
+            label="Date"
             max={today}
             withArrows
           />
           <Button
             onClick={() => setNonce((n) => n + 1)}
-            title="পাতার সব অংশ আবার আনা হবে"
+            title="Reloads every section on this page"
           >
-            রিফ্রেশ
+            Refresh
           </Button>
         </>
       }

@@ -7,13 +7,7 @@ import { Stat, StatRow } from '../components/Card';
 import { Button, Page, SectionHead } from '../components/Page';
 import { Caveat, Empty, ErrorBox, Loading } from '../components/States';
 import { StatusLegend } from '../components/StatusDot';
-import {
-  formatDate,
-  formatDuration,
-  formatPct,
-  formatTime,
-  pctOf,
-} from '../lib/format';
+import { formatDate, formatDuration, formatTime } from '../lib/format';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
 import { ShotLightbox } from './live/ShotLightbox';
@@ -25,6 +19,12 @@ import { ShotLightbox } from './live/ShotLightbox';
  *    রাখে, তাই প্রথমবার ছাড়া সংখ্যাগুলো জায়গামতোই থাকে, শুধু নীরবে বদলায়।
  *    উল্টোটা হলে প্রতি ৩০ সেকেন্ডে গোটা বোর্ড ঝিকমিক করত আর কেউ একটা
  *    কার্ডও পড়ে শেষ করতে পারত না।
+ *
+ * ⭐ **আজকের টার্গেট সামনে, মাসেরটা পেছনে** (`dailyTargetSec`,
+ *    `todayIsWorkday`)। মাসের ৭৮/২০৮ দেখে "আজ দিনটা ঠিক যাচ্ছে কি না"
+ *    বলা যেত না — ওই উত্তরের জন্য মাসের কত ভাগ পেরিয়েছে জানতে হতো, আর
+ *    সেটা ছুটির তালিকার উপর নির্ভরশীল। মাসের হিসাব তবু রয়ে গেছে (কার্ডে
+ *    ছোট করে), কারণ **বেতনের ভিত্তি এখনো মাসিক ২০৮ ঘণ্টাই**।
  */
 
 /** E01 — ৩০ সেকেন্ড */
@@ -49,10 +49,10 @@ export function LiveBoardPage() {
   /**
    * ⚠️ `/live` শুধু owner ও manager-এর (live.controller.ts-এ ক্লাস-লেভেল
    *    `@Roles`)। স্টাফ এখানে এলে ৪০৩ পাবে — সেটা `<ErrorBox>` নিজেই
-   *    "অনুমতি নেই" বলে দেখায়। কিন্তু `/screenshots` স্টাফের জন্যও খোলা
-   *    (স্কোপ দিয়ে নিজেরটা), তাই ওটা আলাদা করে আটকাতে হয়: নইলে যে পাতাটা
-   *    সে দেখতেই পাচ্ছে না, তার জন্য প্রতি ৪ মিনিটে "নিজের ছবি দেখল" বলে
-   *    একটা করে মিথ্যা অডিট সারি লেখা হতো।
+   *    "You don't have access" বলে দেখায়। কিন্তু `/screenshots` স্টাফের
+   *    জন্যও খোলা (স্কোপ দিয়ে নিজেরটা), তাই ওটা আলাদা করে আটকাতে হয়:
+   *    নইলে যে পাতাটা সে দেখতেই পাচ্ছে না, তার জন্য প্রতি ৪ মিনিটে "নিজের
+   *    ছবি দেখল" বলে একটা করে মিথ্যা অডিট সারি লেখা হতো।
    */
   const canViewBoard = user?.role === 'owner' || user?.role === 'manager';
 
@@ -82,14 +82,14 @@ export function LiveBoardPage() {
   let body: ReactNode;
 
   if (board.loading && !data) {
-    body = <Loading label="বোর্ড লোড হচ্ছে…" />;
+    body = <Loading label="Loading the board…" />;
   } else if (!data) {
     body = <ErrorBox error={board.error} retry={board.reload} />;
   } else if (cards.length === 0) {
     body = (
       <Empty
-        title="বোর্ডে দেখানোর মতো কেউ নেই"
-        hint="সক্রিয় কোনো কর্মী যোগ করা হয়নি। স্টাফ যোগ করে তাদের PC-তে এজেন্ট বসালে প্রথম heartbeat আসার সাথে সাথেই কার্ড এখানে দেখা যাবে।"
+        title="Nobody on the board yet"
+        hint="No active staff have been added. Add staff, install the agent on their PC, and a card shows up here with the first heartbeat."
       />
     );
   } else {
@@ -107,26 +107,34 @@ export function LiveBoardPage() {
             role="status"
             className="mb-3 rounded-md border border-brand/30 bg-brand-bg px-3 py-2 text-xs text-brand-ink"
           >
-            হালনাগাদ করা যায়নি — নিচের সংখ্যাগুলো{' '}
-            <span className="num">{formatTime(isoOf(board.updatedAt))}</span>-এর।
+            Couldn&rsquo;t refresh — the numbers below are from{' '}
+            <span className="num">{formatTime(isoOf(board.updatedAt))}</span>.
           </p>
         )}
 
         <StatRow>
           <Stat
-            label="এখন কাজ করছেন"
+            label="Working now"
             value={stats.active}
             unit={`/${stats.total}`}
           />
+          {/*
+            ⭐ হর **`withTarget`**, `total` নয় — ছুটিতে থাকা কর্মী "টার্গেট
+               ছোঁয়নি" দলে পড়লে ছুটির দিনটাই ব্যর্থতার মতো দেখাত।
+          */}
           <Stat
-            label="আজ কাজ হয়েছে"
-            value={stats.workedToday}
-            unit={`/${stats.total}`}
-            tone={stats.workedToday === 0 ? 'muted' : 'counted'}
+            label="Met today's target"
+            value={stats.withTarget === 0 ? '—' : stats.metTarget}
+            unit={stats.withTarget === 0 ? undefined : `/${stats.withTarget}`}
+            tone={
+              stats.withTarget === 0 || stats.metTarget === 0
+                ? 'muted'
+                : 'counted'
+            }
           />
-          <Stat label="আজকের মোট" value={formatDuration(stats.todaySec)} />
+          <Stat label="Hours today" value={formatDuration(stats.todaySec)} />
           <Stat
-            label="আজ গড়ে"
+            label="Average today"
             value={
               stats.workedToday === 0
                 ? '—'
@@ -134,14 +142,9 @@ export function LiveBoardPage() {
             }
             tone={stats.workedToday === 0 ? 'muted' : 'counted'}
           />
-          <Stat
-            label="গড় মাসিক অগ্রগতি"
-            value={formatPct(stats.avgMonthPct)}
-            tone={stats.avgMonthPct === null ? 'muted' : 'counted'}
-          />
           {/* ⚠️ পর্দায় একটাই লাল টাইল — নইলে লাল রঙের মানেই হারিয়ে যায় */}
           <Stat
-            label="এজেন্ট বন্ধ"
+            label="Agent down"
             value={stats.agentDown}
             tone={stats.agentDown > 0 ? 'attention' : 'muted'}
           />
@@ -149,8 +152,12 @@ export function LiveBoardPage() {
 
         <div className="mt-5">
           <SectionHead
-            title={`টিম · ${stats.total} জন`}
-            hint="রিং = মাসের টার্গেটের কতটা হয়েছে · নির্দিষ্ট শিফট নেই, দিনের যেকোনো ঘণ্টা গোনা হয়"
+            title={`Team · ${stats.total}`}
+            hint={
+              stats.withTarget === 0
+                ? 'No target today — weekly off or holiday · hours still count if someone works'
+                : "Ring = today's target · no fixed shift, any hour of the day counts"
+            }
           />
 
           {/* E12 — ফোনে এক কলাম, ট্যাবে দুই, ডেস্কটপে তিন-চার */}
@@ -172,17 +179,22 @@ export function LiveBoardPage() {
                দেখে নেওয়া), কিন্তু শর্তটা সত্যি — সেখানে worked সেকেন্ড
                **যোগফল**, UNION নয়। তাই কথাটা এখানে লেখা আছে। লুকিয়ে
                ফেললে কেউ দুই PC-র যোগ হওয়া ঘণ্টাকে আসল কাজ ধরে নিত।
+
+            ⚠️ অন্য পাতার `caveat` সার্ভার থেকে **বাংলায়** আসে
+               (activity.service.ts) — সেগুলো যেমন আসে তেমনই দেখানো হয়।
+               এই লেখাটা ক্লায়েন্টেরই, তাই এটা ইংরেজি।
           */}
           <Caveat>
-            একজনের একাধিক PC একসাথে চললে ওই সময়টা দুবার গোনা হয়, তাই ঘণ্টা
-            সামান্য বেশি দেখাতে পারে। ১৫ মিনিটের বেশি এমন হলে আলাদা অ্যালার্ট
-            ওঠে।
+            When one person runs more than one PC at the same time, that stretch
+            is counted twice, so hours can read a little high. An overlap longer
+            than 15 minutes raises its own alert.
           </Caveat>
 
           {/* ⚠️ ছবি আনতে না পারা বোর্ড ভেঙে যাওয়া নয় — তাই ছোট করে, আলাদা করে */}
           {shots.error && !shots.data && (
             <p className="mt-2 text-xs text-ink-3">
-              স্ক্রিনশট আনা যায়নি — কার্ডে ছবির জায়গাটা খালি থাকবে।
+              Screenshots couldn&rsquo;t be loaded — the image area on each card
+              stays empty.
             </p>
           )}
         </div>
@@ -192,15 +204,13 @@ export function LiveBoardPage() {
 
   return (
     <Page
-      title="লাইভ বোর্ড"
-      subtitle={
-        data ? `${formatDate(data.workDate)} · ঢাকার সময়` : 'এখনকার অবস্থা'
-      }
+      title="Live Board"
+      subtitle={data ? `${formatDate(data.workDate)} · Dhaka time` : 'Right now'}
       actions={
         <div className="flex items-center gap-2">
           {board.updatedAt && (
             <span className="text-[11.5px] text-ink-3">
-              হালনাগাদ{' '}
+              Updated{' '}
               <span className="num">{formatTime(isoOf(board.updatedAt))}</span>
             </span>
           )}
@@ -209,9 +219,9 @@ export function LiveBoardPage() {
               board.reload();
               shots.reload();
             }}
-            title="৩০ সেকেন্ড অপেক্ষা না করে এখনই"
+            title="Now, without waiting 30 seconds"
           >
-            হালনাগাদ
+            Refresh
           </Button>
         </div>
       }
@@ -233,20 +243,27 @@ export function LiveBoardPage() {
 interface BoardStats {
   total: number;
   active: number;
+  /** আজ যাদের কিছু না কিছু গোনা হয়েছে — গড়ের **হর** */
   workedToday: number;
   todaySec: number;
-  /** ⚠️ কারো টার্গেট না থাকলে `null` — ০% নয়, "তথ্য নেই" */
-  avgMonthPct: number | null;
+  /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
+  withTarget: number;
+  metTarget: number;
   agentDown: number;
 }
 
 /**
  * মকআপের `.summary` টাইলগুলো।
  *
- * ⭐ মকআপে "Behind target" নামে একটা টাইল আছে, এখানে **ইচ্ছাকৃতভাবে নেই**।
- *    কে পিছিয়ে সেটা বলতে হলে মাসের কত ভাগ কর্মদিবস পেরিয়েছে জানতে হয়, আর
- *    সেটা ছুটির তালিকার উপর নির্ভর করে (`/holidays`) — `GET /live` ওই তথ্য
- *    পাঠায় না। ক্যালেন্ডারের দিন গুনে আন্দাজ করলে ছুটির পরদিন গোটা টিমকে
+ * ⭐ আগে এখানে "Behind target" টাইল **ইচ্ছাকৃতভাবে ছিল না**: কে পিছিয়ে
+ *    সেটা বলতে মাসের কত ভাগ কর্মদিবস পেরিয়েছে জানতে হয়, আর `GET /live` ওই
+ *    তথ্য পাঠাত না। এখন সার্ভার `dailyTargetSec` ও `todayIsWorkday` পাঠায়,
+ *    তাই **আজকের** প্রশ্নটার উত্তর আর আন্দাজ নয় — "Met today's target"
+ *    গোনা যায়।
+ *
+ * ⚠️ তবু **মাসের** "পিছিয়ে/এগিয়ে" এখানে নেই, আর কারণটা আগের মতোই: তার
+ *    জন্য মাসের কতগুলো কর্মদিবস পেরিয়েছে জানা দরকার, যেটা `/live`-এ আসে
+ *    না। ক্যালেন্ডারের দিন গুনে আন্দাজ করলে ছুটির পরদিন গোটা টিমকে
  *    "পিছিয়ে" দেখাত, আর সেই সংখ্যা দিয়েই কেউ কারো জবাবদিহি চাইত।
  *    আন্দাজ করা সংখ্যার চেয়ে না থাকা ভালো।
  */
@@ -255,8 +272,8 @@ function summarize(cards: LiveCard[]): BoardStats {
   let workedToday = 0;
   let todaySec = 0;
   let agentDown = 0;
-  let pctSum = 0;
-  let pctCount = 0;
+  let withTarget = 0;
+  let metTarget = 0;
 
   for (const card of cards) {
     if (card.status === 'active') active += 1;
@@ -264,9 +281,14 @@ function summarize(cards: LiveCard[]): BoardStats {
     if (card.todayWorkedSec > 0) workedToday += 1;
     todaySec += card.todayWorkedSec;
 
-    if (card.monthTargetSec > 0) {
-      pctSum += pctOf(card.monthWorkedSec, card.monthTargetSec);
-      pctCount += 1;
+    /**
+     * ⚠️ `dailyTargetSec > 0`-ও দেখা হয়: পুরো মাস ছুটি হলে সার্ভার ০
+     *    পাঠায়, আর তখন "০ সেকেন্ড ≥ ০ টার্গেট" সত্যি হয়ে সবাই টার্গেট
+     *    ছুঁয়ে ফেলত — কেউ এক মিনিটও কাজ না করে।
+     */
+    if (card.todayIsWorkday && card.dailyTargetSec > 0) {
+      withTarget += 1;
+      if (card.todayWorkedSec >= card.dailyTargetSec) metTarget += 1;
     }
   }
 
@@ -275,8 +297,9 @@ function summarize(cards: LiveCard[]): BoardStats {
     active,
     workedToday,
     todaySec,
+    withTarget,
+    metTarget,
     agentDown,
-    avgMonthPct: pctCount === 0 ? null : pctSum / pctCount,
   };
 }
 

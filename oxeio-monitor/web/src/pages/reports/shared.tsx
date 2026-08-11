@@ -52,23 +52,24 @@ export function MetaNote({ meta }: { meta: ReportMeta }) {
       <p className="text-[11.5px] text-ink-3">
         <span className="num">{formatDate(meta.from)}</span> —{' '}
         <span className="num">{formatDate(meta.to)}</span> ·{' '}
-        <span className="num">{meta.days}</span> দিন · তৈরি{' '}
+        <span className="num">{meta.days}</span> days · generated{' '}
         <span className="num">{formatDateTime(meta.generatedAt)}</span>
       </p>
 
       {meta.clampedToToday && (
         <Caveat>
-          চাওয়া হয়েছিল <b className="num">{formatDate(meta.requestedTo)}</b>{' '}
-          পর্যন্ত, কিন্তু ভবিষ্যতের দিনের কোনো ডেটা নেই — তাই{' '}
-          <b className="num">{formatDate(meta.to)}</b> পর্যন্তই দেখানো হচ্ছে।
-          বাকি দিনগুলোর টার্গেট এখানে যোগ করা হয়নি।
+          Data was requested up to{' '}
+          <b className="num">{formatDate(meta.requestedTo)}</b>, but future days
+          have none — so this shows up to{' '}
+          <b className="num">{formatDate(meta.to)}</b>. The targets for the
+          remaining days are not added in here.
         </Caveat>
       )}
 
       {meta.excludedEmployees.length > 0 && (
         <Caveat>
-          এই <span className="num">{meta.excludedEmployees.length}</span> জনকে
-          রাখা যায়নি (নিষ্ক্রিয়, অথচ কবে ছেড়েছেন লেখা নেই):{' '}
+          These <span className="num">{meta.excludedEmployees.length}</span>{' '}
+          could not be included (inactive, with no last working day on file):{' '}
           {meta.excludedEmployees.join(', ')}
         </Caveat>
       )}
@@ -125,16 +126,16 @@ export function SignedHours({ hours }: { hours: number }) {
 }
 
 export const DAY_TYPE_LABEL: Record<DayType, string> = {
-  workday: 'কর্মদিবস',
-  weekly_off: 'সাপ্তাহিক ছুটি',
-  holiday: 'ছুটি',
+  workday: 'Workday',
+  weekly_off: 'Weekly off',
+  holiday: 'Holiday',
 };
 
 export const CATEGORY_LABEL: Record<UsageCategory, string> = {
-  productive: 'উৎপাদনশীল',
-  neutral: 'নিরপেক্ষ',
-  unproductive: 'অনুৎপাদনশীল',
-  uncategorized: 'অচিহ্নিত',
+  productive: 'Productive',
+  neutral: 'Neutral',
+  unproductive: 'Unproductive',
+  uncategorized: 'Uncategorized',
 };
 
 /**
@@ -148,9 +149,9 @@ export const MAX_SHOWN_ROWS = 500;
 export function TrimmedNote({ total }: { total: number }) {
   return (
     <p className="border-t border-line px-4 py-2.5 text-[11.5px] text-ink-3">
-      মোট <span className="num">{total}</span> সারির প্রথম{' '}
-      <span className="num">{MAX_SHOWN_ROWS}</span>টি দেখানো হচ্ছে — পুরো
-      তালিকাটা Excel ফাইলে আছে।
+      Showing the first <span className="num">{MAX_SHOWN_ROWS}</span> of{' '}
+      <span className="num">{total}</span> rows — the full list is in the Excel
+      file.
     </p>
   );
 }

@@ -5,34 +5,46 @@ import type { LiveStatus } from '../api/dashboard';
  *
  * ⭐⚠️ **`agent_down` আর `offline` কখনো একই রঙে দেখানো যাবে না।**
  *    · `agent_down` = এজেন্ট মরে গেছে → IT-র সমস্যা → **সলিড লাল**
+ *      (`attention`, ব্র্যান্ডের লাল নয় — নাম দুটো আলাদা রাখাই আসল কথা)
  *    · `offline`    = কর্মী চলে গেছে → স্বাভাবিক → ধূসর
  *    একটাকে আরেকটার রঙে দেখালে হয় মিথ্যা অভিযোগ হয়, নয় আসল সমস্যা চাপা
  *    পড়ে — আর ঠিক এই দুটো ভুল ঠেকানোই ফিচারটার কারণ।
  *
- * ⭐ `active` কালো, কারণ কালো = গোনা হওয়া কাজ। সবুজ নেই — ব্র্যান্ডে
- *    মাত্র তিনটে রঙ (কালো · সাদা · লাল)।
+ * ⭐ **`active` এখন সবুজ (`ok`), কালো নয়।** আগে কালো ছিল ("গোনা হওয়া
+ *    কাজ"), কিন্তু Midnight থিমে কালো/সাদা পটভূমির সাথে মিশে গিয়ে
+ *    বিন্দুটা প্রায় দেখাই যেত না, আর চারটে অবস্থার তিনটেই ধূসরের কোনো
+ *    না কোনো ছায়া হয়ে দাঁড়াত। সবুজ · হলুদ · ধূসর · লাল — চারটে সত্যিই
+ *    আলাদা।
+ *
+ * ⚠️ রং চারটে **`index.css`-এর টোকেন থেকেই** আসে (`ok`, `idle`,
+ *    `offline`, `attention`) — এখানে হেক্স লিখবেন না। লেখার জন্য
+ *    `text-ok`/`text-idle`, ভরাট/বিন্দুতে `bg-ok`/`bg-idle`: index.css-এর
+ *    সেতুটা `text-*` দুটোকে পড়ার মতো গাঢ় জোড়ায় পাঠায়।
+ *
+ * ⚠️ **"Idle" ≠ "Inactive"** — এটা এই মুহূর্তের অবস্থা (কি-বোর্ড-মাউস
+ *    চুপচাপ), চাকরি ছেড়ে যাওয়া নয়। ওটা `EmployeePicker`-এ "Inactive"।
  */
 export const STATUS_LABEL: Record<LiveStatus, string> = {
-  active: 'কাজ করছেন',
-  idle: 'নিষ্ক্রিয়',
-  offline: 'অফলাইন',
-  agent_down: 'এজেন্ট বন্ধ',
+  active: 'Working',
+  idle: 'Idle',
+  offline: 'Offline',
+  agent_down: 'Agent down',
 };
 
 /** টুলটিপে "কেন এই রঙ" — ব্যবহারকারী অনুমান করতে বাধ্য হবে না */
 const STATUS_HINT: Record<LiveStatus, string> = {
-  active: 'শেষ সেগমেন্টে সক্রিয় ছিলেন',
-  idle: 'এজেন্ট চলছে, কিন্তু সাম্প্রতিক কোনো কাজ নেই',
-  offline: '90 সেকেন্ডের বেশি সাড়া নেই — PC বন্ধ বা ইন্টারনেট নেই',
-  agent_down: '10 মিনিটের বেশি সাড়া নেই — এজেন্ট চলছে না, দেখা দরকার',
+  active: 'Was active in the last segment',
+  idle: 'Agent is running, but nothing recent',
+  offline: 'No response for over 90 seconds — PC off or no internet',
+  agent_down: 'No response for over 10 minutes — the agent is not running',
 };
 
 const DOT_CLASS: Record<LiveStatus, string> = {
-  active: 'bg-ink',
-  idle: 'bg-ink-3/60',
-  offline: 'bg-line',
+  active: 'bg-ok',
+  idle: 'bg-idle',
+  offline: 'bg-offline',
   // ⭐ একমাত্র সলিড লাল — মনোযোগ দাবি করে
-  agent_down: 'bg-brand',
+  agent_down: 'bg-attention',
 };
 
 export function StatusDot({
@@ -52,12 +64,17 @@ export function StatusDot({
   );
 }
 
+/**
+ * ⚠️ তিনটে চিপ **আউটলাইন**, একটাই ভরাট। সব কটা ভরাট করলে বোর্ডটা রঙের
+ *    দেয়াল হয়ে যেত আর "এজেন্ট বন্ধ" আলাদা করে চোখে পড়ত না — অথচ
+ *    বোর্ডটার পুরো কাজই ওইটুকু চোখে পড়ানো।
+ */
 const CHIP_CLASS: Record<LiveStatus, string> = {
-  active: 'border-ink/25 bg-paper text-ink',
-  idle: 'border-line bg-paper text-ink-2',
+  active: 'border-ok/45 bg-ok/10 text-ok',
+  idle: 'border-idle/45 bg-idle/10 text-idle',
   offline: 'border-line bg-surface text-ink-3',
   // সলিড লাল — বাকি সবের চেয়ে আলাদা করে চোখে পড়ে
-  agent_down: 'border-brand bg-brand text-white',
+  agent_down: 'border-attention bg-attention text-white',
 };
 
 /** নামসহ চিপ — কার্ডের মাথায় বা টেবিলের কলামে */

@@ -17,7 +17,7 @@ export function ShotGrid({
 }: {
   items: GalleryItem[];
   urls: FreshUrls;
-  /** "সবাই" দেখা হলে সত্যি — নইলে প্রতিটা ঘরে একই নাম লেখা থাকত */
+  /** "Everyone" দেখা হলে সত্যি — নইলে প্রতিটা ঘরে একই নাম লেখা থাকত */
   showName: boolean;
   onOpen: (index: number) => void;
 }) {
@@ -58,14 +58,14 @@ function ShotTile({
       // ⚠️ পুরো ঘরটাই বোতাম — শুধু ছবিতে ক্লিক ধরলে নিচের সময়/অ্যাপের
       //    সরু পট্টিতে চাপ দিয়ে কিছুই হতো না, আর সেটা ভাঙা মনে হতো।
       className="block w-full overflow-hidden rounded-lg border border-line bg-surface text-left transition hover:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
-      aria-label={`${showName ? `${item.fullName}, ` : ''}${time}-এর স্ক্রিনশট`}
+      aria-label={`Screenshot at ${time}${showName ? `, ${item.fullName}` : ''}`}
     >
       <div className="relative aspect-[16/10] bg-paper">
         {dead ? (
           // ⭐ ভাঙা আইকনের বদলে ভদ্র একটা বার্তা — ধূসর, লাল নয়: এটা কারো
           // ভুল নয়, ফাইলটা মেয়াদ পেরিয়ে মুছে গেছে (retention, ADR-006)।
           <span className="absolute inset-0 grid place-items-center px-2 text-center text-[11px] text-ink-3">
-            ছবিটা আর নেই
+            Image no longer available
           </span>
         ) : (
           <img
@@ -82,11 +82,17 @@ function ShotTile({
         )}
 
         {/* ⚠️ একই ৫ মিনিটের স্লটে দুই মনিটরের দুটো ছবি আসে — কোনটা কোনটা
-            না বললে মনে হতো একই ছবি দুবার এসেছে */}
+            না বললে মনে হতো একই ছবি দুবার এসেছে
+
+            ⚠️ পট্টির রংটা টোকেন নয়, আর এটাই একমাত্র ব্যতিক্রম: ওটা বসে
+            **ছবির উপরে**, আর নিচে কী রঙের স্ক্রিনশট আছে তা আগে থেকে জানার
+            উপায় নেই। `bg-surface` দিলে হালকা স্ক্রিনশটে লেখাটা মিলিয়ে যেত।
+            তাই থিম-নিরপেক্ষ কালো ছায়া — দুই থিমেই এক। */}
         {item.monitorIndex > 0 && (
           <span className="absolute top-1 right-1 rounded bg-black/55 px-1 py-px text-[10px] text-white">
-            {/* ⚠️ `.num` শুধু সংখ্যাটার উপরে — মনো ফন্টে বাংলা গ্লিফ নেই */}
-            মনিটর <span className="num">{item.monitorIndex + 1}</span>
+            {/* ⚠️ `.num` শুধু সংখ্যাটার উপরে — tabular-nums অঙ্কের জন্য,
+                শব্দ মনো ফন্টে বসালে পট্টিটা চওড়া হয়ে ছবি ঢাকত */}
+            Monitor <span className="num">{item.monitorIndex + 1}</span>
           </span>
         )}
       </div>

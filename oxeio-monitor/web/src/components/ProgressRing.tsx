@@ -1,21 +1,36 @@
 import { pctOf } from '../lib/format';
 
 /**
- * E02 — মাসিক অগ্রগতির রিং।
+ * E02 — অগ্রগতির রিং।
  *
- * ⭐⚠️ রিংটা **মাসিক**, দৈনিক নয় (`monthWorkedSec / monthTargetSec`)। দিনের
- *    অগ্রগতি দেখাতে ব্যবহার করবেন না — একই আকৃতি দুটো আলাদা জিনিস বোঝালে
- *    কেউ আর কোনোটাই বিশ্বাস করত না।
+ * ⭐⚠️ রিংটা **কীসের** অগ্রগতি সেটা কলার ঠিক করে, এই কম্পোনেন্ট নয়। আগে
+ *    aria-label-এ "মাসিক অগ্রগতি" হার্ডকোড করা ছিল; লাইভ বোর্ড রিংটাকে
+ *    **আজকের** টার্গেটে সরানোর পর ওই লেখাটা নীরবে মিথ্যা বলত — পর্দায়
+ *    দিনের হিসাব, অথচ স্ক্রিন রিডার বলত "মাসিক"। তাই `ariaLabel`।
  *
- * ⭐ **পূর্ণ হলে রঙ বদলায়**: ১০০%-এর নিচে সরু ব্র্যান্ড-লাল (এটা ব্র্যান্ড,
- *    সতর্কতা নয়), টার্গেট ছুঁলে কালো — কালো মানে "গোনা হয়ে গেছে"। উল্টো
- *    করলে টার্গেট পূরণ করাটাই দেখতে সমস্যার মতো লাগত।
+ * ⚠️ যে রিং দিনের টার্গেট দেখায় আর যেটা মাসের, দুটোকে **একই পাতায় একই
+ *    আকারে** বসাবেন না — একই আকৃতি দুটো আলাদা জিনিস বোঝালে কেউ আর
+ *    কোনোটাই বিশ্বাস করত না।
+ *
+ * ⭐ **পূর্ণ হলে রঙ বদলায়**: ১০০%-এর নিচে নিরপেক্ষ `ink`, টার্গেট ছুঁলে
+ *    **সবুজ** (`ok`) — সবুজ মানে "হয়ে গেছে"। উল্টো করলে টার্গেট পূরণ
+ *    করাটাই দেখতে সমস্যার মতো লাগত।
+ *
+ * ⚠️⚠️ চলতি অবস্থাটা আগে **ব্র্যান্ড-লাল** ছিল, আর সেটাই Midnight-এ ধরা
+ *    পড়া আসল ভুল: `--color-attention` আর `--color-brand` **হুবহু একই
+ *    হেক্স**। অর্থাৎ "সরু লাল = ব্র্যান্ড, ভরাট লাল = সতর্কতা" পার্থক্যটা
+ *    রং দেখে বোঝার উপায় নেই, শুধু ওজন দেখে — আর ৪px-এর ভরাট চাপ একটা
+ *    বৃত্তচাপ ওজনে "সতর্কতা"-র দিকেই পড়ে। ফলে রোজ কাজ করা প্রতিটা মানুষের
+ *    কার্ডে সারাদিন একটা লাল রিং জ্বলত, আর দু-দিনেই লাল মানে "কিছু না"
+ *    হয়ে যেত (index.css-এর নিয়ম দেখুন)। লাল এখন **শুধু** ঘাটতি ও
+ *    এজেন্ট বন্ধের জন্য।
  */
 export function ProgressRing({
   value,
   max,
   size = 46,
   label,
+  ariaLabel = 'Progress',
 }: {
   /** যত হয়েছে (সেকেন্ড বা ঘণ্টা — একই একক হলেই হলো) */
   value: number;
@@ -27,6 +42,11 @@ export function ProgressRing({
    * ⚠️ `null` দিলে কিছুই বসে না — ছোট রিংয়ে (< ৩৬px) লেখা পড়াই যায় না।
    */
   label?: string | null;
+  /**
+   * কীসের অগ্রগতি — `"Today's target"`, `"This month"`। শতাংশটা নিজে
+   * থেকেই পরে জুড়ে যায়, তাই এখানে শুধু নামটুকু লিখুন।
+   */
+  ariaLabel?: string;
 }) {
   const pct = pctOf(value, max);
   // ⚠️ ১০০%-এর বেশি হলেও রিং ভরাট থামে — নইলে ১৪০% হলে বৃত্তটা আবার
@@ -46,8 +66,8 @@ export function ProgressRing({
       className="relative flex-none"
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`মাসিক অগ্রগতি ${Math.round(pct)} শতাংশ`}
-      title={`মাসিক অগ্রগতি ${Math.round(pct)}%`}
+      aria-label={`${ariaLabel} — ${Math.round(pct)} percent`}
+      title={`${ariaLabel} — ${Math.round(pct)}%`}
     >
       {/* -90° ঘুরিয়ে দেওয়া, যাতে ভরাট উপর থেকে শুরু হয় */}
       <svg width={size} height={size} className="-rotate-90">
@@ -69,7 +89,7 @@ export function ProgressRing({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className={`transition-[stroke-dashoffset] duration-700 ${
-            met ? 'stroke-ink' : 'stroke-brand'
+            met ? 'stroke-ok' : 'stroke-ink'
           }`}
         />
       </svg>
@@ -96,10 +116,13 @@ export function ProgressBar({
   value,
   max,
   className = '',
+  ariaLabel = 'Progress',
 }: {
   value: number;
   max: number;
   className?: string;
+  /** রিংয়ের মতোই — কীসের অগ্রগতি */
+  ariaLabel?: string;
 }) {
   const pct = pctOf(value, max);
   const shown = Math.min(100, Math.max(0, pct));
@@ -109,11 +132,11 @@ export function ProgressBar({
     <div
       className={`h-1.5 overflow-hidden rounded-full bg-line ${className}`}
       role="img"
-      aria-label={`${Math.round(pct)} শতাংশ`}
+      aria-label={`${ariaLabel} — ${Math.round(pct)} percent`}
     >
       <div
         className={`h-full rounded-full transition-[width] duration-700 ${
-          met ? 'bg-ink' : 'bg-brand'
+          met ? 'bg-ok' : 'bg-ink'
         }`}
         style={{ width: `${shown}%` }}
       />

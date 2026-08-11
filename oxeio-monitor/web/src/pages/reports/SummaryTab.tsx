@@ -46,13 +46,13 @@ export function SummaryTab({
     [from, to, employeeId, groupBy],
   );
 
-  if (loading && !data) return <Loading label="সারাংশ আনা হচ্ছে…" />;
+  if (loading && !data) return <Loading label="Loading summary…" />;
   if (error) return <ErrorBox error={error} retry={reload} />;
   if (!data || data.rows.length === 0) {
     return (
       <Empty
-        title="এই রেঞ্জে কোনো সারাংশ নেই"
-        hint="সারাংশ তৈরি হয় দৈনিক হিসাব থেকে। এজেন্ট এখনো ডেটা না পাঠালে এই পাতা খালিই থাকবে — অন্য তারিখ বেছে দেখুন।"
+        title="No summary for this range"
+        hint="Summaries are built from the daily figures. Until the agent sends data this page stays empty — try other dates."
       />
     );
   }
@@ -73,21 +73,21 @@ export function SummaryTab({
   const columns: Column<SummaryRow>[] = [
     {
       key: 'person',
-      header: 'স্টাফ',
+      header: 'Staff',
       render: (row) => (
         <PersonCell fullName={row.fullName} empCode={row.empCode} />
       ),
     },
     {
       key: 'bucket',
-      header: groupBy === 'month' ? 'মাস' : 'সপ্তাহ',
+      header: groupBy === 'month' ? 'Month' : 'Week',
       render: (row) => (
         <span className="num whitespace-nowrap">{bucketLabel(row)}</span>
       ),
     },
     {
       key: 'workdays',
-      header: 'কর্মদিবস',
+      header: 'Workdays',
       align: 'right',
       render: (row) => (
         <span className="num text-ink-3">{formatCount(row.workdays)}</span>
@@ -95,7 +95,7 @@ export function SummaryTab({
     },
     {
       key: 'daysWithWork',
-      header: 'কাজ হয়েছে',
+      header: 'Days worked',
       align: 'right',
       render: (row) => (
         <span className="num">{formatCount(row.daysWithWork)}</span>
@@ -103,19 +103,19 @@ export function SummaryTab({
     },
     {
       key: 'worked',
-      header: 'কাজ',
+      header: 'Worked',
       align: 'right',
       render: (row) => <Hours hours={row.workedHours} />,
     },
     {
       key: 'adjustment',
-      header: 'সমন্বয়',
+      header: 'Adjustment',
       align: 'right',
       render: (row) => <SignedHours hours={row.adjustmentHours} />,
     },
     {
       key: 'credited',
-      header: 'গোনা হয়েছে',
+      header: 'Counted',
       align: 'right',
       render: (row) => (
         <Hours hours={row.creditedHours} className="font-semibold" />
@@ -123,20 +123,22 @@ export function SummaryTab({
     },
     {
       key: 'target',
-      header: 'টার্গেট',
+      header: 'Target',
       align: 'right',
       render: (row) => <Hours hours={row.targetHours} tone="muted" />,
     },
     {
-      // ⭐ বার পূর্ণ হলে কালো হয়ে যায় (`ProgressBar`-এর নিয়ম) — টার্গেট
-      //    ছোঁয়া কোনো সমস্যা নয়, তাই ওটা লাল থাকে না।
+      // ⭐ বার পূর্ণ হলে **সবুজ** হয়ে যায় (`ProgressBar`-এর নিয়ম) — টার্গেট
+      //    ছোঁয়া কোনো সমস্যা নয়, তাই ওটা লাল থাকে না। চলতি অবস্থায়
+      //    নিরপেক্ষ `ink`; লাল এই টেবিলে শুধু ঘাটতির কলামে।
       key: 'pace',
-      header: 'অগ্রগতি',
+      header: 'Progress',
       className: 'w-24',
       render: (row) => (
         <ProgressBar
           value={hoursToSeconds(row.creditedHours)}
           max={hoursToSeconds(row.targetHours)}
+          ariaLabel="Target"
         />
       ),
     },
@@ -144,7 +146,7 @@ export function SummaryTab({
       // ⚠️ ঘাটতিই একমাত্র লাল সংখ্যা এই টেবিলে — লাল মানে "মনোযোগ দরকার",
       //    আর সব কলাম লাল করলে লালের মানেই হারিয়ে যেত।
       key: 'shortfall',
-      header: 'ঘাটতি',
+      header: 'Shortfall',
       align: 'right',
       render: (row) =>
         row.shortfallHours > 0 ? (
@@ -157,7 +159,7 @@ export function SummaryTab({
     },
     {
       key: 'overtime',
-      header: 'অতিরিক্ত',
+      header: 'Overtime',
       align: 'right',
       render: (row) =>
         row.overtimeHours > 0 ? (
@@ -171,8 +173,8 @@ export function SummaryTab({
   return (
     <>
       <Card
-        title={groupBy === 'month' ? 'মাসভিত্তিক সারাংশ' : 'সপ্তাহভিত্তিক সারাংশ'}
-        hint="গোনা হয়েছে = কাজ + সমন্বয় — টার্গেটের সাথে এটাই মেলানো হয়"
+        title={groupBy === 'month' ? 'Month by month' : 'Week by week'}
+        hint="Counted = worked + adjustment — this is what the target is matched against"
         padded={false}
       >
         <Table

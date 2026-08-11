@@ -27,8 +27,13 @@ import {
  * যেত — বারটা তখন পড়াই যায় না, আর কেউ বুঝতেই পারত না যে দুটো মেশিন চলছে।
  * তাই `deviceId` ধরে সারি ভাগ করা।
  *
- * ⭐ রঙের নিয়ম: কালো = গোনা হওয়া কাজ, ধূসর = গোনা হয়নি। এখানে সলিড লাল
- * নেই — নিষ্ক্রিয় থাকা ভুল নয়, শুধু গোনা হয় না।
+ * ⭐ রঙের নিয়ম: **নিরেট `ink` = গোনা হওয়া কাজ, ধূসর = গোনা হয়নি**। এখানে
+ * সলিড লাল নেই — নিষ্ক্রিয় থাকা ভুল নয়, শুধু গোনা হয় না।
+ *
+ * ⚠️ পর্দার লেখায় "কালো" শব্দটা আর নেই। Midnight থিমে `--color-ink`
+ * প্রায় সাদা (#e8ecf1) — "Black = counted work" লিখলে সেটা গাঢ় থিমে
+ * সরাসরি মিথ্যে হতো, অথচ কেউ ধরতেও পারত না যে লেখাটা পুরোনো থিমের।
+ * তাই লেখা হয় "Solid / grey", রঙের নাম নয়।
  */
 
 /** ⚠️ Asia/Dhaka = UTC+06:00, DST নেই — `lib/format.ts`-এর ঠিক একই ধ্রুবক */
@@ -45,9 +50,9 @@ const MINUTES_PER_DAY = 24 * 60;
 const MIN_WINDOW_MIN = 6 * 60;
 
 const SEG_LABEL: Record<SegmentState, string> = {
-  active: 'কাজ করছিলেন',
-  idle: 'নিষ্ক্রিয়',
-  locked: 'স্ক্রিন লক',
+  active: 'Working',
+  idle: 'Idle',
+  locked: 'Screen locked',
 };
 
 /**
@@ -107,8 +112,8 @@ export function TimelineBar({
   return (
     <section>
       <SectionHead
-        title="দিনের টাইমলাইন"
-        hint="ঘণ্টার স্কেলে · সেগমেন্টে মাউস রাখলে সময় ও দৈর্ঘ্য"
+        title="Day timeline"
+        hint="Hour scale · hover a segment for its times and length"
       />
 
       {loading && !data ? (
@@ -117,8 +122,8 @@ export function TimelineBar({
         <ErrorBox error={error} retry={reload} />
       ) : !data || data.segments.length === 0 ? (
         <Empty
-          title="এই দিনে কোনো সেগমেন্ট নেই"
-          hint="PC বন্ধ ছিল, ছুটি ছিল, নাকি এজেন্ট চলেনি — শুধু এই পর্দা থেকে সেটা বোঝা যায় না। অন্য তারিখ দেখুন, নয়তো ওই দিনের শেষ heartbeat কখন এসেছিল খোঁজ নিন।"
+          title="No segments on this day"
+          hint="The PC was off, it was a day off, or the agent wasn't running — this screen alone can't tell you which. Try another date, or check when that day's last heartbeat arrived."
         />
       ) : (
         <TimelineBody
@@ -151,14 +156,17 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
   return (
     <>
       <StatRow>
-        <Stat label="গোনা কাজ" value={<Duration seconds={totals.activeSec} />} />
         <Stat
-          label="নিষ্ক্রিয়"
+          label="Counted work"
+          value={<Duration seconds={totals.activeSec} />}
+        />
+        <Stat
+          label="Idle"
           value={<Duration seconds={totals.idleSec} tone="muted" />}
           tone="muted"
         />
         <Stat
-          label="স্ক্রিন লক"
+          label="Screen locked"
           value={<Duration seconds={totals.lockedSec} tone="muted" />}
           tone="muted"
         />
@@ -168,7 +176,7 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
              সতর্কবার্তায় পুরো বাক্যে বলা আছে।
         */}
         <Stat
-          label={view.multiDevice ? 'ডিভাইস' : 'সেগমেন্ট'}
+          label={view.multiDevice ? 'Devices' : 'Segments'}
           value={formatCount(
             view.multiDevice ? view.rows.length : segments.length,
           )}
@@ -183,16 +191,16 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
               {view.rows.map((row) => (
                 <div key={row.deviceId} className="flex items-center gap-2">
                   {/*
-                    ⚠️ E12 — ফোনে "ডিভাইস" শব্দটা বাদ, শুধু সংখ্যা। ৩৬০px
+                    ⚠️ E12 — ফোনে "Device" শব্দটা বাদ, শুধু সংখ্যা। ৩৬০px
                        পর্দায় ৬৪px লেবেল কলাম বারটাকে ১৯০px-এ নামিয়ে আনত,
                        আর তখন সেগমেন্টগুলো আলাদা করে চেনাই যেত না।
                   */}
                   {view.multiDevice && (
                     <span
                       className="w-8 flex-none truncate text-[11px] text-ink-3 sm:w-16"
-                      title={`ডিভাইস আইডি ${row.deviceId}`}
+                      title={`Device ID ${row.deviceId}`}
                     >
-                      <span className="hidden sm:inline">ডিভাইস </span>
+                      <span className="hidden sm:inline">Device </span>
                       <span className="num">{row.label}</span>
                     </span>
                   )}
@@ -231,7 +239,7 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
                     {view.nowMin !== null && (
                       <div
                         aria-hidden
-                        title="এখন"
+                        title="Now"
                         className="absolute top-0 bottom-0 w-0.5 bg-ink/45"
                         style={{ left: `${leftPct(view.nowMin)}%` }}
                       />
@@ -275,8 +283,8 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
                 <span className="num">{describe(hover, view.multiDevice)}</span>
               ) : (
                 <span className="text-ink-3">
-                  সেগমেন্টের উপর মাউস রাখুন বা ট্যাপ করুন — শুরু, শেষ ও দৈর্ঘ্য
-                  এখানে দেখা যাবে
+                  Hover or tap a segment — its start, end and length appear
+                  here
                 </span>
               )}
             </div>
@@ -291,7 +299,8 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
                   {SEG_LABEL[state]}
                 </span>
               ))}
-              <span>কালো = গোনা হওয়া কাজ · ধূসর = গোনা হয়নি</span>
+              {/* ⚠️ রঙের নাম নয় — Midnight থিমে `ink` প্রায় সাদা (ফাইলের মাথা দেখুন) */}
+              <span>Solid = counted work · grey = not counted</span>
             </div>
           </div>
         </Card>
@@ -299,17 +308,18 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
 
       {view.multiDevice && (
         <Caveat>
-          এই দিনে <span className="num">{view.rows.length}</span>টি ডিভাইস
-          চলেছে, তাই সারিগুলো আলাদা। দুটো সারিতে একই সময়ে কালো দাগ থাকলে ওই
-          সময়টা মোট ঘণ্টায় <b>দুবার</b> গোনা হয়েছে।
+          <span className="num">{view.rows.length}</span> devices were running
+          on this day, so each one gets its own row. Where two rows are filled
+          at the same moment, that time is counted <b>twice</b> in the totals
+          above.
         </Caveat>
       )}
 
       {view.clipped && (
         <Caveat>
-          একটি সেগমেন্ট মধ্যরাত পেরিয়ে গেছে। বারে শুধু{' '}
-          <span className="num">{timeline.date}</span> তারিখের অংশটুকু আঁকা —
-          উপরের মোট সময় কিন্তু পুরো সেগমেন্টেরই।
+          A segment crossed midnight. The bar draws only the part that falls on{' '}
+          <span className="num">{timeline.date}</span> — the totals above still
+          cover the whole segment.
         </Caveat>
       )}
     </>
@@ -415,6 +425,6 @@ function describe(s: Span, multiDevice: boolean): string {
     SEG_LABEL[s.seg.state],
     formatDuration(s.seg.durationSec),
   ];
-  if (multiDevice) parts.push(`ডিভাইস ${s.device}`);
+  if (multiDevice) parts.push(`Device ${s.device}`);
   return parts.join(' · ');
 }

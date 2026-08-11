@@ -40,9 +40,9 @@ import {
 const DRIFT_ALERT_SEC = 300;
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'সব' },
-  { value: 'active', label: 'সক্রিয়' },
-  { value: 'revoked', label: 'বাতিল' },
+  { value: '', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'revoked', label: 'Revoked' },
 ] as const;
 
 export function DevicesTab() {
@@ -71,7 +71,7 @@ export function DevicesTab() {
   const columns: Column<DeviceView>[] = [
     {
       key: 'device',
-      header: 'ডিভাইস',
+      header: 'Device',
       render: (device) => (
         <div className="min-w-0">
           <div className="truncate font-medium text-ink">{device.hostname}</div>
@@ -86,7 +86,7 @@ export function DevicesTab() {
     },
     {
       key: 'employee',
-      header: 'স্টাফ',
+      header: 'Staff',
       render: (device) =>
         device.employee ? (
           <PersonCell
@@ -94,12 +94,12 @@ export function DevicesTab() {
             empCode={device.employee.empCode}
           />
         ) : (
-          <span className="text-ink-3">যুক্ত নয়</span>
+          <span className="text-ink-3">Not linked</span>
         ),
     },
     {
       key: 'agent',
-      header: 'এজেন্ট',
+      header: 'Agent',
       render: (device) => (
         <div className="min-w-0">
           <div className="num">{device.agentVersion ?? '—'}</div>
@@ -111,19 +111,19 @@ export function DevicesTab() {
     },
     {
       key: 'monitors',
-      header: 'মনিটর',
+      header: 'Monitors',
       align: 'right',
       render: (device) => <span className="num">{device.monitors}</span>,
     },
     {
       key: 'drift',
-      header: 'ঘড়ির হেরফের',
+      header: 'Clock drift',
       align: 'right',
       render: (device) => <Drift device={device} />,
     },
     {
       key: 'seen',
-      header: 'শেষ সাড়া',
+      header: 'Last seen',
       render: (device) => (
         <span
           className={device.lastSeenAt ? '' : 'text-ink-3'}
@@ -135,14 +135,14 @@ export function DevicesTab() {
     },
     {
       key: 'status',
-      header: 'অবস্থা',
+      header: 'Status',
       render: (device) =>
         device.status === 'active' ? (
-          <Chip tone="counted">সক্রিয়</Chip>
+          <Chip tone="counted">Active</Chip>
         ) : (
           // ⭐ সলিড লাল নয়, তবু ব্র্যান্ড-লাল চিপ — বাতিল ডিভাইস মানে
           //    ওই PC থেকে আর কিছুই আসছে না, আর সেটা চোখে পড়া দরকার
-          <Chip tone="attention">বাতিল</Chip>
+          <Chip tone="attention">Revoked</Chip>
         ),
     },
     {
@@ -153,11 +153,11 @@ export function DevicesTab() {
         <RowActions>
           {device.status === 'active' ? (
             <MiniButton tone="danger" onClick={() => setRevoking(device)}>
-              revoke
+              Revoke
             </MiniButton>
           ) : (
             <MiniButton onClick={() => setRestoring(device)}>
-              আবার চালু
+              Restore
             </MiniButton>
           )}
         </RowActions>
@@ -169,15 +169,18 @@ export function DevicesTab() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="flex flex-wrap items-end gap-2">
+          {/* ⚠️ `allLabel` "All staff" নয় — Gallery ও Reports-এর একই
+              ড্রপডাউনে "Everyone" লেখা, আর একই জিনিসের দুই নাম থাকলে মনে
+              হতো দুটো আলাদা ফিল্টার। */}
           <EmployeePicker
             value={employeeId}
             onChange={setEmployeeId}
             allowAll
-            allLabel="সব স্টাফ"
+            allLabel="Everyone"
             includeInactive
           />
           <label className="block">
-            <span className="mb-1 block text-[11.5px] text-ink-3">অবস্থা</span>
+            <span className="mb-1 block text-[11.5px] text-ink-3">Status</span>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as DeviceStatus | '')}
@@ -193,7 +196,7 @@ export function DevicesTab() {
         </div>
 
         <Button tone="primary" onClick={() => setEnrolling(true)}>
-          নতুন এনরোলমেন্ট কোড
+          New enrolment code
         </Button>
       </div>
 
@@ -204,11 +207,11 @@ export function DevicesTab() {
 
       {!devices.loading && !devices.error && rows.length === 0 && (
         <Empty
-          title="কোনো ডিভাইস নেই"
-          hint="একটা PC তখনই এখানে আসে যখন সেখানে এজেন্ট বসিয়ে এনরোলমেন্ট কোড দেওয়া হয়। কোড বানিয়ে কর্মীকে দিন — এজেন্ট সেটা দিয়ে একবারই নিবন্ধন করবে।"
+          title="No devices yet"
+          hint="A PC shows up here only after the agent is installed on it and an enrolment code is entered. Create a code and hand it to the person — the agent uses it once to register."
           action={
             <Button tone="primary" onClick={() => setEnrolling(true)}>
-              নতুন এনরোলমেন্ট কোড
+              New enrolment code
             </Button>
           }
         />
@@ -217,8 +220,8 @@ export function DevicesTab() {
       {rows.length > 0 && (
         <Card
           padded={false}
-          title={`ডিভাইস · ${devices.data?.total ?? rows.length}টি`}
-          hint="ঘড়ির হেরফের ৫ মিনিট ছাড়ালে ওই মেশিনের সময়ের হিসাব সন্দেহজনক"
+          title={`Devices · ${devices.data?.total ?? rows.length}`}
+          hint="Clock drift over 5 minutes makes that machine's hours unreliable"
         >
           <Table
             columns={columns}
@@ -241,11 +244,11 @@ export function DevicesTab() {
 
       {issued && (
         <SecretModal
-          title="এনরোলমেন্ট কোড"
-          label="কোড"
+          title="Enrolment code"
+          label="code"
           secret={issued.code}
           note={`${issued.employee.fullName} · ${issued.employee.empCode}`}
-          meta={`মেয়াদ শেষ: ${formatDateTime(issued.expiresAt)}। এজেন্ট ইনস্টল করার সময় এই কোডটা চাইবে — একবার ব্যবহার হলেই সেটা ফুরিয়ে যায়।`}
+          meta={`Expires: ${formatDateTime(issued.expiresAt)}. The agent asks for this code during installation — it is spent the moment it is used once.`}
           onClose={() => {
             setIssued(null);
             devices.reload();
@@ -291,7 +294,7 @@ function Drift({ device }: { device: DeviceView }) {
   return (
     <span
       className={`num ${alarming ? 'text-brand-ink' : abs === 0 ? 'text-ink-3' : ''}`}
-      title={`সর্বোচ্চ হেরফের ${driftText(Math.abs(device.maxDriftSec))}`}
+      title={`Largest drift ${driftText(Math.abs(device.maxDriftSec))}`}
     >
       {abs === 0
         ? '—'
@@ -328,13 +331,13 @@ function EnrollmentForm({
 
   return (
     <Modal
-      title="নতুন এনরোলমেন্ট কোড"
-      hint="নতুন PC-তে এজেন্ট বসানোর জন্য"
+      title="New enrolment code"
+      hint="For installing the agent on a new PC"
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
@@ -346,22 +349,22 @@ function EnrollmentForm({
               })
             }
           >
-            {busy ? 'তৈরি হচ্ছে…' : 'কোড বানান'}
+            {busy ? 'Creating…' : 'Create code'}
           </Button>
         </>
       }
     >
       <div className="space-y-3.5">
         <Notice tone="attention">
-          কোডটা তৈরির পর <strong>একবারই</strong> দেখানো হবে — সার্ভারে শুধু
-          এর hash জমা থাকে। আর এই কর্মীর আগের কোনো কোড থাকলে সেটা এখনই বাতিল
-          হয়ে যাবে।
+          The code will be shown <strong>only once</strong> and will not be
+          shown again — the server keeps only its hash. Any earlier code this
+          person still has is cancelled right now.
         </Notice>
 
         <EmployeePicker
           value={employeeId}
           onChange={setEmployeeId}
-          label="কার জন্য"
+          label="For whom"
         />
 
         <ServerError error={error} />
@@ -385,14 +388,14 @@ function RevokeDialog({
 
   return (
     <ConfirmDialog
-      title={`${device.hostname} — revoke করবেন?`}
+      title={`Revoke ${device.hostname}?`}
       intro={
         device.employee
-          ? `${device.employee.fullName}-এর এই PC-টি এখন সক্রিয়।`
-          : 'এই ডিভাইসটি কোনো কর্মীর সাথে যুক্ত নয়।'
+          ? `This PC of ${device.employee.fullName} is active right now.`
+          : 'This device is not linked to anyone.'
       }
-      warning="এই PC-র ট্র্যাকিং সঙ্গে সঙ্গে থেমে যাবে — নতুন কোনো ঘণ্টা, স্ক্রিনশট বা অ্যাপের হিসাব আর আসবে না। পুরোনো ডেটা যেমন আছে তেমনই থাকবে।"
-      confirmLabel="revoke করুন"
+      warning="Tracking on this PC stops immediately — no new hours, screenshots or app usage will arrive. Data already collected stays exactly as it is."
+      confirmLabel="Revoke"
       withReason
       busy={busy}
       error={error}
@@ -420,10 +423,10 @@ function RestoreDialog({
 
   return (
     <ConfirmDialog
-      title={`${device.hostname} — আবার চালু করবেন?`}
-      intro="ডিভাইসটি আবার ডেটা পাঠাতে শুরু করবে।"
-      warning="⚠️ restore করলে পুরোনো টোকেনটাই আবার জেগে ওঠে। ল্যাপটপ হারিয়ে গিয়ে থাকলে restore করবেন না — তাহলে যার হাতে আছে সে-ও আবার ঢুকতে পারবে। ওই ক্ষেত্রে নতুন এনরোলমেন্ট কোড বানান।"
-      confirmLabel="আবার চালু করুন"
+      title={`Restore ${device.hostname}?`}
+      intro="The device starts sending data again."
+      warning="Restoring wakes up the old token itself. If the laptop was lost, do not restore it — whoever is holding it gets back in too. Create a new enrolment code instead."
+      confirmLabel="Restore"
       tone="primary"
       withReason
       busy={busy}

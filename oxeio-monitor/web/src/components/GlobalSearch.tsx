@@ -52,6 +52,10 @@ export interface ParsedQuery {
  * ⭐ দুটো একসাথে লেখা যায় — `রাসিদ 2026-08-01` মানে "রাসিদের ১ আগস্টের দিন"।
  * এটাই সবচেয়ে কাজের ব্যবহার, কারণ ম্যানেজার সাধারণত জানেন **কার** কোন দিন
  * দেখতে চান।
+ *
+ * ⚠️ পর্দার ভাষা ইংরেজি হলেও **নামগুলো বাংলাতেই থাকে** (DB-তে যেভাবে
+ *    লেখা), তাই খোঁজার লেখাও বাংলা হবে। নিচের `fold()`-এর NFC নরমালাইজ
+ *    সেই কারণেই টিকে আছে।
  */
 export function parseSearchQuery(raw: string, today: string): ParsedQuery {
   const tokens = raw.trim().split(/\s+/).filter((t) => t !== '');
@@ -86,14 +90,24 @@ export function parseSearchQuery(raw: string, today: string): ParsedQuery {
 /**
  * একটা শব্দ তারিখ কি না।
  *
+ * ⭐ পর্দার ভাষা ইংরেজি, তাই `today` / `yesterday` চেনা হয় — কিন্তু বাংলা
+ *    শব্দগুলোও **রেখে দেওয়া হলো**। যাঁরা এতদিন `গতকাল` লিখে অভ্যস্ত,
+ *    তাঁদের কাছে ওটা হঠাৎ কাজ না করা নিছক ভাঙা মনে হতো, অথচ চিনে নিতে
+ *    কারো কোনো ক্ষতি নেই।
+ *
  * ⚠️ শুধু **"কাল"** নেওয়া হয় না — বাংলায় ওটা গতকাল *আর* আগামীকাল দুটোই
  *    বোঝায়। ভুল দিনের টাইমলাইন খুলে দেওয়ার চেয়ে শব্দটা না চেনা ভালো;
  *    না চিনলে ব্যবহারকারী তারিখটা লিখে দেবেন, আর ভুল দিনটা কেউ ধরতেই
- *    পারত না।
+ *    পারত না। ইংরেজিতেও একই কারণে **"tomorrow" নেই** — ভবিষ্যতের দিন
+ *    এখানে দেখার কিছু নেই।
  */
 function parseDateToken(token: string, today: string): string | null {
-  if (token === 'আজ' || token === 'আজকে') return today;
-  if (token === 'গতকাল') return shiftWorkDate(today, -1);
+  // ⚠️ `toLowerCase()` — কেউ বাক্যের শুরুতে "Today" লিখলেও যেন চেনা যায়
+  const word = token.toLowerCase();
+  if (word === 'today' || token === 'আজ' || token === 'আজকে') return today;
+  if (word === 'yesterday' || token === 'গতকাল') {
+    return shiftWorkDate(today, -1);
+  }
 
   const m = /^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,4})$/.exec(token);
   if (m === null) return null;
@@ -326,8 +340,8 @@ function SearchBox() {
         aria-controls="gs-list"
         aria-autocomplete="list"
         aria-activedescendant={activeId}
-        aria-label="স্টাফ বা তারিখ খুঁজুন"
-        placeholder="নাম, কোড বা তারিখ  ( / )"
+        aria-label="Search staff or a date"
+        placeholder="Name, code or date  ( / )"
         onFocus={() => {
           setArmed(true);
           setOpen(true);
@@ -378,12 +392,12 @@ function Panel({
   onHover: (index: number) => void;
   onPick: (emp: EmployeeView) => void;
 }) {
-  if (loading) return <Note>স্টাফের তালিকা আসছে…</Note>;
+  if (loading) return <Note>Loading the staff list…</Note>;
 
   if (error !== null) {
     return (
       <Note tone="brand">
-        স্টাফের তালিকা আনা যায়নি — একটু পরে আবার দেখুন।
+        Couldn't load the staff list — try again in a moment.
       </Note>
     );
   }
@@ -391,8 +405,8 @@ function Panel({
   if (parsed.future) {
     return (
       <Note>
-        <b>{formatDate(parsed.date ?? '')}</b> এখনো আসেনি। আজ বা তার আগের কোনো
-        দিন লিখুন।
+        <b>{formatDate(parsed.date ?? '')}</b> hasn't happened yet. Try today or
+        any earlier day.
       </Note>
     );
   }
@@ -400,9 +414,9 @@ function Panel({
   if (parsed.text === '' && parsed.date === null) {
     return (
       <Note>
-        স্টাফের <b>নাম</b> বা <b>কোড</b> লিখুন। তারিখ লিখলে (
+        Type a staff <b>name</b> or <b>code</b>. Add a date (
         <span className="num">2026-08-01</span>, <span className="num">01/08/2026</span>,{' '}
-        <b>গতকাল</b>) ওই দিনের টাইমলাইন খোলে।
+        <b>yesterday</b>) to open that day's timeline.
       </Note>
     );
   }
@@ -410,8 +424,8 @@ function Panel({
   if (people.length === 0) {
     return (
       <Note>
-        কিছু মিলল না। নামের অংশ, empCode বা একটা তারিখ লিখে দেখুন — চলে যাওয়া
-        কর্মীরাও এখানে আসেন।
+        Nothing matched. Try part of a name, an empCode or a date — people who
+        have left show up here too.
       </Note>
     );
   }
@@ -420,9 +434,12 @@ function Panel({
     <>
       {parsed.date !== null && (
         <p className="border-b border-line px-3 py-2 text-[11.5px] text-ink-3">
-          {/* ⚠️ `.num` পুরো লেখায় নয় — মনো ফন্টে বাংলা গ্লিফ নেই */}
-          {formatDate(parsed.date)} · {weekdayOf(parsed.date)}বার —{' '}
-          {parsed.text === '' ? 'কার দিন দেখবেন?' : 'ওই দিনের টাইমলাইন'}
+          {/*
+            ⚠️ `weekdayOf()` এখন `Mon` দেয়, তাই আগের মতো পরে "বার" জোড়া
+               হয় না — জুড়লে "Monবার" বসত।
+          */}
+          {formatDate(parsed.date)} · {weekdayOf(parsed.date)} —{' '}
+          {parsed.text === '' ? 'whose day?' : "that day's timeline"}
         </p>
       )}
 
@@ -441,7 +458,7 @@ function Panel({
           >
             <span className="min-w-0 flex-1 truncate">{emp.fullName}</span>
             {emp.status === 'inactive' && (
-              <span className="flex-none text-[11px] text-ink-3">নিষ্ক্রিয়</span>
+              <span className="flex-none text-[11px] text-ink-3">Inactive</span>
             )}
             <span className="num flex-none text-[11.5px] text-ink-3">
               {emp.empCode}

@@ -52,16 +52,21 @@ export function LoginPage() {
       if (result.usedRecoveryCode) {
         const left = result.recoveryCodesLeft ?? 0;
         window.alert(
-          `রিকভারি কোডটি ব্যবহার হয়ে গেছে — আর ${left}টি বাকি।` +
+          `That recovery code is now used up — ${left} left.` +
             (left <= 2
-              ? ' নিরাপত্তা পাতায় গিয়ে নতুন কোড বানিয়ে নিন।'
+              ? ' Go to the Security page and generate new ones.'
               : ''),
         );
       }
       // সফল হলে রুটিং নিজেই বদলে যায় — user সেট হওয়ার সাথে সাথে
     } catch (err) {
+      /**
+       * ⚠️ `err.message` সার্ভারের বার্তা ("ইমেইল বা পাসওয়ার্ড ভুল"), আর
+       *    সার্ভার এখনো বাংলায় বলে — সেটা যেমন আসে তেমনই দেখানো হয়।
+       *    নিচের নেটওয়ার্ক-ব্যর্থতার বাক্যটা আমাদের নিজেদের, তাই ইংরেজি।
+       */
       setError(
-        err instanceof ApiError ? err.message : 'সার্ভারে পৌঁছানো যাচ্ছে না',
+        err instanceof ApiError ? err.message : "Can't reach the server",
       );
       setBusy(false);
       // ⚠️ ভুল কোডে ধাপ ১-এ ফেরানো হয় না — ফেরালে ব্যবহারকারীকে আবার
@@ -80,7 +85,7 @@ export function LoginPage() {
   return (
     <div className="grid min-h-full place-items-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2.5 rounded-lg bg-black px-4 py-3 text-white">
+        <div className="mb-6 flex items-center justify-center gap-2.5 rounded-lg bg-chrome px-4 py-3 text-white">
           <Wordmark className="text-lg" />
           <span className="text-xs text-white/55">Workforce Monitor</span>
         </div>
@@ -92,17 +97,18 @@ export function LoginPage() {
           {step === 'password' ? (
             <>
               <div>
-                <h1 className="text-lg font-semibold">লগইন</h1>
+                <h1 className="text-lg font-semibold">Sign in</h1>
                 <p className="mt-1 text-sm text-ink-3">
-                  শুধু Owner ও Manager — স্টাফ নিজের হিসাব দেখতে একই জায়গায়
-                  ঢুকবে।
+                  Owner and Manager — staff sign in here too, to see their own
+                  hours.
                 </p>
               </div>
 
               {/* I09 — "হঠাৎ লগইন পর্দা কেন?" প্রশ্নটার উত্তর */}
               {timedOut && !error && (
                 <p className="rounded-md border border-line bg-paper px-3 py-2 text-sm text-ink-2">
-                  অনেকক্ষণ কোনো কাজ না হওয়ায় সেশন বন্ধ হয়ে গেছে। আবার ঢুকুন।
+                  Your session closed after a long stretch of no activity.
+                  Please sign in again.
                 </p>
               )}
 
@@ -110,7 +116,7 @@ export function LoginPage() {
 
               <Field
                 id="email"
-                label="ইমেইল"
+                label="Email"
                 type="email"
                 autoComplete="username"
                 required
@@ -122,7 +128,7 @@ export function LoginPage() {
 
               <Field
                 id="password"
-                label="পাসওয়ার্ড"
+                label="Password"
                 type="password"
                 autoComplete="current-password"
                 required
@@ -130,20 +136,20 @@ export function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
 
-              <SubmitButton busy={busy}>ঢুকুন</SubmitButton>
+              <SubmitButton busy={busy}>Sign in</SubmitButton>
 
               <p className="text-center text-xs text-ink-3">
-                পাসওয়ার্ড ভুলে গেলে Owner-কে বলুন — তিনি রিসেট করে দিতে পারবেন।
+                Forgot your password? Ask the Owner — they can reset it for you.
               </p>
             </>
           ) : (
             <>
               <div>
-                <h1 className="text-lg font-semibold">দুই ধাপের যাচাই</h1>
+                <h1 className="text-lg font-semibold">Two-step verification</h1>
                 <p className="mt-1 text-sm text-ink-3">
                   {email} — {useRecovery
-                    ? 'কাগজে লিখে রাখা রিকভারি কোডটি দিন।'
-                    : 'আপনার authenticator অ্যাপের ৬ অঙ্কের কোডটি দিন।'}
+                    ? 'Enter one of the recovery codes you wrote down.'
+                    : 'Enter the 6-digit code from your authenticator app.'}
                 </p>
               </div>
 
@@ -152,7 +158,7 @@ export function LoginPage() {
               {useRecovery ? (
                 <Field
                   id="recovery"
-                  label="রিকভারি কোড"
+                  label="Recovery code"
                   type="text"
                   autoComplete="one-time-code"
                   required
@@ -160,12 +166,12 @@ export function LoginPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="ABCDE-FGHJK"
-                  hint="প্রতিটি কোড একবারই চলে।"
+                  hint="Each code works only once."
                 />
               ) : (
                 <Field
                   id="totp"
-                  label="যাচাই কোড"
+                  label="Verification code"
                   /*
                    * ⚠️ `type="text"` + `inputMode="numeric"` — `type="number"`
                    *    দিলে শুরুর শূন্য মুছে যেত (`012345` → `12345`) আর
@@ -179,12 +185,18 @@ export function LoginPage() {
                   autoFocus
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  placeholder="১২৩৪৫৬"
-                  hint="প্রতিটি কোড একবারই চলে — আগেরটা আবার দেওয়া যাবে না।"
+                  /*
+                   * ⚠️ placeholder-এ **ইংরেজি অঙ্ক** — আগে বাংলা অঙ্ক
+                   *    ("১২৩৪৫৬") বসানো ছিল, অথচ authenticator অ্যাপ কোড
+                   *    দেয় ইংরেজি অঙ্কে। দুটো মেলে না দেখে কেউ ভাবতে পারত
+                   *    ভুল ঘরে টাইপ করছে।
+                   */
+                  placeholder="123456"
+                  hint="Each code works only once — an old one won't do."
                 />
               )}
 
-              <SubmitButton busy={busy}>যাচাই করুন</SubmitButton>
+              <SubmitButton busy={busy}>Verify</SubmitButton>
 
               <div className="flex flex-wrap justify-between gap-2 text-center text-xs">
                 <button
@@ -197,15 +209,15 @@ export function LoginPage() {
                   className="text-ink-2 underline underline-offset-2 hover:text-ink"
                 >
                   {useRecovery
-                    ? 'অ্যাপের কোড দিয়ে চেষ্টা করি'
-                    : 'ফোন হাতে নেই — রিকভারি কোড দিই'}
+                    ? 'Use the app code instead'
+                    : "Phone not with me — use a recovery code"}
                 </button>
                 <button
                   type="button"
                   onClick={backToPassword}
                   className="text-ink-3 underline underline-offset-2 hover:text-ink"
                 >
-                  ফিরে যাই
+                  Back
                 </button>
               </div>
             </>

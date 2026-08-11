@@ -28,21 +28,21 @@ import { StaffTab } from './StaffTab';
  */
 
 const TABS = [
-  { id: 'staff', label: 'স্টাফ' },
-  { id: 'devices', label: 'ডিভাইস' },
-  { id: 'categories', label: 'ক্যাটাগরি' },
-  { id: 'policies', label: 'নিয়ম ও ছুটি' },
+  { id: 'staff', label: 'Staff' },
+  { id: 'devices', label: 'Devices' },
+  { id: 'categories', label: 'Categories' },
+  { id: 'policies', label: 'Policies & holidays' },
   { id: 'audit', label: 'Audit log' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['id'];
 
 const SUBTITLE: Record<TabKey, string> = {
-  staff: 'কর্মী যোগ, সম্পাদনা ও নিষ্ক্রিয় করা — মুছে ফেলা যায় না',
-  devices: 'কোন PC থেকে ডেটা আসছে, আর কোনটা বন্ধ করে দেওয়া হয়েছে',
-  categories: 'কোন অ্যাপ ও সাইট কোন ক্যাটাগরিতে পড়বে',
-  policies: 'মাসের টার্গেট, ছবির উইন্ডো আর ছুটির দিন',
-  audit: 'কে কখন কী দেখল ও কী বদলাল',
+  staff: 'Add, edit and deactivate people — nothing is ever deleted',
+  devices: 'Which PCs are sending data, and which have been shut off',
+  categories: 'Which apps and sites fall into which category',
+  policies: 'Monthly target, screenshot window and days off',
+  audit: 'Who looked at what, and who changed what',
 };
 
 function isTabKey(value: string | null): value is TabKey {
@@ -58,25 +58,25 @@ export function SettingsPage() {
 
   if (user?.role !== 'owner') {
     return (
-      <Page title="সেটিংস">
+      <Page title="Settings">
         {/*
           ⚠️ `<ErrorBox>` নিজেই ৪০৩ চেনে আর "আবার চেষ্টা করুন" বোতামটা
              লুকিয়ে দেয় — বারবার চাপলেও অনুমতি আসবে না, শুধু বিভ্রান্তি
              বাড়ত। তাই আলাদা বার্তা না লিখে সেই একই বাক্সটাই দেখানো হয়,
              যাতে পুরো পণ্যে ৪০৩-এর চেহারা এক থাকে।
         */}
-        <ErrorBox error={new ApiError(403, 'অনুমতি নেই')} />
+        <ErrorBox error={new ApiError(403, "You don't have access")} />
       </Page>
     );
   }
 
   return (
-    <Page title="সেটিংস" subtitle={SUBTITLE[active]}>
+    <Page title="Settings" subtitle={SUBTITLE[active]}>
       <div className="mb-4">
         <Tabs
           items={TABS}
           active={active}
-          label="সেটিংসের অংশ"
+          label="Settings sections"
           // `replace` — ট্যাব বদলানো ব্রাউজারের ইতিহাসে জমা হলে
           // "back" চেপে বেরোতে গিয়ে পাঁচবার ট্যাব ফিরত
           onChange={(key) => setParams({ tab: key }, { replace: true })}

@@ -13,15 +13,20 @@ import { useApi } from '../api/useApi';
  *    সহকর্মীদের নামও দেখা যেত।
  *
  * ⚠️ ডিফল্টে শুধু active কর্মী। চলে যাওয়া কারো পুরোনো দিন দেখতে হলে
- *    `includeInactive` — তখন নামের পাশে "(নিষ্ক্রিয়)" বসে, নইলে কেউ
+ *    `includeInactive` — তখন নামের পাশে "(Inactive)" বসে, নইলে কেউ
  *    বুঝত না কেন তার আজকের ঘণ্টা শূন্য।
+ *
+ * ⚠️ **"Inactive" ≠ "Idle"** — বাংলায় দুটোই "নিষ্ক্রিয়" ছিল, ইংরেজিতে নয়।
+ *    এখানকারটা **চাকরির অবস্থা** (চলে গেছেন), আর `StatusDot`-এর "Idle"
+ *    হলো এই মুহূর্তে কি-বোর্ড-মাউস চুপচাপ। দুটো গুলিয়ে ফেললে কর্মরত
+ *    কাউকে "চলে গেছেন" পড়া যেত।
  */
 export function EmployeePicker({
   value,
   onChange,
-  label = 'স্টাফ',
+  label = 'Staff',
   allowAll = false,
-  allLabel = 'সবাই',
+  allLabel = 'Everyone',
   includeInactive = false,
   className = '',
 }: {
@@ -56,20 +61,20 @@ export function EmployeePicker({
           ⚠️ তিনটে অবস্থাই এখানে দেখাতে হয় — নইলে তালিকা খালি থাকলে
              ফাঁকা ড্রপডাউন দেখে মনে হতো কন্ট্রোলটাই ভাঙা।
         */}
-        {loading && <option value="">লোড হচ্ছে…</option>}
-        {error && <option value="">তালিকা আনা যায়নি</option>}
+        {loading && <option value="">Loading…</option>}
+        {error && <option value="">Couldn't load the list</option>}
 
         {!loading && !error && (
           <>
             {allowAll && <option value="">{allLabel}</option>}
             {!allowAll && value === null && (
-              <option value="">— বেছে নিন —</option>
+              <option value="">— Choose —</option>
             )}
-            {rows.length === 0 && <option value="">কোনো স্টাফ নেই</option>}
+            {rows.length === 0 && <option value="">No staff yet</option>}
             {rows.map((emp) => (
               <option key={emp.id} value={emp.id}>
                 {emp.fullName} · {emp.empCode}
-                {emp.status === 'inactive' ? ' (নিষ্ক্রিয়)' : ''}
+                {emp.status === 'inactive' ? ' (Inactive)' : ''}
               </option>
             ))}
           </>

@@ -15,8 +15,8 @@ import type { ReactNode } from 'react';
  *   rows={report.rows}
  *   rowKey={(r) => String(r.employeeId)}
  *   columns={[
- *     { key: 'name', header: 'নাম', render: (r) => r.fullName },
- *     { key: 'h', header: 'ঘণ্টা', align: 'right',
+ *     { key: 'name', header: 'Name', render: (r) => r.fullName },
+ *     { key: 'h', header: 'Hours', align: 'right',
  *       render: (r) => <Duration seconds={r.workedSec} /> },
  *   ]}
  * />

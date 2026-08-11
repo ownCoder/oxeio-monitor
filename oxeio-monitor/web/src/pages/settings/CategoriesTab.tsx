@@ -47,15 +47,15 @@ import {
  */
 
 const MATCH_LABEL: Record<MatchType, string> = {
-  process: 'প্রসেস',
-  domain: 'ডোমেইন',
-  title_regex: 'টাইটেল regex',
+  process: 'Process',
+  domain: 'Domain',
+  title_regex: 'Title regex',
 };
 
 const MATCH_OPTIONS = [
-  { value: 'process', label: 'প্রসেস — code.exe' },
-  { value: 'domain', label: 'ডোমেইন — youtube.com' },
-  { value: 'title_regex', label: 'টাইটেল regex' },
+  { value: 'process', label: 'Process — code.exe' },
+  { value: 'domain', label: 'Domain — youtube.com' },
+  { value: 'title_regex', label: 'Title regex' },
 ];
 
 /** ⭐ মকআপের ভাষাই রাখা হয়েছে — রিপোর্টের লেজেন্ডেও এই তিনটে শব্দই */
@@ -67,11 +67,11 @@ const CATEGORY_OPTIONS = [
 
 const PATTERN_HINT: Record<MatchType, string> = {
   process:
-    'শুধু ফাইলের নাম — পুরো পাথ নয় (যেমন code.exe)। এজেন্ট শুধু নামটাই পাঠায়।',
+    'The file name only — never a full path (for example code.exe). The agent sends nothing but the name.',
   domain:
-    'শুধু ডোমেইন, কখনো পুরো URL (যেমন youtube.com)। ফুল URL কোথাও জমাই হয় না, তাই "/"-ওয়ালা নিয়ম কোনোদিন মিলত না।',
+    'The domain only, never a full URL (for example youtube.com). Full URLs are never stored, so a rule with a "/" in it would never match anything.',
   title_regex:
-    'JavaScript regex, case-insensitive। উইন্ডোর শিরোনামের সাথে মেলানো হয়।',
+    'A JavaScript regex, case-insensitive. Matched against the window title.',
 };
 
 export function CategoriesTab() {
@@ -89,31 +89,31 @@ export function CategoriesTab() {
   const columns: Column<CategoryRuleView>[] = [
     {
       key: 'priority',
-      header: 'priority',
+      header: 'Priority',
       align: 'right',
       render: (rule) => <span className="num">{rule.priority}</span>,
     },
     {
       key: 'matchType',
-      header: 'ধরন',
+      header: 'Type',
       render: (rule) => <Chip>{MATCH_LABEL[rule.matchType]}</Chip>,
     },
     {
       key: 'pattern',
-      header: 'প্যাটার্ন',
+      header: 'Pattern',
       render: (rule) => <span className="num">{rule.pattern}</span>,
     },
     {
       key: 'displayName',
-      header: 'যে নামে দেখা যাবে',
+      header: 'Shown as',
       render: (rule) => rule.displayName,
     },
     {
       key: 'category',
-      header: 'ক্যাটাগরি',
-      // ⭐ ব্র্যান্ডের নিয়মটাই এখানে হুবহু খাটে: কালো = গোনা হওয়া কাজ,
-      //    ধূসর = গোনা হয়নি। লাল ব্যবহার করা হয়নি — unproductive হওয়া
-      //    কোনো ভুল নয়, শুধু একটা শ্রেণি।
+      header: 'Category',
+      // ⭐ ব্র্যান্ডের নিয়মটাই এখানে হুবহু খাটে: নিরেট `ink` = গোনা হওয়া
+      //    কাজ, ধূসর = গোনা হয়নি। লাল ব্যবহার করা হয়নি — unproductive
+      //    হওয়া কোনো ভুল নয়, শুধু একটা শ্রেণি।
       render: (rule) => (
         <Chip tone={rule.category === 'productive' ? 'counted' : 'muted'}>
           {rule.category}
@@ -126,9 +126,9 @@ export function CategoriesTab() {
       align: 'right',
       render: (rule) => (
         <RowActions>
-          <MiniButton onClick={() => setEditing(rule)}>সম্পাদনা</MiniButton>
+          <MiniButton onClick={() => setEditing(rule)}>Edit</MiniButton>
           <MiniButton tone="danger" onClick={() => setRemoving(rule)}>
-            মুছুন
+            Delete
           </MiniButton>
         </RowActions>
       ),
@@ -138,17 +138,18 @@ export function CategoriesTab() {
   return (
     <div className="space-y-3">
       <Notice>
-        <strong>ছোট priority আগে জেতে</strong> — প্রথম যে নিয়মটা মেলে, সেটাই
-        বসে যায়। নিচের তালিকাটা ঠিক সেই ক্রমেই সাজানো, তাই উপরের নিয়ম নিচেরটাকে
-        হারায়। ২০০ দিলে সেটা "বেশি গুরুত্ব" নয়, বরং কার্যত সবার শেষে।
+        <strong>Lower number wins</strong> — the first rule that matches is the
+        one that sticks, and the list below is in exactly that order, so a rule
+        higher up beats one lower down. Setting 200 does not mean "more
+        important"; it puts the rule practically last.
       </Notice>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button onClick={() => setRerunning(true)}>
-          পুরোনো সারিতে নিয়ম বসান
+          Apply rules to past rows
         </Button>
         <Button tone="primary" onClick={() => setCreating(true)}>
-          নতুন রুল
+          New rule
         </Button>
       </div>
 
@@ -163,11 +164,11 @@ export function CategoriesTab() {
 
       {!rules.loading && !rules.error && rows.length === 0 && (
         <Empty
-          title="একটাও ক্যাটাগরি রুল নেই"
-          hint="রুল ছাড়া প্রতিটা অ্যাপ ও সাইট 'অচেনা' থেকে যাবে, আর productivity স্কোর কখনো তৈরি হবে না। সাধারণত seed-এ ৮০+ রুল বসানো থাকে — একটাও না থাকলে সেটা অস্বাভাবিক।"
+          title="No category rules at all"
+          hint="Without rules every app and site stays 'unknown' and no productivity score is ever produced. The seed normally installs 80+ rules — having none is not normal."
           action={
             <Button tone="primary" onClick={() => setCreating(true)}>
-              নতুন রুল
+              New rule
             </Button>
           }
         />
@@ -176,8 +177,8 @@ export function CategoriesTab() {
       {rows.length > 0 && (
         <Card
           padded={false}
-          title={`রুল · ${rows.length}টি`}
-          hint="যে ক্রমে নিচে দেখানো হচ্ছে, ঠিক সেই ক্রমেই মেলানো হয়"
+          title={`Rules · ${rows.length}`}
+          hint="Matched in exactly the order shown below"
         >
           <Table
             columns={columns}
@@ -269,12 +270,12 @@ function RuleForm({
         // ⚠️ রুল **বদলানোর** পর `onlyUnmatched: false` লাগে — পুরোনো
         //    সিদ্ধান্ত বসানো সারিগুলো নইলে পুরোনোই থেকে যেত
         onSaved(
-          'রুলটা বদলানো হয়েছে। পুরোনো সারিতে এখনো পুরোনো সিদ্ধান্ত বসে আছে — "পুরোনো সারিতে নিয়ম বসান" চালিয়ে "সব সারি" বাছুন।',
+          'Rule changed. Rows already stored still carry the old decision — run "Apply rules to past rows" and choose "All rows".',
         );
       } else {
         await createCategory(body);
         onSaved(
-          'নতুন রুল যোগ হয়েছে। এখন থেকে আসা ডেটায় এটা বসবে; পুরোনো অচেনা সারিতেও বসাতে চাইলে "পুরোনো সারিতে নিয়ম বসান" চালান।',
+          'New rule added. It applies to data arriving from now on; to apply it to old unknown rows as well, run "Apply rules to past rows".',
         );
       }
     });
@@ -282,16 +283,16 @@ function RuleForm({
 
   return (
     <Modal
-      title={rule ? 'রুল সম্পাদনা' : 'নতুন ক্যাটাগরি রুল'}
-      hint="একটা অ্যাপ বা সাইট কোন ক্যাটাগরিতে পড়বে"
+      title={rule ? 'Edit rule' : 'New category rule'}
+      hint="Which category an app or site falls into"
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button tone="primary" onClick={submit} disabled={busy || incomplete}>
-            {busy ? 'সংরক্ষণ হচ্ছে…' : 'সংরক্ষণ করুন'}
+            {busy ? 'Saving…' : 'Save'}
           </Button>
         </>
       }
@@ -299,13 +300,13 @@ function RuleForm({
       <div className="space-y-3.5">
         <FormGrid>
           <SelectField
-            label="কী দেখে মেলানো হবে"
+            label="Match on"
             value={matchType}
             onChange={(value) => setMatchType(value as MatchType)}
             options={MATCH_OPTIONS}
           />
           <SelectField
-            label="ক্যাটাগরি"
+            label="Category"
             value={category}
             onChange={(value) => setCategory(value as Productivity)}
             options={CATEGORY_OPTIONS}
@@ -313,7 +314,7 @@ function RuleForm({
 
           <FullWidth>
             <TextField
-              label="প্যাটার্ন"
+              label="Pattern"
               value={pattern}
               onChange={setPattern}
               required
@@ -325,23 +326,23 @@ function RuleForm({
           </FullWidth>
 
           <TextField
-            label="যে নামে দেখা যাবে"
+            label="Shown as"
             value={displayName}
             onChange={setDisplayName}
             required
             maxLength={100}
-            hint="রিপোর্টে এই নামটাই দেখানো হবে"
+            hint="This is the name reports will use"
           />
 
           <TextField
-            label="priority"
+            label="Priority"
             type="number"
             value={priority}
             onChange={setPriority}
             mono
             min={1}
             max={1000}
-            hint="⚠️ ছোট সংখ্যা আগে জেতে। ডিফল্ট 100; ব্রাউজারের সাধারণ রুলগুলো 200, তাই নির্দিষ্ট ডোমেইনের রুল ওদের হারায়।"
+            hint="Lower number wins. Default is 100; the general browser rules sit at 200, so a rule for a specific domain beats them."
           />
         </FormGrid>
 
@@ -366,10 +367,10 @@ function RemoveDialog({
 
   return (
     <ConfirmDialog
-      title={`"${rule.pattern}" রুলটি মুছবেন?`}
+      title={`Delete the rule "${rule.pattern}"?`}
       intro={`${MATCH_LABEL[rule.matchType]} · ${rule.displayName} · ${rule.category}`}
-      warning="এই রুলে যত সারি বসানো ছিল, সেগুলোর ক্যাটাগরি এখনই 'অচেনা' হয়ে যাবে — অর্থাৎ ওই সময়টা productivity স্কোরের বাইরে চলে যাবে। কতগুলো সারি, সেটা মোছার পর দেখানো হবে।"
-      confirmLabel="মুছে ফেলুন"
+      warning="Every row this rule had categorised turns 'unknown' right away — that time drops out of the productivity score. You will be told how many rows once it is done."
+      confirmLabel="Delete"
       busy={busy}
       error={error}
       onClose={onClose}
@@ -379,8 +380,8 @@ function RemoveDialog({
           // ⭐ সার্ভারের `hint` হুবহু দেখানো হয় — ওখানেই লেখা আছে এরপর কী করতে হবে
           onDone(
             result.orphanedRows === 0
-              ? `রুলটা মোছা হয়েছে। ${result.hint}`
-              : `রুলটা মোছা হয়েছে — ${formatCount(result.orphanedRows)}টি সারি এখন অচেনা। ${result.hint}`,
+              ? `Rule deleted. ${result.hint}`
+              : `Rule deleted — ${formatCount(result.orphanedRows)} rows are now unknown. ${result.hint}`,
           );
         })
       }
@@ -407,13 +408,13 @@ function RecategorizeDialog({
 
   return (
     <Modal
-      title="পুরোনো সারিতে নিয়ম বসান"
-      hint="ক্যাটাগরি বসে ডেটা আসার সময়, পড়ার সময় নয়"
+      title="Apply rules to past rows"
+      hint="Categories are decided when data arrives, not when it is read"
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
-            বাতিল
+            Cancel
           </Button>
           <Button
             tone="primary"
@@ -422,39 +423,40 @@ function RecategorizeDialog({
               run(async () => {
                 const result = await recategorize(onlyUnmatched);
                 onDone(
-                  `${formatCount(result.scanned)}টি সারি দেখা হয়েছে, ${formatCount(result.changed)}টির ক্যাটাগরি বদলেছে।`,
+                  `${formatCount(result.scanned)} rows examined, ${formatCount(result.changed)} changed category.`,
                 );
               })
             }
           >
-            {busy ? 'অপেক্ষা করুন…' : 'চালান'}
+            {busy ? 'Please wait…' : 'Run'}
           </Button>
         </>
       }
     >
       <div className="space-y-3.5">
         <Notice>
-          নিয়ম বদলালে <strong>পুরোনো সারিতে পুরোনো সিদ্ধান্তই বসে থাকে</strong> —
-          কারণ ক্যাটাগরি বসানো হয় ডেটা জমা হওয়ার মুহূর্তে। এটা না চালালে
-          রিপোর্টে নতুন নিয়ম দেখা যাবে, অথচ সংখ্যাগুলো পুরোনো নিয়মেরই।
+          When a rule changes, <strong>old rows keep the old decision</strong> —
+          the category is stamped on at the moment the data is stored. Skip this
+          and reports will show the new rules while the numbers still follow the
+          old ones.
         </Notice>
 
         <fieldset className="space-y-2">
           <legend className="mb-1 text-[12px] font-medium text-ink-2">
-            কোন সারিগুলোয় বসবে
+            Which rows to apply to
           </legend>
 
           <Choice
             checked={onlyUnmatched}
             onChange={() => setOnlyUnmatched(true)}
-            title="শুধু অচেনা সারি"
-            body="দ্রুত। নতুন রুল যোগ করার পর এটুকুই যথেষ্ট।"
+            title="Unknown rows only"
+            body="Fast. This is enough after adding a new rule."
           />
           <Choice
             checked={!onlyUnmatched}
             onChange={() => setOnlyUnmatched(false)}
-            title="সব সারি"
-            body="ধীর, আর কয়েক সেকেন্ড ব্রাউজার অপেক্ষা করবে। রুল বদলানো বা মোছার পর এটাই লাগে — নইলে পুরোনো সিদ্ধান্ত রয়ে যায়।"
+            title="All rows"
+            body="Slower, and the browser waits a few seconds. This is what you need after changing or deleting a rule — otherwise the old decisions stay."
           />
         </fieldset>
 

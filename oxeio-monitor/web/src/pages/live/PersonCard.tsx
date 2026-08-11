@@ -4,32 +4,45 @@ import { Link } from 'react-router-dom';
 import type { LiveCard, LiveStatus } from '../../api/dashboard';
 import type { GalleryItem } from '../../api/screenshots';
 import { Duration } from '../../components/Duration';
-import { ProgressRing } from '../../components/ProgressRing';
 import { StatusChip } from '../../components/StatusDot';
 import { formatAgo, formatHours, formatTime } from '../../lib/format';
+import { DayOffTag, targetText, TodayRing } from './TodayRing';
 
 /**
  * E01 · E02 · E03 — বোর্ডের একটা কার্ড।
  *
- * মকআপের `.pcard` — বাঁয়ে ৩px স্ট্যাটাস-পটি, উপরে নাম + মাসিক রিং,
- * তারপর মাসের ঘণ্টা, আজকের ঘণ্টা আলাদা করে, সর্বশেষ স্ক্রিনশট, নিচে চিপ
- * ও শেষ heartbeat।
+ * মকআপের `.pcard` — বাঁয়ে ৩px স্ট্যাটাস-পটি, উপরে নাম + **আজকের** রিং,
+ * তারপর আজকের ঘণ্টা বড় করে, মাসের হিসাব ছোট করে নিচে, সর্বশেষ স্ক্রিনশট,
+ * নিচে চিপ ও শেষ heartbeat।
+ *
+ * ⭐ **আজ সামনে, মাস পেছনে** — রিং আর বড় সংখ্যা দুটোই এখন আজকের। কারণ
+ *    মাসের ৭৮/২০৮ দেখে কেউ বলতে পারত না আজ দিনটা ঠিক যাচ্ছে কি না; ওই
+ *    উত্তরটা পেতে হলে "মাসের কত ভাগ পেরিয়েছে" মাথায় হিসাব করতে হতো, আর
+ *    সেটা ছুটির তালিকার উপর নির্ভর করে।
+ *
+ * ⚠️ **মাসের হিসাব মুছে ফেলা হয়নি**, শুধু ছোট হয়েছে — বেতনের ভিত্তি এখনো
+ *    মাসিক ২০৮ ঘণ্টাই (§ ২.১-খ)। দৈনিক টার্গেট দেখানোর জিনিস, কাটার নয়।
  */
 
 /**
  * বাঁ দিকের পটির রঙ।
  *
- * ⚠️ `StatusDot`-এর ভেতরের `DOT_CLASS` এক্সপোর্ট করা নেই আর
- *    `src/components/` ছোঁয়া বারণ, তাই নিয়মটা এখানে আবার লেখা হলো —
- *    **হুবহু একই নিয়ম**: `agent_down` একমাত্র সলিড লাল (IT-র সমস্যা),
- *    `offline` ধূসর (কর্মী চলে গেছে — স্বাভাবিক)। দুটো মিলিয়ে ফেললে হয়
- *    মিথ্যা অভিযোগ হয়, নয় আসল সমস্যা চাপা পড়ে।
+ * ⚠️ `StatusDot`-এর ভেতরের `DOT_CLASS` এক্সপোর্ট করা নেই, তাই নিয়মটা এখানে
+ *    আবার লেখা হলো — **হুবহু একই নিয়ম**: `agent_down` একমাত্র সলিড লাল
+ *    (IT-র সমস্যা), `offline` ধূসর (কর্মী চলে গেছে — স্বাভাবিক)। দুটো
+ *    মিলিয়ে ফেললে হয় মিথ্যা অভিযোগ হয়, নয় আসল সমস্যা চাপা পড়ে।
+ *
+ * ⚠️⚠️ এই চারটে ক্লাস আর `StatusDot`-এর `DOT_CLASS` **একই কমিটে** বদলাতে
+ *    হয়। একবার তা হয়নি, আর ফল হয়েছিল: একই কার্ডে বাঁয়ের পটি এক রং আর
+ *    চিপের ভেতরের বিন্দু আরেক রং — দুটো পাশাপাশি বসে দুটো আলাদা কথা বলত।
+ *    রং চারটে `index.css`-এর টোকেন (`ok`·`idle`·`offline`·`attention`),
+ *    এখানে হেক্স লিখবেন না।
  */
 const EDGE: Record<LiveStatus, string> = {
-  active: 'bg-ink',
-  idle: 'bg-ink-3/60',
-  offline: 'bg-line',
-  agent_down: 'bg-brand',
+  active: 'bg-ok',
+  idle: 'bg-idle',
+  offline: 'bg-offline',
+  agent_down: 'bg-attention',
 };
 
 export function PersonCard({
@@ -43,6 +56,14 @@ export function PersonCard({
   onOpenShot: () => void;
 }) {
   const worked = card.todayWorkedSec > 0;
+
+  /**
+   * ⚠️ `todayIsWorkday` ছাড়াও `dailyTargetSec > 0` দেখা হয়। পুরো মাস ছুটি
+   *    হলে সার্ভার ০ পাঠায় (`dailyTargetSec()`-এ Infinity ঠেকানো আছে), আর
+   *    তখন রিং ০-এর বিপরীতে ১০০% দেখাত — অর্থাৎ কিছু না করেই সবাই টার্গেট
+   *    ছুঁয়ে ফেলত।
+   */
+  const hasTarget = card.todayIsWorkday && card.dailyTargetSec > 0;
 
   return (
     <article className="relative flex flex-col gap-2.5 overflow-hidden rounded-xl border border-line bg-surface p-3 transition hover:border-brand/40">
@@ -74,31 +95,51 @@ export function PersonCard({
           </div>
         </div>
 
-        {/* ⭐ E02 — রিংটা **মাসের**, দিনের নয় */}
-        <ProgressRing value={card.monthWorkedSec} max={card.monthTargetSec} />
+        {/* ⭐ রিংটা **আজকের** টার্গেটের বিপরীতে; ছুটির দিনে রিং-ই নেই */}
+        {hasTarget ? (
+          <TodayRing
+            workedSec={card.todayWorkedSec}
+            targetSec={card.dailyTargetSec}
+          />
+        ) : (
+          <DayOffTag />
+        )}
       </div>
 
       <div>
-        <div className="flex items-baseline gap-1.5">
-          <Duration
-            seconds={card.monthWorkedSec}
-            className="text-[17px] font-semibold tracking-tight"
-          />
-          <span className="text-[11.5px] text-ink-3">
-            / <span className="num">{formatHours(card.monthTargetSec, 0)}</span>ঘ ·
-            এই মাসে
-          </span>
-        </div>
-
-        {/* ⚠️ আজকের ঘণ্টা মাসেরটার সাথে মিশে যাওয়া চলবে না — দুটো আলাদা
-            প্রশ্নের উত্তর। শূন্য হলে ধূসর: ধূসর = গোনা হয়নি। */}
-        <div className="mt-0.5 flex items-baseline gap-1.5 text-[11.5px] text-ink-3">
-          আজ
+        {/* ⭐ বড় সংখ্যা = **আজ**। শূন্য হলে ধূসর: ধূসর = গোনা হয়নি। */}
+        <div className="flex flex-wrap items-baseline gap-x-1.5">
           <Duration
             seconds={card.todayWorkedSec}
             tone={worked ? 'counted' : 'muted'}
-            className="text-[12.5px] font-semibold"
+            className="text-[17px] font-semibold tracking-tight"
           />
+          <span className="text-[11.5px] text-ink-3">
+            {/*
+              ⚠️ টার্গেটটা **সার্ভারের সংখ্যা**, "8h" লেখা নয় — ২৭
+                 কর্মদিবসের মাসে এটা নিজে থেকেই "7h 42m" দেখাবে।
+            */}
+            {hasTarget ? (
+              <>
+                of <span className="num">{targetText(card.dailyTargetSec)}</span>{' '}
+                today
+              </>
+            ) : (
+              'no target today'
+            )}
+          </span>
+        </div>
+
+        {/* ⚠️ মাসেরটা আজকেরটার সাথে মিশে যাওয়া চলবে না — দুটো আলাদা প্রশ্নের
+            উত্তর, আর বেতন গোনা হয় নিচের সংখ্যাটা দিয়ে। */}
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-[11.5px] text-ink-3">
+          This month
+          <Duration seconds={card.monthWorkedSec} tone="muted" />
+          {/* ⚠️ `/` আর টার্গেট এক টুকরোয় — নইলে সরু কার্ডে স্ল্যাশটা একা
+              পরের লাইনে নেমে যেত আর সংখ্যাটা এতিম দেখাত। */}
+          <span className="num whitespace-nowrap">
+            / {formatHours(card.monthTargetSec, 0)}h
+          </span>
         </div>
       </div>
 
@@ -110,8 +151,8 @@ export function PersonCard({
             আর ওটা আলাদা ঘটনাও: এজেন্ট বসানোই হয়নি। */}
         <span className="text-[11px] text-ink-3">
           {card.lastHeartbeatAt === null
-            ? 'কখনো সাড়া দেয়নি'
-            : `সাড়া ${formatAgo(card.lastHeartbeatAt)}`}
+            ? 'Never checked in'
+            : `Seen ${formatAgo(card.lastHeartbeatAt)}`}
         </span>
       </div>
     </article>
@@ -150,9 +191,15 @@ function Thumb({
   useEffect(() => setBroken(false), [shot?.thumbUrl]);
 
   if (!shot) {
+    // ⚠️ খালি জায়গাটা `aspect-video` ছিল, অর্থাৎ ছবি না থাকলেও ছবির সমান
+    //    উঁচু একটা ফাঁকা বাক্স। ১২টা কার্ডের কারো ছবি না এলে (রাত ১১টার
+    //    পর, বা সবে বসানো অফিসে) পুরো বোর্ড ফাঁকা বাক্সে ভরে যেত আর এক
+    //    পর্দায় মাত্র চারটে কার্ড দেখা যেত — অথচ বোর্ডের পুরো উদ্দেশ্যই
+    //    এক নজরে সবাইকে দেখা।
+    //    এখন এক লাইন, তাই ছবিহীন কার্ড ছোট হয়ে যায়।
     return (
-      <div className="grid aspect-video place-items-center rounded-lg border border-dashed border-line bg-paper px-2 text-center text-[11px] text-ink-3">
-        আজ এখনো কোনো স্ক্রিনশট নেই
+      <div className="rounded-lg border border-dashed border-line bg-paper px-2 py-2 text-center text-[11px] text-ink-3">
+        No screenshot yet today
       </div>
     );
   }
@@ -161,12 +208,12 @@ function Thumb({
     <button
       type="button"
       onClick={onOpen}
-      title="বড় করে দেখুন"
+      title="Open full size"
       className="relative z-10 block aspect-video w-full overflow-hidden rounded-lg border border-line bg-paper transition hover:border-brand focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
     >
       <img
         src={shot.thumbUrl}
-        alt={`${card.fullName}-এর সর্বশেষ স্ক্রিনশট`}
+        alt={`Latest screenshot of ${card.fullName}`}
         // ⚠️ A06 আসার আগ পর্যন্ত সার্ভার থাম্বনেইলের বদলে **ফুল ছবিই**
         //    পাঠায় (screenshots.service.ts-এর মন্তব্য দেখুন)। তাই lazy —
         //    নইলে পনেরোটা ফুল-রেজ়লিউশন ছবি একসাথে নামত।
@@ -182,7 +229,7 @@ function Thumb({
 
       {broken && (
         <span className="absolute inset-0 grid place-items-center bg-surface/95 px-2 text-center text-[11px] text-ink-3">
-          লিঙ্কের মেয়াদ শেষ — হালনাগাদ করুন
+          Link expired — refresh
         </span>
       )}
     </button>

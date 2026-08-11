@@ -44,20 +44,20 @@ export function RecoveryCodesModal({
 
   return (
     <Modal
-      title="রিকভারি কোড"
-      hint="ফোন হারালে এগুলো দিয়েই ঢুকতে হবে"
+      title="Recovery codes"
+      hint="These are how you get in if you lose your phone"
       dismissible={false}
       onClose={onClose}
       footer={
         <Button tone="primary" disabled={!saved} onClick={onClose}>
-          বন্ধ করুন
+          Close
         </Button>
       }
     >
       <div className="space-y-3">
         <Notice tone="attention">
-          এই কোডগুলো আর কখনো দেখানো হবে না — সার্ভারে শুধু এদের hash জমা থাকে।
-          এখনই কপি করে নিরাপদ জায়গায় রাখুন বা কাগজে লিখে ফেলুন।
+          These codes will not be shown again — the server keeps only their
+          hashes. Copy them somewhere safe now, or write them down on paper.
         </Notice>
 
         <ul className="grid grid-cols-2 gap-2 rounded-lg border border-line bg-paper px-4 py-4">
@@ -72,20 +72,20 @@ export function RecoveryCodesModal({
         </ul>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={copy}>সবগুলো কপি করুন</Button>
+          <Button onClick={copy}>Copy all</Button>
           {copyState === 'ok' && (
-            <span className="text-xs text-ink-3">কপি হয়েছে</span>
+            <span className="text-xs text-ink-3">Copied</span>
           )}
           {copyState === 'failed' && (
             <span className="text-xs text-brand-ink">
-              কপি করা গেল না — লেখাগুলো নির্বাচন করে হাতে কপি করুন
+              Could not copy — select the codes and copy them by hand
             </span>
           )}
         </div>
 
         <Notice>
-          প্রতিটি কোড একবারই চলে। ফুরিয়ে এলে এই পাতা থেকেই নতুন সেট বানাতে
-          পারবেন — তখন পুরোনো সবগুলো সাথে সাথেই অচল হয়ে যাবে।
+          Each code works once. When you run low you can generate a fresh set
+          from this page — every old code stops working the moment you do.
         </Notice>
 
         <label className="flex items-start gap-2 rounded-md border border-line bg-surface px-3 py-2 text-[13px] text-ink-2">
@@ -95,7 +95,7 @@ export function RecoveryCodesModal({
             onChange={(e) => setSaved(e.target.checked)}
             className="mt-0.5 accent-brand"
           />
-          <span>আমি কোডগুলো কপি বা লিখে রেখেছি</span>
+          <span>I have copied or written down the codes</span>
         </label>
       </div>
     </Modal>

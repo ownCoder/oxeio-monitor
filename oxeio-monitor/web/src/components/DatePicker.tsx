@@ -14,7 +14,7 @@ import { shiftWorkDate, todayInDhaka } from '../lib/format';
 export function DatePicker({
   value,
   onChange,
-  label = 'তারিখ',
+  label = 'Date',
   max = todayInDhaka(),
   min,
   /** ◀ ▶ দিয়ে আগের/পরের দিন — টাইমলাইন পেজে খুব কাজে লাগে */
@@ -35,7 +35,7 @@ export function DatePicker({
       <span className="flex items-center gap-1">
         {withArrows && (
           <ArrowButton
-            label="আগের দিন"
+            label="Previous day"
             onClick={() => onChange(shiftWorkDate(value, -1))}
             disabled={min !== undefined && value <= min}
           >
@@ -58,7 +58,7 @@ export function DatePicker({
 
         {withArrows && (
           <ArrowButton
-            label="পরের দিন"
+            label="Next day"
             onClick={() => onChange(shiftWorkDate(value, 1))}
             disabled={atMax}
           >
@@ -95,13 +95,13 @@ export function DateRange({
   return (
     <div className="flex flex-wrap items-end gap-2">
       <DatePicker
-        label="শুরু"
+        label="From"
         value={from}
         max={max}
         onChange={(next) => onChange({ from: next, to: next > to ? next : to })}
       />
       <DatePicker
-        label="শেষ"
+        label="To"
         value={to}
         min={from}
         max={max}
@@ -120,7 +120,7 @@ export function DateRange({
 export function MonthPicker({
   value,
   onChange,
-  label = 'মাস',
+  label = 'Month',
   max = todayInDhaka().slice(0, 7),
 }: {
   value: string;

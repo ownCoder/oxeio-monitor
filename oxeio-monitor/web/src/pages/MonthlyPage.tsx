@@ -45,10 +45,10 @@ export function MonthlyPage() {
   //   ভালো, নইলে প্রতিবার ঢুকলে সার্ভারে একটা অর্থহীন কল যেত।
   if (user?.role === 'employee') {
     return (
-      <Page title="মাসিক অগ্রগতি">
+      <Page title="Monthly">
         <Empty
-          title="আপনার এই অংশে ঢোকার অনুমতি নেই"
-          hint="সবার মাসিক হিসাব শুধু owner ও ম্যানেজার দেখতে পান।"
+          title="You don't have access"
+          hint="Everyone's monthly hours are for the owner and managers only."
         />
       </Page>
     );
@@ -107,21 +107,21 @@ function MonthlyBoard() {
           )
         }
         disabled={download.busy}
-        title="সার্ভারে ফাইল তৈরি হয়ে তারপর নামবে"
+        title="The file is built on the server first, then downloads"
       >
-        {download.busy ? 'তৈরি হচ্ছে…' : 'Excel'}
+        {download.busy ? 'Preparing…' : 'Excel'}
       </Button>
     </>
   );
 
   return (
     <Page
-      title="মাসিক অগ্রগতি"
+      title="Monthly"
       subtitle={
         // ⚠️ মাসের নামও ডেটার `meta` থেকে — পর্দার প্রতিটা সংখ্যা যেন একই
         //    রেসপন্সের কথা বলে (উপরের `grid`-এর নোট দেখুন)
         data
-          ? `${formatMonth(monthKeyOf(data.meta.from))} · হিসাব ${formatDate(data.meta.from)} থেকে ${formatDate(data.meta.to)} পর্যন্ত`
+          ? `${formatMonth(monthKeyOf(data.meta.from))} · counted from ${formatDate(data.meta.from)} to ${formatDate(data.meta.to)}`
           : formatMonth(month)
       }
       actions={actions}
@@ -135,24 +135,24 @@ function MonthlyBoard() {
       )}
 
       {loading && !data ? (
-        <Loading label="মাসের হিসাব আনা হচ্ছে…" />
+        <Loading label="Loading the month…" />
       ) : error ? (
         <ErrorBox error={error} retry={reload} />
       ) : !grid || grid.rows.length === 0 ? (
         <Empty
-          title={`${formatMonth(month)}-এ কারো কোনো হিসাব নেই`}
-          hint="কর্মী যোগ করা আছে তো, আর তাঁদের কম্পিউটারে এজেন্ট বসানো হয়েছে? এজেন্ট চালু হওয়ার পরদিন থেকে ঘণ্টা জমতে শুরু করে।"
+          title={`Nothing counted in ${formatMonth(month)} yet`}
+          hint="Have staff been added, and is the agent installed on their computers? Hours start adding up from the day after the agent runs."
         />
       ) : (
         <div className="space-y-4">
           <StatRow>
-            <Stat label="স্টাফ" value={grid.totals.employees} />
+            <Stat label="Staff" value={grid.totals.employees} />
             <Stat
-              label="এ পর্যন্ত হয়েছে"
+              label="Counted so far"
               value={formatHoursAsDuration(grid.totals.creditedHours)}
             />
             <Stat
-              label="এ পর্যন্ত হওয়ার কথা"
+              label="Expected so far"
               value={formatHoursAsDuration(grid.totals.expectedHours)}
               tone="muted"
             />
@@ -161,13 +161,13 @@ function MonthlyBoard() {
                  নইলে লাল রঙের মানেই হারিয়ে যেত।
             */}
             <Stat
-              label="পিছিয়ে আছেন"
+              label="Behind"
               value={grid.totals.behind}
               unit={`/${grid.totals.employees}`}
               tone={grid.totals.behind > 0 ? 'attention' : 'muted'}
             />
             <Stat
-              label="সবার মাসিক টার্গেট"
+              label="Everyone's monthly target"
               value={
                 grid.totals.monthTargetHours === null
                   ? '—'
@@ -179,8 +179,12 @@ function MonthlyBoard() {
 
           <div>
             <SectionHead
-              title="স্টাফ × তারিখ"
-              hint="ঘরের রঙ যত গাঢ়, ওই দিনে তত বেশি ঘণ্টা গোনা হয়েছে"
+              title="Staff × date"
+              // ⚠️ "darker" লেখা যাবে না — র‍্যাম্পটা `--color-ink`-এর উপর
+              //    অস্বচ্ছতা, আর `ink` লাইট থিমে কালো, ডার্কে সাদা। অর্থাৎ
+              //    ডার্কে ঘণ্টা বাড়লে ঘর **উজ্জ্বল** হয়, গাঢ় নয় — লেখাটা
+              //    ঠিক উল্টো বলত। থিম-নিরপেক্ষ শব্দই একমাত্র নিরাপদ।
+              hint="The stronger a cell, the more hours were counted that day"
               actions={
                 <SortToggle value={sort} onChange={setSort} />
               }
@@ -195,10 +199,10 @@ function MonthlyBoard() {
               ⚠️ সংখ্যা ইংরেজি অঙ্কে (10, 6), বাংলা অঙ্কে নয়।
             */}
             <p className="mt-3 text-xs text-ink-3">
-              দিন নয়, <b className="font-semibold text-ink-2">ঘণ্টা</b> গোনা
-              হয়। একদিন <span className="num">10</span> ঘণ্টা আর পরদিন{' '}
-              <span className="num">6</span> ঘণ্টা হলেও অসুবিধা নেই — মাসে মোট
-              টার্গেট ছুঁলেই হলো।
+              <b className="font-semibold text-ink-2">Hours</b> are counted, not
+              days. <span className="num">10</span> hours one day and{' '}
+              <span className="num">6</span> the next is fine — what matters is
+              reaching the month's total target.
             </p>
 
             <Notices
@@ -238,9 +242,9 @@ function Notices({
   if (clamped) {
     notes.push(
       <>
-        মাস এখনো শেষ হয়নি। {formatDate(requestedTo)} পর্যন্ত চাওয়া হয়েছিল,
-        হিসাব হয়েছে {formatDate(coveredTo)} পর্যন্ত — তাই "এ পর্যন্ত হওয়ার
-        কথা" পুরো মাসের টার্গেট নয়, আজ পর্যন্তের।
+        The month is not over yet. Data was requested up to{' '}
+        {formatDate(requestedTo)}, but only {formatDate(coveredTo)} is covered —
+        so “Expected so far” is the target up to today, not for the whole month.
       </>,
     );
   }
@@ -248,8 +252,9 @@ function Notices({
   if (estimated) {
     notes.push(
       <>
-        <span className="num">≈</span> চিহ্ন দেওয়া মাসিক টার্গেট আন্দাজ — বাকি
-        দিনগুলোয় নতুন সরকারি ছুটি ঘোষণা হলে সংখ্যাটা কমবে।
+        A monthly target marked <span className="num">≈</span> is an estimate —
+        it drops if a new public holiday is declared on any of the remaining
+        days.
       </>,
     );
   }
@@ -257,9 +262,9 @@ function Notices({
   if (excluded.length > 0) {
     notes.push(
       <>
-        {excluded.length} জন এই হিসাবে নেই — {excluded.join(', ')}। এঁরা
-        নিষ্ক্রিয়, অথচ কবে থেকে ছিলেন না সেটা লেখা নেই, তাই টার্গেট বসানো
-        যায়নি।
+        {excluded.length} people are missing from this count —{' '}
+        {excluded.join(', ')}. They are inactive, but their last working day is
+        not on file, so no target could be set for them.
       </>,
     );
   }
@@ -289,12 +294,12 @@ function SortToggle({
 }) {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[11.5px] text-ink-3">সাজানো</span>
+      <span className="text-[11.5px] text-ink-3">Sort</span>
       <Tab active={value === 'pace'} onClick={() => onChange('pace')}>
-        ঘাটতি আগে
+        Shortfall first
       </Tab>
       <Tab active={value === 'name'} onClick={() => onChange('name')}>
-        নাম
+        Name
       </Tab>
     </div>
   );

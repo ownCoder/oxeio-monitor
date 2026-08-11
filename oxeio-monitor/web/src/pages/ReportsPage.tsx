@@ -39,10 +39,10 @@ interface TabDef extends TabItem<TabId> {
 }
 
 const TABS: TabDef[] = [
-  { id: 'attendance', label: 'অ্যাটেনডেন্স' },
-  { id: 'summary', label: 'সারাংশ' },
-  { id: 'productivity', label: 'অ্যাপ ও সাইট' },
-  { id: 'payroll', label: 'পে-রোল', ownerOnly: true },
+  { id: 'attendance', label: 'Attendance' },
+  { id: 'summary', label: 'Summary' },
+  { id: 'productivity', label: 'Apps & sites' },
+  { id: 'payroll', label: 'Payroll', ownerOnly: true },
 ];
 
 /** সার্ভারের ডিফল্টও ২৫ — এক রাখা হয়েছে যাতে পর্দা আর Excel এক কথা বলে */
@@ -61,10 +61,10 @@ export function ReportsPage() {
    */
   if (user?.role === 'employee') {
     return (
-      <Page title="রিপোর্ট">
+      <Page title="Reports">
         <Empty
-          title="আপনার এই অংশে ঢোকার অনুমতি নেই"
-          hint="রিপোর্ট ও এক্সপোর্ট শুধু owner ও ম্যানেজার দেখতে পান।"
+          title="You don't have access"
+          hint="Reports and exports are for the owner and managers only."
         />
       </Page>
     );
@@ -115,11 +115,11 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
 
   return (
     <Page
-      title="রিপোর্ট"
+      title="Reports"
       subtitle={
         isPayroll
-          ? `${formatMonth(month)} — মাসিক পে-রোল ঘণ্টা`
-          : `${formatDate(range.from)} — ${formatDate(range.to)} · ${days} দিন`
+          ? `${formatMonth(month)} — monthly payroll hours`
+          : `${formatDate(range.from)} — ${formatDate(range.to)} · ${days} days`
       }
       actions={
         // ⚠️ পে-রোলের কোনো Excel endpoint সার্ভারে নেই — বোতামটা দেখালে
@@ -129,9 +129,9 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
             onClick={startDownload}
             disabled={download.busy || tooLong}
             tone="primary"
-            title="সার্ভারে ফাইল তৈরি হয়ে তারপর নামবে — বড় রেঞ্জে একটু সময় লাগে"
+            title="The file is built on the server first — a long range takes a moment"
           >
-            {download.busy ? 'তৈরি হচ্ছে…' : 'Excel নামান'}
+            {download.busy ? 'Preparing…' : 'Download Excel'}
           </Button>
         )
       }
@@ -139,7 +139,7 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
       <Tabs
         items={tabs}
         active={tab}
-        label="রিপোর্টের ধরন"
+        label="Report type"
         onChange={(next) => {
           setTab(next);
           // আগের ট্যাবের ডাউনলোড-ভুলটা নতুন ট্যাবে ঝুলিয়ে রাখা যায় না
@@ -161,7 +161,7 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
               value={employeeId}
               onChange={setEmployeeId}
               allowAll
-              allLabel="সবাই"
+              allLabel="Everyone"
               // ⚠️ চলে যাওয়া কর্মীর পুরোনো মাসও রিপোর্টে লাগে, তাই
               //    নিষ্ক্রিয়দেরও তালিকায় রাখা হয়
               includeInactive
@@ -169,19 +169,19 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
 
             {tab === 'summary' && (
               <SelectField
-                label="ভাগ"
+                label="Group by"
                 value={groupBy}
                 onChange={(next) => setGroupBy(next as GroupBy)}
                 options={[
-                  { value: 'month', label: 'মাস' },
-                  { value: 'week', label: 'সপ্তাহ' },
+                  { value: 'month', label: 'Month' },
+                  { value: 'week', label: 'Week' },
                 ]}
               />
             )}
 
             {tab === 'productivity' && (
               <SelectField
-                label="শীর্ষ কতটি"
+                label="Top how many"
                 value={String(limit)}
                 onChange={(next) => setLimit(Number(next))}
                 options={TOP_LIMITS.map((n) => ({
@@ -268,11 +268,11 @@ function SelectField({
 function RangeTooLong({ days }: { days: number }): ReactNode {
   return (
     <div className="rounded-xl border border-dashed border-line bg-surface px-6 py-12 text-center">
-      <p className="text-sm font-medium text-ink-2">রেঞ্জটা বড্ড বড়</p>
+      <p className="text-sm font-medium text-ink-2">That range is too long</p>
       <p className="mx-auto mt-1.5 max-w-md text-xs text-ink-3">
-        এক রিপোর্টে সর্বোচ্চ <span className="num">{MAX_REPORT_DAYS}</span> দিন
-        চাওয়া যায়, আপনি চেয়েছেন <span className="num">{days}</span> দিন। শুরুর
-        তারিখটা কাছে আনুন।
+        One report covers at most <span className="num">{MAX_REPORT_DAYS}</span>{' '}
+        days; you asked for <span className="num">{days}</span>. Move the start
+        date closer.
       </p>
     </div>
   );
