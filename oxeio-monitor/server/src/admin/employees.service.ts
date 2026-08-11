@@ -420,6 +420,106 @@ export class EmployeesService {
     }
   }
 
+  /**
+   * ⭐ সই করা মনিটরিং পলিসি রেকর্ড করা — **রোলআউটের একমাত্র শর্ত**।
+   *
+   * ⚠️ এতদিন এই পথটা ছিল না: কলাম ছিল, API পড়ত, ওয়েবে টাইপ করা ছিল —
+   * শুধু **বসানোর কোনো উপায় ছিল না**। অর্থাৎ "সই ছাড়া কারো PC-তে এজেন্ট
+   * বসবে না" শর্তটা সিস্টেমে রেকর্ডই করা যেত না, আর ছ-মাস পরে কেউ
+   * জিজ্ঞেস করলে উত্তর থাকত শুধু কাগজের ফাইলে।
+   */
+  async setPolicySigned(
+    actor: SessionUser,
+    id: number,
+    signedOn: string | undefined,
+    ip: string,
+  ): Promise<EmployeeView> {
+    const before = await this.prisma.employee.findUnique({
+      where: { id },
+      select: { id: true, empCode: true, policySignedAt: true },
+    });
+    if (!before) throw new NotFoundException('Staff member not found');
+
+    /**
+     * ⚠️ তারিখটা **ঢাকার মধ্যরাত** হিসেবে বসে, বসানোর মুহূর্ত নয়।
+     * কলামটা `timestamptz`, তাই মুহূর্ত বসালে "৩ আগস্ট সই" রেকর্ডটা
+     * টাইমজোন বদলালে ২ বা ৪ আগস্ট দেখাত — একটা আইনি নথির তারিখ হিসেবে
+     * সেটা অগ্রহণযোগ্য।
+     */
+    const when = signedOn
+      ? this.calendarDate(signedOn, 'signedOn')
+      : workDateOf(new Date());
+
+    // ⚠️ ভবিষ্যতের তারিখ নয় — কাগজ সই হওয়ার আগেই রেকর্ড হয়ে গেলে
+    //    গোটা শর্তটার মানেই থাকে না।
+    if (when.getTime() > workDateOf(new Date()).getTime()) {
+      throw new BadRequestException('The signing date cannot be in the future');
+    }
+
+    const row = await this.prisma.employee.update({
+      where: { id },
+      data: { policySignedAt: when },
+      select: EMPLOYEE_SELECT,
+    });
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'policy_signed',
+      targetType: ADMIN_TARGET.employee,
+      targetId: id,
+      ipAddress: ip,
+      meta: {
+        empCode: before.empCode,
+        signedOn: when.toISOString().slice(0, 10),
+        // ⚠️ আগেরটাও রাখা — দ্বিতীয়বার বসানো মানে হয় সংশোধন, নয় ভুল
+        previous: before.policySignedAt?.toISOString().slice(0, 10) ?? null,
+      },
+    });
+
+    this.logger.log(`${before.empCode} — monitoring policy signed on ${when.toISOString().slice(0, 10)}`);
+
+    return toEmployeeView(row, actor.role);
+  }
+
+  /**
+   * ভুল করে বসানো সই তুলে নেওয়া।
+   *
+   * ⚠️ ডিলিট নয়, **শূন্য করা** — আর ঘটনাটা audit-এ থাকে। সই "ছিল, তারপর
+   * তুলে নেওয়া হলো" আর "কোনোদিন ছিল না" — দুটো সম্পূর্ণ আলাদা ব্যাপার,
+   * বিশেষ করে যদি ইতিমধ্যে ওই PC-তে এজেন্ট বসে গিয়ে থাকে।
+   */
+  async clearPolicySigned(
+    actor: SessionUser,
+    id: number,
+    ip: string,
+  ): Promise<EmployeeView> {
+    const before = await this.prisma.employee.findUnique({
+      where: { id },
+      select: { id: true, empCode: true, policySignedAt: true },
+    });
+    if (!before) throw new NotFoundException('Staff member not found');
+
+    const row = await this.prisma.employee.update({
+      where: { id },
+      data: { policySignedAt: null },
+      select: EMPLOYEE_SELECT,
+    });
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'policy_signed_cleared',
+      targetType: ADMIN_TARGET.employee,
+      targetId: id,
+      ipAddress: ip,
+      meta: {
+        empCode: before.empCode,
+        cleared: before.policySignedAt?.toISOString().slice(0, 10) ?? null,
+      },
+    });
+
+    return toEmployeeView(row, actor.role);
+  }
+
   private calendarDate(value: string, field: string): Date {
     const parsed = parseCalendarDate(value);
     if (!parsed) throw new BadRequestException(`${field} is not a valid date`);

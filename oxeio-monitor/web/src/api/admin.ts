@@ -138,6 +138,30 @@ export function reactivateEmployee(id: number): Promise<EmployeeView> {
   return api<EmployeeView>(`/employees/${id}/reactivate`, { method: 'POST' });
 }
 
+/**
+ * ⭐ সই করা মনিটরিং পলিসি রেকর্ড করা — **রোলআউটের একমাত্র শর্ত**
+ * ([01 § রোলআউট](../../../docs/01-Planning.md))।
+ *
+ * `signedOn` না দিলে সার্ভার আজকের ঢাকার তারিখ বসায়। তারিখ দেওয়ার সুযোগ
+ * আছে কারণ কাগজ প্রায়ই আগে সই হয়, ড্যাশবোর্ডে বসানো হয় পরে।
+ */
+export function setPolicySigned(
+  id: number,
+  signedOn?: string,
+): Promise<EmployeeView> {
+  return api<EmployeeView>(`/employees/${id}/policy-signed`, {
+    method: 'POST',
+    body: signedOn ? { signedOn } : {},
+  });
+}
+
+/** ভুল করে বসানো সই তোলা। ⚠️ কর্মী মোছে না, শুধু তারিখটা শূন্য করে। */
+export function clearPolicySigned(id: number): Promise<EmployeeView> {
+  return api<EmployeeView>(`/employees/${id}/policy-signed`, {
+    method: 'DELETE',
+  });
+}
+
 // ── ডিভাইস (owner-only) ─────────────────────────────────────────────────────
 
 export interface DeviceView {

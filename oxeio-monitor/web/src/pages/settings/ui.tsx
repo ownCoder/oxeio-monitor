@@ -472,14 +472,22 @@ export function Chip({
   tone = 'muted',
 }: {
   children: ReactNode;
-  tone?: 'counted' | 'muted' | 'attention';
+  tone?: 'counted' | 'muted' | 'attention' | 'pending';
 }) {
+  /**
+   * ⚠️ `pending` আম্বার, `attention` লাল — পার্থক্যটা ইচ্ছাকৃত।
+   * লাল মানে "কিছু ভেঙেছে"; আম্বার মানে "একটা কাজ বাকি"। সই না নেওয়া
+   * কোনো ব্যর্থতা নয়, কিন্তু রোলআউটের আগে সেটা চোখে পড়া দরকার —
+   * ট্রে জানালায় "পিছিয়ে আছে"-র জন্যও একই যুক্তিতে আম্বার।
+   */
   const style =
     tone === 'attention'
       ? 'border-brand/40 bg-brand-bg text-brand-ink'
-      : tone === 'counted'
-        ? 'border-line bg-paper text-ink'
-        : 'border-line bg-surface text-ink-3';
+      : tone === 'pending'
+        ? 'border-idle/40 text-idle-ink'
+        : tone === 'counted'
+          ? 'border-line bg-paper text-ink'
+          : 'border-line bg-surface text-ink-3';
 
   return (
     <span
