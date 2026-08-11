@@ -76,8 +76,23 @@ internal sealed class AgentHost : IAsyncDisposable
     private UpdateStager? _updates;
     private CaptureWindow _window = CaptureWindow.Default;
 
+    /// <summary>tray-তে কয়টা ৫-মিনিটের ঘর দেখানো হবে — অর্থাৎ শেষ ~৩০ মিনিট।</summary>
+    private const int BusyBlocks = 6;
+
+    /// <summary>
+    /// ⚠️ ট্র্যাকিং লুপ লেখে, UI থ্রেড পড়ে — তাই তালা। <c>Queue</c> নিজে
+    /// থ্রেড-নিরাপদ নয়, আর এখানে দৌড় হলে জানালা আঁকতে গিয়ে ব্যতিক্রম উঠত।
+    /// </summary>
+    private readonly Queue<int> _recentBusy = new(BusyBlocks);
+    private readonly object _busyGate = new();
+
     private volatile bool _sessionSuspended;
     private long _activeTodaySec;
+
+    /// <summary>শেষ তোলা ছবির থাম্বনেইল — জানালায় দেখানোর জন্য।</summary>
+    private string? _latestShotThumb;
+    private DateTimeOffset? _latestShotAt;
+    private int _latestShotMonitors;
     private DateOnly _activeDate;
     private EmployeeProgress? _progress;
     private string? _configVersion;
@@ -323,6 +338,10 @@ internal sealed class AgentHost : IAsyncDisposable
         //    নামটাও বসে না — "পাঠাচ্ছি না" নয়, জানাই হয় না (উপরে § ট্র্যাকিং)।
         var front = _apps?.Current;
 
+        // জানালায় দেখানোর জন্য শেষ ছবির থাম্বনেইল — সবচেয়ে বাঁ দিকের পর্দাটা
+        string? showThumb = null;
+        var showIndex = int.MaxValue;
+
         foreach (var r in results)
         {
             // ⚠️ uuid আগে তৈরি — ফাইলের নাম আর সারির clientUuid এক হতে হবে,
@@ -342,6 +361,12 @@ internal sealed class AgentHost : IAsyncDisposable
                 try
                 {
                     await File.WriteAllBytesAsync(OutboxPaths.ThumbPathFor(path), thumb, ct);
+
+                    if (r.MonitorIndex < showIndex)
+                    {
+                        showIndex = r.MonitorIndex;
+                        showThumb = OutboxPaths.ThumbPathFor(path);
+                    }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
@@ -363,6 +388,44 @@ internal sealed class AgentHost : IAsyncDisposable
 
             await _outbox.EnqueueAsync(
                 OutboxCodec.Item(meta, path, r.Webp.LongLength, DateTimeOffset.UtcNow), ct);
+        }
+
+        KeepLatestShot(showThumb, results.Count);
+    }
+
+    /// <summary>
+    /// শেষ ছবিটা জানালায় দেখানোর জন্য <b>কপি</b> করে রাখা।
+    ///
+    /// ⚠️⚠️ কিউয়ের ফাইলটার দিকে শুধু আঙুল তুলে রাখা যায় না — আপলোড সফল
+    /// হলে sync worker ছবি ও থাম্বনেইল দুটোই <b>মুছে ফেলে</b> (কয়েক সেকেন্ডের
+    /// মধ্যেই)। তখন জানালা খুললে ছবির জায়গায় ফাঁকা থাকত, আর সেটা "ছবি ওঠেনি"
+    /// বলে ভুল বার্তা দিত।
+    ///
+    /// থাম্বনেইলটাই কপি হয় (৪–১১ KB), পুরো ছবি নয় — জানালায় ওটুকুই দেখানো হয়,
+    /// আর ১৫টা PC-তে রোজ ১৯২ বার পুরো ছবি কপি করার কোনো মানে নেই।
+    /// </summary>
+    private void KeepLatestShot(string? thumbPath, int monitors)
+    {
+        if (thumbPath is null || _outbox is null) return;
+
+        try
+        {
+            Directory.CreateDirectory(_outbox.Paths.State);
+            var target = Path.Combine(_outbox.Paths.State, "last-shot.webp");
+
+            File.Copy(thumbPath, target, overwrite: true);
+
+            _latestShotThumb = target;
+            _latestShotAt = DateTimeOffset.UtcNow;
+            _latestShotMonitors = monitors;
+
+            PublishStatus();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // ⚠️ ছবি তোলা ও পাঠানোর চেয়ে দেখানোটা কম গুরুত্বপূর্ণ — এখানে
+            //    ব্যর্থ হলে চুপচাপ এগোনো, ক্যাপচার যেন না ভাঙে।
+            _log.Warn($"Could not keep the last thumbnail for the window: {ex.Message}");
         }
     }
 
@@ -528,10 +591,35 @@ internal sealed class AgentHost : IAsyncDisposable
                 Interlocked.Add(ref _activeTodaySec, s.DurationSec);
             }
 
+            RememberBusy(s);
+
             _outbox?.EnqueueAsync(OutboxCodec.Item(s, DateTimeOffset.UtcNow))
                    .ContinueWith(
                        t => _log.Error("Could not queue the segment", t.Exception),
                        TaskContinuationOptions.OnlyOnFaulted);
+        }
+    }
+
+    /// <summary>
+    /// B13 — শেষ কয়েকটা ঘরে কত শতাংশ সময় হাত চলেছে, tray-তে দেখানোর জন্য।
+    ///
+    /// ⭐ সংখ্যাটা নতুন করে মাপা হয় না — <see cref="ActivitySegment.InputScore"/>
+    /// আগে থেকেই আছে, আর সেগমেন্ট কাটা হয় সর্বোচ্চ ৫ মিনিটে (G53)। অর্থাৎ
+    /// "প্রতি ৫ মিনিটে কতটা ব্যস্ত" ইতিমধ্যেই হিসাব হয়ে সার্ভারে যাচ্ছে;
+    /// এতদিন শুধু দেখানো হতো না।
+    ///
+    /// ⚠️ <c>locked</c> ঘর বাদ — পর্দা লক থাকলে "ব্যস্ততা ০%" বলাটা
+    /// বিভ্রান্তিকর, কারণ মানুষটা তখন কাজই করছিল না। <c>idle</c> ঘরে ০
+    /// বসে, কারণ সেটা সত্যিই "সামনে ছিল, হাত চলেনি"।
+    /// </summary>
+    private void RememberBusy(ActivitySegment s)
+    {
+        if (s.State == SegmentState.Locked) return;
+
+        lock (_busyGate)
+        {
+            _recentBusy.Enqueue(s.InputScore ?? 0);
+            while (_recentBusy.Count > BusyBlocks) _recentBusy.Dequeue();
         }
     }
 
@@ -664,12 +752,35 @@ internal sealed class AgentHost : IAsyncDisposable
             //    "ঠিক লক্ষ্যে আছে" এক জিনিস নয় (AgentStatus.Pace দেখুন)।
             Pace = progress?.PaceSec is { } sec ? TimeSpan.FromSeconds(sec) : null,
 
+            // ⚠️ এখানেও null মানে "সার্ভার বলেনি"; Zero মানে "আজ ছুটি"।
+            DailyTarget = progress?.DailyTargetSec is { } day
+                ? TimeSpan.FromSeconds(day)
+                : null,
+            ActiveLast7 = progress?.Week7ActiveSec is { } w7
+                ? TimeSpan.FromSeconds(w7)
+                : null,
+            Last7Target = progress?.Week7TargetSec is { } w7t
+                ? TimeSpan.FromSeconds(w7t)
+                : null,
+
+            RecentBusy = SnapshotBusy(),
+
+            LatestShotThumb = _latestShotThumb,
+            LatestShotAt = _latestShotAt,
+            LatestShotMonitors = _latestShotMonitors,
+
             QueueDepth = depth,
             LastSyncAt = _worker?.LastSuccessAt,
             Health = _worker?.Health ?? SyncHealth.Ok,
             HealthDetail = _worker?.HealthDetail,
             Paused = false,
         };
+    }
+
+    /// <summary>⚠️ কপি ফেরত যায়, ভেতরের কিউ নয় — নইলে UI থ্রেড আঁকার মাঝপথে তালিকা বদলে যেত।</summary>
+    private int[] SnapshotBusy()
+    {
+        lock (_busyGate) return [.. _recentBusy];
     }
 
     private void PublishStatus() => _tray?.Publish(Snapshot());

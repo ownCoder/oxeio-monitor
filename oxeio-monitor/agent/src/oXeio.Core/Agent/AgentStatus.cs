@@ -93,6 +93,42 @@ public sealed record AgentStatus
     public required bool Paused { get; init; }
 
     /// <summary>
+    /// আজকের টার্গেট। <c>null</c> = সার্ভার বলেনি · <c>Zero</c> = আজ ছুটি।
+    /// ⚠️ দুটো এক নয় — ছুটির দিনে বার দেখানোর মানে হয় না, আর "জানি না"
+    /// অবস্থায় ভুল বার দেখানোর চেয়ে কিছু না দেখানো ভালো।
+    /// </summary>
+    public TimeSpan? DailyTarget { get; init; }
+
+    /// <summary>গত ৭ দিনে (আজ ধরে) গোনা সময়।</summary>
+    public TimeSpan? ActiveLast7 { get; init; }
+
+    /// <summary>ওই ৭ দিনের কর্মদিবস × দৈনিক টার্গেট।</summary>
+    public TimeSpan? Last7Target { get; init; }
+
+    /// <summary>
+    /// সাম্প্রতিক ৫ মিনিটের ঘরগুলোয় <b>কত শতাংশ সময়</b> কি-বোর্ড/মাউস
+    /// চলেছে (B13) — পুরোনো থেকে নতুন ক্রমে।
+    ///
+    /// ⭐⚠️ এটা <b>কতবার চাপা হয়েছে নয়</b>, আর কোনোদিন হবেও না। "কতবার"
+    /// গুনতে low-level hook লাগে, যেটা কীলগিং — <c>04-Features § L</c>-এ
+    /// নিষিদ্ধ, আর <c>G46</c>-এ প্রস্তাবটা স্পষ্টভাবে প্রত্যাখ্যাত। এজেন্ট
+    /// প্রতি সেকেন্ডে শুধু দেখে "শেষ ইনপুট কতক্ষণ আগে", তাই সে জানতেই
+    /// পারে না কী চাপা হয়েছে বা কতবার।
+    ///
+    /// idle ঘরে ০ — "হাত চলেনি" বলাটা সত্যি, ফাঁক রাখাটা নয়।
+    /// </summary>
+    public IReadOnlyList<int> RecentBusy { get; init; } = [];
+
+    /// <summary>শেষ যে ছবিটা তোলা হয়েছে তার থাম্বনেইলের পথ। কিছু না উঠলে null।</summary>
+    public string? LatestShotThumb { get; init; }
+
+    /// <summary>ওই ছবিটা কখন উঠেছে।</summary>
+    public DateTimeOffset? LatestShotAt { get; init; }
+
+    /// <summary>কয়টা পর্দার ছবি ওই মুহূর্তে উঠেছে — "১টির মধ্যে ১" বনাম "২টির"।</summary>
+    public int LatestShotMonitors { get; init; }
+
+    /// <summary>
     /// ০ = কিছু হয়নি, ১ = লক্ষ্য পূর্ণ। ⚠️ উপরে ক্ল্যাম্প করা <b>হয় না</b> —
     /// ২২০ ঘণ্টা কাজ করা মানুষকে ১০০% দেখানো তার বাড়তি কাজটাকে অদৃশ্য করে দিত।
     /// প্রোগ্রেস বার আঁকার সময় কলার নিজে <c>Math.Min(1, …)</c> করবে।
@@ -109,6 +145,22 @@ public sealed record AgentStatus
             return left > TimeSpan.Zero ? left : TimeSpan.Zero;
         }
     }
+
+    /// <summary>
+    /// আজকের অগ্রগতি — টার্গেট জানা না থাকলে বা ছুটির দিনে <c>null</c>।
+    /// ⚠️ <see cref="MonthlyProgress"/>-এর মতোই উপরে ক্ল্যাম্প করা হয় না;
+    /// বার আঁকার সময় কলার নিজে ছাঁটবে।
+    /// </summary>
+    public double? DailyProgress =>
+        DailyTarget is { } t && t > TimeSpan.Zero
+            ? Math.Max(0, ActiveToday.TotalSeconds / t.TotalSeconds)
+            : null;
+
+    /// <summary>গত ৭ দিনের অগ্রগতি। টার্গেট বা কাজ কোনোটা জানা না থাকলে <c>null</c>।</summary>
+    public double? Last7Progress =>
+        Last7Target is { } t && t > TimeSpan.Zero && ActiveLast7 is { } worked
+            ? Math.Max(0, worked.TotalSeconds / t.TotalSeconds)
+            : null;
 
     /// <summary>চালু হওয়ার পর প্রথম টিক আসার আগে tray যা দেখাবে।</summary>
     public static AgentStatus Starting => new()

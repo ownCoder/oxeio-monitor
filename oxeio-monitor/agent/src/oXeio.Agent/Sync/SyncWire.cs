@@ -328,6 +328,9 @@ internal static class SyncWire
         public int? MonthActiveSec { get; init; }
         public double? MonthlyTargetHours { get; init; }
         public int? PaceSec { get; init; }
+        public int? DailyTargetSec { get; init; }
+        public int? Week7ActiveSec { get; init; }
+        public int? Week7TargetSec { get; init; }
     }
 
     internal static HeartbeatResponse ToHeartbeatResponse(HeartbeatResponseDto dto)
@@ -368,6 +371,13 @@ internal static class SyncWire
             MonthActiveSec = Math.Max(0, dto.MonthActiveSec ?? 0),
             MonthlyTargetHours = target,
             PaceSec = dto.PaceSec,
+
+            // ⚠️ এগুলো `Math.Max(0, …)` দিয়ে ঢাকা হয় **না** — null থাকা মানে
+            //    "পুরোনো সার্ভার বলেনি", আর ০ মানে "আজ ছুটি"। শূন্যে নামিয়ে
+            //    দিলে দুটো এক হয়ে যেত (দেখুন EmployeeProgress.DailyTargetSec)।
+            DailyTargetSec = dto.DailyTargetSec is { } d && d >= 0 ? d : null,
+            Week7ActiveSec = dto.Week7ActiveSec is { } a && a >= 0 ? a : null,
+            Week7TargetSec = dto.Week7TargetSec is { } w && w >= 0 ? w : null,
         };
     }
 }

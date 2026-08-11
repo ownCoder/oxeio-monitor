@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
 using oXeio.Agent.Security;
+using oXeio.Agent.Storage;
 using oXeio.Agent.Sync;
 using oXeio.Agent.Ui;
 using oXeio.Core.Agent;
@@ -130,10 +131,23 @@ internal static partial class Program
         _ => AgentStatus.Starting with
         {
             State = SegmentState.Active,
-            ActiveToday = TimeSpan.FromMinutes(4),
-            ActiveThisMonth = TimeSpan.FromMinutes(39),
+            ActiveToday = TimeSpan.FromMinutes(7),
+            ActiveThisMonth = TimeSpan.FromMinutes(42),
             MonthlyKnown = true,
-            Pace = TimeSpan.FromMinutes(-4760),
+            Pace = TimeSpan.FromMinutes(-4757),
+            DailyTarget = TimeSpan.FromHours(8),
+            ActiveLast7 = TimeSpan.FromMinutes(750),
+            Last7Target = TimeSpan.FromHours(48),
+
+            // ⚠️ আসল মান, আজকের রান থেকে নেওয়া — মনগড়া নয়। শূন্যটাও ইচ্ছাকৃত:
+            //    "০% ব্যস্ত" ঘরটা পর্দায় কেমন দেখায় সেটাই দেখার জিনিস।
+            RecentBusy = [41, 16, 0, 35, 72, 7],
+
+            LatestShotThumb = Path.Combine(
+                OutboxPaths.Default.State, "last-shot.webp"),
+            LatestShotAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+            LatestShotMonitors = 2,
+
             LastSyncAt = DateTimeOffset.UtcNow.AddMinutes(-1),
         },
     };
