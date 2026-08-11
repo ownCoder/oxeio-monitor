@@ -230,6 +230,14 @@ HKLM\SOFTWARE\oXeio\Agent\ServerPin  (REG_SZ)
 MSI-তে একটা `SERVERPIN` প্রপার্টি লাগবে (`agent/installer/Package.wxs`-এ
 `SERVERURL`-এর ঠিক পাশে), আর `AgentSettings`-এ একটা `ServerPin` ফিল্ড।
 
+> 🔴 **এখনো কোনোটাই তৈরি হয়নি — ১১ আগস্ট যাচাই করে দেখা।** `Package.wxs`-এ
+> `SERVERPIN` প্রপার্টি নেই, `AgentSettings`-এ `ServerPin` ফিল্ড নেই, আর
+> এজেন্টের কোথাও সার্ট যাচাইয়ের কোড নেই। `make-cert.ps1` পিনটা ছাপে বটে,
+> কিন্তু সেটা **এই ভবিষ্যৎ ফিচারের জন্য** — আজ ওই মানটার কোনো ব্যবহারকারী
+> নেই। ⚠️ অর্থাৎ এই মুহূর্তে এজেন্ট সার্ভারের সার্ট যাচাই করে **Windows-এর
+> নিজের trust store দিয়ে**, পিন দিয়ে নয় — self-signed সার্ট ব্যবহার করলে
+> সেটা আগে trust store-এ বসাতে হবে (§ ৪)।
+
 > ⚠️⚠️ পিনটা **কখনো সার্ভার থেকে নামিয়ে আনা যাবে না**। মাঝখানে বসা
 > আক্রমণকারী তখন নিজের পিনটাই পাঠিয়ে দিত, আর পুরো ব্যবস্থাটা অর্থহীন
 > হয়ে যেত। পিন আসবে ইনস্টলের সময়, হাতে দেওয়া মান হিসেবে — ওটাই
@@ -354,11 +362,17 @@ pwsh agent\installer\build.ps1 -Version 0.1.0
 ```powershell
 msiexec /i oXeioAgent.msi /qn `
     SERVERURL="https://oxeio.office.local" `
-    SERVERPIN="1+iBMimAAGEKtj350WUD1nVmSpLSqXw6/KrjLD/ILo4=" `
     ENROLLCODE="XXXXXXXXXXXX" `
     PORTALURL="https://oxeio.office.local/me" `
     POLICYURL="https://oxeio.office.local/policy"
 ```
+
+> ⚠️⚠️ **`SERVERPIN` এখানে ইচ্ছাকৃতভাবে নেই — পিনিং এখনো তৈরি হয়নি।**
+> `Package.wxs` মোটে চারটে প্রপার্টি চেনে: `SERVERURL` · `ENROLLCODE` ·
+> `PORTALURL` · `POLICYURL`। msiexec অচেনা প্রপার্টি **নীরবে ফেলে দেয়**,
+> তাই `SERVERPIN=…` লিখলে কোনো এরর আসত না — অ্যাডমিন ভাবতেন পিনিং চালু,
+> অথচ এজেন্টে ওই কোডই নেই। § ৬.৩ বলছে কী কী বানাতে হবে; সেটা হয়ে গেলে
+> এই কমান্ডে লাইনটা ফিরবে।
 
 > ⚠️ `SERVERURL`-এ `/api/v1` **লিখবেন না** — এজেন্ট নিজে জুড়ে নেয়।
 >
