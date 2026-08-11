@@ -25,6 +25,12 @@ const MANIFEST = path.join(__dirname, '.sample-data.json');
 const DHAKA_MS = 6 * 3600_000;
 const HOUR = 3600;
 
+/** `storageRoot()`-এর ডিফল্টের সাথে মিলিয়ে — STORAGE_ROOT সেট না থাকলে */
+const STORAGE =
+  process.env.STORAGE_ROOT ?? path.join(process.cwd(), '..', '.data', 'storage');
+
+const { SAMPLE_WEBP } = require('./sample-shot.cjs');
+
 /** ⚠️ বীজ দেওয়া PRNG — প্রতিবার একই ডেটা, নইলে দুটো স্ক্রিনশট মেলানো যেত না */
 let seed = 20260811;
 const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
@@ -83,6 +89,7 @@ async function insert() {
   });
   if (stale.length > 0) {
     const ids = stale.map((d) => d.id);
+    await prisma.screenshot.deleteMany({ where: { deviceId: { in: ids } } });
     await prisma.appUsage.deleteMany({ where: { deviceId: { in: ids } } });
     await prisma.activitySegment.deleteMany({ where: { deviceId: { in: ids } } });
     await prisma.workSession.deleteMany({ where: { deviceId: { in: ids } } });
@@ -90,7 +97,7 @@ async function insert() {
     console.log(`(আগের অসম্পূর্ণ রানের ${ids.length}টি ডিভাইস সরানো হলো)`);
   }
 
-  const made = { devices: [], sessions: [], segments: [], summaries: [], appUsage: [] };
+  const made = { devices: [], sessions: [], segments: [], summaries: [], appUsage: [], shots: [], files: [] };
 
   const staff = await prisma.employee.findMany({
     where: { empCode: { in: Object.keys(PROFILE) } },
@@ -144,7 +151,13 @@ async function insert() {
       if (target < 0.2) continue;
 
       const workedSec = Math.round(target * HOUR);
-      const startHour = 9 + Math.floor(rnd() * 2);
+      // ⚠️ আজকের কাজ **অতীতে** হতে হবে। ভোরে চালালে "৯টায় শুরু" মানে
+      //    ভবিষ্যতের সেগমেন্ট — টাইমলাইনে সেটা অদ্ভুত দেখাত, আর স্ক্রিনশটের
+      //    স্লটও ভবিষ্যতে পড়ে বলে একটাও ছবি বসত না।
+      const dhakaHourNow = new Date(now.getTime() + DHAKA_MS).getUTCHours();
+      const startHour = isToday
+        ? Math.max(7, Math.min(9, dhakaHourNow - Math.ceil(target) - 1))
+        : 9 + Math.floor(rnd() * 2);
       const startedAt = at(day, startHour, Math.floor(rnd() * 50));
 
       const session = await prisma.workSession.create({
@@ -243,6 +256,41 @@ async function insert() {
       });
       made.summaries.push([s.employeeId, s.workDate.toISOString().slice(0, 10)]);
 
+      // ── স্ক্রিনশট (শুধু আজ — staff পাতার গ্রিড দেখাতে) ──────────────
+      // ⚠️ নতুন ছবি বানানো হয় না; আগের এজেন্ট-পরীক্ষার আসল .webp কপি
+      //    করা হয়। ⚠️ অর্থাৎ থাম্বনেইলে **আপনার নিজের ৯ আগস্টের ডেস্কটপ**
+      //    দেখাবে — এটা নমুনা, কারো আসল কাজ নয়।
+      if (isToday) {
+        for (let k = 0; k < 8; k++) {
+          const slot = at(day, startHour + k, (k * 7) % 60);
+          if (slot > now) break;
+
+          const rel = `screenshots/sample/${e.empCode}/${k}.webp`;
+          const abs = path.join(STORAGE, rel);
+          fs.mkdirSync(path.dirname(abs), { recursive: true });
+          fs.writeFileSync(abs, SAMPLE_WEBP);
+          made.files.push(abs);
+
+          const shot = await prisma.screenshot.create({
+            data: {
+              employeeId: e.id,
+              deviceId: device.id,
+              clientUuid: randomUUID(),
+              workDate: day,
+              slotStart: slot,
+              capturedAt: new Date(slot.getTime() + 90_000),
+              monitorIndex: 0,
+              filePath: rel,
+              width: 1920,
+              height: 1080,
+              sizeBytes: fs.statSync(abs).size,
+              activeApp: k % 3 === 0 ? 'chrome.exe' : 'code.exe',
+            },
+          });
+          made.shots.push(shot.id.toString());
+        }
+      }
+
       // ── app_usage (শুধু শেষ ৩ দিন — টপ ১০ প্যানেল ভরাতে যথেষ্ট) ─────
       if (day.getTime() >= today.getTime() - 2 * 86_400_000) {
         let apCursor = startedAt;
@@ -289,6 +337,13 @@ async function undo() {
   const m = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
 
   // ⚠️ ক্রমটা নির্ভরতার উল্টো দিকে — নইলে foreign key আটকাবে
+  const sh = await prisma.screenshot.deleteMany({
+    where: { id: { in: (m.shots ?? []).map(BigInt) } },
+  });
+  for (const f of m.files ?? []) {
+    try { fs.rmSync(f, { force: true }); } catch {}
+  }
+
   const au = await prisma.appUsage.deleteMany({
     where: { id: { in: m.appUsage.map(BigInt) } },
   });
@@ -307,7 +362,7 @@ async function undo() {
 
   fs.unlinkSync(MANIFEST);
   console.log(
-    `🧹 মুছে ফেলা হলো — ${dev.count} ডিভাইস · ${ses.count} সেশন · ` +
+    `🧹 মুছে ফেলা হলো — ${dev.count} ডিভাইস · ${ses.count} সেশন · ${sh.count} স্ক্রিনশট · ` +
       `${seg.count} সেগমেন্ট · ${m.summaries.length} সারাংশ · ${au.count} অ্যাপ-ব্যবহার`,
   );
 }

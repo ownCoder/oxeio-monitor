@@ -13,6 +13,7 @@ import {
   weekdayOf,
 } from '../lib/format';
 import { HourlyChart } from './employee/HourlyChart';
+import { DayShots } from './employee/DayShots';
 import { ScoreCard } from './employee/ScoreCard';
 import { TimelineBar } from './employee/TimelineBar';
 import { TopUsage } from './employee/TopUsage';
@@ -147,6 +148,12 @@ export function EmployeeDetailPage() {
         <HourlyChart employeeId={employeeId} date={date} nonce={nonce} />
         <ScoreCard employeeId={employeeId} date={date} nonce={nonce} />
         <TopUsage employeeId={employeeId} date={date} nonce={nonce} />
+
+        {/* ⭐ ছবিগুলো সবার শেষে, ইচ্ছাকৃতভাবে। সংখ্যাগুলো (কত ঘণ্টা, কোন
+            ঘণ্টায়, কোন সাইটে) আগে পড়া উচিত — ছবি আগে থাকলে চোখ ওখানেই
+            আটকে যেত, আর এই সিস্টেমের সিদ্ধান্তগুলো সংখ্যার উপর দাঁড়ানো,
+            ছবির উপর নয়। ছবি প্রমাণ, প্রধান পরিমাপ নয়। */}
+        <DayShots employeeId={employeeId} date={date} nonce={nonce} />
       </div>
     </Page>
   );
