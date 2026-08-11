@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Res,
+  StreamableFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -292,12 +293,26 @@ export class AgentController {
     return offer;
   }
 
+  /**
+   * ⚠️ **`StreamableFile` ফেরত দিতেই হবে — `stream.pipe(res)` করে `void`
+   *    ফেরত দিলে চলবে না।**
+   *
+   * `passthrough: true` মানে সাড়াটা Nest-ই পাঠাবে। হ্যান্ডলার `void`
+   * ফেরত দিলে Nest সাথে সাথে সাড়া **শেষ** করে দিত — pipe একটা বাইটও
+   * লেখার আগেই। বাইরে থেকে সব ঠিক দেখাত: `200 OK`, `Content-Length:
+   * 65139658`, কোনো এরর লগ নেই — কিন্তু শরীরে **শূন্য বাইট**, আর
+   * ক্লায়েন্ট পেত `CURLE_PARTIAL_FILE`।
+   *
+   * ⭐ অর্থাৎ H04-এর MSI নামানোর ধাপটা কোনোদিন কাজ করেনি। ধরা পড়েনি
+   *    কারণ endpoint-টা কখনো সত্যিকারের HTTP দিয়ে ডাকা হয়নি — ইউনিট
+   *    টেস্টে `pipe` ডাকা হয়েছে কি না দেখলে এটা কখনোই ধরা পড়ত না।
+   */
   @UseGuards(DeviceAuthGuard)
   @Get('update/download')
   async download(
     @Query('version') version: string,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
+  ): Promise<StreamableFile> {
     if (!version) throw new BadRequestException('version is required');
 
     const { stream, size } = await this.updates.openMsi(version);
@@ -307,6 +322,6 @@ export class AgentController {
       'Content-Disposition',
       `attachment; filename="oXeioAgent-${version}.msi"`,
     );
-    stream.pipe(res);
+    return new StreamableFile(stream);
   }
 }
