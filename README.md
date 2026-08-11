@@ -124,7 +124,7 @@ cd oxeio-monitor/agent/installer && pwsh -File build.ps1
 ⚠️ কোডটা **একবারই** দেখানো হয়, ২৪ ঘণ্টায় মেয়াদ শেষ।
 
 ```bash
-msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>:3000" ENROLLMENTCODE="<code>"
+msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>:3000" ENROLLCODE="<code>"
 ```
 
 ### টেস্ট
