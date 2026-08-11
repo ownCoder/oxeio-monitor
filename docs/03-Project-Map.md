@@ -134,6 +134,7 @@ oxeio-monitor/
 │   │   │   └── guards/                     #   jwt · csrf · must-change-pw · roles
 │   │   ├── users/                          ✅ reset-password · portal-account
 │   │   ├── activity/                   ✅ ক্যাটাগরি ম্যাচার + রুল ক্যাশ (D05)
+│   │   # scripts/sample-data.cjs      ⚙️ শুধু ডেমোর জন্য — manifest ধরে --undo করে
 │   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
@@ -188,6 +189,7 @@ oxeio-monitor/
 │       ├── pages/ChangePasswordPage.tsx    ✅ বাধ্যতামূলক প্রথম-বদল (G33)
 │       ├── pages/LiveBoardPage.tsx         ✅ ⭐ হোম — E01 · E02 রিং · E03 থাম্বনেইল
 │       ├── pages/EmployeeDetailPage.tsx    ✅ E04 টাইমলাইন · E05 চার্ট · D07 · D08
+│       │   └── employee/DayShots.tsx       ✅ ওই দিনের ছবি — ⚠️ সবার শেষে, সংখ্যা আগে
 │       ├── pages/GalleryPage.tsx           ✅ E06 গ্রিড + লাইটবক্স + কি-বোর্ড নেভ
 │       ├── pages/MonthlyPage.tsx           ✅ E07 হিটম্যাপ
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
