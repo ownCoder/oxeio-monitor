@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **স্ট্যাটাস** | ✅ Phase 1 সম্পূর্ণ · 🔨 **Phase 2 চলমান** — এজেন্টের নিয়মের কোর (৫২ টেস্ট) ও Win32 স্তর দাঁড়িয়েছে |
+| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (~৪৫ endpoint) · ড্যাশবোর্ড (৬ পাতা)। **৯১৩ টেস্ট** (সার্ভার ৫৮৬ · এজেন্ট ৩২৭)। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
 | **প্রতিষ্ঠান** | oXeio |
 | **স্টাফ** | ১৫ জন · সব Windows PC |
 | **ট্র্যাকিং** | **কোনো শিফট নেই** — দিনের যেকোনো সময় active থাকলেই গোনা হয় (২৪ ঘণ্টা) |
@@ -14,9 +14,10 @@
 | **সার্ভার** | অফিসের PC — 24 GB RAM, 1 TB NVMe, Windows |
 | **আনুমানিক সময়** | ৭ সপ্তাহ (MVP ৩ সপ্তাহে) |
 
-> ✅ **Phase 1-এর নয়টি ডেলিভারেবলই শেষ** — Postgres · ১৯ টেবিল · seed · Auth · Agent ingest ·
-> **৫১টি টেস্ট** · CI · web লগইন শেল। পরের ধাপ **Phase 2 — Windows এজেন্ট**
-> → [09-Build-Log](docs/09-Build-Log.md)
+> ⚠️ **"তৈরি" আর "চালিয়ে দেখা" এক নয়।** এজেন্ট আসল মেশিনে চলেছে (ক্যাপচার,
+> অ্যাপ-ট্র্যাকিং, MSI, watchdog); ড্যাশবোর্ড ও রিপোর্ট দেখা হয়েছে **নমুনা
+> ডেটায়**; আর ব্যাকআপ, TLS, 2FA, ইমেইল/টেলিগ্রাম — কোড আছে, **একবারও
+> চলেনি**। তিন ভাগে সাজানো তালিকা → [09-Build-Log § ৩ঈ](docs/09-Build-Log.md)
 
 ---
 
@@ -39,16 +40,89 @@
 
 ## 📂 কোড
 
-`oxeio-monitor/` — Phase 1 চলছে।
+`oxeio-monitor/`
 
-- **`server/`** 🔨 NestJS 11 + Prisma 6 — ১৯ মডেলের স্কিমা migrate হয়েছে, seed বসেছে,
-  **Auth** (২২ টেস্ট) ও **Agent ingest** (২৭ টেস্ট) মডিউল চলছে। বাকি: reports, jobs, alerts।
-- **`agent/`** 🔨 `oXeio.Core` (নিয়ম, **৫২টি ইউনিট টেস্ট**) + `oXeio.Agent`-এর Win32 স্তর।
-  `dotnet run --project src/oXeio.Agent` দিয়ে একটা **ডায়াগনস্টিক টুল** চলে — নিজের PC-তে
-  idle, lock, ঘুম আর ক্যাপচার উইন্ডো ঠিকমতো ধরা পড়ছে কি না দেখা যায়।
-  ক্যাপচার, queue, tray ও watchdog বাকি।
+- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · ~৪৫ endpoint · **৫৮৬ টেস্ট**
+  agent ingest · dashboard · activity (ক্যাটাগরি) · screenshots · reports (Excel/PDF) ·
+  admin · alerts · ops (ব্যাকআপ/হেলথ) · summary (nightly jobs) · digest · payroll
+- **`agent/`** C# .NET 8 · **৩২৭ টেস্ট** · `oXeio.Core` (নিয়ম, শূন্য Win32) +
+  `oXeio.Agent` (DXGI ক্যাপচার · idle/lock/sleep · অ্যাপ ও ডোমেইন · SQLite outbox ·
+  tray) + `oXeio.Watchdog`। `--diagnose` দিয়ে যেকোনো PC-তে যাচাই করা যায়।
+- **`web/`** React 19 + Vite + Tailwind v4 · Live Board · Employee Detail ·
+  গ্যালারি · Monthly হিটম্যাপ · Reports · Settings · Security
+- **`installer/`** WiX 7 → সাইলেন্ট MSI · **`deploy/`** TLS ও Defender স্ক্রিপ্ট
 
-অগ্রগতি ও পরের ধাপ: [09-Build-Log](docs/09-Build-Log.md)
+---
+
+## ▶️ কীভাবে চালাবেন
+
+### এক· ডাটাবেস (একবার)
+
+```bash
+cd oxeio-monitor && docker compose up -d
+```
+
+প্রথমবার হলে স্কিমা ও seed:
+
+```bash
+cd oxeio-monitor/server && npx prisma migrate deploy && npm run seed
+```
+
+⚠️ `.env` লাগবে — `oxeio-monitor/.env.example` কপি করে `DATABASE_URL`,
+`JWT_SECRET` (৩২+ অক্ষর) আর `SEED_OWNER_*` বসান।
+
+⚠️ **আসল কর্মী তালিকা রিপোতে নেই** (নাম ও বেতন — ওটা তাঁদের তথ্য)।
+`server/prisma/staff.example.json` দেখে `staff.local.json` বানান; না বানালে
+seed নমুনা নাম ও বেতন ০ দিয়ে চলে।
+
+### দুই· সার্ভার
+
+```bash
+cd oxeio-monitor && npm --prefix server run start:dev
+```
+
+### তিন· ড্যাশবোর্ড (আলাদা টার্মিনাল)
+
+```bash
+cd oxeio-monitor && npm --prefix web run dev
+```
+
+`http://localhost:5173` — লগইন `.env`-এর `SEED_OWNER_*` দিয়ে।
+⚠️ সরাসরি `:3000`-এ যাবেন না: সেশন cookie `SameSite=Strict`, তাই লগইন সফল
+দেখাবে কিন্তু পরের রিকোয়েস্টেই ৪০১। proxy-র কারণে ব্রাউজারের চোখে সবই এক origin।
+
+⚠️ প্রথম লগইনে **পাসওয়ার্ড বদলাতে বাধ্য করবে** (G33) — এটা ঠিক আচরণ।
+
+### চার· এজেন্ট একটা PC-তে
+
+বসানোর আগে যাচাই — এতে কিছু জমা হয় না, শুধু কনসোলে ফল লেখে:
+
+```bash
+cd oxeio-monitor/agent && dotnet run --project src/oXeio.Agent -- --diagnose
+```
+
+ঠিক থাকলে MSI বানান:
+
+```bash
+cd oxeio-monitor/agent/installer && pwsh -File build.ps1
+```
+
+এনরোলমেন্ট কোড ড্যাশবোর্ডে: **Settings → Devices → Enrolment code**।
+⚠️ কোডটা **একবারই** দেখানো হয়, ২৪ ঘণ্টায় মেয়াদ শেষ।
+
+```bash
+msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>:3000" ENROLLMENTCODE="<code>"
+```
+
+### টেস্ট
+
+```bash
+cd oxeio-monitor/server && npm test
+```
+
+```bash
+cd oxeio-monitor/agent && dotnet test
+```
 
 ---
 
