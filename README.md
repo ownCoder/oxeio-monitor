@@ -65,8 +65,13 @@ cd oxeio-monitor && docker compose up -d
 প্রথমবার হলে স্কিমা ও seed:
 
 ```bash
-cd oxeio-monitor/server && npx prisma migrate deploy && npm run seed
+cd oxeio-monitor/server && npm run prisma:deploy && npm run seed
 ```
+
+⚠️ `npx prisma migrate deploy` **সরাসরি চালাবেন না** — `P1012 · Environment
+variable not found: DATABASE_URL` দিয়ে থেমে যাবে। `.env` আছে এক ফোল্ডার
+উপরে (`oxeio-monitor/.env`), তাই স্ক্রিপ্টগুলো `dotenv -e ../.env --` দিয়ে
+মোড়া। উপরের `npm run` ফর্মটাই সেই মোড়কসহ চলে।
 
 ⚠️ `.env` লাগবে — `oxeio-monitor/.env.example` কপি করে `DATABASE_URL`,
 `JWT_SECRET` (৩২+ অক্ষর) আর `SEED_OWNER_*` বসান।
