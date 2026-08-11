@@ -37,8 +37,16 @@ internal sealed class AgentHost : IAsyncDisposable
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan SyncEvery = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan IdleThreshold = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// heartbeat-এর ব্যবধান সার্ভারের কনফিগ থেকে (<c>heartbeatSec</c>), তবে
+    /// সীমার ভেতরে।
+    ///
+    /// ⚠️ ছাদ-মেঝে দুটোই দরকার: কেউ ভুল করে ১ সেকেন্ড বসালে ১৫টা PC মিলে
+    /// দিনে ১৩ লক্ষ রিকোয়েস্ট পাঠাত, আর ১ দিন বসালে G01 ("এজেন্ট ১০ মিনিট
+    /// চুপ") প্রতিটা মেশিনের জন্য চিরকাল জ্বলে থাকত।
+    /// </summary>
+    private static readonly TimeSpan HeartbeatMin = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan HeartbeatMax = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// বন্ধ হওয়ার সময় <c>agent_stop</c> ডিস্কে লিখতে সর্বোচ্চ যতক্ষণ অপেক্ষা।
@@ -85,6 +93,18 @@ internal sealed class AgentHost : IAsyncDisposable
     /// </summary>
     private readonly Queue<int> _recentBusy = new(BusyBlocks);
     private readonly object _busyGate = new();
+
+    /// <summary>
+    /// এখন যে কনফিগে চলছে। ⚠️ শুরুতে <see cref="AgentConfig.Default"/> —
+    /// সার্ভারের কনফিগ আসার আগে ট্র্যাকিং থামানো যাবে না।
+    /// </summary>
+    private AgentConfig _config = AgentConfig.Default;
+
+    /// <summary>
+    /// সার্ভার থেকে আনা, কিন্তু এখনো প্রয়োগ হয়নি। heartbeat থ্রেড লেখে,
+    /// <see cref="TrackLoop"/> <c>Interlocked.Exchange</c> দিয়ে তুলে নেয়।
+    /// </summary>
+    private PendingConfig? _pendingConfig;
 
     private volatile bool _sessionSuspended;
     private long _activeTodaySec;
@@ -185,20 +205,21 @@ internal sealed class AgentHost : IAsyncDisposable
         // ── ট্র্যাকিং ───────────────────────────────────────────────────────
         var lockState = LockStateProbe.Query();
         _machine = new IdleStateMachine(
-            IdleThreshold,
+            TimeSpan.FromSeconds(_config.IdleThresholdSec),
             _clock.Now,
             lockState == LockState.Locked ? SegmentState.Locked : SegmentState.Active);
 
         _capture = new ScreenCaptureService(
             new FallbackCapturer(new DuplicationCapturer(), new GdiCapturer()));
-        _slots = new SlotScheduler(AgentConfig.Default.SlotMinutes);
+        _slots = new SlotScheduler(_config.SlotMinutes);
+        _window = _config.ToCaptureWindow();
 
         // D01–D04। ⚠️ কনফিগে বন্ধ থাকলে অবজেক্টটাই তৈরি হয় না — তাহলে
         //    foreground উইন্ডোর নামও কখনো মেমোরিতে আসে না, শুধু "পাঠাচ্ছি না" নয়।
-        if (AgentConfig.Default.AppTracking.Enabled)
+        if (_config.AppTracking.Enabled)
         {
             _apps = new AppUsageService(
-                TimeSpan.FromSeconds(AgentConfig.Default.AppTracking.MinDurationSec));
+                TimeSpan.FromSeconds(_config.AppTracking.MinDurationSec));
         }
 
         // ── tray ────────────────────────────────────────────────────────────
@@ -268,6 +289,16 @@ internal sealed class AgentHost : IAsyncDisposable
                     //    বসানোর চেয়ে একটা সেকেন্ড হারানো ভালো।
                     Thread.Sleep(Tick);
                     continue;
+                }
+
+                // ⭐ নতুন কনফিগ এখানেই প্রয়োগ হয়, heartbeat থ্রেডে নয়।
+                //    `_machine` ও `_apps` এই লুপের সম্পত্তি; অন্য থ্রেড থেকে
+                //    বদলালে ঠিক সেই সেকেন্ডে একটা Tick পুরোনো অবজেক্টে আর
+                //    পরেরটা নতুনটায় পড়ত, আর মাঝখানের সময়টা কোনো সেগমেন্টেই
+                //    ঢুকত না — অর্থাৎ কনফিগ বদলানোর দিনে সবার কিছু ঘণ্টা হারাত।
+                if (Interlocked.Exchange(ref _pendingConfig, null) is { } pending)
+                {
+                    ApplyConfig(pending.Config, pending.Version, now);
                 }
 
                 var gap = _sleep.Observe(
@@ -491,8 +522,20 @@ internal sealed class AgentHost : IAsyncDisposable
 
                     if (result.IsSuccess && result.Value is { } body)
                     {
-                        _configVersion = body.ConfigVersion;
                         if (body.Progress is not null) _progress = body.Progress;
+
+                        // ⭐⚠️ **এখানেই কনফিগ বদলানো এতদিন নীরবে মরে ছিল।**
+                        //    আগে লাইনটা ছিল শুধু `_configVersion = body.ConfigVersion;` —
+                        //    অর্থাৎ এজেন্ট সার্ভারের ভার্সন নম্বরটা অন্ধভাবে মেনে
+                        //    নিত, কিন্তু কনফিগটা আনতই না। পরের heartbeat-এ ভার্সন
+                        //    মিলে যেত, তাই সার্ভার আর কোনোদিন `reload_config`
+                        //    চাইত না — আর ড্যাশবোর্ডের Settings-এ যা-ই বদলানো
+                        //    হোক, ১৫টা PC-র একটাও কিছু জানত না।
+                        if (NeedsConfig(body))
+                        {
+                            await ReloadConfigAsync(ct);
+                        }
+
                         PublishStatus();
                     }
                     else if (result.Outcome == SyncOutcome.Revoked)
@@ -506,7 +549,7 @@ internal sealed class AgentHost : IAsyncDisposable
                 _log.Error("Heartbeat failed", ex);
             }
 
-            try { await Task.Delay(HeartbeatEvery, ct); }
+            try { await Task.Delay(HeartbeatDelay(), ct); }
             catch (OperationCanceledException) { return; }
         }
     }
@@ -535,6 +578,169 @@ internal sealed class AgentHost : IAsyncDisposable
 
         _log.Info(result.Ok ? "✅ Device enrolled" : $"Enrolment failed: {result.Message}");
         PublishStatus();
+    }
+
+    // ── কনফিগ (E09 · K07) ───────────────────────────────────────────────────
+
+    private TimeSpan HeartbeatDelay()
+    {
+        var wanted = TimeSpan.FromSeconds(_config.HeartbeatSec);
+        return wanted < HeartbeatMin ? HeartbeatMin
+             : wanted > HeartbeatMax ? HeartbeatMax
+             : wanted;
+    }
+
+    /// <summary>
+    /// নতুন করে কনফিগ আনতে হবে কি না।
+    ///
+    /// দুটো কারণেই — সার্ভার স্পষ্ট করে <c>reload_config</c> বললে, <b>অথবা</b>
+    /// ভার্সন না মিললে। ⚠️ দ্বিতীয়টা শুধু বেল্ট-অ্যান্ড-ব্রেসেস নয়: এজেন্ট
+    /// সদ্য চালু হলে <see cref="_configVersion"/> <c>null</c>, আর তখন সার্ভার
+    /// কোনো কমান্ড পাঠায় না (তার চোখে "কিছু বদলায়নি")। শুধু কমান্ডের উপর
+    /// নির্ভর করলে রিবুটের পর এজেন্ট চিরকাল ডিফল্ট কনফিগে চলত।
+    /// </summary>
+    private bool NeedsConfig(HeartbeatResponse body) =>
+        body.Commands.Contains(AgentCommand.ReloadConfig) ||
+        !string.Equals(_configVersion, body.ConfigVersion, StringComparison.Ordinal);
+
+    /// <summary>
+    /// <c>GET /agent/config</c> — এনে <b>সারিতে রেখে দেওয়া</b>, সাথে সাথে প্রয়োগ নয়।
+    ///
+    /// ⚠️ প্রয়োগ করে <see cref="TrackLoop"/>, কারণ ট্র্যাকিংয়ের অবজেক্টগুলো
+    /// ওই থ্রেডের। এখান থেকে ছুঁলে সেকেন্ডের হিসাব দুই কনফিগে ভাগ হয়ে যেত।
+    ///
+    /// ব্যর্থ হলে চুপচাপ পুরোনো কনফিগেই চলা — কনফিগ না পাওয়া মানে ঘণ্টা গোনা
+    /// থামা নয় (<see cref="AgentConfig.Default"/>-এর মন্তব্য দেখুন)।
+    /// </summary>
+    private async Task ReloadConfigAsync(CancellationToken ct)
+    {
+        if (_sync is null) return;
+
+        var result = await _sync.GetConfigAsync(ct);
+
+        if (!result.IsSuccess || result.Value is not { } body)
+        {
+            _log.Warn($"Could not fetch the config — carrying on with the current one ({result.Detail ?? "reason unknown"})");
+            return;
+        }
+
+        Interlocked.Exchange(
+            ref _pendingConfig, new PendingConfig(body.Config, body.Version));
+    }
+
+    /// <summary>এনে রাখা কনফিগ — <see cref="TrackLoop"/> তুলে নেয়।</summary>
+    private sealed record PendingConfig(AgentConfig Config, string Version);
+
+    /// <summary>
+    /// ⚠️ <b>শুধু <see cref="TrackLoop"/> থেকে ডাকা যাবে।</b>
+    ///
+    /// প্রতিটা বদল আলাদা করে দেখা হয়, কারণ কোনোটাই বিনামূল্যে নয়:
+    /// idle থ্রেশহোল্ড বদলাতে চলতি সেগমেন্ট বন্ধ করতে হয়, আর অ্যাপ ট্র্যাকিং
+    /// বন্ধ করতে খোলা রেকর্ড বন্ধ করতে হয়। যা বদলায়নি তাতে হাত না দেওয়াই
+    /// নিয়ম — নইলে সার্ভারে কনফিগ save করলেই সবার সেগমেন্ট অকারণে কাটা পড়ত।
+    /// </summary>
+    private void ApplyConfig(AgentConfig cfg, string version, DateTimeOffset now)
+    {
+        var old = _config;
+        var change = ConfigChange.Between(old, cfg);
+
+        _config = cfg;
+        _configVersion = version;
+
+        var changes = new List<string>();
+
+        // ── ছবির সময়সীমা (A04b) — কেবল একটা রেফারেন্স বদল ─────────────────
+        if (change.CaptureWindow)
+        {
+            _window = cfg.ToCaptureWindow();
+            changes.Add($"capture window {old.ScreenshotFrom}–{old.ScreenshotTo} → {cfg.ScreenshotFrom}–{cfg.ScreenshotTo}");
+        }
+
+        // ── স্লট (A01) ────────────────────────────────────────────────────
+        // ⚠️ চলতি স্লটটা যেমন চলছে তেমনই শেষ হবে; নতুন মাপ পরের হিসাব থেকে।
+        //    মাঝপথে বদলালে ওই স্লটের ছবিটা হয় দুবার উঠত, নয় একবারও না।
+        if (change.Slots)
+        {
+            _slots = new SlotScheduler(cfg.SlotMinutes);
+            changes.Add($"slot {old.SlotMinutes}m → {cfg.SlotMinutes}m");
+        }
+
+        if (change.Heartbeat)
+        {
+            changes.Add($"heartbeat {old.HeartbeatSec}s → {cfg.HeartbeatSec}s");
+        }
+
+        ApplyAppTracking(cfg, old, change, now, changes);
+        ApplyIdleThreshold(cfg, old, change, now, changes);
+
+        // ⭐ কী বদলাল সেটা লগে থাকা দরকার: কারো ঘণ্টা হঠাৎ অন্যরকম দেখালে
+        //    প্রথম প্রশ্নটাই হবে "কনফিগ বদলেছিল কি"।
+        _log.Info(changes.Count == 0
+            ? $"Config {version} — nothing changed"
+            : $"Config {version} applied: {string.Join(" · ", changes)}");
+    }
+
+    private void ApplyAppTracking(
+        AgentConfig cfg, AgentConfig old, ConfigChange change,
+        DateTimeOffset now, List<string> changes)
+    {
+        if (!change.AppTrackingToggled && !change.AppMinDuration) return;
+
+        var wasOn = _apps is not null;
+        var wantsOn = cfg.AppTracking.Enabled;
+
+        // ⚠️ বন্ধ করার সময় খোলা রেকর্ডটা বন্ধ করে কিউয়ে পাঠাতে হয়, নইলে
+        //    ওই সময়টুকু নীরবে হারাত।
+        if (wasOn && !wantsOn)
+        {
+            RecordApps(_apps!.CloseAll(now));
+            _apps = null;
+            changes.Add("app tracking off");
+            return;
+        }
+
+        if (!wasOn && wantsOn)
+        {
+            _apps = new AppUsageService(
+                TimeSpan.FromSeconds(cfg.AppTracking.MinDurationSec));
+            changes.Add("app tracking on");
+            return;
+        }
+
+        if (wasOn && change.AppMinDuration)
+        {
+            RecordApps(_apps!.CloseAll(now));
+            _apps = new AppUsageService(
+                TimeSpan.FromSeconds(cfg.AppTracking.MinDurationSec));
+            changes.Add($"app min {old.AppTracking.MinDurationSec}s → {cfg.AppTracking.MinDurationSec}s");
+        }
+    }
+
+    /// <summary>
+    /// ⚠️⚠️ সবচেয়ে সংবেদনশীল বদল — এখানেই ঘণ্টা হারানোর ঝুঁকি।
+    ///
+    /// থ্রেশহোল্ড <see cref="IdleStateMachine"/>-এর কনস্ট্রাক্টরে যায়, তাই
+    /// বদলাতে হলে নতুন অবজেক্ট। তার <b>আগে</b> চলতি সেগমেন্ট বন্ধ করে কিউয়ে
+    /// পাঠানো হয় — নইলে যে সময়টুকু পুরোনো মেশিনের ভেতরে খোলা ছিল সেটা
+    /// কোনো সেগমেন্টেই ঢুকত না, আর কেউ টেরও পেত না।
+    ///
+    /// ⚠️ নতুন মেশিন শুরু হয় <b>পুরোনোটার শেষ স্টেট</b> নিয়ে। ডিফল্ট
+    /// <c>Active</c> ধরে নিলে লক করা পর্দার মানুষও এক টিকের জন্য "কাজ করছে"
+    /// হয়ে যেত।
+    /// </summary>
+    private void ApplyIdleThreshold(
+        AgentConfig cfg, AgentConfig old, ConfigChange change,
+        DateTimeOffset now, List<string> changes)
+    {
+        if (!change.IdleThreshold || _machine is null) return;
+
+        var state = _machine.State;
+
+        Record(_machine.CloseAll(now));
+        _machine = new IdleStateMachine(
+            TimeSpan.FromSeconds(cfg.IdleThresholdSec), now, state);
+
+        changes.Add($"idle {old.IdleThresholdSec}s → {cfg.IdleThresholdSec}s");
     }
 
     /// <summary>
