@@ -16,6 +16,23 @@ internal enum TrayFontRole
 
     /// <summary>পাদটীকা ও ব্যাখ্যা।</summary>
     Small,
+
+    /// <summary>
+    /// হিরো সংখ্যা — আজ কত ঘণ্টা গোনা হয়েছে। <see cref="Big"/>-এর চেয়ে বড়
+    /// আর হালকা: ৪৪px semibold। ⚠️ ৪৪px bold-এ সংখ্যাটা চিৎকার করত, আর
+    /// এই জানালার কাজ আশ্বাস দেওয়া, দাবি করা নয়।
+    /// </summary>
+    Hero,
+
+    /// <summary>রিডআউটের ছোট বড়-হাতের লেবেল (SYNC · LAST SYNC · QUEUED)।</summary>
+    Micro,
+
+    /// <summary>
+    /// সংখ্যা ও ঘড়ির রিডআউট। ⚠️ আলাদা ফ্যামিলি (Cascadia Mono) — ওয়েবের
+    /// <c>--font-mono</c> যা বলে। সমান-প্রস্থের অঙ্ক পাশাপাশি বসলে চোখ
+    /// তুলনা করতে পারে; proportional-এ "১১:১১" আর "১৯:৪০" আলাদা চওড়া হতো।
+    /// </summary>
+    Mono,
 }
 
 /// <summary>
@@ -46,13 +63,33 @@ internal sealed class TrayFonts : IDisposable
         "Segoe UI", "Tahoma", "Arial",
     ];
 
+    /// <summary>
+    /// রিডআউটের সমান-প্রস্থ ফন্ট — ওয়েবের <c>--font-mono</c>-র সাথে এক।
+    /// Cascadia Mono Windows 11-এ আছে, Consolas Vista থেকেই আছে।
+    /// </summary>
+    private static readonly string[] MonoCandidates =
+    [
+        "Cascadia Mono", "Consolas", "Courier New",
+    ];
+
+    /// <summary>
+    /// ⚠️ semibold Windows-এ <b>আলাদা ফ্যামিলি</b>, style নয় — "Segoe UI"-তে
+    /// <c>FontStyle.Bold</c> দিলে ৭০০ ওজন আসে, ৬০০ নয়। না পেলে নিচে
+    /// <see cref="TrayFontRole.Hero"/> bold-এ ফিরে যায়।
+    /// </summary>
+    private const string SemiboldFamily = "Segoe UI Semibold";
+
     private readonly Dictionary<(TrayFontRole Role, int Dpi), Font> _cache = new();
     private readonly string _family;
+    private readonly string _mono;
+    private readonly string? _semibold;
     private bool _disposed;
 
     public TrayFonts()
     {
         _family = PickFamily();
+        _mono = PickFrom(MonoCandidates) ?? _family;
+        _semibold = Exists(SemiboldFamily) ? SemiboldFamily : null;
     }
 
     public string FamilyName => _family;
@@ -69,39 +106,70 @@ internal sealed class TrayFonts : IDisposable
         //    ফন্ট রি-স্কেল করে না, ফলে পয়েন্ট-ভিত্তিক ফন্ট ১৫০% মনিটরে ঠিক
         //    ততটাই ছোট থাকত যতটা ১০০%-এ — অথচ জানালাটা বড় হয়ে যেত।
         var px = BasePixels(role) * dpi / 96f;
-        var style = role is TrayFontRole.Strong or TrayFontRole.Big
-            ? FontStyle.Bold
-            : FontStyle.Regular;
 
-        var font = new Font(_family, px, style, GraphicsUnit.Pixel);
+        // Hero semibold ফ্যামিলি পেলে সেটাই, নইলে bold — দুটোর কোনোটাই না
+        // পেলে অন্তত মোটা দেখাক, নইলে হিরো সংখ্যাটা বডি লেখার মতো লাগত।
+        var family = role switch
+        {
+            TrayFontRole.Mono => _mono,
+            TrayFontRole.Hero => _semibold ?? _family,
+            _ => _family,
+        };
+
+        var style = role switch
+        {
+            TrayFontRole.Strong or TrayFontRole.Big => FontStyle.Bold,
+            TrayFontRole.Hero => _semibold is null ? FontStyle.Bold : FontStyle.Regular,
+            _ => FontStyle.Regular,
+        };
+
+        var font = new Font(family, px, style, GraphicsUnit.Pixel);
         _cache[key] = font;
         return font;
     }
 
     private static float BasePixels(TrayFontRole role) => role switch
     {
+        TrayFontRole.Hero => 44f,
         TrayFontRole.Big => 30f,
         TrayFontRole.Strong => 16f,
+        TrayFontRole.Mono => 13f,
         TrayFontRole.Small => 12f,
+        TrayFontRole.Micro => 10.5f,
         _ => 14f,
     };
 
+    /// <summary>
+    /// ইনস্টল করা না থাকলে <see cref="ArgumentException"/> — এটাই একমাত্র
+    /// নির্ভরযোগ্য পরীক্ষা, কারণ <c>new Font(...)</c> অজানা নাম পেলে চুপচাপ
+    /// ফলব্যাক করে, অর্থাৎ ভুলটা কেবল স্ক্রিনে ধরা পড়ত, কোনো লগে নয়।
+    /// </summary>
+    private static bool Exists(string family)
+    {
+        try
+        {
+            using var probe = new FontFamily(family);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static string? PickFrom(string[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (Exists(candidate)) return candidate;
+        }
+
+        return null;
+    }
+
     private static string PickFamily()
     {
-        foreach (var candidate in Candidates)
-        {
-            try
-            {
-                // ইনস্টল করা না থাকলে ArgumentException — এটাই একমাত্র নির্ভরযোগ্য
-                // পরীক্ষা, কারণ new Font(...) অজানা নাম পেলে চুপচাপ ফলব্যাক করে,
-                // অর্থাৎ ভুলটা কেবল স্ক্রিনে ধরা পড়ত, কোনো লগে নয়
-                using var family = new FontFamily(candidate);
-                return candidate;
-            }
-            catch (ArgumentException)
-            {
-            }
-        }
+        if (PickFrom(Candidates) is { } found) return found;
 
         try
         {

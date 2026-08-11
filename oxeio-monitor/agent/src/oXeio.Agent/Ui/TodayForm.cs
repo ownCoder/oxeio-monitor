@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Runtime.Versioning;
 
 using oXeio.Core.Agent;
+using oXeio.Core.Models;
 
 namespace oXeio.Agent.Ui;
 
@@ -21,8 +22,14 @@ internal sealed class TodayForm : OwnerDrawnForm
     private readonly Func<TrayOptions> _options;
     private AgentStatus _status = AgentStatus.Starting;
 
+    /// <summary>
+    /// ⚠️ উচ্চতা ৫০০ → ৪০০। নতুন লেআউটে লেখা কম, তাই ৫০০-তে নিচে একটা বড়
+    /// ফাঁকা কালো পটি পড়ে থাকত — দেখে মনে হতো কিছু লোড হতে বাকি।
+    /// <see cref="OwnerDrawnForm"/> দরকার হলে নিজেই লম্বা করে নেয় (loading ও
+    /// alert অবস্থায় লেখা বেশি), তাই ছোট রাখাটা নিরাপদ দিক।
+    /// </summary>
     public TodayForm(TrayFonts fonts, Func<TrayOptions> options)
-        : base(fonts, "oXeio — Today's hours", 400, 500)
+        : base(fonts, "oXeio — Today's hours", 400, 400)
     {
         _options = options;
     }
@@ -57,12 +64,18 @@ internal sealed class TodayForm : OwnerDrawnForm
                 ? $"{options.EmployeeName} ({code})"
                 : options.EmployeeName!;
 
-        stack.Line(who, TrayFontRole.Strong);
+        stack.Line(who, TrayFontRole.Small, Theme.Ink2);
         stack.Line(UiText.WorkDate(now) + " · Dhaka", TrayFontRole.Small, Muted);
-        stack.Gap(8);
+        stack.Gap(6);
 
-        stack.Line(UiText.Duration(status.ActiveToday) + " hours", TrayFontRole.Big);
-        stack.Line("Counted so far today", TrayFontRole.Small, Muted);
+        // ⭐ অবস্থাটা সংখ্যার পাশেই — জানালার একমাত্র এটাই মিনিটে মিনিটে বদলায়।
+        stack.Hero(
+            UiText.Duration(status.ActiveToday),
+            "hours today",
+            status.Paused ? "Tracking paused" : TrayTooltip.StateName(status.State),
+            StateDot(status));
+
+        stack.Line("Counted so far — idle time already removed", TrayFontRole.Small, Muted);
 
         stack.Rule();
 
@@ -70,28 +83,32 @@ internal sealed class TodayForm : OwnerDrawnForm
 
         stack.Rule();
 
-        stack.Pair("Now", status.Paused
-            ? "Tracking paused"
-            : TrayTooltip.StateName(status.State));
-
         // ⚠️ সিঙ্কের অবস্থা সবসময় দেখানো হয়, শুধু গোলমাল হলে নয়। আগে এখানে
         //    কিছু না থাকা মানে "ঠিক আছে" ধরে নিতে হতো — অর্থাৎ সবচেয়ে জরুরি
         //    আশ্বাসটা (ডেটা পৌঁছেছে) ঠিক তখনই অদৃশ্য, যখন সেটা সত্যি।
-        stack.Pair("Sync", HealthName(status.Health));
+        var bad = status.Health is SyncHealth.Failing or SyncHealth.Revoked;
 
-        stack.Pair("Last sync", status.LastSyncAt is { } at
-            ? UiText.Clock(at)
-            : "Not yet");
+        stack.Readout(
+        [
+            ("Sync", HealthName(status.Health), bad ? Theme.Brand : null),
+            ("Last sync", status.LastSyncAt is { } at ? UiText.Clock(at) : "Not yet", null),
+            ("Queued", UiText.Number(Math.Max(0, status.QueueDepth)), null),
+        ]);
 
-        stack.Pair("Queued", UiText.Number(Math.Max(0, status.QueueDepth)));
-
-        if (status.Health is SyncHealth.Failing or SyncHealth.Revoked or SyncHealth.Degraded)
+        // ⭐ পুরো বাক্যটা আসে কেবল যখন সত্যিই গোলমাল — তখনই মানুষের একটা
+        //    বাক্য দরকার, লেবেল নয়।
+        if (status.Health is SyncHealth.Failing or SyncHealth.Revoked)
         {
-            stack.Gap(4);
+            stack.Alert(status.HealthDetail is { Length: > 0 } detail
+                ? detail
+                : DefaultDetail(status.Health));
+        }
+        else if (status.Health is SyncHealth.Degraded)
+        {
+            stack.Gap(2);
             stack.Line(
-                status.HealthDetail is { Length: > 0 } detail ? detail : DefaultDetail(status.Health),
-                TrayFontRole.Small,
-                status.Health == SyncHealth.Degraded ? Muted : Color.FromArgb(0xC6, 0x28, 0x28));
+                status.HealthDetail is { Length: > 0 } slow ? slow : DefaultDetail(status.Health),
+                TrayFontRole.Small, Muted);
         }
 
         stack.Rule();
@@ -118,7 +135,7 @@ internal sealed class TodayForm : OwnerDrawnForm
     /// "0 / 208 hours · 0%" দেখত — অর্থাৎ মনে হতো মাসের কাজ মুছে গেছে।
     /// তাই তিনটে অবস্থা: জানা নেই / জানা আছে / লক্ষ্য নেই।
     /// </summary>
-    private static void PaintMonth(TextStack stack, AgentStatus status, DateTimeOffset now)
+    private void PaintMonth(TextStack stack, AgentStatus status, DateTimeOffset now)
     {
         if (!status.MonthlyKnown)
         {
@@ -137,12 +154,67 @@ internal sealed class TodayForm : OwnerDrawnForm
             TrayFontRole.Strong);
 
         stack.Gap(2);
-        stack.Bar(status.MonthlyProgress, ProgressColor(status.MonthlyProgress));
 
-        stack.Pair("Progress", UiText.Percent(status.MonthlyProgress));
-        stack.Pair("Remaining", UiText.Duration(status.MonthlyRemaining) + " hours");
+        var pace = PaceOf(status, now);
 
-        PaintPace(stack, status, now);
+        stack.Meter(
+            status.MonthlyProgress,
+            ExpectedRatio(status, pace),
+            ProgressColor(status.MonthlyProgress));
+
+        PaintLegend(stack, status, pace);
+    }
+
+    /// <summary>
+    /// ⭐ মিটারের দাগ — "আজ পর্যন্ত যতটা হওয়ার কথা"।
+    ///
+    /// সার্ভার আলাদা করে এই সংখ্যাটা পাঠায় না, কিন্তু পাঠানোর দরকারও নেই:
+    /// pace-ই তো <b>যা হয়েছে</b> বিয়োগ <b>যা হওয়ার কথা</b>। তাই উল্টো
+    /// করে বের করা হয় — এতে দাগ আর "behind/ahead" সংখ্যাটা <b>একই উৎস</b>
+    /// থেকে আসে, আর দুটো কখনো একে অন্যকে মিথ্যা বলতে পারে না।
+    /// </summary>
+    private static double? ExpectedRatio(AgentStatus status, TimeSpan? pace)
+    {
+        if (pace is not { } value) return null;
+        if (status.MonthlyTargetHours <= 0) return null;
+
+        var expected = status.ActiveThisMonth - value;
+        if (expected <= TimeSpan.Zero) return null;
+
+        var ratio = expected.TotalHours / status.MonthlyTargetHours;
+
+        // মাসের শেষে প্রত্যাশা ১০০%-এ ঠেকে; তার বেশি দাগ আঁকার জায়গা নেই
+        return Math.Min(1.0, ratio);
+    }
+
+    /// <summary>মিটারের নিচের লাইন — বাঁয়ে কত বাকি, ডানে এগিয়ে না পিছিয়ে।</summary>
+    private void PaintLegend(TextStack stack, AgentStatus status, TimeSpan? pace)
+    {
+        var left = status.MonthlyRemaining <= TimeSpan.Zero
+            ? "Target met"
+            : UiText.Duration(status.MonthlyRemaining) + " left";
+
+        if (pace is not { } value)
+        {
+            stack.Legend(left, string.Empty, Theme.Ink3);
+            return;
+        }
+
+        var ahead = value >= TimeSpan.Zero;
+
+        // ⚠️ চিহ্নটা লেখাতেই বলা আছে ("ahead"/"behind"), তাই সংখ্যাটা সবসময়
+        //    ধনাত্মক রূপে। UiText.Duration ঋণাত্মককে শূন্য বানায়, ফলে
+        //    Abs না নিলে প্রতিটা "behind" থাকা স্টাফ দেখত "0:00 behind"।
+        var text = UiText.Duration(value.Duration()) + (ahead ? " ahead" : " behind");
+
+        // ⚠️ সার্ভারের পাঠানো নয়, আমাদের আন্দাজ হলে সেটা লুকোনো যাবে না —
+        //    শব্দটা ছুটির দিনের হিসাব নিয়ে আমাদের না-জানার স্বীকারোক্তি।
+        if (status.Pace is null) text += " (estimated)";
+
+        // ⭐ পিছিয়ে থাকা **আম্বার**, লাল নয়। লাল এই জানালায় শুধু
+        //    "ডেটা সার্ভারে পৌঁছাচ্ছে না"-র জন্য — সেটা সিস্টেমের ব্যর্থতা,
+        //    আর পিছিয়ে থাকা কোনো ইনসিডেন্ট নয়।
+        stack.Legend(left, text, ahead ? Theme.Ok : Theme.Idle);
     }
 
     /// <summary>
@@ -156,25 +228,19 @@ internal sealed class TodayForm : OwnerDrawnForm
     ///
     /// লক্ষ্যই না থাকলে (টার্গেট ০) লাইনটা বাদ — "0:00 hours ahead" অর্থহীন।
     /// </summary>
-    private static void PaintPace(TextStack stack, AgentStatus status, DateTimeOffset now)
-    {
-        var exact = status.Pace is not null;
-        var pace = status.Pace
-                   ?? MonthlyPace.Estimate(status.ActiveThisMonth, status.MonthlyTargetHours, now);
+    private static TimeSpan? PaceOf(AgentStatus status, DateTimeOffset now) =>
+        status.Pace
+        ?? MonthlyPace.Estimate(status.ActiveThisMonth, status.MonthlyTargetHours, now);
 
-        if (pace is not { } value) return;
-
-        var ahead = value >= TimeSpan.Zero;
-
-        // ⚠️ চিহ্নটা লেখাতেই বলা আছে ("Ahead"/"Behind"), তাই সংখ্যাটা সবসময়
-        //    ধনাত্মক রূপে। UiText.Duration ঋণাত্মককে শূন্য বানায়, ফলে
-        //    Abs না নিলে প্রতিটা "Behind" থাকা স্টাফ দেখত "0:00 hours behind"।
-        var text = (ahead ? "✓ " : "⚠ ") +
-                   UiText.Duration(value.Duration()) + " hours " +
-                   (ahead ? "ahead" : "behind");
-
-        stack.Pair(exact ? "Pace" : "Pace (estimated)", text);
-    }
+    /// <summary>Live Board-এর ডট-ভাষাই — সবুজ চলছে · আম্বার থেমে · ধূসর লক।</summary>
+    private Color StateDot(AgentStatus status) => status.Paused
+        ? Theme.Ink3
+        : status.State switch
+        {
+            SegmentState.Active => Theme.Ok,
+            SegmentState.Idle => Theme.Idle,
+            _ => Theme.Ink3,
+        };
 
     private static string HealthName(SyncHealth health) => health switch
     {
@@ -184,10 +250,14 @@ internal sealed class TodayForm : OwnerDrawnForm
         _ => "Stopped",
     };
 
-    private static Color ProgressColor(double progress) =>
-        progress >= 1.0
-            ? Color.FromArgb(0x2E, 0x9E, 0x4F)
-            : Color.FromArgb(0x4A, 0x6F, 0xA5);
+    /// <summary>
+    /// ⭐ চলতি অবস্থায় নিরপেক্ষ <c>ink</c>, টার্গেট পূর্ণ হলে সবুজ —
+    /// ড্যাশবোর্ড এই তর্ক আগেই মিটিয়েছে ([09 § ৩উ](../../../../docs/09-Build-Log.md))।
+    ///
+    /// ⚠️ আগে এখানে ছিল <c>#4A6FA5</c>, একটা নীল যা oXeio-র <b>কোথাও নেই</b>।
+    /// </summary>
+    private Color ProgressColor(double progress) =>
+        progress >= 1.0 ? Theme.Ok : Theme.Ink;
 
     private static string DefaultDetail(SyncHealth health) => health switch
     {

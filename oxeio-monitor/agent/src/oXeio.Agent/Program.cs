@@ -6,6 +6,9 @@ using oXeio.Agent.Native;
 using oXeio.Agent.Platform;
 using oXeio.Agent.Security;
 using oXeio.Agent.Sync;
+using oXeio.Agent.Ui;
+using oXeio.Core.Agent;
+using oXeio.Core.Models;
 
 namespace oXeio.Agent;
 
@@ -42,8 +45,98 @@ internal static partial class Program
             return PrepareDataDir();
         }
 
+        if (args.Any(a => a.Equals("--preview-today", StringComparison.OrdinalIgnoreCase)))
+        {
+            return PreviewToday(args);
+        }
+
         return RunAgent();
     }
+
+    /// <summary>
+    /// "Today's hours" জানালাটা নমুনা ডেটায় খুলে দেখা — <c>--diagnose</c>-এর মতোই
+    /// একটা ডেভ টুল, কিছুই জমা হয় না, সার্ভারে কিছু যায় না।
+    ///
+    /// ⭐ কেন দরকার: জানালার চারটে অবস্থা আছে (মাস জানা নেই · স্বাভাবিক ·
+    /// সার্ভারে পৌঁছাচ্ছে না · টার্গেট পূর্ণ), আর সেগুলো আসল ডেটায় দেখতে হলে
+    /// যথাক্রমে একটা নতুন লগঅন, আধ ঘণ্টার কাজ, নেট বিচ্ছিন্ন করা আর একটা
+    /// পুরো মাস লাগত। ডিজাইন বদলে প্রতিবার সেটা করা যায় না।
+    ///
+    /// <c>--preview-today [loading|failing|met]</c>
+    /// </summary>
+    private static int PreviewToday(string[] args)
+    {
+        var which = args
+            .FirstOrDefault(a => a is "loading" or "failing" or "met") ?? "working";
+
+        using var fonts = new TrayFonts();
+
+        var options = new TrayOptions
+        {
+            AgentVersion = Version,
+            ServerUrl = "http://localhost:3000",
+            DeviceId = 58,
+            EmployeeName = "Sumaiya",
+            EmpCode = "OX-07",
+        };
+
+        using var form = new TodayForm(fonts, () => options);
+        form.Apply(SampleStatus(which));
+
+        // ⚠️ জায়গা ঠিক হয় **দেখানোর পরে** — নইলে হ্যান্ডল তৈরি হওয়ার আগে
+        //    Width এখনো WinForms-এর ডিফল্ট, আর হিসাবটা ওই ভুল মাপ ধরে করে
+        //    জানালাটা পর্দার ডান কিনারা পেরিয়ে চলে যায়। TrayIcon-ও একই
+        //    ক্রমে ডাকে (Show → PositionNearTray → Activate)।
+        form.Shown += (_, _) => form.PositionNearTray();
+
+        Application.Run(form);
+        return 0;
+    }
+
+    private static AgentStatus SampleStatus(string which) => which switch
+    {
+        "loading" => AgentStatus.Starting with
+        {
+            State = SegmentState.Active,
+            ActiveToday = TimeSpan.FromMinutes(72),
+            MonthlyKnown = false,
+        },
+
+        "failing" => AgentStatus.Starting with
+        {
+            State = SegmentState.Idle,
+            ActiveToday = TimeSpan.FromMinutes(348),
+            ActiveThisMonth = TimeSpan.FromMinutes(5780),
+            MonthlyKnown = true,
+            Pace = TimeSpan.FromMinutes(980),
+            QueueDepth = 2481,
+            Health = SyncHealth.Failing,
+            LastSyncAt = DateTimeOffset.UtcNow.AddHours(-2),
+        },
+
+        "met" => AgentStatus.Starting with
+        {
+            State = SegmentState.Locked,
+            ActiveToday = TimeSpan.FromMinutes(446),
+            ActiveThisMonth = TimeSpan.FromMinutes(12675),
+            MonthlyKnown = true,
+            Pace = TimeSpan.FromMinutes(195),
+            LastSyncAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        },
+
+        // ⚠️ ডিফল্টটা ইচ্ছাকৃতভাবে মালিকের আসল অবস্থা (১১ আগস্ট): মাসের
+        //    শুরুতে সামান্য কাজ, অর্থাৎ মিটারের ভরাট ০.৩% — ঠিক সেই কেসটা
+        //    যেখানে ভরাটটা গোল হয়ে শূন্য হয়ে যেতে পারত।
+        _ => AgentStatus.Starting with
+        {
+            State = SegmentState.Active,
+            ActiveToday = TimeSpan.FromMinutes(4),
+            ActiveThisMonth = TimeSpan.FromMinutes(39),
+            MonthlyKnown = true,
+            Pace = TimeSpan.FromMinutes(-4760),
+            LastSyncAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        },
+    };
 
     /// <summary>
     /// MSI ইনস্টল করার সময় একবার, অ্যাডমিন অধিকারে।
