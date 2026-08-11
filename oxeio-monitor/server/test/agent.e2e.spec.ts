@@ -215,10 +215,17 @@ describe('heartbeat', () => {
    * হবে এমন নয় (§ ৪)।
    */
   it('ছুটির দিনে দৈনিক টার্গেট শূন্য, null নয়', async () => {
-    const today = new Date();
-    const workDate = new Date(
-      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-    );
+    /**
+     * ⚠️⚠️ **ঢাকার** তারিখ, UTC-র নয় — G62-র হুবহু পুনরাবৃত্তি।
+     *
+     * আগে এখানে `getUTCFullYear/Month/Date` দিয়ে আজকের তারিখ বানানো হতো।
+     * দিনের বেলায় দুটো এক, তাই টেস্ট পাস করত। কিন্তু ঢাকার মধ্যরাত থেকে
+     * ভোর ৬টার মধ্যে UTC তখনো **আগের দিনে** — ফলে ছুটিটা বসত গতকালের
+     * ঘরে, সার্ভার আজকের দিনটাকে কর্মদিবসই দেখত, আর টার্গেট ০-র বদলে
+     * ২৮,৮০০ আসত। ঠিক ০০:২২-এ ধরা পড়েছে।
+     */
+    const workDate = new Date(Date.now() + 6 * 3600_000);
+    workDate.setUTCHours(0, 0, 0, 0);
 
     await h.prisma.holiday.create({
       data: { holidayDate: workDate, name: 'Test holiday' },

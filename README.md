@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (~৪৫ endpoint) · ড্যাশবোর্ড (৬ পাতা)। **৯১৯ টেস্ট পাস** (সার্ভার ৫৮৭ · এজেন্ট ৩৩২)। ১১ আগস্ট আসল এজেন্ট প্রথমবার সার্ভারে ডেটা পাঠিয়েছে — রাতে **নিজের তোলা স্ক্রিনশটও**। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
+| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (~৪৫ endpoint) · ড্যাশবোর্ড (৬ পাতা)। **৯৩০ টেস্ট পাস** (সার্ভার ৫৮৭ · এজেন্ট ৩৪৩)। ১১ আগস্ট আসল এজেন্ট প্রথমবার সার্ভারে ডেটা পাঠিয়েছে — রাতে **নিজের তোলা স্ক্রিনশটও**। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
 | **প্রতিষ্ঠান** | oXeio |
 | **স্টাফ** | ১৫ জন · সব Windows PC |
 | **ট্র্যাকিং** | **কোনো শিফট নেই** — দিনের যেকোনো সময় active থাকলেই গোনা হয় (২৪ ঘণ্টা) |
@@ -60,10 +60,10 @@
 
 `oxeio-monitor/`
 
-- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · ~৪৫ endpoint · **৫৮৬ টেস্ট**
+- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · ~৪৫ endpoint · **৫৮৭ টেস্ট**
   agent ingest · dashboard · activity (ক্যাটাগরি) · screenshots · reports (Excel/PDF) ·
   admin · alerts · ops (ব্যাকআপ/হেলথ) · summary (nightly jobs) · digest · payroll
-- **`agent/`** C# .NET 8 · **৩২৭ টেস্ট** · `oXeio.Core` (নিয়ম, শূন্য Win32) +
+- **`agent/`** C# .NET 8 · **৩৪৩ টেস্ট** (Core ২৭৪ · Agent ৬৯) · `oXeio.Core` (নিয়ম, শূন্য Win32) +
   `oXeio.Agent` (DXGI ক্যাপচার · idle/lock/sleep · অ্যাপ ও ডোমেইন · SQLite outbox ·
   tray) + `oXeio.Watchdog`। `--diagnose` দিয়ে যেকোনো PC-তে যাচাই করা যায়।
 - **`web/`** React 19 + Vite + Tailwind v4 · Live Board · Employee Detail ·
@@ -74,11 +74,20 @@
 
 ## ▶️ কীভাবে চালাবেন
 
+⭐ **দুটো আলাদা পথ, গুলিয়ে ফেলবেন না।** নিচের এক–তিন নম্বর ধাপ **ডেভ**-এর —
+সোর্স থেকে, hot reload সহ। অফিসের সার্ভারে বসানোর পথ আলাদা:
+[অফিসের সার্ভারে — ডেভ নয়](#অফিসের-সার্ভারে--ডেভ-নয়)।
+
 ### এক· ডাটাবেস (একবার)
 
 ```bash
-cd oxeio-monitor && docker compose up -d
+cd oxeio-monitor && docker compose up -d postgres
 ```
+
+⚠️ **`postgres` শব্দটা বাদ দেবেন না।** খালি `docker compose up -d` `api`
+কনটেইনারও তোলে, আর সেটা পোর্ট ৩০০০ দখল করে রাখে — নিচের `start:dev`
+উঠতেই পারবে না। `api` শুরু থেকেই compose-এ ছিল, অর্থাৎ ফাঁদটা পুরোনো;
+নতুন শুধু `web` — সেটাও ডেভে লাগে না।
 
 প্রথমবার হলে স্কিমা ও seed:
 
@@ -136,6 +145,27 @@ cd oxeio-monitor/agent/installer && pwsh -File build.ps1
 ```bash
 msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>:3000" ENROLLCODE="<code>"
 ```
+
+### অফিসের সার্ভারে — ডেভ নয়
+
+উপরের এক–তিন ধাপের বদলে, তিনটে কনটেইনার (`postgres` · `api` · **`web`**):
+
+```bash
+cd oxeio-monitor
+docker compose --profile setup run --rm migrate   # স্কিমা + seed
+docker compose up -d
+```
+
+⚠️⚠️ **`migrate` ধাপটা বাদ দেওয়া যাবে না** — `up -d` নিজে থেকে ওটা চালায় না
+(`profiles: ["setup"]`, ইচ্ছাকৃত), আর প্রোডাকশন ইমেজে prisma CLI নেইও।
+বাদ দিলে ডাটাবেসে **একটাও টেবিল বসে না**, আর API উঠে প্রতিটা রিকোয়েস্টে ভাঙে।
+
+ড্যাশবোর্ড `http://<server>:8080` (`.env`-এ `WEB_PORT`)। Caddy `/api/*` কে
+api কনটেইনারে পাঠায়, বাকি পাতা নিজে দেয় — ব্রাউজারের চোখে **একটাই origin**,
+তাই `SameSite=Strict` cookie কাজ করে আর CORS-এর প্রশ্নই ওঠে না।
+
+পুরো রানবুক (সার্ট ও TLS · ফায়ারওয়াল · AV ছাড় · MSI বিলি · প্রথম দিনের
+চেকলিস্ট): [deploy/README](oxeio-monitor/deploy/README.md)
 
 ### টেস্ট
 

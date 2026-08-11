@@ -498,7 +498,7 @@ merge(employee_id, work_date):
 
 ```
 এজেন্ট  : প্রতিটি রেকর্ড তৈরির সময়ই একটা client_uuid (UUIDv4) বসায়,
-          সেটা লোকাল queue.db-তেও জমা থাকে — রিট্রাইয়ে একই UUID যায়
+          সেটা লোকাল outbox.db-তেও জমা থাকে — রিট্রাইয়ে একই UUID যায়
 সার্ভার : INSERT ... ON CONFLICT (client_uuid) DO NOTHING
 রেসপন্স : { accepted: 42, duplicates: 3 }
 এজেন্ট  : দুটোকেই "সফল" ধরে queue থেকে মুছে ফেলে
@@ -697,11 +697,12 @@ if (IsBrowser(proc))
 
 ```
 %ProgramData%\oXeio\
-  ├─ queue.db              (SQLite — segments, events, app_usage)
-  ├─ queue\                (আপলোড না হওয়া স্ক্রিনশট)
-  ├─ config.json           (সার্ভার থেকে সিঙ্ক হওয়া কনফিগ)
-  └─ agent.log
+  ├─ outbox.db             (SQLite — segments, events, app_usage)
+  ├─ queue\screenshots\    (আপলোড না হওয়া স্ক্রিনশট)
+  ├─ logs\outbox-drops.log (যা চিরতরে ফেলে দেওয়া হলো তার একমাত্র সাক্ষী)
+  └─ watchdog.log          (⚠️ watchdog লেখে — এজেন্টের নিজের কোনো লগ ফাইল নেই, H08)
 ```
+- ⚠️ **`config.json` বলে কিছু নেই** — কনফিগ ডিস্কে জমে না, প্রতিবার চালু হলে ও প্রতিটা বদলে সার্ভার থেকেই আসে (§ ৪.১)
 - সার্ভার ডাউন থাকলে সব লোকালি জমা থাকবে (৭ দিন পর্যন্ত)
 - সার্ভার ফিরলে ব্যাকগ্রাউন্ডে ধীরে ধীরে আপলোড (exponential backoff)
 - ডুপ্লিকেট ঠেকাতে প্রতিটা রেকর্ডে client-generated UUID → সার্ভারে idempotent insert
@@ -709,11 +710,20 @@ if (IsBrowser(proc))
 ### ৩.৬ প্রসেস মডেল
 
 ```
-oXeioAgent.exe        ← ইউজার সেশনে tray app (স্ক্রিনশট এখান থেকেই সম্ভব)
-                        Task Scheduler → "At log on" → auto start
-oXeioWatchdog.exe     ← Windows Service (SYSTEM), প্রতি ৩০ সেকেন্ডে চেক
+oXeio.Agent.exe       ← ইউজার সেশনে tray app (স্ক্রিনশট এখান থেকেই সম্ভব)
+                        ⚠️ নিজের কোনো Scheduled Task নেই — watchdog-ই চালায়
+oXeio.Watchdog.exe    ← লগঅনের Scheduled Task (H02); প্রতি ৩০ সেকেন্ডে চেক,
                         agent বন্ধ থাকলে আবার চালু + সার্ভারে অ্যালার্ট
 ```
+
+> ⚠️ **watchdog কোনো Windows Service নয়** — `oXeio.Watchdog/Program.cs`-এ `ServiceBase`
+> নেই। ওটা লগঅনের একটা Scheduled Task (`\oXeio\oXeio Watchdog`, `--install-task`
+> একবার বসায়), আর ইউজার সেশনেই চলে: Session 0-তে পড়লে নিজেই থেমে যায়, কারণ ওখান
+> থেকে চালানো এজেন্ট সাথে সাথেই মরত (`GetLastInputInfo` সেশন-ভিত্তিক, § ৩.২)।
+>
+> ⚠️ **টাস্ক ওই একটাই — এজেন্টের নিজের কোনো লগঅন টাস্ক নেই**, ইচ্ছাকৃতভাবে
+> (`installer/Package.wxs`, `Deployment/WatchdogTask.xml`)। দুই জায়গা থেকে চালু
+> হলে এক মেশিনে দুটো এজেন্ট চলত আর একই ঘণ্টা দুবার গোনা হতো।
 
 ---
 
@@ -725,9 +735,9 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 
 | Method | Endpoint | কাজ |
 |---|---|---|
-| POST | `/agent/enroll` | প্রথমবার ইনস্টলের সময়। `{enrollment_code, hostname, windows_username, machine_guid, os_version, agent_version, monitors}` → `{device_id, device_token, employee, config}` |
-| GET | `/agent/config` | কনফিগ সিঙ্ক (capture window, interval, idle threshold) → `{version, config}` |
-| POST | `/agent/heartbeat` | প্রতি ৩০ সেকেন্ডে। `{state, active_sec_today, queue_depth, config_version}` → `{commands: [], config_version}` |
+| POST | `/agent/enroll` | প্রথমবার ইনস্টলের সময়। `{enrollmentCode, hostname, windowsUsername, machineGuid, osVersion?, agentVersion?, monitors?}` → `{deviceId, deviceToken, employee, configVersion, config}`। `deviceToken` **এই একবারই** যায়, সার্ভারে শুধু sha256 |
+| GET | `/agent/config` | কনফিগ সিঙ্ক (capture window, interval, idle threshold) → `{version, config}`। `version` = কনফিগের sha256-এর প্রথম ১৬ অক্ষর, আলাদা কাউন্টার নেই |
+| POST | `/agent/heartbeat` | প্রতি ৩০ সেকেন্ডে। `{state, activeSecToday, queueDepth?, configVersion?, agentVersion?}` → `{commands, configVersion, progress}` (↓ দুটোই নিচে) |
 | POST | `/agent/segments` | ব্যাচে activity segments (প্রতি ১ মিনিটে) |
 | POST | `/agent/app-usage` | ব্যাচে app/website usage |
 | POST | `/agent/events` | logon/logoff/lock/sleep ইত্যাদি |
@@ -735,15 +745,62 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 | GET | `/agent/update` | ⭐ *নতুন* — `?current=1.2.0` → `{version, sha256, url, mandatory}` অথবা `204 No Content`। `agent_versions.rollout_stage` মেনে ধাপে ধাপে দেয় |
 | GET | `/agent/update/download` | ⭐ *নতুন* — MSI স্ট্রিম (device token লাগবে) |
 
+> ⚠️ **তারে সব ফিল্ডের নাম camelCase** — এজেন্টে `JsonNamingPolicy.CamelCase`, সার্ভারে
+> class-validator DTO, দুই পাশে একই নিয়ম। সার্ভারে `whitelist + forbidNonWhitelisted`
+> চালু, তাই `active_sec_today` পাঠালে সেটা চুপচাপ উপেক্ষা হয় না — **৪০০** হয়।
+
 **সব ingest endpoint-এ বাধ্যতামূলক:**
-- প্রতিটি রেকর্ডে `client_uuid` — না থাকলে `422`; ডুপ্লিকেট হলে `{accepted, duplicates, split}` (§ ২.১-ঘ)
+- প্রতিটি রেকর্ডে `clientUuid` — না থাকলে `422`; ডুপ্লিকেট হলে `{accepted, duplicates, split}` (§ ২.১-ঘ)
 - প্রতিটি রিকোয়েস্টে **`X-Client-Time`** হেডার (ISO-8601) — clock drift হিসাবের জন্য ([02-Workflow §2](02-Workflow.md))। হেডার হিসেবে রাখা হয়েছে যাতে GET-এও পাঠানো যায়
 - ব্যাচের সর্বোচ্চ আকার **৫০০ রেকর্ড**; স্ক্রিনশট ফাইল সর্বোচ্চ **৫ MB**, শুধু `image/webp`
 - ডিভাইসপ্রতি rate limit: ingest ৬০ req/মিনিট, screenshot ২০ req/মিনিট
 
 **সার্ভার → এজেন্ট commands** (heartbeat-এর রেসপন্সে): `reload_config`, `capture_now`, `pause_tracking`, `update_agent`, `revoke`
 
+⚠️ এর মধ্যে সার্ভার আজ **শুধু দুটো পাঠায়** — `reload_config` (এজেন্টের `configVersion`
+সার্ভারেরটার সাথে না মিললে) আর `update_agent`। `capture_now`/`pause_tracking`-এর জন্য
+একটা কমান্ড-কিউ টেবিল লাগবে, কারণ ড্যাশবোর্ডে চাপা বাটনটা পরের heartbeat পর্যন্ত
+কোথাও জমা থাকতে হয়। আর `revoke` কমান্ড হয়েই আসে না — revoke করা ডিভাইস পরের
+রিকোয়েস্টেই `DeviceAuthGuard`-এর কাছে **৪০৩** পায়, এজেন্ট সেটা দেখেই থামে।
+
+**⭐ এজেন্ট কনফিগ সত্যিই আনে ও প্রয়োগ করে** — আগে `GET /agent/config` কেউ ডাকতই না,
+আর heartbeat হ্যান্ডলার সার্ভারের `configVersion` অন্ধভাবে নিজের বলে বসিয়ে নিত। পরের
+heartbeat-এ ভার্সন মিলে যেত, তাই সার্ভার আর কোনোদিন `reload_config` চাইত না — ফলে
+ড্যাশবোর্ডের Settings-এ যা-ই বদলানো হোক, ১৫টা PC-র একটাও কিছু জানত না। এখন:
+
+- **আনা হয়** — `reload_config` কমান্ড এলে **অথবা** ভার্সন না মিললে। দ্বিতীয় শর্তটা
+  ছাড়া চলত না: সদ্য চালু হওয়া এজেন্টের `configVersion` `null`, আর তখন সার্ভারের
+  চোখে "কিছু বদলায়নি" — শুধু কমান্ডের ভরসায় থাকলে রিবুটের পর সে চিরকাল ডিফল্ট
+  কনফিগেই চলত
+- **প্রয়োগ হয় TrackLoop-এ**, heartbeat থ্রেডে নয় — ট্র্যাকিংয়ের অবজেক্টগুলো ওই
+  থ্রেডের, বাইরে থেকে ছুঁলে এক সেকেন্ডের হিসাব দুই কনফিগে ভাগ হয়ে ঘণ্টা হারাত
+- **যা বদলায়নি তাতে হাত পড়ে না** (`ConfigChange`) — নইলে সার্ভারে কনফিগ save করলেই
+  সবার চলতি সেগমেন্ট অকারণে কাটা পড়ত। চলতি স্লটও যেমন চলছিল তেমনই শেষ হয়
+- কনফিগ আনতে ব্যর্থ হলে পুরোনোটাতেই চলে — কনফিগ না পাওয়া মানে ঘণ্টা গোনা থামা নয়
+
+**heartbeat-এর `progress`** — ⭐ tray-র সংখ্যাগুলো সার্ভারই দেয়, কারণ এজেন্ট নিজে
+মাসের হিসাব জানে না: রিবুট বা আপডেটের পর তার কাউন্টার শূন্য, আর স্টাফ তখন tray-তে
+"০ঘ / ২০৮ঘ" দেখে ভাবত তার মাসের কাজ মুছে গেছে। ডিভাইসে কর্মী বসানো না থাকলে `null`।
+
+| ফিল্ড | কী |
+|---|---|
+| `todayActiveSec` · `monthActiveSec` | ঢাকার আজ ও চলতি মাসে গোনা সেকেন্ড |
+| `monthlyTargetHours` | ওই কর্মীর work policy থেকে — হার্ডকোড ২০৮ নয় |
+| `paceSec` | `credited − expected`; ধনাত্মক = এগিয়ে (§ ২.১-খ · ২.১-ঙ)। ⭐ `worked` নয় **`credited`** — নইলে owner-এর সংশোধনের পরেও tray সারা মাস "পিছিয়ে" দেখাত আর ড্যাশবোর্ড দেখাত এগিয়ে |
+| `dailyTargetSec` | ⭐ *নতুন* — মাসিক টার্গেট ÷ ওই মাসের কর্মদিবস। ⚠️ **ছুটির দিনে ০**, আর ০ (`আজ কিছু করার নেই`) `null`-এর (`সার্ভার বলেনি`) চেয়ে আলাদা। DB-তে দৈনিক টার্গেটের কলাম নেই, ইচ্ছাকৃতভাবে — এটা শুধু দেখানোর সংখ্যা |
+| `week7ActiveSec` | ⭐ *নতুন* — গত ৭ দিনে (আজ ধরে) গোনা সেকেন্ড |
+| `week7TargetSec` | ⭐ *নতুন* — ওই ৭ দিনের কর্মদিবস × দৈনিক টার্গেট। ⚠️ "চলতি সপ্তাহ" নয়, **রোলিং ৭ দিন** — এই সিস্টেমে সপ্তাহের কোনো সীমানাই নেই (§ ১: যেকোনো দিন গোনা হয়), "এই সপ্তাহ" বানাতে গেলে সপ্তাহ কবে শুরু সেই নতুন ধারণা আমদানি করতে হতো |
+
+⚠️ প্রতিটা ফিল্ড এজেন্টের কাছে **ঐচ্ছিক** — সার্ভার না পাঠালে সে নিজের আন্দাজে ফেরত
+যায় (সে `holidays` টেবিল চেনে না, তাই শুধু সাপ্তাহিক ছুটি বাদ দিয়ে গোনে আর জানালায়
+"আনুমানিক" লিখে রাখে)। তাই পুরোনো সার্ভার বা পুরোনো এজেন্ট কোনোটাতেই ভাঙে না।
+
 ### ৪.২ Dashboard endpoints — auth: JWT cookie (httpOnly)
+
+> ⚠️ **ক্যোয়ারি প্যারামিটারও camelCase** — `?employeeId=3`, `?groupBy=week`,
+> `?targetType=`, `?pageSize=`। এখানে snake_case লেখা ছিল, কোডে কখনোই ছিল না।
+> ⭐ ভুলটা নীরব নয়: গ্লোবাল ValidationPipe-এ `forbidNonWhitelisted` চালু, তাই
+> `?employee_id=3` "উপেক্ষিত হয়ে সবার ডেটা" ফেরত দেয় না — **৪০০** দেয়।
 
 | Method | Endpoint | কাজ |
 |---|---|---|
@@ -752,7 +809,7 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 | POST | `/users/:id/reset-password` | ⭐ *নতুন* — **owner only**। একবার-দেখানো temp পাসওয়ার্ড ফেরত দেয়, `must_change_pw = TRUE` বসিয়ে দেয়। SMTP লাগে না, তাই Phase 1-এই সম্ভব |
 | POST | `/employees/:id/portal-account` | ⭐ *নতুন* — **owner only**। স্টাফের self-view অ্যাকাউন্ট (`role = employee`) খোলে |
 | POST | `/employees/:id/policy-doc` | ⭐ *নতুন* — সই করা monitoring policy আপলোড → `policy_signed_at`, `policy_doc_path` |
-| POST | `/devices/enrollment-code` | ⭐ *নতুন* — **owner only**। `{employee_id}` → `{code, expires_at}`; কোড একবারই দেখানো হয়, DB-তে শুধু hash |
+| POST | `/devices/enrollment-code` | ⭐ *নতুন* — **owner only**। `{employeeId}` → `{code, expiresAt, employee}`; কোড একবারই দেখানো হয়, DB-তে শুধু hash। ⚠️ `inactive` কর্মীর নামে কোড দেওয়া যায় না |
 | GET | `/employees/:id/downtime?date=` | ⭐ *নতুন* — ওই দিনে এজেন্ট কতক্ষণ চুপ ছিল → `{max_claimable_sec, gaps: [...]}`; সংশোধন বসানোর আগে এটাই প্রস্তাবিত পরিমাণ দেখায় |
 | POST | `/employees/:id/time-adjustments` | ⭐ *নতুন* — **owner only**। `{work_date, delta_sec, cause, reason}` → `201`। `reason` খালি হলে `422`; `delta_sec > max_claimable_sec` হলে `beyond_evidence = TRUE` বসে |
 | GET | `/employees/:id/time-adjustments?from=&to=` | সংশোধনের তালিকা। **স্টাফ নিজেরটা দেখতে পাবে** (role=employee) |
@@ -760,13 +817,25 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 | GET | `/live` | এখন কে online/idle/offline — ড্যাশবোর্ডের হোম |
 | GET | `/employees` · `/employees/:id` | স্টাফ লিস্ট ও প্রোফাইল |
 | GET | `/employees/:id/timeline?date=` | ওই দিনের সেকেন্ড-বাই-সেকেন্ড টাইমলাইন |
-| GET | `/screenshots?employee_id=&date=&page=` | স্ক্রিনশট গ্যালারি (audit_log-এ রেকর্ড হবে) |
-| GET | `/screenshots/:id/file` | signed URL, ৫ মিনিটে expire |
+| GET | `/screenshots?employeeId=&date=&page=` | স্ক্রিনশট গ্যালারি (audit_log-এ রেকর্ড হবে) |
+| GET | `/screenshots/:id/file?token=` | signed URL, ৫ মিনিটে expire। ⚠️ এটা `@Public()` — ব্রাউজার `<img src>`-এ কাস্টম হেডার পাঠাতে পারে না, তাই যাচাইটা পুরোপুরি টোকেনের উপরে |
 | GET | `/reports/attendance?from=&to=&format=json\|xlsx\|pdf` | অ্যাটেনডেন্স রিপোর্ট |
-| GET | `/reports/productivity?from=&to=` | অ্যাপ/সাইট ভিত্তিক productivity |
-| GET | `/reports/payroll?month=` | পে-রোল ঘণ্টার হিসাব |
-| CRUD | `/employees` `/work-policies` `/categories` `/settings` `/devices` `/holidays` | **owner only** |
-| GET | `/audit-log` | **owner only** |
+| GET | `/reports/summary?from=&to=&groupBy=week\|month&format=json\|xlsx\|pdf` | ⭐ *নতুন* — সাপ্তাহিক/মাসিক সারাংশ |
+| GET | `/reports/productivity?from=&to=&limit=` | অ্যাপ/সাইট ভিত্তিক productivity। ⚠️ এখানে `format=pdf` **নেই** — DTO-তেই আটকানো, তাই পরিষ্কার ৪০০ আসে, চুপচাপ JSON নয় |
+| GET | `/payroll?month=` | পে-রোল ঘণ্টার হিসাব। ⚠️ `/reports/`-এর নিচে **নয়**, আলাদা মডিউল — কারণ reports কন্ট্রোলার owner+manager, আর এটা **owner only**। এক ক্লাসে এনে ফেললে ম্যানেজারও বেতনের শিট পেতেন |
+| POST | `/devices/:id/revoke` · `/devices/:id/restore` | ⭐ *নতুন* (restore) — H06। ডিভাইস বন্ধ করা ও ফেরানো, ডিলিট নয় |
+| POST | `/employees/:id/deactivate` · `/employees/:id/reactivate` | ⭐ *নতুন* (reactivate) — ⚠️ `DELETE` ইচ্ছাকৃতভাবে নেই: সারি মুছলে ওই কর্মীর মাসের হিসাব, স্ক্রিনশট ও audit trail অনাথ হয়ে যেত |
+| POST | `/work-policies/:id/deactivate` | ⭐ *নতুন* — পলিসিও মোছা যায় না, ওর দিকে employees আর পুরোনো মাসের হিসাব তাকিয়ে আছে |
+| CRUD | `/employees` `/work-policies` `/categories` `/devices` `/holidays` | **owner only** |
+| GET | `/audit-log?userId=&action=&targetType=&targetId=&from=&to=&page=&pageSize=` | **owner only** |
+
+> ⚠️ **যেগুলো এখনো শুধু ডিজাইন, কোডে নেই:** `GET /employees/:id/downtime` ·
+> `POST|GET /employees/:id/time-adjustments` · `POST /time-adjustments/:id/revoke`
+> (G35-এর পুরো পথটাই) · `POST /employees/:id/policy-doc` (G34 — সই-আপলোডের
+> রুট নেই, তাই `policy_signed_at`/`policy_doc_path` শুধু পড়া হয়, কেউ লেখে না;
+> রোলআউটের শর্ত) আর `/settings`-এর CRUD — তাই উপরের CRUD সারি থেকে
+> `/settings` তুলে দেওয়া হলো। কোডে আজ কী আছে তার হালনাগাদ তালিকা
+> [09-Build-Log § ৩ক](09-Build-Log.md)।
 
 ### ৪.৩ Role permission
 
@@ -842,7 +911,7 @@ D:\oXeio\
 |---|---|
 | Agent ↔ Server | HTTPS (TLS), প্রতি ডিভাইসে আলাদা ২৫৬-বিট token, সার্ভারে শুধু hash জমা |
 | Enrollment | এককালীন enrollment code, ২৪ ঘণ্টায় expire, একবারই ব্যবহারযোগ্য |
-| Dashboard | argon2id (m=19 MiB · t=2 · p=1), httpOnly JWT cookie, ৩০ মিনিট idle logout, ঐচ্ছিক TOTP 2FA *(Phase 6)* |
+| Dashboard | argon2id (m=19 MiB · t=2 · p=1), httpOnly JWT cookie, ৩০ মিনিট idle logout, ঐচ্ছিক TOTP 2FA |
 
 ### ৭.১ Auth — বাস্তবায়নের বিস্তারিত *(Phase 1-এ তৈরি)*
 
@@ -855,7 +924,7 @@ D:\oXeio\
 | User enumeration | ইউজার নেই আর পাসওয়ার্ড ভুল — দুটোতেই একই বার্তা |
 | গার্ডের ক্রম | **JWT → CSRF → mustChangePw → role**, চারটিই গ্লোবাল। নতুন কন্ট্রোলার ডিফল্টে সুরক্ষিত; খোলা রাখতে `@Public()` লিখতে হয় |
 | `mustChangePw` | true থাকলে শুধু `/auth/me` · `/auth/logout` · `/auth/change-password` খোলা, বাকি সব 403 |
-| 2FA | `totp_secret` বসানো থাকলে লগইন **আটকে যায়** — যাচাইয়ের কোড Phase 6-এ। fail-closed, নইলে 2FA আছে ভেবে ভুল নিরাপত্তাবোধ তৈরি হতো |
+| 2FA (I06) | ঐচ্ছিক TOTP — `GET /auth/2fa` · `POST /auth/2fa/setup` `2fa/enable` `2fa/disable` `2fa/recovery-codes`। `totp_secret` বসানো থাকলে লগইন দুই ধাপ: প্রথম ধাপে **২০০, কিন্তু cookie নেই** (`{needsTotp: true}`) — ৪০১ নয়, কারণ এটা ব্যর্থতাই নয়, ধাপ ১; ৪০১ দিলে ওয়েবের গ্লোবাল "সেশন শেষ" হ্যান্ডলার চালু হতো। রিকভারি কোডও চলে (হ্যাশ করে জমা)। ⚠️ `mustChangePw` অবস্থায় 2FA বসানো যায় না — নইলে অস্থায়ী পাসওয়ার্ডটাই চিরকাল রয়ে যেত |
 | স্ক্রিনশট অ্যাক্সেস | signed URL (৫ মিনিট), প্রতিটা ভিউ `audit_log`-এ রেকর্ড |
 | ডেটাবেস | শুধু localhost-এ bind, আলাদা DB user, at-rest encryption (BitLocker) |
 | Retention | ৯০ দিন পর অটো-ডিলিট — জমতেই দেবে না |
@@ -869,7 +938,7 @@ D:\oXeio\
 oxeio-monitor/
 ├─ agent/                      # C# .NET 8
 │  ├─ oXeio.Agent/             # tray app — ট্র্যাকিং, স্ক্রিনশট, আপলোড
-│  ├─ oXeio.Watchdog/          # Windows Service
+│  ├─ oXeio.Watchdog/          # লগঅনের Scheduled Task — Windows Service নয় (§ ৩.৬)
 │  ├─ oXeio.Core/              # shared: Win32 API, models, queue
 │  └─ installer/               # WiX MSI
 ├─ server/                     # Node 22 + NestJS 11 + TypeScript
@@ -895,6 +964,10 @@ oxeio-monitor/
 │  └─ monitoring-policy-template.md   # স্টাফদের সই করার জন্য
 └─ README.md
 ```
+
+> ⚠️ উপরের ✅/⏳ চিহ্ন আর টেস্ট-সংখ্যাগুলো Phase 1-এর ছবি — ওগুলো এখানে আর
+> হালনাগাদ রাখা হয় না। কোডে আজ কোন মডিউল আছে, কী বাকি, আর কত টেস্ট চলছে:
+> [09-Build-Log](09-Build-Log.md)।
 
 ---
 

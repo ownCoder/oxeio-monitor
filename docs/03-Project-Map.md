@@ -9,7 +9,7 @@
 ```
 ┌─────────────────────────── CLIENT SIDE (১৫টি PC) ───────────────────────────┐
 │                                                                              │
-│  oXeio.Agent.exe (tray, user session)          oXeio.Watchdog.exe (service)  │
+│  oXeio.Agent.exe (tray, user session)       oXeio.Watchdog.exe (logon task)  │
 │  ┌────────────────────────────────────┐        ┌──────────────────────────┐  │
 │  │ TrackerEngine   — state machine    │        │ ProcessGuard  ৩০ সে. চেক │  │
 │  │ IdleMonitor     — GetLastInputInfo │◀──────▶│ AgentUpdater  MSI আপডেট  │  │
@@ -42,6 +42,11 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+> ⚠️ **watchdog কোনো Windows Service নয়।** `oXeio.Watchdog/Program.cs`-এ
+> `ServiceBase` নেই; ওটা `--install-task` দিয়ে বসানো একটা **লগঅন Scheduled Task**
+> (`Deployment/WatchdogTask.xml`-এ `<LogonTrigger>`)। কেন এই পার্থক্যটা গুরুত্বপূর্ণ —
+> [09-Build-Log](09-Build-Log.md)।
+
 ---
 
 ## ২. রেপো স্ট্রাকচার
@@ -68,9 +73,11 @@ oxeio-monitor/
 │   │   │   ├── Capture/EngineFallbackPolicy.cs ✅ কতবার ব্যর্থে কত বিরতি
 │   │   │   ├── Apps/AppUsageTracker.cs    ✅ ⭐ D01–D04-এর চারটে নিয়ম
 │   │   │   ├── Apps/DomainParser.cs       ✅ ফুল URL → শুধু ডোমেইন (ADR-013)
-│   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ১৬টা ফাইল
+│   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ২০টা ফাইল
 │   │   │   │   #  IOutboxStore · ISyncClient · SyncOutcome · RetryPolicy
 │   │   │   │   #  OutboxBudget · BatchNarrowing · SyncHealthPolicy · AgentStatus
+│   │   │   │   #  ConfigChange ⭐ দুই কনফিগের **পার্থক্য** — যা বদলায়নি তাতে
+│   │   │   │   #    হাত না পড়ে (নইলে Settings-এ save চাপলেই সবার সেগমেন্ট কাটা)
 │   │   │   ├── Watchdog/                   ✅ RestartLadder · WatchdogPolicy · AgentHeartbeat
 │   │   │   └── Models/                     ✅ SegmentState, ActivitySegment
 │   │   │   # ⚠️ Native/ ইচ্ছাকৃতভাবে এখানে **নয়** — Win32 ঢুকলে নিয়মগুলো
@@ -107,6 +114,11 @@ oxeio-monitor/
 │   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWorker · SyncWire
 │   │   │   ├── Security/                   ✅ MachineIdentity · DPAPI টোকেন · enrollment
 │   │   │   ├── Ui/                         ✅ TrayIcon · TodayForm · AboutForm (J07)
+│   │   │   │   #  TrayTheme  — Midnight রং, web/src/index.css-এর টোকেনের জোড়া।
+│   │   │   │   #    ⚠️ হাতে লেখা ধ্রুবক — CSS এজেন্টের বিল্ডে আসে না
+│   │   │   │   #  WebpImage — WebP → Bitmap। GDI+ WebP **চেনে না**, তাই ডিকোডও
+│   │   │   │   #    SkiaSharp দিয়ে (এনকোডার আগে থেকেই ওটা ব্যবহার করে)
+│   │   │   │   #  ⚙️ --preview-today [loading|failing|met] — জানালা দেখার টুল
 │   │   │   └── Apps/                       ✅ ForegroundWindowProbe · BrowserUrlReader
 │   │   │       #  AppUsageService — উইন্ডো বদলালে তবেই address bar পড়ে
 │   │   │
@@ -117,8 +129,8 @@ oxeio-monitor/
 │   ├── installer/                          ✅ WiX → oXeioAgent.msi (৬২ MB)
 │   │   ├── Package.wxs                     ✅ সাইলেন্ট ইনস্টল · রেজিস্ট্রি কনফিগ · টাস্ক
 │   │   └── build.ps1                       ✅ publish → wix build
-│   ├── tests/oXeio.Core.Tests/             ✅ ২২৬টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ৯টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   ├── tests/oXeio.Core.Tests/             ✅ ২৭৪টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ৬৯টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -158,24 +170,28 @@ oxeio-monitor/
 │   │   │   ├── payroll.math.ts             #   খাঁটি হিসাব, সব পয়সায়
 │   │   │   ├── payroll.service.ts          #   monthly_salary পড়ে **শুধু এখানেই**
 │   │   │   └── payroll.controller.ts       #   @Roles(owner) ক্লাস-লেভেলে
-│   │   ├── employees/  devices/            ⏳ CRUD
-│   │   ├── screenshots/                    ⏳ গ্যালারি, থাম্বনেইল, signed URL
-│   │   ├── timeline/                       ⏳ segment → টাইমলাইন
-│   │   ├── monthly/                        ⏳ ⭐ মাসিক ২০৮ঘ, pace, shortfall, OT
-│   │   ├── adjustments/                    ⏳ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
-│   │   ├── reports/  alerts/  admin/       ⏳
-│   │   └── jobs/                           ⏳ cron
-│   │       ├── summary.job.ts              #   প্রতি ১৫ মি.
-│   │       ├── day-close.job.ts            #   ০০:১৫ (আগের দিন)
-│   │       ├── retention.job.ts            #   ০২:০০
-│   │       ├── backup.job.ts               #   ০২:৩০
-│   │       └── health.job.ts               #   ডিস্ক, এজেন্ট চুপ
+│   │   └── adjustments/                    ⏳ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
+│   │       #  একমাত্র সত্যিই বাকি মডিউল: `time_adjustments` টেবিল আছে, পড়েও
+│   │       #  দুই জায়গায় (progress · summary) — **লেখার পথ কোথাও নেই** (G35/B14)
+│   │   # ⚠️ পরিকল্পনার employees/ devices/ timeline/ monthly/ jobs/ আলাদা মডিউল
+│   │   #    হয়নি; কাজটা উপরের ✅ মডিউলগুলোর ভেতরে — স্টাফ ও ডিভাইস admin/-এ ·
+│   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
+│   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৬১টি টেস্ট (৫২ e2e + ৯ ইউনিট)
-│       ├── auth.e2e.spec.ts  agent.e2e.spec.ts
+│   └── test/                               ✅ Vitest + supertest — ৫৮৭টি টেস্ট, ২৪টি ফাইল
+│       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
+│       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts
 │
 ├── web/                                    # ── React 19 + Vite + Tailwind v4 ──
+│   ├── Dockerfile                          ✅ node build → Caddy। ⚠️ এটা না থাকায়
+│   │                                          ড্যাশবোর্ড চালানোর একমাত্র পথ ছিল হাতে
+│   │                                          `npm run dev` — রিবুট হলেই পাতা উধাও
+│   ├── Caddyfile                           ✅ ⭐ /api/* → `api:3000`, বাকি সব SPA fallback।
+│   │                                          ব্রাউজারের চোখে **একটাই origin**, তাই
+│   │                                          CORS-এর প্রশ্নই ওঠে না (cookie SameSite=Strict)
+│   ├── .dockerignore                       ✅ ⚠️ হোস্টের (Windows) node_modules ইমেজে গেলে
+│   │                                          alpine-এ ভুল প্ল্যাটফর্মের esbuild নিয়ে ভাঙত
 │   └── src/
 │       ├── api/client.ts                   ✅ cookie · CSRF হেডার · গ্লোবাল 401
 │       ├── api/{dashboard,activity,screenshots,reports,admin,alerts}.ts
@@ -199,12 +215,22 @@ oxeio-monitor/
 │       └── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
 │
-├── docs/                                   # ← এই ডকুমেন্টগুলো
-│   └── monitoring-policy-template.md       # স্টাফের সই করার পলিসি
-├── ops/
-│   ├── docker-compose.yml  Caddyfile
-│   ├── av-exclusion.ps1                    # AV exception স্ক্রিপ্ট
-│   └── deploy-agent.ps1                    # সাইলেন্ট MSI ডিপ্লয়
+├── (রেপো রুটে) docs/                       # ← এই ডকুমেন্টগুলো — oxeio-monitor-এর **বাইরে**
+│   ├── monitoring-policy-template.md       # স্টাফের সই করার পলিসি
+│   └── mockup/                             # dashboard-mockup.html · tray-today-mockup.html
+├── docker-compose.yml                      ✅ চারটে সার্ভিস: postgres · api · web · migrate
+│   #  api-তে healthcheck (`/api/v1/health` + db:up); web তার উপর নির্ভর করে
+│   #  ⚠️ **migrate একটা one-shot সার্ভিস**, `profiles: [setup]`-এ — `up -d`-তে চলে না:
+│   #       docker compose --profile setup run --rm migrate
+│   #     ইচ্ছাকৃত (মাইগ্রেশন সচেতন ধাপ), কিন্তু এই ধাপটা **রানবুকে ছিলই না**,
+│   #     ফলে `up -d` করলে ডাটাবেসে একটাও টেবিল বসত না
+│   #  ⚠️ prisma/ হোস্ট থেকে read-only mount — `staff.local.json`-এ নাম ও বেতন
+├── .env.example                            ✅ সার্ভার যত চলক পড়ে সবগুলো — পুরো SMTP
+│                                              সেট ও ALERT_EMAIL_TO আগে বাদ ছিল
+├── deploy/
+│   ├── README.md                           # রোলআউট নির্দেশিকা — সার্ট · TLS · ফায়ারওয়াল · পিনিং
+│   ├── make-cert.ps1                       # self-signed সার্ট + পিন (certs/)
+│   └── defender-exclusions.ps1             # AV exception স্ক্রিপ্ট
 └── (রেপো রুটে) .github/workflows/ci.yml   ✅ server · web · docker — তিনটি job
 ```
 
@@ -269,6 +295,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | ফিচার | Agent | Server | Web |
 |---|---|---|---|
 | র‍্যান্ডম স্ক্রিনশট | `SlotScheduler` `ScreenCapturer` | `agent/screenshot-ingest` ✅ → `screenshots/` ⏳ | `Gallery.tsx` |
+| **A07** ছবির সাথে অ্যাপ ও টাইটেল | `AgentHost.CaptureSlotAsync` → `_apps?.Current` ✅ ⭐ Win32-কে **নতুন করে জিজ্ঞেস করা হয় না** — app-usage টিক যা শেষবার পড়েছে সেটাই, নইলে ছবির নাম আর `app_usage`-এর সারি আলাদা হতে পারত। ⚠️ অ্যাপ ট্র্যাকিং বন্ধ থাকলে `_apps`-ই তৈরি হয় না, তাই ঘর দুটো খালি | `screenshot-ingest` ✅ | `GalleryPage` · `DayShots` |
 | Idle/Active টাইম | `IdleMonitor` `SegmentBuilder` | `agent/ingest.service` ✅ | `TimelineBar.tsx` |
 | মধ্যরাতে দিন বদল | `SegmentBuilder` | `agent/util/dhaka-time` ✅ | — |
 | Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
@@ -282,6 +309,15 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | Retention | — | `retention.job` | `Settings.tsx` |
 | স্টাফের নিজস্ব ভিউ | `MyDayWindow` | role=employee | `MyData.tsx` |
 | **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` | `EmployeeDetail.tsx` + `MyData.tsx` |
+| **কনফিগ পৌঁছানো** (E09/K07) | `ConfigChange` · `AgentHost.ReloadConfigAsync`/`ApplyConfig` ✅ | `agent-config.service` · `agent.controller` (`reload_config`) ✅ | `settings/PoliciesTab.tsx` ✅ |
+
+⭐ **কনফিগ-লুপে দুটো সিদ্ধান্ত**, দুটোই আলাদা করে লেখার মতো —
+১· কনফিগ **আনা** হয় দুটো কারণে: সার্ভার স্পষ্ট করে `reload_config` বললে,
+**অথবা** heartbeat-এর `configVersion` নিজেরটার সাথে না মিললে। শুধু কমান্ডের
+উপর নির্ভর করলে রিবুটের পর এজেন্ট চিরকাল পুরোনো কনফিগে চলত।
+২· ⚠️ **প্রয়োগ হয় `TrackLoop`-এ, heartbeat থ্রেডে নয়** — ট্র্যাকিংয়ের
+অবজেক্টগুলো ওই থ্রেডের। বাইরে থেকে ছুঁলে এক সেকেন্ডের হিসাব দুই কনফিগে
+ভাগ হয়ে যেত। তাই আনা কনফিগ `_pendingConfig`-এ অপেক্ষা করে।
 
 ---
 
@@ -306,10 +342,10 @@ settings (key-value)   ·   agent_versions   ·   alerts
 |---|---|
 | `.NET 8` (self-contained) | স্টাফের PC-তে রানটাইম ইনস্টল করতে হবে না |
 | ~~`SharpDX.DXGI`~~ | ❌ **লাগেনি** — SharpDX ২০১৯ থেকে পরিত্যক্ত। DXGI/D3D11-এর যে নয়টা মেথড দরকার, সেগুলো `Native/{ComCall,D3D11,Dxgi}.cs`-এ হাতে লেখা, শূন্য নির্ভরতা |
-| `SixLabors.ImageSharp` | WebP এনকোডিং + রিসাইজ |
+| ~~`SixLabors.ImageSharp`~~ | ❌ **বদলে `SkiaSharp`** (+ `.NativeAssets.Win32`) — ImageSharp v4+ বাণিজ্যিক ব্যবহারে লাইসেন্স চায় (`Capture/WebpEncoder.cs` § ১১)। এনকোড **ও** ডিকোড দুটোই ওকে দিয়ে — GDI+ WebP চেনে না, তাই `Ui/WebpImage.cs`-ও এটাই ব্যবহার করে |
 | `Microsoft.Data.Sqlite` | লোকাল queue |
 | ~~`Polly`~~ | ❌ **লাগেনি** — `Core/Agent/RetryPolicy.cs` খাঁটি ফাংশন হিসেবে backoff দেয়, তাই শিডিউলার ছাড়াই ইউনিট টেস্ট করা যায় |
-| `Serilog` | লগ |
+| ~~`Serilog`~~ | ❌ **লাগেনি** — কোনো csproj-এ নেই। যা আছে তা হাতে লেখা: watchdog-এর `Platform/RollingLog.cs` (ফাইলে লেখে), এজেন্টের `Sync/ISyncLog.cs` (একমাত্র বাস্তবায়ন `ConsoleSyncLog` — শুধু কনসোল) ও `Storage/DropLog.cs`। ⚠️ ফলে এজেন্টের **সাধারণ কোনো লগ ফাইল নেই** (H08) — ডিস্কে যায় শুধু `DropLog`-এর `outbox-drops.log`, অর্থাৎ আউটবক্স থেকে কী বাদ পড়ল সেটুকু। [09-Build-Log](09-Build-Log.md) § ৩ক |
 | `WiX Toolset v4` | MSI ইনস্টলার |
 
 ### Server (Node)
@@ -333,8 +369,8 @@ settings (key-value)   ·   agent_versions   ·   alerts
 
 | জিনিস | মান |
 |---|---|
-| API | `https://192.168.0.50:8443` · লোকাল ডেভে `http://localhost:3000/api/v1` |
-| Web | একই origin (`/`), API `/api/v1` |
+| API | compose-এ `3000:3000` → `http://<server-ip>:3000/api/v1`। TLS চালু করলে ম্যাপিং হয় `443:3000` (`deploy/README` § ৪) |
+| Web | `${WEB_PORT:-8080}` → `http://<server-ip>:8080/`। ⭐ API একই origin-এ (`/api/v1`) — Caddy প্রক্সি করে, তাই আলাদা পোর্ট ব্রাউজারকে দেখতে হয় না |
 | Postgres | `localhost:5432` (শুধু ভেতরে) |
 | এজেন্ট ডেটা | `%ProgramData%\oXeio\` |
 | স্ক্রিনশট | `D:\oXeio\storage\screenshots\YYYY\MM\DD\emp-XXX\` |

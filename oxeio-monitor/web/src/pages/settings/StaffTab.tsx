@@ -1,12 +1,14 @@
 import { useState } from 'react';
 
 import {
+  clearPolicySigned,
   createEmployee,
   createPortalAccount,
   deactivateEmployee,
   listEmployees,
   listWorkPolicies,
   reactivateEmployee,
+  setPolicySigned,
   updateEmployee,
   type CreateEmployeeBody,
   type EmployeeStatus,
@@ -96,6 +98,7 @@ export function StaffTab() {
   const [deactivating, setDeactivating] = useState<EmployeeView | null>(null);
   const [reactivating, setReactivating] = useState<EmployeeView | null>(null);
   const [portalFor, setPortalFor] = useState<EmployeeView | null>(null);
+  const [signingFor, setSigningFor] = useState<EmployeeView | null>(null);
   const [tempPassword, setTempPassword] = useState<{
     email: string;
     password: string;
@@ -147,6 +150,25 @@ export function StaffTab() {
           },
         ]
       : []),
+    /**
+     * ⭐ **রোলআউটের একমাত্র শর্ত** — সই ছাড়া কারো PC-তে এজেন্ট বসবে না
+     * ([01 § রোলআউট](../../../../docs/01-Planning.md))।
+     *
+     * ⚠️ কলামটা তালিকার ভেতরে রাখা হয়েছে, কোনো আলাদা পাতায় নয়: রোলআউটের
+     * দিনে প্রশ্নটা হয় "এর সই আছে তো?", আর উত্তরটা ওই সারিতেই থাকা দরকার।
+     * ⚠️ "নেই" অবস্থাটা **আম্বার**, লাল নয় — এটা সিস্টেমের ব্যর্থতা নয়,
+     * একটা বাকি থাকা কাজ।
+     */
+    {
+      key: 'policySigned',
+      header: 'Policy signed',
+      render: (emp) =>
+        emp.policySignedAt ? (
+          <span className="num">{formatDate(emp.policySignedAt)}</span>
+        ) : (
+          <Chip tone="pending">Not signed</Chip>
+        ),
+    },
     {
       key: 'status',
       header: 'Status',
@@ -171,6 +193,12 @@ export function StaffTab() {
                 title="Gives them a login to see their own hours"
               >
                 Portal account
+              </MiniButton>
+              <MiniButton
+                onClick={() => setSigningFor(emp)}
+                title="Record the signed monitoring policy — required before the agent goes on their PC"
+              >
+                {emp.policySignedAt ? 'Signature' : 'Record signature'}
               </MiniButton>
               <MiniButton tone="danger" onClick={() => setDeactivating(emp)}>
                 Deactivate
@@ -304,6 +332,17 @@ export function StaffTab() {
           onClose={() => setReactivating(null)}
           onDone={() => {
             setReactivating(null);
+            staff.reload();
+          }}
+        />
+      )}
+
+      {signingFor && (
+        <PolicySignedDialog
+          employee={signingFor}
+          onClose={() => setSigningFor(null)}
+          onDone={() => {
+            setSigningFor(null);
             staff.reload();
           }}
         />
@@ -565,6 +604,101 @@ function EmployeeForm({
 }
 
 // ── নিষ্ক্রিয় ও পুনরায় চালু ─────────────────────────────────────────────────
+
+/**
+ * ⭐ সই করা মনিটরিং পলিসি — **রোলআউটের একমাত্র শর্ত**
+ * ([01 § রোলআউট](../../../../docs/01-Planning.md))।
+ *
+ * ⚠️ এখানে কোনো ফাইল আপলোড নেই, শুধু তারিখ। টেমপ্লেটটা "স্ক্যান করে
+ * আপলোড" বলে, কিন্তু সেই পথটা এখনো তৈরি হয়নি — তাই পর্দায় সেটার
+ * প্রতিশ্রুতিও দেওয়া হয়নি। কাগজটা কোথায় আছে সেটা মালিকের নিজের ব্যবস্থা।
+ */
+function PolicySignedDialog({
+  employee,
+  onClose,
+  onDone,
+}: {
+  employee: EmployeeView;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { busy, error, run } = useMutation();
+
+  const already = employee.policySignedAt
+    ? employee.policySignedAt.slice(0, 10)
+    : null;
+
+  const [signedOn, setSignedOn] = useState(already ?? todayInDhaka());
+
+  return (
+    <Modal
+      title={`Monitoring policy — ${employee.fullName}`}
+      onClose={onClose}
+      footer={
+        <div className="flex items-center justify-between gap-2">
+          {/*
+            ⚠️ "তুলে নেওয়া" বাটনটা বাঁয়ে, আর শুধু সই থাকলে — ডানে
+               সেভের পাশে বসালে ভুল করে চাপার ঝুঁকি ছিল।
+          */}
+          {already ? (
+            <Button
+              tone="danger"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  await clearPolicySigned(employee.id);
+                  onDone();
+                })
+              }
+            >
+              Remove signature
+            </Button>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex gap-2">
+            <Button onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              tone="primary"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  await setPolicySigned(employee.id, signedOn);
+                  onDone();
+                })
+              }
+            >
+              {already ? 'Update date' : 'Record signature'}
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-3">
+        <Notice tone="info">
+          Record this only after they have read the policy and signed the paper
+          copy. Until it is recorded, the agent should not go on their PC.
+        </Notice>
+
+        <div className="max-w-xs">
+          <TextField
+            label="Signed on"
+            type="date"
+            value={signedOn}
+            onChange={setSignedOn}
+            max={todayInDhaka()}
+            hint="The date on the paper, which is often earlier than today"
+          />
+        </div>
+
+        <ServerError error={error} />
+      </div>
+    </Modal>
+  );
+}
 
 function DeactivateDialog({
   employee,

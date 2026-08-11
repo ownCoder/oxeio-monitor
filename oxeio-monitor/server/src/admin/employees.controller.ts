@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   HttpCode,
   HttpStatus,
   Ip,
@@ -16,6 +17,7 @@ import type { SessionUser } from '../auth/types';
 import {
   CreateEmployeeDto,
   DeactivateEmployeeDto,
+  PolicySignedDto,
   UpdateEmployeeDto,
 } from './dto';
 import { EmployeesService } from './employees.service';
@@ -30,7 +32,9 @@ import type { EmployeeView } from './redact';
  * `employees-read.controller.ts`-এ, কারণ ম্যানেজারেরও তালিকা দেখা লাগে।
  * এই ফাইলে `@Get` লিখলে ম্যানেজার স্টাফের নামও দেখতে পেত না।
  *
- * ⚠️ কোনো `@Delete` নেই — ইচ্ছাকৃত, নিচে `deactivate` দেখুন।
+ * ⚠️ **কর্মী মোছার** কোনো `@Delete` নেই — ইচ্ছাকৃত, নিচে `deactivate` দেখুন।
+ *    একমাত্র `DELETE` রুটটা `policy-signed`-এর, আর সেটা কর্মীর সারি নয়,
+ *    শুধু একটা ভুল করে বসানো তারিখ তোলে।
  */
 @Roles(UserRole.owner)
 @Controller('employees')
@@ -86,5 +90,41 @@ export class EmployeesController {
     @Ip() ip: string,
   ): Promise<EmployeeView> {
     return this.employees.reactivate(actor, id, ip);
+  }
+
+  /**
+   * ⭐ `POST /api/v1/employees/:id/policy-signed` — সই করা মনিটরিং পলিসি।
+   *
+   * বডি ঐচ্ছিক: `{ "signedOn": "2026-08-03" }`। না দিলে আজকের ঢাকার তারিখ।
+   *
+   * ⚠️ এটাই রোলআউটের একমাত্র শর্ত রেকর্ড করার জায়গা
+   * ([01 § রোলআউট](../../../docs/01-Planning.md))। এতদিন কলামটা ছিল, পড়াও
+   * হতো — শুধু বসানোর কোনো পথ ছিল না।
+   */
+  @Post(':id/policy-signed')
+  @HttpCode(HttpStatus.OK)
+  policySigned(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: PolicySignedDto,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.setPolicySigned(actor, id, dto.signedOn, ip);
+  }
+
+  /**
+   * `DELETE /api/v1/employees/:id/policy-signed` — ভুল করে বসানো সই তোলা।
+   *
+   * ⚠️ কর্মীর সারি মোছে না, শুধু তারিখটা শূন্য করে — আর ঘটনাটা audit-এ
+   * আলাদা action হয়ে বসে।
+   */
+  @Delete(':id/policy-signed')
+  @HttpCode(HttpStatus.OK)
+  clearPolicySigned(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
+  ): Promise<EmployeeView> {
+    return this.employees.clearPolicySigned(actor, id, ip);
   }
 }
