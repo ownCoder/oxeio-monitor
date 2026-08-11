@@ -109,7 +109,7 @@ export class AlertDispatcher {
    */
   private async markLogged(pending: PendingAlert[]): Promise<number> {
     for (const a of pending) {
-      this.logger.warn(`[অ্যালার্ট] ${lineFor(a)}`);
+      this.logger.warn(`[Alert] ${lineFor(a)}`);
     }
     await this.markSent(pending, 'log');
     return pending.length;
@@ -144,7 +144,7 @@ export class AlertDispatcher {
     if (exhausted.length === 0) return 0;
 
     for (const a of exhausted) {
-      this.logger.error(`[অ্যালার্ট · ইমেইল যায়নি] ${lineFor(a)}`);
+      this.logger.error(`[Alert · email failed] ${lineFor(a)}`);
       this.attempts.delete(a.id.toString());
     }
     await this.markSent(exhausted, 'email_failed');
@@ -178,17 +178,17 @@ function subjectFor(pending: PendingAlert[]): string {
 
   return pending.length === 1
     ? `[oXeio · ${severityLabel(worst)}] ${pending[0].title}`
-    : `[oXeio · ${severityLabel(worst)}] ${pending.length}টি নতুন অ্যালার্ট`;
+    : `[oXeio · ${severityLabel(worst)}] ${pending.length} new alerts`;
 }
 
 function bodyFor(pending: PendingAlert[]): string {
   const lines = pending.map((a) => `• ${lineFor(a)}`);
   return [
-    'oXeio মনিটরিং সার্ভার থেকে:',
+    'From the oXeio monitoring server:',
     '',
     ...lines,
     '',
-    'ড্যাশবোর্ডের Alerts পাতায় গিয়ে acknowledge করলে এগুলো তালিকা থেকে সরে যাবে।',
+    'Acknowledge these on the dashboard Alerts page to clear them from the list.',
   ].join('\n');
 }
 

@@ -131,13 +131,13 @@ internal sealed class EnrollmentClient
         SecretText enrollmentCode, int? monitors = null, CancellationToken ct = default)
     {
         if (_credentials.IsRevoked)
-            return new EnrollmentResult(EnrollmentStatus.Revoked, "এই ডিভাইস বাতিল করা হয়েছে।");
+            return new EnrollmentResult(EnrollmentStatus.Revoked, "This device has been revoked.");
 
         if (_credentials.IsEnrolled)
         {
             return new EnrollmentResult(
                 EnrollmentStatus.AlreadyEnrolled,
-                "আগেই enroll করা আছে — " + _credentials.Describe(),
+                "Already enrolled — " + _credentials.Describe(),
                 _credentials.DeviceId,
                 _credentials.Employee?.EmpCode);
         }
@@ -150,7 +150,7 @@ internal sealed class EnrollmentClient
         {
             return new EnrollmentResult(
                 EnrollmentStatus.StorageFailed,
-                $"টোকেন রাখার জায়গা লেখা যাচ্ছে না, তাই enrollment কোডটা খরচ করা হয়নি — {storageError}");
+                $"The token store is not writable, so the enrolment code was not spent — {storageError}");
         }
 
         var identity = _credentials.Identity;
@@ -158,14 +158,14 @@ internal sealed class EnrollmentClient
         {
             return new EnrollmentResult(
                 EnrollmentStatus.IdentityUnusable,
-                identity.Warning ?? "স্থায়ী machineGuid বানানো যায়নি।");
+                identity.Warning ?? "A stable machineGuid could not be created.");
         }
 
         if (enrollmentCode.IsBlank)
         {
             // নেটওয়ার্কে যাওয়ার দরকারই নেই — সার্ভার এটাকে ৪০০ দিত আর
             // rate limit-এর কাউন্টার অকারণে বাড়ত।
-            return new EnrollmentResult(EnrollmentStatus.CodeRejected, "enrollment code খালি।");
+            return new EnrollmentResult(EnrollmentStatus.CodeRejected, "The enrolment code is empty.");
         }
 
         var request = new EnrollRequest
@@ -182,7 +182,7 @@ internal sealed class EnrollmentClient
         };
 
         // ⚠️ কোডটা লগে যায় না — SecretText.ToString() শুধু fingerprint ছাপে।
-        _log?.Invoke($"enroll চেষ্টা: code={enrollmentCode} · {identity.Describe()}");
+        _log?.Invoke($"Enrolment attempt: code={enrollmentCode} · {identity.Describe()}");
 
         var response = await _sync.EnrollAsync(request, ct).ConfigureAwait(false);
 
@@ -196,29 +196,29 @@ internal sealed class EnrollmentClient
                 // তাই রিট্রাইযোগ্য ধরা হচ্ছে।
                 return new EnrollmentResult(
                     EnrollmentStatus.ServerUnreachable,
-                    "সার্ভার সফল বলল কিন্তু enroll-এর বডি খালি (proxy?)। পরে আবার চেষ্টা হবে।",
+                    "The server said success but the enrol body was empty (proxy?). It will be retried later.",
                     HttpStatus: response.StatusCode);
 
             case SyncOutcome.Revoked:
-                _credentials.Revoke(response.Detail ?? "সার্ভার enroll-এ revoke বলেছে");
+                _credentials.Revoke(response.Detail ?? "The server said revoked during enrolment");
                 return new EnrollmentResult(
                     EnrollmentStatus.Revoked,
-                    "এই ডিভাইস বাতিল করা হয়েছে — " + (response.Detail ?? "কারণ জানা যায়নি"),
+                    "This device has been revoked — " + (response.Detail ?? "reason unknown"),
                     HttpStatus: response.StatusCode);
 
             case SyncOutcome.Permanent:
                 return new EnrollmentResult(
                     EnrollmentStatus.CodeRejected,
-                    "সার্ভার কোডটা নেয়নি (ব্যবহার হয়ে গেছে, মেয়াদ শেষ, বা ভুল): " +
-                    (response.Detail ?? "কারণ জানা যায়নি") +
-                    "। অ্যাডমিনের কাছ থেকে নতুন enrollment code নিন।",
+                    "The server did not accept the code (already used, invalid or expired): " +
+                    (response.Detail ?? "reason unknown") +
+                    ". Get a new enrolment code from the admin.",
                     HttpStatus: response.StatusCode);
 
             default:
                 return new EnrollmentResult(
                     EnrollmentStatus.ServerUnreachable,
-                    "সার্ভারে পৌঁছানো গেল না: " + (response.Detail ?? "কারণ জানা যায়নি") +
-                    "। এজেন্ট চলতে থাকবে, লাইন ফিরলে নিজে থেকেই enroll করবে।",
+                    "Could not reach the server: " + (response.Detail ?? "reason unknown") +
+                    ". The agent keeps running and will enrol by itself once the line is back.",
                     HttpStatus: response.StatusCode);
         }
     }
@@ -253,13 +253,13 @@ internal sealed class EnrollmentClient
                 return result with
                 {
                     Message = result.Message +
-                              $" — {limit.TotalHours:F0} ঘণ্টা ধরে {attempt} বার চেষ্টা করেও হয়নি; " +
-                              "কোডের মেয়াদ সম্ভবত শেষ। নতুন কোড দিয়ে আবার চালান।",
+                              $" — {attempt} attempts over {limit.TotalHours:F0} hours and still no luck; " +
+                              "the code has probably expired. Run again with a new code.",
                 };
             }
 
             var delay = Policy.DelayFor(attempt, Random.Shared.NextDouble());
-            _log?.Invoke($"enroll আবার চেষ্টা হবে {delay.TotalSeconds:F0}s পরে (চেষ্টা {attempt})");
+            _log?.Invoke($"Enrolment will be retried in {delay.TotalSeconds:F0}s (attempt {attempt})");
 
             try
             {
@@ -296,9 +296,9 @@ internal sealed class EnrollmentClient
         {
             return new EnrollmentResult(
                 EnrollmentStatus.StorageFailed,
-                "❌ সার্ভার টোকেন দিয়েছে কিন্তু ডিস্কে লেখা গেল না: " + saved.Detail +
-                "। টোকেন একবারই আসে, তাই এটা আর ফেরানো যাবে না — " +
-                $"{_store.FilePath} লেখার অনুমতি ঠিক করে নতুন enrollment code দিয়ে আবার চালান।",
+                "❌ The server issued a token but it could not be written to disk: " + saved.Detail +
+                ". The token is issued only once, so it cannot be recovered — " +
+                $"fix the write permissions on {_store.FilePath} and run again with a new enrolment code.",
                 body.DeviceId,
                 body.Employee.EmpCode);
         }
@@ -307,7 +307,7 @@ internal sealed class EnrollmentClient
 
         return new EnrollmentResult(
             EnrollmentStatus.Enrolled,
-            $"enroll সফল — device #{body.DeviceId}, {body.Employee.EmpCode} ({body.Employee.FullName})",
+            $"Enrolment succeeded — device #{body.DeviceId}, {body.Employee.EmpCode} ({body.Employee.FullName})",
             body.DeviceId,
             body.Employee.EmpCode,
             201);

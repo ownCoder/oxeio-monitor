@@ -73,16 +73,16 @@ export class AgentDownCheck {
           severity: 'warning' as const,
           deviceId: d.id,
           employeeId: d.employeeId,
-          title: `এজেন্ট চুপ — ${d.hostname}`,
+          title: `Agent silent — ${d.hostname}`,
           detail:
             `${d.hostname}${d.employee ? ` (${d.employee.fullName})` : ''} ` +
-            `গত ${minutes} মিনিট ধরে কিছু পাঠায়নি, অথচ বন্ধ করার কোনো ইভেন্টও আসেনি। ` +
-            'PC চালু আছে কি না, নেটওয়ার্ক ঠিক আছে কি না, আর এজেন্ট চলছে কি না দেখুন।',
+            `has sent nothing for ${minutes} minutes, and no shutdown event arrived either. ` +
+            'Check whether the PC is on, the network is working, and the agent is running.',
           meta: { silentMinutes: minutes, hostname: d.hostname },
         };
       });
 
-    this.logger.warn(`${inputs.length}টি ডিভাইস ব্যাখ্যাহীনভাবে চুপ`);
+    this.logger.warn(`${inputs.length} devices silent with no explanation`);
     return this.alerts.raiseMany(inputs, now);
   }
 

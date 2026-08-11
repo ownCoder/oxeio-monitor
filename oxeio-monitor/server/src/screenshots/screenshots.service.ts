@@ -171,15 +171,15 @@ export class ScreenshotsService {
     token: string,
   ): Promise<ResolvedScreenshotFile> {
     if (!/^\d{1,19}$/.test(idParam)) {
-      throw new BadRequestException('স্ক্রিনশট আইডি সংখ্যা হতে হবে');
+      throw new BadRequestException('Screenshot id must be a number');
     }
 
     const result = this.urls.verify(token);
     if (!result.ok) {
       throw new ForbiddenException(
         result.reason === 'expired'
-          ? 'লিঙ্কের মেয়াদ শেষ (৫ মিনিট) — গ্যালারি রিফ্রেশ করুন'
-          : 'লিঙ্কটি বৈধ নয়',
+          ? 'This link has expired (5 minutes) — refresh the gallery'
+          : 'This link is invalid',
       );
     }
 
@@ -188,7 +188,7 @@ export class ScreenshotsService {
     //    যেত — সইটা তখনো "বৈধ" বলত, কারণ সই তো টোকেনের, পথের নয়।
     const { screenshotId, variant, viewerUserId } = result.claims;
     if (screenshotId !== BigInt(idParam)) {
-      throw new ForbiddenException('টোকেনটি এই স্ক্রিনশটের জন্য নয়');
+      throw new ForbiddenException('This token is not for this screenshot');
     }
 
     const shot = await this.prisma.screenshot.findFirst({
@@ -196,7 +196,7 @@ export class ScreenshotsService {
       select: { id: true, filePath: true, thumbPath: true, employeeId: true },
     });
     if (!shot)
-      throw new NotFoundException('স্ক্রিনশটটি নেই বা মুছে ফেলা হয়েছে');
+      throw new NotFoundException('Screenshot does not exist or has been deleted');
 
     /**
      * A06 — ⭐ থাম্বনেইল **সবসময় ঐচ্ছিক**, দুই স্তরেই:
@@ -221,13 +221,13 @@ export class ScreenshotsService {
 
     if (found === null && wantsThumb) {
       this.logger.warn(
-        `স্ক্রিনশট ${shot.id.toString()}: থাম্বনেইল নেই (${relPath}) — ফুল ছবি পাঠানো হলো`,
+        `screenshot ${shot.id.toString()}: no thumbnail (${relPath}) — served the full image`,
       );
       const full = await this.statInsideRoot(shot.id, shot.filePath);
-      if (full === null) throw new NotFoundException('ছবির ফাইলটি পাওয়া যায়নি');
+      if (full === null) throw new NotFoundException('Image file not found');
 
       this.logger.debug(
-        `স্ক্রিনশট ${shot.id.toString()} (thumb→full) সার্ভ হলো, টোকেন বানিয়েছিল user ${viewerUserId}`,
+        `screenshot ${shot.id.toString()} (thumb→full) served, token was created by user ${viewerUserId}`,
       );
       return {
         absPath: full.absPath,
@@ -237,13 +237,13 @@ export class ScreenshotsService {
     }
 
     if (found === null) {
-      throw new NotFoundException('ছবির ফাইলটি পাওয়া যায়নি');
+      throw new NotFoundException('Image file not found');
     }
 
     const { absPath, sizeBytes } = found;
 
     this.logger.debug(
-      `স্ক্রিনশট ${shot.id.toString()} (${variant}) সার্ভ হলো, টোকেন বানিয়েছিল user ${viewerUserId}`,
+      `screenshot ${shot.id.toString()} (${variant}) served, token was created by user ${viewerUserId}`,
     );
 
     return {
@@ -277,20 +277,20 @@ export class ScreenshotsService {
     //    ফাইল সার্ভ হয়ে যেত।
     if (absPath !== this.root && !absPath.startsWith(this.root + sep)) {
       this.logger.error(
-        `স্ক্রিনশট ${id.toString()}-এর পথ storage-এর বাইরে: ${relPath}`,
+        `screenshot ${id.toString()}: path is outside storage: ${relPath}`,
       );
-      throw new NotFoundException('স্ক্রিনশটটি নেই');
+      throw new NotFoundException('Screenshot does not exist');
     }
 
     try {
       const info = await stat(absPath);
-      if (!info.isFile()) throw new Error('ফাইল নয়');
+      if (!info.isFile()) throw new Error('not a file');
       return { absPath, sizeBytes: info.size };
     } catch {
       // ingest আগে DB-তে লেখে, পরে ডিস্কে — মাঝখানে ক্র্যাশ হলে সারি থাকে,
       // ফাইল থাকে না। ৫০০ নয়, এটা সত্যিই "নেই"।
       this.logger.warn(
-        `স্ক্রিনশট ${id.toString()}: DB-তে সারি আছে, ডিস্কে ফাইল নেই (${relPath})`,
+        `screenshot ${id.toString()}: row exists in the DB, but no file on disk (${relPath})`,
       );
       return null;
     }
@@ -303,7 +303,7 @@ export class ScreenshotsService {
       return workDateOf(new Date());
     }
     const parsed = parseWorkDate(iso);
-    if (!parsed) throw new BadRequestException('তারিখটি বৈধ নয়');
+    if (!parsed) throw new BadRequestException('That date is not valid');
     return parsed;
   }
 
@@ -324,7 +324,7 @@ export class ScreenshotsService {
       // role=employee অথচ কোনো স্টাফের সাথে যুক্ত নয় — অ্যাকাউন্ট তৈরিতে
       // ভুল। খালি লিস্ট দিলে সমস্যাটা চাপা পড়ে যেত।
       throw new ForbiddenException(
-        'এই অ্যাকাউন্টটি কোনো স্টাফের সাথে যুক্ত নয়',
+        'This account is not linked to any staff member',
       );
     }
 
@@ -332,7 +332,7 @@ export class ScreenshotsService {
     //    ফ্রন্টএন্ড ভাবত ফিল্টারটা কাজ করেছে, আর স্ক্রিনে অন্য নাম নিয়ে
     //    নিজের ছবি দেখাত।
     if (requested !== undefined && requested !== actor.employeeId) {
-      throw new ForbiddenException('শুধু নিজের স্ক্রিনশট দেখা যাবে');
+      throw new ForbiddenException('You can only view your own screenshots');
     }
 
     return actor.employeeId;

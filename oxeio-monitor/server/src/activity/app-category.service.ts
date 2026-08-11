@@ -79,7 +79,7 @@ export class AppCategoryService {
     if (rules.length < raw.length) {
       // compile() শুধু ভুল বা খালি প্যাটার্ন ফেলে দেয় — নীরবে নয়
       this.logger.warn(
-        `${raw.length - rules.length}টি ক্যাটাগরি রুল বাদ পড়েছে (ভুল regex বা খালি প্যাটার্ন)`,
+        `${raw.length - rules.length} category rules were skipped (invalid regex or empty pattern)`,
       );
     }
 
@@ -167,7 +167,7 @@ export class AppCategoryService {
       if (page.length < pageSize) break;
     }
 
-    this.logger.log(`ক্যাটাগরি আবার বসানো হলো: ${scanned} দেখা, ${changed} বদলানো`);
+    this.logger.log(`Recategorised: ${scanned} scanned, ${changed} changed`);
     return { scanned, changed };
   }
 }

@@ -236,7 +236,7 @@ export class AgentController {
     this.rate.hit(device.id, 'screenshot');
 
     const full = files?.file?.[0];
-    if (!full) throw new BadRequestException('`file` অংশটি নেই');
+    if (!full) throw new BadRequestException('The `file` part is missing');
 
     const meta = await this.parseMeta(metaRaw);
     return this.screenshots.ingest(
@@ -253,13 +253,13 @@ export class AgentController {
    * ওটাকে ছুঁতে পারে না — হাতে parse ও validate করতে হয়।
    */
   private async parseMeta(raw: string): Promise<ScreenshotMetaDto> {
-    if (!raw) throw new BadRequestException('`meta` অংশটি নেই');
+    if (!raw) throw new BadRequestException('The `meta` part is missing');
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      throw new BadRequestException('`meta` বৈধ JSON নয়');
+      throw new BadRequestException('`meta` is not valid JSON');
     }
 
     const dto = plainToInstance(ScreenshotMetaDto, parsed, {
@@ -298,7 +298,7 @@ export class AgentController {
     @Query('version') version: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    if (!version) throw new BadRequestException('version দিতে হবে');
+    if (!version) throw new BadRequestException('version is required');
 
     const { stream, size } = await this.updates.openMsi(version);
     res.setHeader('Content-Type', 'application/octet-stream');

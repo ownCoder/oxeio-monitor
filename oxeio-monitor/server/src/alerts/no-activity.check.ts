@@ -76,17 +76,18 @@ export class NoActivityCheck {
         severity: 'info' as const,
         deviceId: null,
         employeeId: e.id,
-        title: `আজ কোনো কাজ রেকর্ড হয়নি — ${e.fullName}`,
+        title: `No work recorded today — ${e.fullName}`,
         detail:
-          `${e.fullName}-এর আজ (${workDate.toISOString().slice(0, 10)}) একটাও ` +
-          'সক্রিয় সেগমেন্ট নেই। অনুপস্থিত থাকলে কিছু করার নেই; ' +
-          'অফিসে থেকে থাকলে ওই PC-তে এজেন্ট চলছে কি না দেখুন।',
+          `${e.fullName} has no active segment at all today ` +
+          `(${workDate.toISOString().slice(0, 10)}). If they were absent there is ` +
+          'nothing to do; if they were in the office, check whether the agent is ' +
+          'running on that PC.',
         meta: { workDate: workDate.toISOString().slice(0, 10) },
       }));
 
     if (inputs.length === 0) return 0;
 
-    this.logger.log(`${inputs.length} জনের আজ কোনো কাজ রেকর্ড হয়নি`);
+    this.logger.log(`${inputs.length} staff have no work recorded today`);
     return this.alerts.raiseMany(inputs, now);
   }
 }

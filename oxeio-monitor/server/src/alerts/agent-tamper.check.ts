@@ -72,12 +72,12 @@ export class AgentTamperCheck {
         deviceId: t.deviceId,
         employeeId: t.employeeId,
         title: uninstall
-          ? `এজেন্ট আনইনস্টলের চেষ্টা — ${host}`
-          : `এজেন্ট বন্ধ করা হয়েছে — ${host}`,
+          ? `Agent uninstall attempt — ${host}`
+          : `Agent was stopped — ${host}`,
         detail: uninstall
-          ? `${host}-এ এজেন্ট সরানোর চেষ্টা হয়েছে (${t.type})।`
-          : `${host}-এ এজেন্ট থেমেছে, কিন্তু আশেপাশে কোনো logoff/shutdown নেই — ` +
-            'অর্থাৎ PC চালু রেখেই এজেন্ট বন্ধ করা হয়েছে।',
+          ? `Someone tried to remove the agent on ${host} (${t.type}).`
+          : `The agent stopped on ${host}, but there is no logoff/shutdown nearby — ` +
+            'so the agent was stopped while the PC stayed on.',
         meta: {
           eventType: t.type,
           occurredAt: t.occurredAt.toISOString(),
@@ -86,7 +86,7 @@ export class AgentTamperCheck {
       };
     });
 
-    this.logger.warn(`${inputs.length}টি সম্ভাব্য হস্তক্ষেপ পাওয়া গেছে`);
+    this.logger.warn(`${inputs.length} possible tampering events found`);
     return this.alerts.raiseMany(inputs, now);
   }
 

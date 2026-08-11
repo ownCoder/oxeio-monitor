@@ -114,7 +114,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
 
         if (paths.IsFallback)
         {
-            write($"⚠️ আউটবক্স {paths.Root}-এ ({paths.ResolutionNote}) — প্রোফাইল মুছলে কিউ হারাবে");
+            write($"⚠️ Outbox is at {paths.Root} ({paths.ResolutionNote}) — deleting the profile loses the queue");
         }
 
         QuarantineIfCorrupt(paths, write, drops);
@@ -123,7 +123,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         OutboxSchema.ApplyWritePragmas(writeConn);
 
         var (from, to) = OutboxSchema.Migrate(writeConn, write);
-        if (from != to) write($"outbox স্কিমা v{from} → v{to}");
+        if (from != to) write($"outbox schema v{from} → v{to}");
 
         var readConn = OpenConnection(paths.Database);
         OutboxSchema.ApplyReadPragmas(readConn);
@@ -135,7 +135,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
 
         var depth = ReadDepth(writeConn);
         write($"outbox: {paths.Database} (journal={OutboxSchema.JournalMode}) — " +
-              $"সারি {depth.Total}টি, {depth.BytesTotal / 1024.0 / 1024.0:F1} MB");
+              $"{depth.Total} rows, {depth.BytesTotal / 1024.0 / 1024.0:F1} MB");
 
         return store;
     }
@@ -199,8 +199,8 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             catch (UnauthorizedAccessException) { }
         }
 
-        var line = $"CORRUPT\tডাটাবেস নষ্ট ({verdict}) — {moved}টি ফাইল পাশে সরানো হলো, " +
-                   "নতুন খালি আউটবক্স তৈরি হচ্ছে। জমে থাকা সব সারি এখানেই শেষ।";
+        var line = $"CORRUPT\tThe database is corrupt ({verdict}) — {moved} files were moved aside, " +
+                   "a new empty outbox is being created. Every queued row ends here.";
         drops.Write(line);
         log("⚠️ " + line);
     }
@@ -430,7 +430,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
 
     /// <inheritdoc/>
     public Task AbandonAsync(Guid leaseId, string reason, CancellationToken ct = default) =>
-        CompleteLeaseAsync(leaseId, string.IsNullOrWhiteSpace(reason) ? "(কারণ দেওয়া হয়নি)" : reason);
+        CompleteLeaseAsync(leaseId, string.IsNullOrWhiteSpace(reason) ? "(no reason given)" : reason);
 
     /// <summary>
     /// ack আর abandon-এর SQL এক — পার্থক্য শুধু ড্রপ-লগে। এক জায়গায় রাখা
@@ -491,7 +491,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
                 // কিন্তু abandon-এর ক্ষেত্রে সেটাও জানা দরকার, নইলে "মুছেছি ভেবেছিলাম"
                 // অবস্থা তৈরি হয়।
                 if (reason is not null)
-                    _drops.Write($"ABANDON\tলিজ {lid} পাওয়া যায়নি (মেয়াদ ফুরিয়ে ফিরে গেছে?)\t{reason}");
+                    _drops.Write($"ABANDON\tlease {lid} not found (expired and returned?)\t{reason}");
                 return;
             }
 
@@ -505,10 +505,10 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             if (logLines is not null)
             {
                 if (rows > MaxDropLogLines)
-                    logLines.Add($"ABANDON\t… আরও {rows - MaxDropLogLines}টি সারি, মোট {rows}টি\t{reason}");
+                    logLines.Add($"ABANDON\t… {rows - MaxDropLogLines} more rows, {rows} in total\t{reason}");
 
                 _drops.WriteMany(logLines);
-                _log($"⚠️ আউটবক্স থেকে {rows}টি সারি ({bytes / 1024.0:F0} KB) স্থায়ীভাবে বাদ: {reason}");
+                _log($"⚠️ {rows} rows ({bytes / 1024.0:F0} KB) permanently dropped from the outbox: {reason}");
             }
 
             ClearWriteError();
@@ -585,7 +585,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             var n = cmd.ExecuteNonQuery();
             ClearWriteError();
 
-            if (n > 0) _log($"outbox: {n}টি সারির লিজ ফুরিয়েছিল, ফিরিয়ে নেওয়া হলো");
+            if (n > 0) _log($"outbox: {n} rows had expired leases, they were reclaimed");
             return n;
         }
         catch (SqliteException ex)
@@ -617,11 +617,11 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             using var cmd = _write.CreateCommand();
             cmd.CommandText = "UPDATE outbox SET lease_id = NULL, lease_expires_ms = NULL WHERE lease_id IS NOT NULL;";
             var n = cmd.ExecuteNonQuery();
-            if (n > 0) _log($"outbox: আগের রানের {n}টি ধার-নেওয়া সারি ফিরিয়ে নেওয়া হলো");
+            if (n > 0) _log($"outbox: {n} rows leased by the previous run were reclaimed");
         }
         catch (SqliteException ex)
         {
-            _log($"⚠️ outbox: পুরোনো লিজ ফেরানো গেল না — {ex.Message}");
+            _log($"⚠️ outbox: could not reclaim the old leases — {ex.Message}");
         }
     }
 
@@ -665,14 +665,14 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             DeleteFiles(files);
 
             var distinct = string.Join(",", kinds.Distinct());
-            var line = $"UNKNOWN-KIND\t{kinds.Count}টি সারি মুছে ফেলা হলো (ধরন: {distinct}) — " +
-                       "সম্ভবত এজেন্ট ডাউনগ্রেড হয়েছে";
+            var line = $"UNKNOWN-KIND\t{kinds.Count} rows were deleted (kinds: {distinct}) — " +
+                       "the agent was probably downgraded";
             _drops.Write(line);
             _log("⚠️ " + line);
         }
         catch (SqliteException ex)
         {
-            _log($"⚠️ outbox: অচেনা ধরনের সারি সাফ করা গেল না — {ex.Message}");
+            _log($"⚠️ outbox: could not clear the rows of unknown kind — {ex.Message}");
         }
     }
 
@@ -691,7 +691,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         {
             // tray-র জন্য গভীরতা না পাওয়া মানে শুধু টুলটিপ ফাঁকা — ট্র্যাকিং
             // থামানোর কারণ নয়।
-            _log($"⚠️ outbox গভীরতা পড়া গেল না — {ex.Message}");
+            _log($"⚠️ could not read the outbox depth — {ex.Message}");
             return OutboxDepth.Empty;
         }
         finally
@@ -769,7 +769,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         }
         catch (SqliteException ex)
         {
-            _log($"⚠️ outbox জরিপ ব্যর্থ — {ex.Message}");
+            _log($"⚠️ the outbox survey failed — {ex.Message}");
             return [];
         }
         finally
@@ -857,10 +857,10 @@ internal sealed class SqliteOutboxStore : IOutboxStore
             if (deleted == 0) return 0;
 
             if (deleted > MaxDropLogLines)
-                logLines.Add($"EVICT\t… আরও {deleted - MaxDropLogLines}টি সারি, মোট {deleted}টি\t{reason}");
+                logLines.Add($"EVICT\t… {deleted - MaxDropLogLines} more rows, {deleted} in total\t{reason}");
 
             _drops.WriteMany(logLines);
-            _log($"⚠️ outbox ছাঁটাই: {deleted}টি সারি, {bytes / 1024.0 / 1024.0:F1} MB — {reason}");
+            _log($"⚠️ outbox trim: {deleted} rows, {bytes / 1024.0 / 1024.0:F1} MB — {reason}");
 
             DeleteFiles(files);
             Paths.PruneEmptyScreenshotFolders();
@@ -903,13 +903,13 @@ internal sealed class SqliteOutboxStore : IOutboxStore
 
         if (plan.ExpiredRowIds.Count > 0)
         {
-            await EvictAsync(plan.ExpiredRowIds, "বয়সসীমা পেরিয়েছে", ct).ConfigureAwait(false);
+            await EvictAsync(plan.ExpiredRowIds, "past the age limit", ct).ConfigureAwait(false);
         }
 
         if (plan.OverBudgetRowIds.Count > 0)
         {
             var capMb = budget.CapBytes / 1024 / 1024;
-            await EvictAsync(plan.OverBudgetRowIds, $"ডিস্ক বাজেট ({capMb} MB) ছাড়িয়েছে", ct)
+            await EvictAsync(plan.OverBudgetRowIds, $"over the disk budget ({capMb} MB)", ct)
                 .ConfigureAwait(false);
         }
 
@@ -980,7 +980,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         }
         catch (SqliteException ex)
         {
-            _log($"⚠️ outbox: অনাথ ফাইল ঝাড়ু দেওয়া গেল না — {ex.Message}");
+            _log($"⚠️ outbox: could not sweep the orphan files — {ex.Message}");
             return 0;
         }
         finally
@@ -1018,7 +1018,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         if (removed > 0)
         {
             Paths.PruneEmptyScreenshotFolders();
-            _log($"outbox: {removed}টি অনাথ .webp মোছা হলো ({freed / 1024.0 / 1024.0:F1} MB ফেরত)");
+            _log($"outbox: {removed} orphan .webp files deleted ({freed / 1024.0 / 1024.0:F1} MB reclaimed)");
         }
 
         return removed;
@@ -1132,7 +1132,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
 
         var line = $"WRITE-FAIL\t{kind?.ToString() ?? "-"}\tlost≈{lostItems}\tfree={freeText}\t{LastWriteError}";
         _drops.Write(line);
-        _log($"⚠️ outbox লিখতে পারছে না (খালি জায়গা {freeText}) — {LastWriteError}");
+        _log($"⚠️ the outbox cannot write (free space {freeText}) — {LastWriteError}");
     }
 
     private void ClearWriteError()
@@ -1140,7 +1140,7 @@ internal sealed class SqliteOutboxStore : IOutboxStore
         if (LastWriteError is null) return;
         LastWriteError = null;
         LastWriteErrorAt = null;
-        _log("outbox: আবার লেখা যাচ্ছে");
+        _log("outbox: writing works again");
     }
 
     private static long? TryGetFreeBytes(string path)

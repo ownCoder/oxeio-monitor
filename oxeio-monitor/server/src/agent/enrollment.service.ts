@@ -45,7 +45,7 @@ export class EnrollmentService {
     // "নেই", "ব্যবহার হয়ে গেছে", "মেয়াদ শেষ" — তিনটেতেই একই বার্তা,
     // নইলে কোড অনুমান করার চেষ্টা সহজ হয়ে যেত (H05 · G18)
     if (!code || code.usedAt || code.expiresAt <= new Date()) {
-      throw new UnauthorizedException('enrollment code ভুল বা মেয়াদোত্তীর্ণ');
+      throw new UnauthorizedException('Enrolment code is invalid or expired');
     }
 
     const deviceToken = randomBytes(32).toString('base64url'); // ২৫৬ বিট
@@ -131,7 +131,7 @@ export class EnrollmentService {
         err.code === 'P2002'
       ) {
         throw new ConflictException(
-          `"${dto.hostname}\\${dto.windowsUsername}" নামে আরেকটি ডিভাইস আগেই রেজিস্টার করা আছে`,
+          `Another device is already registered as "${dto.hostname}\\${dto.windowsUsername}"`,
         );
       }
       throw err;

@@ -23,14 +23,14 @@ export class GalleryQueryDto {
    */
   @IsOptional()
   @Type(() => Number)
-  @IsInt({ message: 'employeeId একটি পূর্ণসংখ্যা হতে হবে' })
+  @IsInt({ message: 'employeeId must be an integer' })
   @Min(1)
   employeeId?: number;
 
   /** না দিলে ঢাকার আজকের কর্মদিবস ধরা হয় */
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'তারিখ দিতে হবে YYYY-MM-DD ফরম্যাটে',
+    message: 'Date must be in YYYY-MM-DD format',
   })
   date?: string;
 
@@ -48,6 +48,6 @@ export class GalleryQueryDto {
 
 export class ScreenshotFileQueryDto {
   @IsString()
-  @IsNotEmpty({ message: 'token লাগবে' })
+  @IsNotEmpty({ message: 'token is required' })
   token!: string;
 }

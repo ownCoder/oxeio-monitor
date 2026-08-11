@@ -183,8 +183,8 @@ export function buildDigest(source: DigestSource): Digest {
  */
 export function digestSubject(digest: Digest): string {
   const behind =
-    digest.behind.length > 0 ? ` · ${digest.behind.length} জন পিছিয়ে` : '';
-  return `[oXeio] দৈনিক সারাংশ ${digest.workDate} · ${h(digest.totals.hoursToday)} ঘণ্টা${behind}`;
+    digest.behind.length > 0 ? ` · ${digest.behind.length} behind` : '';
+  return `[oXeio] Daily summary ${digest.workDate} · ${h(digest.totals.hoursToday)}h${behind}`;
 }
 
 /**
@@ -198,38 +198,38 @@ export function digestSubject(digest: Digest): string {
 export function digestBody(digest: Digest, orgName: string): string {
   const { totals } = digest;
   const lines: string[] = [
-    `${orgName} — দৈনিক সারাংশ · ${digest.workDate} (ঢাকা)`,
+    `${orgName} — Daily summary · ${digest.workDate} (Dhaka)`,
     '',
-    `আজকের ঘণ্টা — মোট ${h(totals.hoursToday)}, ` +
-      `${totals.workedToday}/${totals.employees} জন কাজ করেছেন`,
+    `Hours today — ${h(totals.hoursToday)} total, ` +
+      `${totals.workedToday}/${totals.employees} staff worked`,
   ];
 
   if (digest.rows.length === 0) {
-    lines.push('  (আজ কোনো কর্মী কর্মরত নেই)');
+    lines.push('  (no staff are active today)');
   }
 
   for (const r of digest.rows) {
-    const target = r.offToday ? 'ছুটি' : `${h(r.todayTargetHours)} টার্গেট`;
+    const target = r.offToday ? 'Off' : `${h(r.todayTargetHours)} target`;
     lines.push(
-      `  • ${r.fullName} (${r.empCode}) — ${h(r.todayHours)} ঘণ্টা · ${target}`,
+      `  • ${r.fullName} (${r.empCode}) — ${h(r.todayHours)}h · ${target}`,
     );
   }
 
-  lines.push('', `মাসের টার্গেটের চেয়ে পিছিয়ে — ${digest.behind.length} জন`);
+  lines.push('', `Behind the monthly target — ${digest.behind.length} staff`);
 
   if (digest.behind.length === 0) {
-    lines.push('  • কেউ নন।');
+    lines.push('  • Nobody.');
   }
 
   for (const r of digest.behind) {
     lines.push(
-      `  • ${r.fullName} (${r.empCode}) — ${h(Math.abs(r.paceHours))} ঘণ্টা পিছিয়ে ` +
-        `(গোনা ${h(r.monthHours)} · হওয়ার কথা ${h(r.expectedHours)})`,
+      `  • ${r.fullName} (${r.empCode}) — ${h(Math.abs(r.paceHours))}h behind ` +
+        `(counted ${h(r.monthHours)} · expected ${h(r.expectedHours)})`,
     );
   }
 
   if (digest.idle.length > 0) {
-    lines.push('', `আজ কর্মদিবস, অথচ কোনো কাজ নেই — ${digest.idle.length} জন`);
+    lines.push('', `Workday today, but no work at all — ${digest.idle.length} staff`);
     for (const r of digest.idle) {
       lines.push(`  • ${r.fullName} (${r.empCode})`);
     }
@@ -237,14 +237,15 @@ export function digestBody(digest: Digest, orgName: string): string {
 
   lines.push(
     '',
-    'সংখ্যাগুলো কীভাবে পড়বেন',
-    `  • হিসাবের সময়: ${digest.monthFrom} — ${digest.monthTo}।`,
-    '  • "ঘণ্টা" মানে credited — কাজ + owner-এর দেওয়া সংশোধন।',
-    '  • পিছিয়ে থাকার হিসাবে আজকের টার্গেট ধরা হয়নি, কারণ দিনটা এখনো শেষ হয়নি।',
-    '    তাই এই তালিকার ঘাটতি শেষ হয়ে যাওয়া দিনগুলোর।',
-    '  • কেন কারো ঘণ্টা শূন্য (এজেন্ট বন্ধ, PC বন্ধ, না কি ছুটি) — সেটা এই',
-    '    ইমেইল বলে না; ওই উত্তর অ্যালার্টে ও ড্যাশবোর্ডে।',
-    '  • বিস্তারিত (কোন অ্যাপ, কোন সাইট, ছবি) শুধু ড্যাশবোর্ডে — ইমেইলে নয়।',
+    'How to read these numbers',
+    `  • Period covered: ${digest.monthFrom} — ${digest.monthTo}.`,
+    '  • "Hours" means credited — work plus adjustments made by the owner.',
+    "  • The behind figures leave out today's target, because the day is not over",
+    '    yet. So the shortfall listed here is from days that have already ended.',
+    '  • Why someone has zero hours (agent down, PC off, or a day off) is not',
+    '    answered by this email; that answer is in the alerts and on the dashboard.',
+    '  • Details (which app, which site, screenshots) are on the dashboard only —',
+    '    never in email.',
   );
 
   return lines.join('\n');

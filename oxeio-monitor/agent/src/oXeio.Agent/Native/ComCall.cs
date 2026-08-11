@@ -79,6 +79,6 @@ internal static unsafe class ComCall
     {
         if (hr >= 0) return;
 
-        throw new COMException($"{what} ব্যর্থ (HRESULT 0x{hr:X8})", hr);
+        throw new COMException($"{what} failed (HRESULT 0x{hr:X8})", hr);
     }
 }

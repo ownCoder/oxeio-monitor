@@ -36,17 +36,17 @@ describe('ক্যাপচার উইন্ডো — ADR-011c-র সীম
    * না" আলাদা করা যেত না।
    */
   it('শুরু আর শেষ এক হলে নাকচ', () => {
-    expect(captureWindowProblem('09:00', '09:00')).toContain('আগে হতে হবে');
+    expect(captureWindowProblem('09:00', '09:00')).toContain('must be before');
   });
 
   it('উল্টো উইন্ডো নাকচ', () => {
-    expect(captureWindowProblem('18:00', '09:00')).toContain('আগে হতে হবে');
+    expect(captureWindowProblem('18:00', '09:00')).toContain('must be before');
   });
 
   it('ফরম্যাট ভুল হলে কোনটা ভুল সেটাও বলে', () => {
-    expect(captureWindowProblem('7:00', '23:00')).toContain('শুরু');
-    expect(captureWindowProblem('07:00', '২৩:০০')).toContain('শেষ');
-    expect(captureWindowProblem('07:00', '25:00')).toContain('শেষ');
+    expect(captureWindowProblem('7:00', '23:00')).toContain('window start');
+    expect(captureWindowProblem('07:00', '২৩:০০')).toContain('window end');
+    expect(captureWindowProblem('07:00', '25:00')).toContain('window end');
   });
 
   /**

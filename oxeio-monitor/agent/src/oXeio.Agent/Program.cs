@@ -64,11 +64,11 @@ internal static partial class Program
 
         if (!AgentDataDirectory.TryEnsure(path, out var error))
         {
-            Console.Error.WriteLine($"❌ {path} বানানো গেল না: {error}");
+            Console.Error.WriteLine($"❌ Could not create {path}: {error}");
             return 4;
         }
 
-        Console.WriteLine($"✅ ডেটা ফোল্ডার প্রস্তুত: {path}");
+        Console.WriteLine($"✅ Data folder ready: {path}");
         return 0;
     }
 
@@ -81,9 +81,9 @@ internal static partial class Program
             //    লিখলে এজেন্ট নীরবে কিছুই করত না, আর কেউ সপ্তাহখানেক পরে
             //    আবিষ্কার করত যে ওই PC-র কোনো ডেটাই নেই।
             Complain(
-                "oXeio এজেন্ট চালু হতে পারল না",
-                $"সার্ভারের ঠিকানা পাওয়া যায়নি।\n\nদেখা হয়েছে: {source}\n\n" +
-                $"ইনস্টলার এটা লিখে দেওয়ার কথা। অফিসের আইটিকে জানান।");
+                "oXeio agent could not start",
+                $"Server address not found.\n\nLooked in: {source}\n\n" +
+                $"The installer is supposed to write this. Please tell office IT.");
             return 2;
         }
 
@@ -96,7 +96,7 @@ internal static partial class Program
 
         if (!_host.TryStart(window.Handle, out var error))
         {
-            Complain("oXeio এজেন্ট চালু হতে পারল না", error ?? "কারণ জানা যায়নি");
+            Complain("oXeio agent could not start", error ?? "Reason unknown");
             return 3;
         }
 

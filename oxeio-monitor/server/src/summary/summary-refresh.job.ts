@@ -64,14 +64,14 @@ export class SummaryRefreshJob {
     const result = await this.lock.run(() => this.summary.refreshToday(now));
 
     if (result === null) {
-      this.logger.warn('আগের summary রিফ্রেশ এখনো চলছে — এই দফা বাদ');
+      this.logger.warn('Previous summary refresh still going — skipping this tick');
       return { workDate: null, employees: 0, skipped: true, ms: 0 };
     }
 
     const ms = Date.now() - startedAt;
     this.logger.log(
-      `summary রিফ্রেশ: ${result.workDate.toISOString().slice(0, 10)} · ` +
-        `${result.employees} জন · ${ms}ms`,
+      `summary refresh: ${result.workDate.toISOString().slice(0, 10)} · ` +
+        `${result.employees} staff · ${ms}ms`,
     );
 
     return { workDate: result.workDate, employees: result.employees, skipped: false, ms };

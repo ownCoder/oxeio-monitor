@@ -48,7 +48,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     //    অন্য এজেন্টের ফিক্সচারের ওপর অ্যালার্ট বসাত, আর ব্যর্থতাগুলো
     //    এলোমেলোভাবে আসত। প্রতিটা চেকের `runOnce()` আছে — টেস্ট সেটাই ডাকবে।
     if (process.env.NODE_ENV === 'test') {
-      this.logger.log('NODE_ENV=test — অ্যালার্ট শিডিউলার চালু হয়নি');
+      this.logger.log('NODE_ENV=test — alert scheduler not started');
       return;
     }
 
@@ -56,7 +56,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       // ⭐ সার্ভার সবে উঠেছে — এখন সবাইকেই চুপ দেখাবে (কারণ আমরাই ছিলাম না)
       if (isWithinStartupGrace(this.bootedAt, now)) {
         this.logger.debug(
-          `startup grace (${STARTUP_GRACE_MIN} মিনিট) — agent_down চেক এখনো নয়`,
+          `startup grace (${STARTUP_GRACE_MIN}m) — agent_down check not yet`,
         );
         return Promise.resolve(0);
       }
@@ -74,7 +74,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       this.dispatcher.runOnce(now),
     );
 
-    this.logger.log('অ্যালার্ট চেক চালু হয়েছে (G01 · G02 · G03 · G06 · G07)');
+    this.logger.log('Alert checks started (G01 · G02 · G03 · G06 · G07)');
   }
 
   onModuleDestroy(): void {
@@ -124,7 +124,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     task: (now: Date) => Promise<number>,
   ): Promise<void> {
     if (this.running.has(name)) {
-      this.logger.warn(`${name} চেক আগেরটাই এখনো চলছে — এই দফা বাদ`);
+      this.logger.warn(`${name} check: previous run still going — skipping this tick`);
       return;
     }
 
@@ -133,7 +133,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       await task(new Date());
     } catch (err) {
       this.logger.error(
-        `${name} চেক ব্যর্থ: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `${name} check failed: ${err instanceof Error ? err.message : 'unknown error'}`,
         err instanceof Error ? err.stack : undefined,
       );
     } finally {

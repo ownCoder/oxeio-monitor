@@ -7,7 +7,7 @@ import type { DeviceRequest } from './device-auth.guard';
 export const CurrentDevice = createParamDecorator(
   (_d: unknown, ctx: ExecutionContext): Device => {
     const req = ctx.switchToHttp().getRequest<DeviceRequest>();
-    if (!req.device) throw new Error('DeviceAuthGuard ছাড়া CurrentDevice');
+    if (!req.device) throw new Error('CurrentDevice used without DeviceAuthGuard');
     return req.device;
   },
 );

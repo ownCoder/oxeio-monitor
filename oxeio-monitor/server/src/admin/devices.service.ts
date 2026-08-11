@@ -93,7 +93,7 @@ export class DevicesService {
       where: { id },
       select: DEVICE_SELECT,
     });
-    if (!row) throw new NotFoundException('ডিভাইস পাওয়া যায়নি');
+    if (!row) throw new NotFoundException('Device not found');
     return row;
   }
 
@@ -120,9 +120,9 @@ export class DevicesService {
       where: { id },
       select: { id: true, hostname: true, status: true },
     });
-    if (!before) throw new NotFoundException('ডিভাইস পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Device not found');
     if (before.status === 'revoked') {
-      throw new ConflictException('এই ডিভাইস আগেই revoke করা হয়েছে');
+      throw new ConflictException('This device has already been revoked');
     }
 
     const row = await this.prisma.device.update({
@@ -161,9 +161,9 @@ export class DevicesService {
       where: { id },
       select: { id: true, hostname: true, status: true, employeeId: true },
     });
-    if (!before) throw new NotFoundException('ডিভাইস পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Device not found');
     if (before.status === 'active') {
-      throw new ConflictException('এই ডিভাইস আগে থেকেই সক্রিয়');
+      throw new ConflictException('This device is already active');
     }
 
     // ⚠️ নিষ্ক্রিয় কর্মীর ডিভাইস আবার চালু করা মানে চাকরি ছেড়ে দেওয়া
@@ -176,7 +176,7 @@ export class DevicesService {
       });
       if (employee?.status === 'inactive') {
         throw new ConflictException(
-          `${employee.empCode} নিষ্ক্রিয় — আগে কর্মচারীকে সক্রিয় করুন`,
+          `${employee.empCode} is inactive — activate the staff member first`,
         );
       }
     }
@@ -214,12 +214,12 @@ export class DevicesService {
       where: { id: dto.employeeId },
       select: { id: true, empCode: true, fullName: true, status: true },
     });
-    if (!employee) throw new NotFoundException('কর্মচারী পাওয়া যায়নি');
+    if (!employee) throw new NotFoundException('Staff member not found');
 
     // ⚠️ চলে যাওয়া কর্মীর নামে নতুন এজেন্ট বসানোর কোড দেওয়া যাবে না
     if (employee.status === 'inactive') {
       throw new BadRequestException(
-        `${employee.empCode} নিষ্ক্রিয় — নিষ্ক্রিয় কর্মীর জন্য enrollment code দেওয়া যায় না`,
+        `${employee.empCode} is inactive — an enrolment code cannot be issued for an inactive staff member`,
       );
     }
 
@@ -258,7 +258,7 @@ export class DevicesService {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
-        this.logger.error('enrollment code hash সংঘর্ষ — আবার চেষ্টা করুন');
+        this.logger.error('Enrolment code hash collision — please try again');
       }
       throw err;
     }

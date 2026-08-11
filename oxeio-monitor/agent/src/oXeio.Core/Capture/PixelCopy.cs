@@ -44,8 +44,8 @@ public static class PixelCopy
         if (source.Length < needed)
         {
             throw new ArgumentException(
-                $"উৎসে {source.Length} বাইট, কিন্তু {width}×{height} @ pitch {sourceRowPitch}-এর জন্য " +
-                $"অন্তত {needed} বাইট দরকার।", nameof(source));
+                $"the source has {source.Length} bytes, but {width}×{height} @ pitch {sourceRowPitch} " +
+                $"needs at least {needed} bytes.", nameof(source));
         }
 
         var dest = new byte[destStride * height];

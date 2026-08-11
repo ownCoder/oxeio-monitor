@@ -83,7 +83,7 @@ internal sealed class SyncWorker(
             // মেয়াদ শেষ না হওয়া পর্যন্ত অদৃশ্য থাকত
             var reclaimed = await store.ReclaimExpiredLeasesAsync(_clock(), ct);
             if (reclaimed > 0)
-                _log.Warn($"{reclaimed}টি আটকে থাকা lease ছাড়ানো হলো (আগের রান ক্র্যাশ করেছিল?)");
+                _log.Warn($"{reclaimed} stuck leases were released (did the previous run crash?)");
 
             foreach (var kind in Order)
             {
@@ -99,7 +99,7 @@ internal sealed class SyncWorker(
         }
         catch (Exception ex)
         {
-            _log.Error("সিঙ্ক চক্রে অপ্রত্যাশিত ত্রুটি — পরের চক্রে আবার চেষ্টা হবে", ex);
+            _log.Error("Unexpected error in the sync cycle — it will be retried on the next cycle", ex);
         }
     }
 
@@ -137,12 +137,12 @@ internal sealed class SyncWorker(
         {
             // ⚠️ চুপ করে থাকা যাবে না। নষ্ট সারি মানে হারানো ঘণ্টা, আর সেটা
             //    সার্ভারের দিক থেকে দেখতে স্বাভাবিক লাগবে।
-            _log.Error($"{kind}: {unreadable}টি সারি পড়া গেল না — বাদ দেওয়া হচ্ছে");
+            _log.Error($"{kind}: {unreadable} rows could not be read — dropping them");
         }
 
         if (decoded.Count == 0)
         {
-            return SyncResult<object>.Permanent(null, "একটাও সারি পড়া গেল না");
+            return SyncResult<object>.Permanent(null, "Not a single row could be read");
         }
 
         return kind switch
@@ -153,7 +153,7 @@ internal sealed class SyncWorker(
                 Erase(await client.SendEventsAsync(decoded.Cast<AgentEventRecord>().ToList(), ct)),
             OutboundKind.AppUsage =>
                 Erase(await client.SendAppUsageAsync(decoded.Cast<AppUsageRecord>().ToList(), ct)),
-            _ => SyncResult<object>.Permanent(null, $"অজানা ধরন {kind}"),
+            _ => SyncResult<object>.Permanent(null, $"Unknown kind {kind}"),
         };
     }
 
@@ -164,13 +164,13 @@ internal sealed class SyncWorker(
         var meta = OutboxCodec.Decode<ScreenshotRecord>(entry.Payload);
 
         if (meta is null)
-            return SyncResult<object>.Permanent(null, "ছবির মেটাডেটা পড়া গেল না");
+            return SyncResult<object>.Permanent(null, "Could not read the screenshot metadata");
 
         if (string.IsNullOrWhiteSpace(entry.FilePath) || !File.Exists(entry.FilePath))
         {
             // ফাইলটাই নেই — সারিটা ধরে রাখার কোনো মানে নেই। এটা ঘটে যদি
             // ডিস্ক বাজেট ছবিটা ছেঁটে ফেলে কিন্তু সারিটা রয়ে যায়।
-            return SyncResult<object>.Permanent(null, "ছবির ফাইল ডিস্কে নেই");
+            return SyncResult<object>.Permanent(null, "The screenshot file is not on disk");
         }
 
         return Erase(await client.SendScreenshotAsync(meta, entry.FilePath, ct));
@@ -233,11 +233,11 @@ internal sealed class SyncWorker(
                 // এক রেকর্ড নিয়েও প্রত্যাখ্যাত — দোষটা নিঃসন্দেহে এটারই
                 await store.AbandonAsync(
                     lease.LeaseId,
-                    result.Detail ?? $"সার্ভার প্রত্যাখ্যান করেছে (HTTP {result.StatusCode})",
+                    result.Detail ?? $"The server rejected it (HTTP {result.StatusCode})",
                     ct);
 
                 _log.Error(
-                    $"{kind}: একটি রেকর্ড স্থায়ীভাবে বাদ — {result.Detail ?? "কারণ জানা যায়নি"} " +
+                    $"{kind}: one record permanently dropped — {result.Detail ?? "reason unknown"} " +
                     $"(uuid {lease.Entries[0].ClientUuid})");
 
                 narrowing.OnIsolatedDropped();
@@ -248,8 +248,8 @@ internal sealed class SyncWorker(
                 // অর্ধেক করে আবার, যতক্ষণ না দোষীটা একা পড়ে।
                 narrowing.OnPermanent();
                 _log.Warn(
-                    $"{kind}: {lease.Count}টির ব্যাচ প্রত্যাখ্যাত — " +
-                    $"{narrowing.Current}টি নিয়ে আবার দেখা হচ্ছে (খারাপ রেকর্ড খোঁজা)");
+                    $"{kind}: a batch of {lease.Count} was rejected — " +
+                    $"retrying with {narrowing.Current} (hunting for the bad record)");
 
                 // সাথে সাথেই আবার — অপেক্ষার কিছু নেই, সার্ভারের দোষ নয়
                 await store.RetryAsync(lease.LeaseId, now, ct);
@@ -257,7 +257,7 @@ internal sealed class SyncWorker(
 
             case SyncOutcome.Revoked:
                 Revoked = true;
-                _log.Error("⛔ এই ডিভাইস সার্ভার থেকে বাতিল করা হয়েছে — সিঙ্ক বন্ধ");
+                _log.Error("⛔ This device has been revoked by the server — sync stopped");
 
                 // ⚠️ ডেটা মোছা হয় না। revoke ভুল করেও হতে পারে, আর তখন
                 //    সারিগুলো ফেরত পাওয়ার একমাত্র উপায় ওগুলো টিকে থাকা।
@@ -273,8 +273,8 @@ internal sealed class SyncWorker(
 
         if (_retry.ShouldAbandon(oldest.Attempts + 1, oldest.EnqueuedAt, now))
         {
-            await store.AbandonAsync(lease.LeaseId, "৩০ দিনের বেশি পুরোনো — আর কাজে লাগবে না", ct);
-            _log.Warn($"{lease.Kind}: {lease.Count}টি সারি বয়সের কারণে বাদ");
+            await store.AbandonAsync(lease.LeaseId, "older than 30 days — no longer useful", ct);
+            _log.Warn($"{lease.Kind}: {lease.Count} rows dropped because of their age");
             return;
         }
 

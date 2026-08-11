@@ -154,7 +154,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         // ⚠️ null-এ ArgumentNullException ছোড়া হয় না। এই ইন্টারফেসের চুক্তি
         //    "কখনো ছোড়ে না" — কলার কোথাও try/catch বসায়নি, আর একটা ফসকে যাওয়া
         //    এক্সসেপশন সিঙ্ক ওয়ার্কারকে চুপচাপ মেরে দিত।
-        if (request is null) return Task.FromResult(SyncResult<EnrollResponse>.Permanent(null, "enroll: request নেই"));
+        if (request is null) return Task.FromResult(SyncResult<EnrollResponse>.Permanent(null, "enroll: no request"));
 
         var message = NewJsonRequest(HttpMethod.Post, "agent/enroll", SyncWire.Enroll(request), anonymous: true);
 
@@ -168,9 +168,9 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
                 // ⚠️ এটা সবচেয়ে খারাপ ফলাফল: সার্ভার ডিভাইস বানিয়ে ফেলেছে এবং
                 //    টোকেন একবারই পাঠায় — সেটা আমরা পড়তে পারিনি মানে টোকেন গেল।
                 //    ঠিক করার একমাত্র পথ নতুন enrollment code। তাই চিৎকার করে লগ।
-                _log.Error("enroll: সার্ভার ২xx দিয়েছে কিন্তু উত্তর পড়া যায়নি — " +
-                           "deviceToken হারিয়ে গেছে, নতুন enrollment code লাগবে");
-                return SyncResult<EnrollResponse>.Permanent(200, "enroll: উত্তরের JSON পড়া যায়নি");
+                _log.Error("enroll: the server returned 2xx but the response could not be read — " +
+                           "the deviceToken is lost, a new enrolment code is needed");
+                return SyncResult<EnrollResponse>.Permanent(200, "enroll: could not read the response JSON");
             },
             ct);
     }
@@ -189,7 +189,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
                 // নিয়ে চলতে থাকবে (AgentConfig.Default-এর মন্তব্য দেখুন)।
                 return value is not null
                     ? SyncResult<ConfigResponse>.Ok(value)
-                    : SyncResult<ConfigResponse>.Transient(200, "config: উত্তরের JSON পড়া যায়নি");
+                    : SyncResult<ConfigResponse>.Transient(200, "config: could not read the response JSON");
             },
             ct);
     }
@@ -198,7 +198,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         HeartbeatRequest request, CancellationToken ct = default)
     {
         if (request is null)
-            return Task.FromResult(SyncResult<HeartbeatResponse>.Transient(null, "heartbeat: request নেই"));
+            return Task.FromResult(SyncResult<HeartbeatResponse>.Transient(null, "heartbeat: no request"));
 
         var message = NewJsonRequest(HttpMethod.Post, "agent/heartbeat", SyncWire.Heartbeat(request));
 
@@ -209,7 +209,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
                 var dto = SyncJson.TryDeserialize<SyncWire.HeartbeatResponseDto>(body);
                 return dto is not null
                     ? SyncResult<HeartbeatResponse>.Ok(SyncWire.ToHeartbeatResponse(dto))
-                    : SyncResult<HeartbeatResponse>.Transient(200, "heartbeat: উত্তরের JSON পড়া যায়নি");
+                    : SyncResult<HeartbeatResponse>.Transient(200, "heartbeat: could not read the response JSON");
             },
             ct);
     }
@@ -247,10 +247,10 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             //    Permanent ফেরালে সঠিক শাস্তি হতো, কিন্তু তাতে একটা প্রোগ্রামিং
             //    ভুলের দাম দিত কারো বেতনের ঘণ্টা। তাই ডেটা ধরে রাখা হয়:
             //    Transient + জোরে লগ। কিউ আটকে থাকবে, tray লাল হবে, কেউ দেখবে।
-            _log.Error($"{what}: ব্যাচে {count}টা রেকর্ড — সীমা {SyncLimits.MaxBatchSize}। " +
-                       "কলার ভাগ করেনি; পাঠানো হলো না, ডেটা কিউতেই থাকল");
+            _log.Error($"{what}: {count} records in the batch — the limit is {SyncLimits.MaxBatchSize}. " +
+                       "The caller did not split it; nothing was sent, the data stays in the queue");
             return Task.FromResult(SyncResult<IngestAck>.Transient(
-                null, $"{what}: ব্যাচ বড় ({count} > {SyncLimits.MaxBatchSize}) — কলারকে ভাগ করতে হবে"));
+                null, $"{what}: batch too large ({count} > {SyncLimits.MaxBatchSize}) — the caller must split it"));
         }
 
         var message = NewJsonRequest(HttpMethod.Post, path, payload());
@@ -277,14 +277,14 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         ScreenshotRecord meta, string webpPath, CancellationToken ct = default)
     {
         if (meta is null)
-            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: meta নেই");
+            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: no meta");
 
         // ── নেটওয়ার্কে যাওয়ার আগের যাচাই ────────────────────────────────
         // ⚠️ এখানে Permanent ফেরানোটা ইচ্ছাকৃত ব্যতিক্রম: ফাইলটা নেই বা বড়,
         //    অর্থাৎ হাজারবার চেষ্টা করলেও একই ফল। Transient বললে ওই সারি
         //    চিরকাল কিউয়ের মাথায় বসে থাকত আর তার পেছনের সব ছবি আটকে যেত।
         if (string.IsNullOrWhiteSpace(webpPath))
-            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: ফাইলের পাথ খালি");
+            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: the file path is empty");
 
         long length;
         try
@@ -292,8 +292,8 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             var info = new FileInfo(webpPath);
             if (!info.Exists)
             {
-                _log.Error($"screenshot: ফাইল নেই — {webpPath} (সারিটা বাদ দেওয়া হবে)");
-                return SyncResult<ScreenshotAck>.Permanent(null, $"screenshot: ফাইল নেই — {webpPath}");
+                _log.Error($"screenshot: file missing — {webpPath} (the row will be dropped)");
+                return SyncResult<ScreenshotAck>.Permanent(null, $"screenshot: file missing — {webpPath}");
             }
 
             length = info.Length;
@@ -302,19 +302,19 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             // পাথ পড়াই গেল না — এটাও রিট্রাইয়ে ঠিক হওয়ার নয়
-            _log.Error($"screenshot: ফাইল দেখা গেল না — {webpPath}", e);
-            return SyncResult<ScreenshotAck>.Permanent(null, $"screenshot: ফাইল দেখা গেল না — {e.Message}");
+            _log.Error($"screenshot: could not stat the file — {webpPath}", e);
+            return SyncResult<ScreenshotAck>.Permanent(null, $"screenshot: could not stat the file — {e.Message}");
         }
 
         if (length == 0)
-            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: ফাইল ০ বাইট");
+            return SyncResult<ScreenshotAck>.Permanent(null, "screenshot: the file is 0 bytes");
 
         if (length > SyncLimits.MaxScreenshotBytes)
         {
-            _log.Error($"screenshot: {length / 1024} KB > সীমা " +
-                       $"{SyncLimits.MaxScreenshotBytes / 1024} KB — পাঠানোই হলো না");
+            _log.Error($"screenshot: {length / 1024} KB > the limit of " +
+                       $"{SyncLimits.MaxScreenshotBytes / 1024} KB — it was not sent at all");
             return SyncResult<ScreenshotAck>.Permanent(
-                413, $"screenshot: {length} বাইট, সীমা {SyncLimits.MaxScreenshotBytes}");
+                413, $"screenshot: {length} bytes, the limit is {SyncLimits.MaxScreenshotBytes}");
         }
 
         HttpRequestMessage message;
@@ -326,8 +326,8 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         {
             // FileStream খোলা যায়নি (মুছে গেছে, অন্য প্রসেস লক করেছে)।
             // লক সাময়িক হতে পারে — তাই এখানে Transient, অস্তিত্বহীনতার মতো নয়।
-            _log.Warn($"screenshot: ফাইল খোলা গেল না — {webpPath}: {e.Message}");
-            return SyncResult<ScreenshotAck>.Transient(null, $"screenshot: ফাইল খোলা গেল না — {e.Message}");
+            _log.Warn($"screenshot: could not open the file — {webpPath}: {e.Message}");
+            return SyncResult<ScreenshotAck>.Transient(null, $"screenshot: could not open the file — {e.Message}");
         }
 
         return await ExecuteAsync<ScreenshotAck>(
@@ -422,7 +422,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
                 var offer = SyncJson.TryDeserialize<UpdateOffer>(body);
                 return offer is not null
                     ? SyncResult<UpdateOffer>.Ok(offer, (int)response.StatusCode)
-                    : SyncResult<UpdateOffer>.Transient(200, "update-check: উত্তরের JSON পড়া যায়নি");
+                    : SyncResult<UpdateOffer>.Transient(200, "update-check: could not read the response JSON");
             },
             ct);
     }
@@ -431,7 +431,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         string version, string destinationPath, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(destinationPath))
-            return SyncResult<UpdateDownload>.Permanent(null, "update-download: গন্তব্য পাথ খালি");
+            return SyncResult<UpdateDownload>.Permanent(null, "update-download: the destination path is empty");
 
         // ⚠️ সরাসরি গন্তব্যে লেখা হয় না। অর্ধেক নামা MSI যদি গন্তব্যের নামে বসে
         //    থাকে, পরের বার কেউ সেটাকে সম্পূর্ণ ভেবে চালাতে পারে। .part-এ লিখে
@@ -477,9 +477,9 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
 
                     if (total > _options.MaxUpdateBytes)
                     {
-                        _log.Error($"update-download: {total} বাইট ছাড়াল সীমা {_options.MaxUpdateBytes} — থামানো হলো");
+                        _log.Error($"update-download: {total} bytes went past the limit of {_options.MaxUpdateBytes} — stopped");
                         return SyncResult<UpdateDownload>.Permanent(
-                            status, $"update-download: ফাইল সীমার চেয়ে বড় ({_options.MaxUpdateBytes} বাইট)");
+                            status, $"update-download: the file is larger than the limit ({_options.MaxUpdateBytes} bytes)");
                     }
 
                     hasher.AppendData(buffer, 0, read);
@@ -490,12 +490,12 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             }
 
             if (total == 0)
-                return SyncResult<UpdateDownload>.Transient(status, "update-download: ০ বাইট এল");
+                return SyncResult<UpdateDownload>.Transient(status, "update-download: 0 bytes arrived");
 
             var sha = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
             File.Move(partPath, destinationPath, overwrite: true);
 
-            _log.Info($"update-download: {total / 1024} KB নামল → {destinationPath}");
+            _log.Info($"update-download: {total / 1024} KB downloaded → {destinationPath}");
 
             return SyncResult<UpdateDownload>.Ok(new UpdateDownload
             {
@@ -571,14 +571,14 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         switch (outcome)
         {
             case SyncOutcome.Revoked:
-                _log.Error($"⛔ এই ডিভাইস revoke হয়েছে — {detail}");
+                _log.Error($"⛔ This device has been revoked — {detail}");
                 return SyncResult<T>.Revoked(detail);
 
             case SyncOutcome.Permanent:
                 // ⭐ "জোরে লগ করো" — এটাই সেই মুহূর্ত যেখানে ডেটা চিরতরে বাদ যাবে।
                 //    বডিটা রাখা হচ্ছে কারণ সার্ভারের ভ্যালিডেশন বার্তাই একমাত্র
                 //    সূত্র; ওটা না থাকলে কেউ কোনোদিন জানত না কোন ফিল্ডটা ভুল ছিল।
-                _log.Error($"❌ স্থায়ী প্রত্যাখ্যান, এই রেকর্ডগুলো বাদ যাবে — {detail}");
+                _log.Error($"❌ Permanent rejection, these records will be dropped — {detail}");
                 return SyncResult<T>.Permanent(status, detail);
 
             default:
@@ -603,11 +603,11 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         {
             case OperationCanceledException when callerCancelled:
                 // এজেন্ট বন্ধ হচ্ছে — ভুল নয়, তাই লগে হইচই নেই
-                return SyncResult<T>.Transient(null, $"{what}: বাতিল (এজেন্ট থামছে)");
+                return SyncResult<T>.Transient(null, $"{what}: cancelled (the agent is stopping)");
 
             case OperationCanceledException:
-                _log.Warn($"{what}: টাইমআউট");
-                return SyncResult<T>.Transient(null, $"{what}: টাইমআউট");
+                _log.Warn($"{what}: timeout");
+                return SyncResult<T>.Transient(null, $"{what}: timeout");
 
             case HttpRequestException http:
             {
@@ -625,7 +625,7 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             default:
                 // ⚠️ অপ্রত্যাশিত। তবু ছোড়া হয় না — একটা ফসকে যাওয়া এক্সসেপশন
                 //    সিঙ্ক ওয়ার্কার থ্রেডকে মেরে দিত, আর তখন ডেটা আর কোনোদিন যেত না।
-                _log.Error($"{what}: অপ্রত্যাশিত ত্রুটি", e);
+                _log.Error($"{what}: unexpected error", e);
                 return SyncResult<T>.Transient(null, $"{what}: {e.GetType().Name} — {Shorten(e.Message)}");
         }
     }

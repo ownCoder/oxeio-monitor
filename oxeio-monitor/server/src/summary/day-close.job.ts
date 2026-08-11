@@ -72,13 +72,13 @@ export class DayCloseJob {
     });
 
     if (result === null) {
-      this.logger.warn('আগের দিন-ক্লোজ এখনো চলছে — এই দফা বাদ');
+      this.logger.warn('Previous day-close still going — skipping this tick');
       return { workDate: null, sessionsClosed: 0, employees: 0, skipped: true };
     }
 
     this.logger.log(
-      `দিন-ক্লোজ ${target.toISOString().slice(0, 10)} · ` +
-        `${result.sessionsClosed}টি সেশন বন্ধ · ${result.employees} জনের সারাংশ`,
+      `day-close ${target.toISOString().slice(0, 10)} · ` +
+        `${result.sessionsClosed} sessions closed · summaries for ${result.employees} staff`,
     );
 
     return { workDate: target, ...result, skipped: false };

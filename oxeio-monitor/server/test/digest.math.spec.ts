@@ -216,11 +216,11 @@ describe('digestSubject', () => {
     expect(subject).not.toContain('Jane');
     expect(subject).not.toContain('OX-001');
     expect(subject).toContain('2026-08-11');
-    expect(subject).toContain('1 জন পিছিয়ে');
+    expect(subject).toContain('1 behind');
   });
 
   it('কেউ পিছিয়ে না থাকলে subject-এ ওই অংশটাই নেই', () => {
-    expect(digestSubject(buildDigest(source()))).not.toContain('পিছিয়ে');
+    expect(digestSubject(buildDigest(source()))).not.toContain('behind');
   });
 });
 
@@ -244,19 +244,19 @@ describe('digestBody', () => {
   });
 
   it('প্রত্যেকের আজকের ঘণ্টা ও টার্গেট থাকে', () => {
-    expect(body).toContain('মামুনুর রশিদ (OX-001) — 7.50 ঘণ্টা · 8.00 টার্গেট');
+    expect(body).toContain('মামুনুর রশিদ (OX-001) — 7.50h · 8.00 target');
   });
 
   it('পিছিয়ে থাকার লাইনে গোনা ও প্রত্যাশা দুটোই থাকে', () => {
-    expect(body).toContain('Jane Doe (OX-002) — 24.00 ঘণ্টা পিছিয়ে');
-    expect(body).toContain('গোনা 40.00');
-    expect(body).toContain('হওয়ার কথা 64.00');
+    expect(body).toContain('Jane Doe (OX-002) — 24.00h behind');
+    expect(body).toContain('counted 40.00');
+    expect(body).toContain('expected 64.00');
   });
 
   it('আজকের টার্গেট বাদ দেওয়ার কারণটা ইমেইলেই লেখা থাকে', () => {
     // ⭐ না লিখলে পাঠক ভাবতেন সংখ্যাটা মাসের পুরো pace, আর ড্যাশবোর্ডের
     //    সাথে না মেলায় দুটোর একটাকে "ভাঙা" ধরে নিতেন
-    expect(body).toContain('আজকের টার্গেট ধরা হয়নি');
+    expect(body).toContain("leave out today's target");
   });
 
   it('⚠️⚠️ কোনো ডোমেইন, প্রসেসের নাম বা URL যায় না', () => {
@@ -273,7 +273,7 @@ describe('digestBody', () => {
   });
 
   it('কেউ পিছিয়ে না থাকলে "কেউ নন" লেখা থাকে, খালি অংশ নয়', () => {
-    expect(digestBody(buildDigest(source()), 'oXeio')).toContain('কেউ নন');
+    expect(digestBody(buildDigest(source()), 'oXeio')).toContain('Nobody');
   });
 
   it('একজনও কর্মরত না থাকলেও বডি অর্থপূর্ণ থাকে', () => {
@@ -281,6 +281,6 @@ describe('digestBody', () => {
       buildDigest(source({ today: [], month: [] })),
       'oXeio',
     );
-    expect(empty).toContain('কোনো কর্মী কর্মরত নেই');
+    expect(empty).toContain('no staff are active today');
   });
 });

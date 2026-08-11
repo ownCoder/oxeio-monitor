@@ -56,9 +56,11 @@ const CATEGORY_NOTE =
   'worked, credited or target hours.';
 
 /**
- * ⚠️ `reports.types.ts`-এর বাংলা `OVERTIME_NOTE`-এর **ইংরেজি রূপ**, কারণ
- * বাংলাটা এই ফন্টে ছাপা যেত না। দুটো এক কথা বলে — একটা বদলালে অন্যটাও
- * বদলাতে হবে, নইলে একদিন xlsx আর PDF দুই রকম নীতি বলত (O4)।
+ * ⚠️ `reports.types.ts`-এর `OVERTIME_NOTE`-এর **ছাপার উপযোগী রূপ**: em
+ * ড্যাশ (—) WinAnsi-তে থাকলেও এখানে সাধারণ হাইফেন, যাতে ছাপা লেখায়
+ * বাইটের রকম যত কম থাকে (reports.pdf.text.ts-এর নিয়ম)। দুটো এক কথা বলে —
+ * একটা বদলালে অন্যটাও বদলাতে হবে, নইলে একদিন xlsx আর PDF দুই রকম নীতি
+ * বলত (O4)।
  */
 const OVERTIME_NOTE_EN =
   'Overtime hours are not converted to money - no rate has been decided ' +

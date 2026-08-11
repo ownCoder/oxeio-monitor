@@ -80,7 +80,7 @@ export class ClockDriftService {
     if (recent) return;
 
     this.logger.warn(
-      `device ${deviceId}-এর ঘড়ি ${drift.seconds}s ভুল — অ্যালার্ট তৈরি হচ্ছে`,
+      `device ${deviceId} clock is off by ${drift.seconds}s — raising an alert`,
     );
 
     await this.prisma.alert.create({
@@ -89,10 +89,10 @@ export class ClockDriftService {
         severity: 'warning',
         deviceId,
         employeeId,
-        title: 'PC-র ঘড়ি ভুল',
+        title: 'PC clock is wrong',
         detail:
-          `সার্ভারের সাথে ${Math.round(abs / 60)} মিনিট পার্থক্য। ` +
-          'ওই PC-তে Windows time sync (w32time) চালু করুন।',
+          `${Math.round(abs / 60)} minutes off from the server. ` +
+          'Turn on Windows time sync (w32time) on that PC.',
         meta: { driftSec: drift.seconds },
         channelsSent: [],
       },

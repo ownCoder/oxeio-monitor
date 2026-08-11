@@ -21,7 +21,7 @@ export function hhmmToMinutes(value: string): number | null {
 }
 
 /**
- * ঠিক থাকলে `null`, নইলে বাংলায় কারণ।
+ * ঠিক থাকলে `null`, নইলে কারণটা লেখা স্ট্রিং।
  *
  * ⚠️ exception ছোড়া হয় না — তাহলে খাঁটি ফাংশনটা NestJS-এর
  * `BadRequestException`-এর সাথে বাঁধা পড়ে যেত, আর টেস্টে HTTP লেয়ার
@@ -32,14 +32,14 @@ export function captureWindowProblem(from: string, to: string): string | null {
   const start = hhmmToMinutes(from);
   const end = hhmmToMinutes(to);
 
-  if (start === null) return `ক্যাপচার উইন্ডোর শুরু 'HH:MM' ফরম্যাটে দিতে হবে — পাওয়া গেছে "${from}"`;
-  if (end === null) return `ক্যাপচার উইন্ডোর শেষ 'HH:MM' ফরম্যাটে দিতে হবে — পাওয়া গেছে "${to}"`;
+  if (start === null) return `The capture window start must be in 'HH:MM' format — got "${from}"`;
+  if (end === null) return `The capture window end must be in 'HH:MM' format — got "${to}"`;
 
   const earliest = hhmmToMinutes(CAPTURE_EARLIEST) as number;
   const latest = hhmmToMinutes(CAPTURE_LATEST) as number;
 
   if (start < earliest || end > latest) {
-    return `স্ক্রিনশটের সময় ${CAPTURE_EARLIEST}–${CAPTURE_LATEST}-এর বাইরে যেতে পারবে না (ADR-011c)`;
+    return `Screenshot times cannot fall outside ${CAPTURE_EARLIEST}–${CAPTURE_LATEST} (ADR-011c)`;
   }
 
   // ⚠️ সমান হলেও নাকচ। from == to মানে শূন্য দৈর্ঘ্যের উইন্ডো — এজেন্ট
@@ -47,7 +47,7 @@ export function captureWindowProblem(from: string, to: string): string | null {
   //    স্ক্রিনশট বন্ধ করে দিয়েছে" আর "স্ক্রিনশট কাজ করছে না" — এই দুটো
   //    আলাদা করা যেত না।
   if (start >= end) {
-    return 'ক্যাপচার উইন্ডোর শুরু শেষের আগে হতে হবে';
+    return 'The capture window start must be before the end';
   }
 
   return null;

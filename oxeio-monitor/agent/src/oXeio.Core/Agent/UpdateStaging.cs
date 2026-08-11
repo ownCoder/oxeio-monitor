@@ -60,14 +60,14 @@ public sealed record UpdateStatus
     /// <summary>স্টাফকে দেখানোর মতো এক লাইন।</summary>
     public string Describe() => Stage switch
     {
-        UpdateStage.None => "সর্বশেষ ভার্সনই চলছে",
-        UpdateStage.Offered => $"নতুন ভার্সন {Version} — নামানো হচ্ছে",
-        UpdateStage.Downloaded => $"নতুন ভার্সন {Version} — যাচাই চলছে",
-        UpdateStage.Verified => $"নতুন ভার্সন {Version} বসানোর জন্য প্রস্তুত",
+        UpdateStage.None => "Running the latest version",
+        UpdateStage.Offered => $"New version {Version} — downloading",
+        UpdateStage.Downloaded => $"New version {Version} — verifying",
+        UpdateStage.Verified => $"New version {Version} is ready to install",
 
         // ⚠️ "সমস্যা হয়েছে" বললে কেউ কিছু করত না। কী করতে হবে সেটা বলা হচ্ছে।
-        UpdateStage.Corrupt => $"ভার্সন {Version} নামাতে গিয়ে ফাইল মেলেনি — আইটিকে জানান",
+        UpdateStage.Corrupt => $"Version {Version} downloaded but the file did not match — tell IT",
 
-        _ => "অজানা",
+        _ => "Unknown",
     };
 }

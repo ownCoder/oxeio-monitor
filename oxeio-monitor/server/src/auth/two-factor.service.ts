@@ -60,7 +60,7 @@ export class TwoFactorService {
       where: { id: userId },
       select: { totpSecret: true },
     });
-    if (!user) throw new UnauthorizedException('অ্যাকাউন্ট পাওয়া যায়নি');
+    if (!user) throw new UnauthorizedException('Account not found');
     return decodeEnvelope(user.totpSecret);
   }
 
@@ -108,7 +108,7 @@ export class TwoFactorService {
       // ⚠️ চালু থাকা অবস্থায় নতুন সিক্রেট বসালে পুরোনো ফোনের কোড হঠাৎ
       //    কাজ করা বন্ধ করত, অথচ ইউজার হয়তো নতুনটা স্ক্যানই করেনি।
       throw new BadRequestException(
-        '2FA আগেই চালু আছে। নতুন করে বসাতে হলে আগে বন্ধ করুন।',
+        '2FA is already enabled. Turn it off first to set it up again.',
       );
     }
 
@@ -116,7 +116,7 @@ export class TwoFactorService {
       where: { id: userId },
       select: { email: true },
     });
-    if (!user) throw new UnauthorizedException('অ্যাকাউন্ট পাওয়া যায়নি');
+    if (!user) throw new UnauthorizedException('Account not found');
 
     const secret = generateSecret();
     const otpauthUri = buildOtpauthUri(secret, user.email);
@@ -151,16 +151,18 @@ export class TwoFactorService {
   ): Promise<{ recoveryCodes: string[] }> {
     const env = await this.loadEnvelope(userId);
     if (env === null) {
-      throw new BadRequestException('আগে setup করুন');
+      throw new BadRequestException('Run setup first');
     }
     if (env.enabled) {
-      throw new BadRequestException('2FA আগেই চালু আছে');
+      throw new BadRequestException('2FA is already enabled');
     }
 
     const verdict = verifyTotpCode(env, code);
     if (!verdict.ok) {
       await this.log(userId, '2fa_enable_failed', ip, { reason: verdict.reason });
-      throw new BadRequestException('কোড মেলেনি — অ্যাপের সময় ঠিক আছে কি না দেখুন');
+      throw new BadRequestException(
+        "Code didn't match — check that your app's clock is correct",
+      );
     }
 
     const recoveryCodes = generateRecoveryCodes();
@@ -186,11 +188,11 @@ export class TwoFactorService {
    */
   async disable(userId: number, password: string, ip: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('অ্যাকাউন্ট পাওয়া যায়নি');
+    if (!user) throw new UnauthorizedException('Account not found');
 
     if (!(await this.passwords.verify(user.passwordHash, password))) {
       await this.log(userId, '2fa_disable_failed', ip);
-      throw new UnauthorizedException('পাসওয়ার্ড ভুল');
+      throw new UnauthorizedException('Password is incorrect');
     }
 
     await this.saveEnvelope(userId, null);
@@ -208,15 +210,15 @@ export class TwoFactorService {
     ip: string,
   ): Promise<{ recoveryCodes: string[] }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new UnauthorizedException('অ্যাকাউন্ট পাওয়া যায়নি');
+    if (!user) throw new UnauthorizedException('Account not found');
 
     if (!(await this.passwords.verify(user.passwordHash, password))) {
-      throw new UnauthorizedException('পাসওয়ার্ড ভুল');
+      throw new UnauthorizedException('Password is incorrect');
     }
 
     const env = decodeEnvelope(user.totpSecret);
     if (env === null || !env.enabled) {
-      throw new BadRequestException('2FA চালু নেই');
+      throw new BadRequestException('2FA is not enabled');
     }
 
     const recoveryCodes = generateRecoveryCodes();

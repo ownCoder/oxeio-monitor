@@ -36,7 +36,7 @@ export class OpsScheduler implements OnApplicationBootstrap, OnModuleDestroy {
 
   onApplicationBootstrap(): void {
     if (process.env.NODE_ENV === 'test') {
-      this.logger.log('NODE_ENV=test — ops শিডিউলার চালু হয়নি');
+      this.logger.log('NODE_ENV=test — ops scheduler not started');
       return;
     }
 
@@ -51,7 +51,7 @@ export class OpsScheduler implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     this.logger.log(
-      'ops চেক চালু হয়েছে (G04' +
+      'ops checks started (G04' +
         (this.telegram.configured ? ' · G08' : '') +
         ')',
     );
@@ -99,7 +99,7 @@ export class OpsScheduler implements OnApplicationBootstrap, OnModuleDestroy {
       await task(new Date());
     } catch (err) {
       this.logger.error(
-        `${name} চেক ব্যর্থ: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `${name} check failed: ${err instanceof Error ? err.message : 'unknown error'}`,
       );
     } finally {
       this.running.delete(name);

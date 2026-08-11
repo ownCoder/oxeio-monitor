@@ -231,7 +231,7 @@ describe('DigestJob — কখনো throw করে না', () => {
     const { service } = makeService({
       reports: {
         attendance: () =>
-          Promise.reject(new Error('কোনো active work policy নেই')),
+          Promise.reject(new Error('No active work policy found')),
       } as Partial<ReportsService>,
     });
 

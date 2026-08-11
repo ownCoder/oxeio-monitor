@@ -59,7 +59,7 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
     /// কারণটা কোথাও না রাখলে চিরতরে হারিয়ে যেত। "এই PC-তে সবসময় GDI-তে নেমে
     /// যাচ্ছে কেন" প্রশ্নের উত্তর একমাত্র এখানেই পাওয়া যাবে।
     /// </summary>
-    public string LastStep { get; private set; } = "এখনো চেষ্টা হয়নি";
+    public string LastStep { get; private set; } = "not attempted yet";
 
     public CapturedFrame? Capture(MonitorInfo monitor)
     {
@@ -76,11 +76,11 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
 
         try
         {
-            LastStep = "আউটপুট খোঁজা";
+            LastStep = "looking for an output";
             if (!TryFindOutput(monitor.Handle, ref factory, ref adapter, ref output))
                 return null;
 
-            LastStep = "D3D11 ডিভাইস";
+            LastStep = "D3D11 device";
             if (!TryCreateDevice(adapter, ref device, ref context))
                 return null;
 
@@ -98,13 +98,13 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
             //    এই স্লটটা GDI-তে উঠবে।
             if (hr < 0) return null;
 
-            LastStep = "ঘূর্ণন যাচাই";
+            LastStep = "checking rotation";
             var turns = PixelCopy.TurnsForRotation(RotationOf(duplication));
 
-            LastStep = "ফ্রেমের অপেক্ষা";
+            LastStep = "waiting for a frame";
             if (!TryAcquire(duplication, out var info, ref desktop)) return null;
 
-            LastStep = $"ফ্রেম পেলাম (accumulated={info.AccumulatedFrames}, " +
+            LastStep = $"got a frame (accumulated={info.AccumulatedFrames}, " +
                        $"present={info.LastPresentTime}, drm={info.ProtectedContentMaskedOut})";
 
             if (ComCall.QueryInterface(desktop, D3D11.IID_ID3D11Texture2D, out texture) < 0)
@@ -147,7 +147,7 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
             if (w <= 0 || h <= 0) return null;
 
             LastStep += $" · {desc.Width}×{desc.Height} pitch={map.RowPitch} → {w}×{h}" +
-                        (turns == 0 ? "" : $" · ঘূর্ণন {turns * 90}°");
+                        (turns == 0 ? "" : $" · rotation {turns * 90}°");
 
             var source = new ReadOnlySpan<byte>(map.pData, checked((int)(map.RowPitch * desc.Height)));
             var tight = PixelCopy.ToTightBuffer(source, (int)map.RowPitch, w, h);
@@ -307,7 +307,7 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
             {
                 if (hr == Dxgi.DXGI_ERROR_WAIT_TIMEOUT) continue;
 
-                LastStep = $"AcquireNextFrame ব্যর্থ (0x{hr:X8})";
+                LastStep = $"AcquireNextFrame failed (0x{hr:X8})";
                 EngineFault = !IsTransient(hr);
                 return false;
             }
@@ -329,7 +329,7 @@ internal sealed unsafe class DuplicationCapturer : IScreenCapturer
 
         // পর্দায় কিছুই নড়ছে না। এটা ইঞ্জিনের দোষ নয় — আর ঠিক এই অবস্থাতেই
         // GDI নিখুঁত ছবি দেয়, কারণ কালো আসার একমাত্র কারণ চলমান ভিডিও।
-        LastStep = "পর্দায় কোনো পরিবর্তন নেই — GDI-তে";
+        LastStep = "no change on screen — falling back to GDI";
         EngineFault = false;
         return false;
     }

@@ -74,11 +74,11 @@ export function decodeEnvelope(raw: string | null | undefined): TotpEnvelope | n
   try {
     parsed = JSON.parse(trimmed);
   } catch {
-    throw new TotpEnvelopeError('totp_secret-এ ভাঙা JSON');
+    throw new TotpEnvelopeError('Malformed JSON in totp_secret');
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new TotpEnvelopeError('totp_secret-এ অবজেক্ট নেই');
+    throw new TotpEnvelopeError('totp_secret is not an object');
   }
 
   const o = parsed as Record<string, unknown>;
@@ -96,7 +96,7 @@ export function decodeEnvelope(raw: string | null | undefined): TotpEnvelope | n
     typeof lastCounter !== 'number' ||
     !Number.isFinite(lastCounter)
   ) {
-    throw new TotpEnvelopeError('totp_secret-এর আকার মেলেনি');
+    throw new TotpEnvelopeError('totp_secret has an unexpected shape');
   }
 
   return { v: 1, secret, enabled, recoveryHashes: hashes, lastCounter };

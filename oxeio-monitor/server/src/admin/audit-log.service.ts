@@ -60,7 +60,7 @@ export class AuditLogService {
     if (from && to && from > to) {
       // ⚠️ উল্টো রেঞ্জে Postgres নীরবে শূন্য সারি ফেরত দিত, আর ব্যবহারকারী
       //    ভাবত ওই সময়ে সত্যিই কিছু ঘটেনি
-      throw new BadRequestException('`from` অবশ্যই `to`-র আগে হতে হবে');
+      throw new BadRequestException('`from` must be before `to`');
     }
 
     const where: Prisma.AuditLogWhereInput = {

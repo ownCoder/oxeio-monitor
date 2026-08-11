@@ -53,7 +53,7 @@ export class PayrollService {
     ip: string,
   ): Promise<PayrollSheet> {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) {
-      throw new BadRequestException('মাস দিতে হবে YYYY-MM ফরম্যাটে');
+      throw new BadRequestException('The month must be in YYYY-MM format');
     }
 
     const employees = await this.prisma.employee.findMany({
@@ -136,7 +136,7 @@ export class PayrollService {
 
     if (missingSummary.length > 0) {
       this.logger.warn(
-        `${yearMonth}: ${missingSummary.length} জনের মাসিক rollup নেই — শিটে আসেনি`,
+        `${yearMonth}: ${missingSummary.length} staff have no monthly rollup — they are missing from the sheet`,
       );
     }
 

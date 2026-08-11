@@ -604,7 +604,7 @@ export class ReportsService {
         // ⭐ ২০৮ ধরে নেওয়া হয় না। কোনো policy না থাকলে টার্গেট **অজানা**,
         //    আর অজানা টার্গেট দিয়ে ঘাটতি ছাপা মানে নীরবে একটা নীতি বানিয়ে ফেলা।
         throw new InternalServerErrorException(
-          'কোনো active work policy নেই — টার্গেট বের করা যাচ্ছে না',
+          'There is no active work policy — the target cannot be worked out',
         );
       }
 
@@ -622,7 +622,7 @@ export class ReportsService {
 
     if (excluded.length > 0) {
       this.logger.warn(
-        `${excluded.length} জন inactive কর্মীর left_on নেই — রিপোর্টে আসেননি`,
+        `${excluded.length} inactive staff have no left_on — they are missing from the report`,
       );
     }
 

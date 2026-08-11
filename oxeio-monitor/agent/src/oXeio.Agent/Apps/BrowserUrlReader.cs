@@ -80,7 +80,7 @@ internal sealed class BrowserUrlReader
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            Debug.WriteLine($"address bar পড়া গেল না: {ex.Message}");
+            Debug.WriteLine($"could not read the address bar: {ex.Message}");
             Fail();
             return null;
         }

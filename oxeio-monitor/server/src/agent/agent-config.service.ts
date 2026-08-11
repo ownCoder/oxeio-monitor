@@ -39,7 +39,7 @@ export class AgentConfigService {
       ? await this.prisma.workPolicy.findUnique({ where: { id: policyId } })
       : await this.prisma.workPolicy.findFirst({ where: { isActive: true } });
 
-    if (!policy) throw new NotFoundException('কোনো active work policy নেই');
+    if (!policy) throw new NotFoundException('No active work policy found');
 
     const config: AgentConfig = {
       idleThresholdSec: policy.idleThresholdSec,

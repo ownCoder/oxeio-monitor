@@ -90,7 +90,7 @@ internal sealed record AgentSettings
         var env = Environment.GetEnvironmentVariable(ServerUrlEnvVar);
         if (!string.IsNullOrWhiteSpace(env))
         {
-            source = $"পরিবেশ-চলক {ServerUrlEnvVar}";
+            source = $"environment variable {ServerUrlEnvVar}";
             return new AgentSettings { ServerUrl = env.Trim() };
         }
 

@@ -81,7 +81,7 @@ internal static class SyncWire
         //    অর্থাৎ নতুন কোনো স্টেট যোগ হলে সেটা নীরবে **কাজের সময়** হিসেবে
         //    গোনা হতো। সার্ভারে ভুল ডেটা পাঠানোর চেয়ে এখানেই থেমে যাওয়া ভালো।
         _ => throw new ArgumentOutOfRangeException(
-            nameof(state), state, "এই স্টেটের জন্য সার্ভারের কোনো রূপ ঠিক করা নেই"),
+            nameof(state), state, "No server representation is defined for this state"),
     };
 
     // ── app usage ───────────────────────────────────────────────────────────

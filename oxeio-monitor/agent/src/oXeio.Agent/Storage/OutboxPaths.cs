@@ -104,18 +104,18 @@ internal sealed class OutboxPaths
                 if (TryPrepare(alt, out _))
                 {
                     return new OutboxPaths(alt, isFallback: true,
-                        $"%LOCALAPPDATA%\\{AppFolderName} — ProgramData-তে লেখা যায়নি ({why})");
+                        $"%LOCALAPPDATA%\\{AppFolderName} — ProgramData was not writable ({why})");
                 }
             }
 
             // দুটোই ব্যর্থ: তবু ProgramData-র পাথটাই ফেরত দিই, যাতে লগে আসল
             // পাথ আর আসল কারণ দেখা যায়। স্টোর খুলতে গিয়ে পরিষ্কার এরর দেবে।
-            return new OutboxPaths(root, isFallback: false, $"⚠️ কোথাও লেখা যাচ্ছে না ({why})");
+            return new OutboxPaths(root, isFallback: false, $"⚠️ nowhere is writable ({why})");
         }
 
         // SpecialFolder খালি স্ট্রিং দিলে (অস্বাভাবিক, তবু) — অন্তত temp-এ চলুক
         var temp = Path.Combine(Path.GetTempPath(), AppFolderName);
-        return new OutboxPaths(temp, isFallback: true, "⚠️ temp — SpecialFolder পাওয়া যায়নি");
+        return new OutboxPaths(temp, isFallback: true, "⚠️ temp — SpecialFolder was not available");
     }
 
     /// <summary>সব ফোল্ডার বানিয়ে নেওয়া। বারবার ডাকা নিরাপদ।</summary>

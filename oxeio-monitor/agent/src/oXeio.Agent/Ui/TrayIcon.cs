@@ -28,7 +28,12 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 {
     private const string BalloonTitle = "oXeio";
 
-    /// <summary>এর ভেতরে আবার "সিঙ্ক এখন" চাপলে নতুন অনুরোধ যায় না।</summary>
+    // সিঙ্ক মেনু আইটেমটার দুই দশা। ধ্রুবক হিসেবে রাখা, কারণ লেখাটা দু জায়গায়
+    // বসে (তৈরির সময় ও RefreshMenu-তে) — হাতে লিখলে একটা বদলাত, অন্যটা নয়।
+    private const string SyncNowText = "Sync now";
+    private const string SyncBusyText = "Syncing…";
+
+    /// <summary>এর ভেতরে আবার "Sync now" চাপলে নতুন অনুরোধ যায় না।</summary>
     private static readonly TimeSpan SyncDebounce = TimeSpan.FromSeconds(20);
 
     private readonly MonotonicClock _clock;
@@ -71,17 +76,17 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         _fonts = new TrayFonts();
         _balloons = new BalloonThrottle();
 
-        _todayItem = new ToolStripMenuItem("আজকের সময়");
-        _portalItem = new ToolStripMenuItem("আমার তথ্য");
-        _policyItem = new ToolStripMenuItem("পলিসি দেখুন");
-        _syncItem = new ToolStripMenuItem("সিঙ্ক এখন");
-        _aboutItem = new ToolStripMenuItem("সম্পর্কে");
+        _todayItem = new ToolStripMenuItem("Today's hours");
+        _portalItem = new ToolStripMenuItem("My data");
+        _policyItem = new ToolStripMenuItem("View policy");
+        _syncItem = new ToolStripMenuItem(SyncNowText);
+        _aboutItem = new ToolStripMenuItem("About");
 
         _todayItem.Click += (_, _) => Guarded(ShowToday);
         _portalItem.Click += (_, _) => Guarded(() =>
-            OpenExternal(_options.StaffPortalUrl, "স্টাফ পোর্টালের ঠিকানা বসানো নেই"));
+            OpenExternal(_options.StaffPortalUrl, "No staff portal address is configured"));
         _policyItem.Click += (_, _) => Guarded(() =>
-            OpenExternal(_options.PolicyUrl, "পলিসি ডকুমেন্ট পাওয়া যায়নি"));
+            OpenExternal(_options.PolicyUrl, "Policy document not found"));
         _syncItem.Click += (_, _) => Guarded(RequestSync);
         _aboutItem.Click += (_, _) => Guarded(ShowAbout);
 
@@ -258,7 +263,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
                 break;
 
             case SyncHealth.Ok when previous is SyncHealth.Failing or SyncHealth.Degraded:
-                Balloon("sync_restored", "সার্ভারের সাথে সংযোগ ফিরে এসেছে", ToolTipIcon.Info);
+                Balloon("sync_restored", "Connection to the server is back", ToolTipIcon.Info);
                 break;
         }
     }
@@ -326,7 +331,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
                    (_lastSyncRequest is { } last && _clock.Elapsed - last < SyncDebounce);
 
         _syncItem.Enabled = !busy;
-        _syncItem.Text = busy && _lastSyncRequest is not null ? "সিঙ্ক চলছে…" : "সিঙ্ক এখন";
+        _syncItem.Text = busy && _lastSyncRequest is not null ? SyncBusyText : SyncNowText;
     }
 
     private void ShowToday()
@@ -383,7 +388,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
             catch (Exception ex) { Report(ex); }
         });
 
-        Balloon("sync_now", "সিঙ্কের চেষ্টা শুরু হয়েছে", ToolTipIcon.Info);
+        Balloon("sync_now", "Sync started", ToolTipIcon.Info);
     }
 
     // ── বাইরের লিংক ───────────────────────────────────────────────────────
@@ -410,7 +415,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         catch (Exception ex)
         {
             Report(ex);
-            Balloon("link_failed", "লিংকটি খোলা গেল না", ToolTipIcon.Warning);
+            Balloon("link_failed", "Couldn't open the link", ToolTipIcon.Warning);
         }
     }
 

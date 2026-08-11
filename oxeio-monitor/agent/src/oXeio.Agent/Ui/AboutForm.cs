@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.Versioning;
 
 using oXeio.Core.Agent;
@@ -5,7 +6,7 @@ using oXeio.Core.Agent;
 namespace oXeio.Agent.Ui;
 
 /// <summary>
-/// "সম্পর্কে" — সংস্করণ, ডিভাইস আইডি, সার্ভার।
+/// "About" — সংস্করণ, ডিভাইস আইডি, সার্ভার।
 ///
 /// সাথে একটা ছোট তালিকা: এই এজেন্ট যা <b>করে না</b>। ওটা সাজসজ্জা নয় — লিখিত
 /// মনিটরিং পলিসিতে যা প্রতিশ্রুতি দেওয়া আছে, সেটা স্টাফের নিজের মেশিনে দুই
@@ -18,7 +19,7 @@ internal sealed class AboutForm : OwnerDrawnForm
     private readonly Func<TrayOptions> _options;
 
     public AboutForm(TrayFonts fonts, Func<TrayOptions> options)
-        : base(fonts, "oXeio — সম্পর্কে", 420, 490)
+        : base(fonts, "oXeio — About", 420, 490)
     {
         _options = options;
     }
@@ -40,17 +41,17 @@ internal sealed class AboutForm : OwnerDrawnForm
         var options = _options();
         var config = options.EffectiveConfig;
 
-        stack.Line("oXeio মনিটর", TrayFontRole.Strong);
+        stack.Line("oXeio Monitor", TrayFontRole.Strong);
         stack.Gap(6);
 
-        stack.Pair("সংস্করণ", BanglaText.Digits(options.AgentVersion));
-        stack.Pair("ডিভাইস আইডি", options.DeviceId is { } id
-            ? BanglaText.Number(id)
-            : "এখনো এনরোল হয়নি");
+        stack.Pair("Version", options.AgentVersion);
+        stack.Pair("Device ID", options.DeviceId is { } id
+            ? UiText.Number(id)
+            : "Not enrolled yet");
 
         if (!string.IsNullOrWhiteSpace(options.EmployeeName))
         {
-            stack.Pair("কর্মী", options.EmpCode is { Length: > 0 } code
+            stack.Pair("Staff", options.EmpCode is { Length: > 0 } code
                 ? $"{options.EmployeeName} ({code})"
                 : options.EmployeeName!);
         }
@@ -59,12 +60,12 @@ internal sealed class AboutForm : OwnerDrawnForm
 
         // ⚠️ URL পুরোটা এক লাইনে না ধরলে TextStack নিজেই ভেঙে দুই লাইনে নেয় —
         //    তাই Pair নয়, Line। Pair-এ ডান অর্ধেকে আটকে গেলে পড়া যেত না।
-        stack.Line("সার্ভার", TrayFontRole.Small, Muted);
+        stack.Line("Server", TrayFontRole.Small, Muted);
         stack.Line(options.ServerUrl);
 
         stack.Rule();
 
-        stack.Line("এই এজেন্ট যা করে না", TrayFontRole.Strong);
+        stack.Line("What this agent does not do", TrayFontRole.Strong);
         stack.Gap(4);
 
         foreach (var promise in Promises(config))
@@ -75,20 +76,20 @@ internal sealed class AboutForm : OwnerDrawnForm
         stack.Rule();
 
         stack.Line(
-            "ট্রে-র আইকনটি সবসময় দেখা যাবে — এটি লুকানোর কোনো সেটিং নেই। " +
-            "মনিটরিং চললে তা গোপন রাখা হয় না।",
+            "The tray icon is always visible — there is no setting to hide it. " +
+            "Monitoring is never kept secret.",
             TrayFontRole.Small, Muted);
     }
 
     private static IEnumerable<string> Promises(AgentConfig config)
     {
-        yield return "কি-স্ট্রোক রেকর্ড করে না";
-        yield return "ক্লিপবোর্ড পড়ে না";
-        yield return "সম্পূর্ণ URL রাখে না — শুধু ডোমেইন";
-        yield return "ক্যামেরা বা মাইক্রোফোন ছোঁয় না";
-        yield return "স্ক্রিনের ভিডিও বা ফাইলের ভেতরের লেখা নেয় না";
+        yield return "Does not record keystrokes";
+        yield return "Does not read the clipboard";
+        yield return "Does not keep full URLs — domain only";
+        yield return "Does not touch the camera or microphone";
+        yield return "Does not record screen video or the contents of files";
         yield return ScreenshotWindowLine(config);
-        yield return "লাঞ্চ, বিরতি বা দেরি — কিছুই গোনা হয় না";
+        yield return "Lunch, breaks and late arrivals are not counted at all";
     }
 
     private static string ScreenshotWindowLine(AgentConfig config)
@@ -97,13 +98,13 @@ internal sealed class AboutForm : OwnerDrawnForm
         var to = AgentConfig.ParseHhMm(config.ScreenshotTo);
 
         if (from is null || to is null)
-            return "স্ক্রিনশটের সময়সীমা সার্ভার থেকে আসেনি";
+            return "The screenshot window has not arrived from the server";
 
         var window =
-            $"{BanglaText.Digits(from.Value.ToString(@"HH\:mm"))}–" +
-            $"{BanglaText.Digits(to.Value.ToString(@"HH\:mm"))}";
+            $"{from.Value.ToString(@"HH\:mm", CultureInfo.InvariantCulture)}–" +
+            $"{to.Value.ToString(@"HH\:mm", CultureInfo.InvariantCulture)}";
 
         // সময় গোনা ২৪ ঘণ্টাই — এই পার্থক্যটা না লিখলে স্টাফ ভাবে রাতের কাজ গোনা হয় না
-        return $"ছবি ওঠে শুধু {window}-এর মধ্যে (সময় অবশ্য ২৪ ঘণ্টাই গোনা হয়)";
+        return $"Screenshots are taken only between {window} (time is still counted 24 hours a day)";
     }
 }

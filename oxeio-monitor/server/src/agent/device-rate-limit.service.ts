@@ -43,7 +43,7 @@ export class DeviceRateLimitService {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          message: 'অনেক দ্রুত পাঠানো হচ্ছে — একটু পরে আবার চেষ্টা করুন',
+          message: 'Sending too fast — please try again shortly',
           retryAfterSeconds: Math.ceil((w.resetAt - now) / 1000),
         },
         HttpStatus.TOO_MANY_REQUESTS,

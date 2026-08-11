@@ -115,13 +115,13 @@ internal sealed class AgentHost : IAsyncDisposable
         var guard = SessionGuard.Check();
         if (!guard.CanTrack)
         {
-            error = $"এই সেশনে সময় গোনা যাবে না — {guard.Explanation}";
+            error = $"Time cannot be counted in this session — {guard.Explanation}";
             return false;
         }
 
         if (!AgentDataDirectory.TryEnsure(AgentDataDirectory.Default, out var dirError))
         {
-            error = $"ডেটা ফোল্ডার তৈরি করা গেল না: {dirError}";
+            error = $"Could not create the data folder: {dirError}";
             return false;
         }
 
@@ -131,7 +131,7 @@ internal sealed class AgentHost : IAsyncDisposable
         _beacon = LivenessBeacon.TryAcquire(AgentDataDirectory.Default);
         if (_beacon is null)
         {
-            error = "এই PC-তে oXeio এজেন্ট ইতিমধ্যেই চলছে।";
+            error = "An oXeio agent is already running on this PC.";
             return false;
         }
 
@@ -164,7 +164,7 @@ internal sealed class AgentHost : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _log.Error("অফলাইন কিউ খোলা গেল না — ডেটা জমবে না", ex);
+            _log.Error("Could not open the offline queue — no data will be stored", ex);
         }
 
         // ── ট্র্যাকিং ───────────────────────────────────────────────────────
@@ -269,7 +269,7 @@ internal sealed class AgentHost : IAsyncDisposable
             catch (Exception ex)
             {
                 // ⚠️ এই থ্রেড মরলে সময় গোনা চিরতরে বন্ধ — সবচেয়ে খারাপ ব্যর্থতা।
-                _log.Error("ট্র্যাকার টিক ব্যর্থ — চলতে থাকছে", ex);
+                _log.Error("Tracker tick failed — continuing", ex);
             }
 
             Thread.Sleep(Tick);
@@ -295,7 +295,7 @@ internal sealed class AgentHost : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                _log.Error("ক্যাপচার স্লট ব্যর্থ", ex);
+                _log.Error("Capture slot failed", ex);
             }
 
             next = _slots.Next(DateTimeOffset.UtcNow);
@@ -334,7 +334,7 @@ internal sealed class AgentHost : IAsyncDisposable
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    _log.Warn($"থাম্বনেইল লেখা গেল না — ফুল ছবিই যাবে: {ex.Message}");
+                    _log.Warn($"Could not write the thumbnail — the full image will be sent: {ex.Message}");
                 }
             }
 
@@ -375,7 +375,7 @@ internal sealed class AgentHost : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                _log.Error("অ্যাপ-ব্যবহার টিক ব্যর্থ — চলতে থাকছে", ex);
+                _log.Error("App usage tick failed — continuing", ex);
             }
 
             try { await Task.Delay(Tick, ct); }
@@ -421,13 +421,13 @@ internal sealed class AgentHost : IAsyncDisposable
                     }
                     else if (result.Outcome == SyncOutcome.Revoked)
                     {
-                        _credentials.Revoke("সার্ভার থেকে বাতিল");
+                        _credentials.Revoke("Revoked by the server");
                     }
                 }
             }
             catch (Exception ex)
             {
-                _log.Error("heartbeat ব্যর্থ", ex);
+                _log.Error("Heartbeat failed", ex);
             }
 
             try { await Task.Delay(HeartbeatEvery, ct); }
@@ -442,7 +442,7 @@ internal sealed class AgentHost : IAsyncDisposable
 
         if (string.IsNullOrWhiteSpace(_settings.EnrollmentCode))
         {
-            _log.Warn("enrollment কোড নেই — এই ডিভাইস সার্ভারে যুক্ত হয়নি");
+            _log.Warn("No enrolment code — this device has not been added to the server");
             return;
         }
 
@@ -457,7 +457,7 @@ internal sealed class AgentHost : IAsyncDisposable
         var result = await enroller.EnrollWithRetryAsync(
             new SecretText(_settings.EnrollmentCode), monitors, ct: ct);
 
-        _log.Info(result.Ok ? "✅ ডিভাইস enroll হয়েছে" : $"enroll ব্যর্থ: {result.Message}");
+        _log.Info(result.Ok ? "✅ Device enrolled" : $"Enrolment failed: {result.Message}");
         PublishStatus();
     }
 
@@ -517,7 +517,7 @@ internal sealed class AgentHost : IAsyncDisposable
 
             _outbox?.EnqueueAsync(OutboxCodec.Item(s, DateTimeOffset.UtcNow))
                    .ContinueWith(
-                       t => _log.Error("সেগমেন্ট কিউয়ে রাখা গেল না", t.Exception),
+                       t => _log.Error("Could not queue the segment", t.Exception),
                        TaskContinuationOptions.OnlyOnFaulted);
         }
     }
@@ -528,7 +528,7 @@ internal sealed class AgentHost : IAsyncDisposable
         {
             _outbox?.EnqueueAsync(OutboxCodec.Item(a, DateTimeOffset.UtcNow))
                    .ContinueWith(
-                       t => _log.Error("অ্যাপ-ব্যবহার কিউয়ে রাখা গেল না", t.Exception),
+                       t => _log.Error("Could not queue app usage", t.Exception),
                        TaskContinuationOptions.OnlyOnFaulted);
         }
     }
@@ -566,7 +566,7 @@ internal sealed class AgentHost : IAsyncDisposable
 
         _outbox.EnqueueAsync(OutboxCodec.Item(record, DateTimeOffset.UtcNow))
                .ContinueWith(
-                   t => _log.Error($"ইভেন্ট কিউয়ে রাখা গেল না ({record.Type})", t.Exception),
+                   t => _log.Error($"Could not queue the event ({record.Type})", t.Exception),
                    TaskContinuationOptions.OnlyOnFaulted);
     }
 
@@ -605,7 +605,7 @@ internal sealed class AgentHost : IAsyncDisposable
         if (!TryMarkClosing(type)) return false;
 
         RaiseEvent(type, meta);
-        _log.Info($"ইভেন্ট কিউয়ে: {type}");
+        _log.Info($"Event queued: {type}");
         return true;
     }
 
@@ -789,7 +789,7 @@ internal sealed class AgentHost : IAsyncDisposable
             }
             catch (Exception ex)
             {
-                _log.Error("agent_stop ইভেন্ট কিউয়ে রাখা গেল না", ex);
+                _log.Error("Could not queue the agent_stop event", ex);
             }
         }
 

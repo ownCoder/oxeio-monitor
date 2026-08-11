@@ -62,7 +62,7 @@ export class OpsController {
   async runBackup(
     @CurrentUser() actor: SessionUser,
   ): Promise<ManualBackupResponse> {
-    this.logger.warn(`হাতে চালানো ব্যাকআপ — user ${actor.userId}`);
+    this.logger.warn(`Manual backup triggered — user ${actor.userId}`);
     const result = await this.backup.runOnce();
 
     return {

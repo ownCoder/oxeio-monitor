@@ -19,6 +19,13 @@ import {
   type LiveStatus,
 } from './dashboard.math';
 
+import {
+  countWorkdays,
+  dailyTargetSec as dailyTargetSecOf,
+  isWorkday,
+  monthBoundsOf,
+} from '../reports/reports.range';
+
 const HOUR = 3600;
 
 /**
@@ -45,7 +52,26 @@ export interface LiveCard {
   status: LiveStatus;
   /** ঢাকার আজকের দিনে গোনা সেকেন্ড */
   todayWorkedSec: number;
-  /** ⭐ E02 — রিংটা **মাসিক**, দৈনিক নয় */
+  /**
+   * ⭐ এক কর্মদিবসের টার্গেট — Live Board-এর রিং এখন **এটার** বিপরীতে।
+   *
+   * ⚠️ ৮ ঘণ্টা কোনো ধ্রুবক **নয়**, বের করা সংখ্যা: মাসিক টার্গেট ÷ ওই
+   * মাসের কর্মদিবস। আগস্ট ২০২৬-এ ২০৮ ÷ ২৬ = ৮ ঘণ্টা, কিন্তু ২৭ কর্মদিবসের
+   * মাসে ৭ঘ ৪২মি। ক্লায়েন্টে ৮ হার্ডকোড করলে কোনো কোনো মাসে টার্গেট
+   * নীরবে ভুল দেখাত — আর ঠিক এই ভুলটাই মাসিক পাতায় ধরা পড়েছে (২০৮ vs ২১৬)।
+   *
+   * সংজ্ঞাটা রিপোর্টের সাথে **একই ফাংশন** থেকে আসে, নইলে দুটো পাতা দুই
+   * রকম টার্গেট দেখাত।
+   */
+  dailyTargetSec: number;
+
+  /**
+   * আজ কর্মদিবস কি না (সাপ্তাহিক ছুটি বা সরকারি ছুটি নয়)।
+   * ⚠️ ছুটির দিনে "০ / ৮ ঘণ্টা" দেখানো অন্যায় — ওই দিনে কারো কিছু করার কথাই নয়।
+   */
+  todayIsWorkday: boolean;
+
+  /** মাসের হিসাব — এখন গৌণ, কিন্তু বেতনের ভিত্তি এটাই */
   monthWorkedSec: number;
   monthTargetSec: number;
   /** শেষ heartbeat — কোনো ডিভাইস কখনো সাড়া না দিলে null */
@@ -146,7 +172,7 @@ export class DashboardService {
         empCode: true,
         fullName: true,
         designation: true,
-        policy: { select: { monthlyTargetHours: true } },
+        policy: { select: { monthlyTargetHours: true, weeklyOffDay: true } },
       },
       orderBy: { empCode: 'asc' },
     });
@@ -154,6 +180,16 @@ export class DashboardService {
     if (employees.length === 0) {
       return { workDate: formatWorkDate(today), generatedAt: now, cards: [] };
     }
+
+    // ⭐ দৈনিক টার্গেট বের করতে ওই মাসের কর্মদিবস লাগে, আর কর্মদিবস গুনতে
+    //    সরকারি ছুটি লাগে। ছুটি বাদ না দিলে ভাগফল ছোট হতো — অর্থাৎ দৈনিক
+    //    টার্গেট কম, আর মাস শেষে যোগফল ২০৮-এ পৌঁছাত না।
+    const { first: monthFirst, last: monthLast } = monthBoundsOf(today);
+    const holidayRows = await this.prisma.holiday.findMany({
+      where: { holidayDate: { gte: monthFirst, lte: monthLast } },
+      select: { holidayDate: true },
+    });
+    const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
 
     const ids = employees.map((e) => e.id);
 
@@ -236,6 +272,11 @@ export class DashboardService {
         e.policy?.monthlyTargetHours ?? DEFAULT_TARGET_HOURS,
       );
 
+      // ⚠️ নীতি আলাদা হলে সাপ্তাহিক ছুটির বারও আলাদা, তাই কর্মদিবস
+      //    কর্মীপ্রতি গোনা হয় — সবার জন্য একটাই সংখ্যা ধরে নেওয়া যায় না।
+      const rule = { weeklyOffDay: e.policy?.weeklyOffDay ?? null, holidays };
+      const workdays = countWorkdays(monthFirst, monthLast, rule);
+
       return {
         employeeId: e.id,
         empCode: e.empCode,
@@ -247,6 +288,8 @@ export class DashboardService {
           now,
         }),
         todayWorkedSec: todaySec.get(e.id) ?? 0,
+        dailyTargetSec: Math.round(dailyTargetSecOf(targetHours * HOUR, workdays)),
+        todayIsWorkday: isWorkday(today, rule),
         monthWorkedSec: monthSec.get(e.id) ?? 0,
         monthTargetSec: Math.round(targetHours * HOUR),
         lastHeartbeatAt: latestHeartbeat(own),
@@ -328,7 +371,7 @@ export class DashboardService {
 
     const parsed = parseWorkDate(raw);
     if (!parsed) {
-      throw new BadRequestException('date দিতে হবে বৈধ YYYY-MM-DD তারিখ');
+      throw new BadRequestException('date must be a valid YYYY-MM-DD date');
     }
     return parsed;
   }
@@ -340,7 +383,7 @@ export class DashboardService {
       where: { id: employeeId },
       select: { empCode: true, fullName: true },
     });
-    if (!employee) throw new NotFoundException('এই কর্মী নেই');
+    if (!employee) throw new NotFoundException('No such staff member');
     return employee;
   }
 }

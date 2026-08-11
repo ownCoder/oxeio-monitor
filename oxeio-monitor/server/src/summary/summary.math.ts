@@ -355,7 +355,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
   } = input;
 
   if (!Number.isFinite(targetSec) || targetSec <= 0) {
-    throw new RangeError('মাসিক টার্গেট শূন্য বা ঋণাত্মক হতে পারে না');
+    throw new RangeError('Monthly target cannot be zero or negative');
   }
 
   /**
@@ -417,7 +417,7 @@ function clamp(value: number, min: number, max: number): number {
 export function retentionCutoff(now: Date, days: number): Date {
   if (!Number.isFinite(days) || days < 1) {
     throw new RangeError(
-      `retention দিনের সংখ্যা অন্তত ১ হতে হবে, পাওয়া গেছে ${String(days)}`,
+      `Retention days must be at least 1, got ${String(days)}`,
     );
   }
   return new Date(workDateOf(now).getTime() - Math.floor(days) * MS_PER_DAY);

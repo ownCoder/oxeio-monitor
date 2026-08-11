@@ -59,9 +59,9 @@ public sealed record SyncHealthPolicy(TimeSpan DegradedAfter, TimeSpan FailingAf
     public static string? Describe(SyncHealth health, int queueDepth) => health switch
     {
         SyncHealth.Ok => null,
-        SyncHealth.Degraded => $"সার্ভারে পৌঁছাতে দেরি হচ্ছে — {queueDepth}টি জমে আছে",
-        SyncHealth.Failing => $"সার্ভারে পৌঁছাচ্ছে না, ডেটা লোকালি জমছে ({queueDepth}টি)",
-        SyncHealth.Revoked => "এই ডিভাইস বন্ধ করে দেওয়া হয়েছে — অফিসে জানান",
+        SyncHealth.Degraded => $"Reaching the server is slow — {queueDepth} waiting",
+        SyncHealth.Failing => $"Can't reach server, data saved locally ({queueDepth} waiting)",
+        SyncHealth.Revoked => "This device has been switched off — tell the office",
         _ => null,
     };
 }

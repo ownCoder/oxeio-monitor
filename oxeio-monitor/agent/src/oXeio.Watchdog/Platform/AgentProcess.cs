@@ -58,7 +58,7 @@ internal static class AgentProcess
             if (!string.Equals(
                     process.ProcessName, AgentPaths.AgentProcessName, StringComparison.OrdinalIgnoreCase))
             {
-                detail = $"pid {pid} আমাদের এজেন্ট নয় ({process.ProcessName}) — হাত দেওয়া হয়নি";
+                detail = $"pid {pid} is not our agent ({process.ProcessName}) — left untouched";
                 return false;
             }
 
@@ -70,16 +70,16 @@ internal static class AgentProcess
             //    দশায় পৌঁছে যেত, অথচ আসলে কিছুই ভাঙেনি।
             if (!process.WaitForExit((int)waitFor.TotalMilliseconds))
             {
-                detail = $"pid {pid} kill করার পরেও {waitFor.TotalSeconds:F0} সেকেন্ডে মরেনি";
+                detail = $"pid {pid} did not die within {waitFor.TotalSeconds:F0} seconds of being killed";
                 return false;
             }
 
-            detail = $"pid {pid} বন্ধ করা হয়েছে";
+            detail = $"pid {pid} was stopped";
             return true;
         }
         catch (Exception ex)
         {
-            detail = $"pid {pid} মারা গেল না: {ex.GetType().Name} — {ex.Message}";
+            detail = $"pid {pid} could not be killed: {ex.GetType().Name} — {ex.Message}";
             return false;
         }
     }
@@ -102,17 +102,17 @@ internal static class AgentProcess
             using var started = Process.Start(info);
             if (started is null)
             {
-                detail = "Process.Start কিছুই ফেরায়নি";
+                detail = "Process.Start returned nothing";
                 return false;
             }
 
             pid = started.Id;
-            detail = $"pid {pid} চালু হয়েছে";
+            detail = $"pid {pid} started";
             return true;
         }
         catch (Exception ex)
         {
-            detail = $"চালু করা গেল না: {ex.GetType().Name} — {ex.Message}";
+            detail = $"Could not start it: {ex.GetType().Name} — {ex.Message}";
             return false;
         }
     }

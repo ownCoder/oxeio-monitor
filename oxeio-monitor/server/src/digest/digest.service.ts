@@ -77,13 +77,13 @@ export class DigestService {
      */
     if (outcome === 'sent') {
       this.logger.log(
-        `ডাইজেস্ট পাঠানো হয়েছে · ${digest.workDate} · ` +
-          `${digest.totals.employees} জন · ${digest.behind.length} জন পিছিয়ে · ` +
-          `${recipients.length} প্রাপক`,
+        `Digest sent · ${digest.workDate} · ` +
+          `${digest.totals.employees} staff · ${digest.behind.length} behind · ` +
+          `${recipients.length} recipients`,
       );
     } else {
       this.logger.warn(
-        `ডাইজেস্ট ইমেইলে যায়নি (${outcome}) — নিচে পুরো সারাংশ:\n${subject}\n${body}`,
+        `Digest was not emailed (${outcome}) — full summary below:\n${subject}\n${body}`,
       );
     }
 

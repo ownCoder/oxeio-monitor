@@ -208,4 +208,4 @@ export interface ReportFile {
  * docs/05-Options-Decisions.md)।
  */
 export const OVERTIME_NOTE =
-  'অতিরিক্ত ঘণ্টার টাকা হিসাব করা হয়নি — হার নির্ধারিত নয় (open question O4)';
+  'Overtime pay is not calculated — no rate has been decided (open question O4)';

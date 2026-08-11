@@ -31,7 +31,7 @@ export const CurrentUser = createParamDecorator(
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
     if (!req.user) {
       // JwtAuthGuard আগেই আটকে দেওয়ার কথা — এখানে পৌঁছানো মানে wiring-এ ভুল
-      throw new Error('CurrentUser ব্যবহার হয়েছে কিন্তু রুটটি @Public');
+      throw new Error('CurrentUser used on a route marked @Public');
     }
     return req.user;
   },

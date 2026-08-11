@@ -56,7 +56,7 @@ export class WorkPoliciesService {
       where: { id },
       include: { _count: { select: { employees: true } } },
     });
-    if (!row) throw new NotFoundException('work policy পাওয়া যায়নি');
+    if (!row) throw new NotFoundException('Work policy not found');
     return toView(row, row._count.employees);
   }
 
@@ -115,7 +115,7 @@ export class WorkPoliciesService {
     ip: string,
   ): Promise<WorkPolicyView> {
     const before = await this.prisma.workPolicy.findUnique({ where: { id } });
-    if (!before) throw new NotFoundException('work policy পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Work policy not found');
 
     // ⚠️ শুধু একটা প্রান্ত পাঠালে পুরোনোটার সাথে মিলিয়ে যাচাই করতে হবে।
     //    নতুনটুকু আলাদা করে দেখলে "শুরু ২২:০০" বৈধ মনে হতো, অথচ পুরোনো
@@ -180,9 +180,9 @@ export class WorkPoliciesService {
       where: { id },
       include: { _count: { select: { employees: true } } },
     });
-    if (!before) throw new NotFoundException('work policy পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Work policy not found');
     if (!before.isActive) {
-      throw new ConflictException('এই policy আগেই নিষ্ক্রিয় করা হয়েছে');
+      throw new ConflictException('This policy has already been deactivated');
     }
 
     // ⭐⚠️ সবচেয়ে বড় ফাঁদ। `AgentConfigService.build(null)` policy না পেলে
@@ -196,7 +196,7 @@ export class WorkPoliciesService {
     });
     if (activeCount <= 1) {
       throw new ConflictException(
-        'শেষ active work policy নিষ্ক্রিয় করা যাবে না — আগে আরেকটা চালু করুন',
+        'The last active work policy cannot be deactivated — activate another one first',
       );
     }
 
@@ -205,7 +205,7 @@ export class WorkPoliciesService {
     //    তখন মিথ্যা হয়ে যেত।
     if (before._count.employees > 0) {
       throw new ConflictException(
-        `${before._count.employees} জন কর্মী এখনো এই policy-তে আছেন — আগে তাঁদের অন্য policy-তে সরান`,
+        `${before._count.employees} staff are still on this policy — move them to another policy first`,
       );
     }
 

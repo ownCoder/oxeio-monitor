@@ -70,7 +70,7 @@ export class UpdateService {
     const row = await this.prisma.agentVersion.findUnique({
       where: { version },
     });
-    if (!row) throw new NotFoundException('এই ভার্সন নেই');
+    if (!row) throw new NotFoundException('No such version');
 
     // msi_path storage-এর ভেতরেই থাকতে হবে — বাইরের যেকোনো ফাইল
     // নামিয়ে নেওয়ার সুযোগ (path traversal) বন্ধ
@@ -79,14 +79,14 @@ export class UpdateService {
       : resolve(this.root, row.msiPath);
 
     if (!abs.startsWith(this.root)) {
-      throw new NotFoundException('ফাইলের পাথ storage-এর বাইরে');
+      throw new NotFoundException('File path is outside storage');
     }
 
     try {
       const info = await stat(abs);
       return { stream: createReadStream(abs), size: info.size };
     } catch {
-      throw new NotFoundException('MSI ফাইলটি ডিস্কে পাওয়া যায়নি');
+      throw new NotFoundException('MSI file not found on disk');
     }
   }
 }

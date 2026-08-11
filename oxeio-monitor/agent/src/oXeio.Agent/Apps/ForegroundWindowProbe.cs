@@ -74,7 +74,7 @@ internal sealed class ForegroundWindowProbe
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            Debug.WriteLine($"foreground উইন্ডো পড়া গেল না: {ex.Message}");
+            Debug.WriteLine($"could not read the foreground window: {ex.Message}");
             return null;
         }
     }

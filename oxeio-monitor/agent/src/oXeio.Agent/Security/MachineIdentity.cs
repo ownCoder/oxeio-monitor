@@ -99,10 +99,10 @@ internal sealed record MachineIdentity
                 OsVersion = os,
                 UsableForEnrollment = true,
                 Warning =
-                    $"MachineGuid রেজিস্ট্রি থেকে পড়া গেল না ({registryError}) — " +
-                    $"{FallbackFileName} থেকে বানানো আইডি ব্যবহার হচ্ছে। " +
-                    "⚠️ %ProgramData%\\oXeio মুছে ফেললে বা Windows আবার ইনস্টল করলে " +
-                    "এই মেশিন সার্ভারে নতুন ডিভাইস হিসেবে ধরা পড়বে।",
+                    $"MachineGuid could not be read from the registry ({registryError}) — " +
+                    $"an id generated from {FallbackFileName} is being used instead. " +
+                    "⚠️ If %ProgramData%\\oXeio is deleted or Windows is reinstalled, " +
+                    "this machine will show up on the server as a new device.",
             };
         }
 
@@ -118,8 +118,8 @@ internal sealed record MachineIdentity
             OsVersion = os,
             UsableForEnrollment = false,
             Warning =
-                $"❌ স্থায়ী মেশিন-আইডি বানানো গেল না। রেজিস্ট্রি: {registryError}; " +
-                $"ফাইল: {fileError}. enroll করা হবে না — নইলে প্রতি রিবুটে নতুন ডিভাইস তৈরি হতো।",
+                $"❌ Could not create a stable machine id. Registry: {registryError}; " +
+                $"file: {fileError}. Enrolment will not happen — otherwise every reboot would create a new device.",
         };
     }
 
@@ -143,14 +143,14 @@ internal sealed record MachineIdentity
 
             if (key is null)
             {
-                error = $@"HKLM\{CryptographyKeyPath} নেই";
+                error = $@"HKLM\{CryptographyKeyPath} does not exist";
                 return null;
             }
 
             var raw = key.GetValue(MachineGuidValueName) as string;
             if (string.IsNullOrWhiteSpace(raw))
             {
-                error = $"{MachineGuidValueName} খালি";
+                error = $"{MachineGuidValueName} is empty";
                 return null;
             }
 
@@ -159,7 +159,7 @@ internal sealed record MachineIdentity
             var trimmed = raw.Trim();
             if (!Guid.TryParseExact(trimmed, "D", out var parsed) || parsed == Guid.Empty)
             {
-                error = "MachineGuid-এর মান GUID নয়";
+                error = "The MachineGuid value is not a GUID";
                 return null;
             }
 
@@ -267,7 +267,7 @@ internal sealed record MachineIdentity
         }
         catch
         {
-            return "Windows (অজানা ভার্সন)";
+            return "Windows (unknown version)";
         }
     }
 

@@ -29,8 +29,8 @@ public static class FrameQuality
         bool Degraded)
     {
         public string? Reason => !Degraded ? null
-            : BlackRatio >= BlackThreshold ? "প্রায় পুরোটাই কালো"
-            : "প্রায় পুরোটাই এক রঙের";
+            : BlackRatio >= BlackThreshold ? "almost entirely black"
+            : "almost entirely one colour";
     }
 
     /// <param name="bgra">BGRA ৮-বিট, top-down।</param>

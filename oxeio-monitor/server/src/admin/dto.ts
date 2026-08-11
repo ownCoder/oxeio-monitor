@@ -31,7 +31,8 @@ import {
  * মাঝপথে কোনো float নেই।
  */
 const TAKA = /^\d{1,10}(\.\d{1,2})?$/;
-const TAKA_MSG = 'বেতন "13000" বা "13000.50" ধাঁচে স্ট্রিং হিসেবে দিতে হবে';
+const TAKA_MSG =
+  'Salary must be given as a string in the form "13000" or "13000.50"';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -44,7 +45,8 @@ export class CreateEmployeeDto {
   @MinLength(1)
   @MaxLength(32)
   @Matches(/^[A-Za-z0-9_-]+$/, {
-    message: 'empCode-এ শুধু অক্ষর, সংখ্যা, হাইফেন আর আন্ডারস্কোর চলবে',
+    message:
+      'empCode may contain only letters, digits, hyphens and underscores',
   })
   empCode!: string;
 
@@ -66,7 +68,7 @@ export class CreateEmployeeDto {
   @IsOptional() @Matches(TAKA, { message: TAKA_MSG })
   monthlySalary?: string;
 
-  @IsOptional() @Matches(DATE_ONLY, { message: 'joinedOn YYYY-MM-DD ফরম্যাটে দিতে হবে' })
+  @IsOptional() @Matches(DATE_ONLY, { message: 'joinedOn must be in YYYY-MM-DD format' })
   joinedOn?: string;
 }
 
@@ -113,7 +115,7 @@ export class UpdateEmployeeDto {
  */
 export class DeactivateEmployeeDto {
   /** না দিলে ঢাকার আজকের তারিখ */
-  @IsOptional() @Matches(DATE_ONLY, { message: 'leftOn YYYY-MM-DD ফরম্যাটে দিতে হবে' })
+  @IsOptional() @Matches(DATE_ONLY, { message: 'leftOn must be in YYYY-MM-DD format' })
   leftOn?: string;
 
   @IsString() @MinLength(3) @MaxLength(500)
@@ -190,10 +192,10 @@ export class CreateWorkPolicyDto {
   weeklyOffDay?: number | null;
 
   /** ⭐ না দিলে ০৭:০০–২৩:০০ বসে — `null` করে ২৪ ঘণ্টা করা যায় না (ADR-011c) */
-  @IsOptional() @Matches(HHMM, { message: "screenshotFrom 'HH:MM' ফরম্যাটে দিতে হবে" })
+  @IsOptional() @Matches(HHMM, { message: "screenshotFrom must be in 'HH:MM' format" })
   screenshotFrom?: string;
 
-  @IsOptional() @Matches(HHMM, { message: "screenshotTo 'HH:MM' ফরম্যাটে দিতে হবে" })
+  @IsOptional() @Matches(HHMM, { message: "screenshotTo must be in 'HH:MM' format" })
   screenshotTo?: string;
 
   @IsOptional() @IsInt() @Min(10) @Max(3600)
@@ -232,7 +234,7 @@ export class UpdateWorkPolicyDto {
 // ── holidays ────────────────────────────────────────────────────────────────
 
 export class CreateHolidayDto {
-  @Matches(DATE_ONLY, { message: 'holidayDate YYYY-MM-DD ফরম্যাটে দিতে হবে' })
+  @Matches(DATE_ONLY, { message: 'holidayDate must be in YYYY-MM-DD format' })
   holidayDate!: string;
 
   @IsString() @MinLength(1) @MaxLength(120)

@@ -91,7 +91,7 @@ export class AuthService {
         ipAddress: ip,
         meta: { email },
       });
-      throw new UnauthorizedException('ইমেইল বা পাসওয়ার্ড ভুল');
+      throw new UnauthorizedException('Email or password is incorrect');
     }
 
     // I06 — 2FA। খাম ভাঙা থাকলে `decodeEnvelope` ছোড়ে, অর্থাৎ fail-closed।
@@ -121,8 +121,8 @@ export class AuthService {
         });
         throw new UnauthorizedException(
           result.reason === 'replayed'
-            ? 'এই কোডটা আগেই ব্যবহার হয়েছে — অ্যাপে পরের কোডটার জন্য অপেক্ষা করুন'
-            : 'যাচাই কোড ভুল',
+            ? 'This code has already been used — wait for the next code in your app'
+            : 'Verification code is invalid',
         );
       }
 
@@ -177,7 +177,7 @@ export class AuthService {
   async me(userId: number): Promise<MeResult> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('অ্যাকাউন্ট আর সক্রিয় নেই');
+      throw new UnauthorizedException('This account is no longer active');
     }
 
     return {
@@ -202,10 +202,12 @@ export class AuthService {
     if (!user) throw new UnauthorizedException();
 
     const ok = await this.passwords.verify(user.passwordHash, currentPassword);
-    if (!ok) throw new UnauthorizedException('বর্তমান পাসওয়ার্ড ভুল');
+    if (!ok) throw new UnauthorizedException('Current password is incorrect');
 
     if (await this.passwords.verify(user.passwordHash, newPassword)) {
-      throw new BadRequestException('নতুন পাসওয়ার্ড আগেরটার মতোই হতে পারবে না');
+      throw new BadRequestException(
+        'New password must be different from the current one',
+      );
     }
 
     await this.prisma.user.update({
@@ -237,7 +239,7 @@ export class AuthService {
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },
     });
-    if (!target) throw new NotFoundException('ইউজার পাওয়া যায়নি');
+    if (!target) throw new NotFoundException('User not found');
 
     const tempPassword = this.passwords.generateTempPassword();
 
@@ -273,14 +275,14 @@ export class AuthService {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
     });
-    if (!employee) throw new NotFoundException('স্টাফ পাওয়া যায়নি');
+    if (!employee) throw new NotFoundException('Staff member not found');
 
     const normalized = email.toLowerCase();
     const existing = await this.prisma.user.findUnique({
       where: { email: normalized },
     });
     if (existing) {
-      throw new BadRequestException('এই ইমেইলে অ্যাকাউন্ট আগেই আছে');
+      throw new BadRequestException('An account with this email already exists');
     }
 
     const tempPassword = this.passwords.generateTempPassword();

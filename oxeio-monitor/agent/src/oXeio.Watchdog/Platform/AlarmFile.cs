@@ -27,14 +27,14 @@ internal static class AlarmFile
             var text = string.Create(
                 CultureInfo.InvariantCulture,
                 $"""
-                 oXeio watchdog — এজেন্ট চালু রাখা যাচ্ছে না
-                 সময়   : {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}
-                 মেশিন : {Environment.MachineName}
-                 ইউজার : {Environment.UserName}
-                 কারণ  : {reason}
+                 oXeio watchdog — the agent cannot be kept running
+                 Time    : {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz}
+                 Machine : {Environment.MachineName}
+                 User    : {Environment.UserName}
+                 Reason  : {reason}
 
-                 রিস্টার্টের চেষ্টা থামানো হয়েছে যাতে CPU না পোড়ে। কয়েক ঘণ্টা পরপর
-                 একবার করে চেষ্টা চলতে থাকবে। watchdog.log দেখুন।
+                 Restart attempts have been paused so the CPU is not burned. One attempt
+                 will still be made every few hours. See watchdog.log.
                  """);
 
             File.WriteAllText(path, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));

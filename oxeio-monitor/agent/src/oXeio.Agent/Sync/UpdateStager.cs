@@ -53,7 +53,7 @@ internal sealed class UpdateStager(
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            log.Error("আপডেট দেখা গেল না — পরে আবার চেষ্টা হবে", ex);
+            log.Error("Could not check for updates — it will be retried later", ex);
         }
     }
 
@@ -74,7 +74,7 @@ internal sealed class UpdateStager(
 
         if (!download.IsSuccess || download.Value is not { } file)
         {
-            log.Warn($"আপডেট {offer.Version} নামানো গেল না: {download.Detail}");
+            log.Warn($"Could not download update {offer.Version}: {download.Detail}");
             _status = _status with { Stage = UpdateStage.Offered, Detail = download.Detail };
             return;
         }
@@ -87,8 +87,8 @@ internal sealed class UpdateStager(
         if (!string.Equals(file.Sha256, offer.Sha256, StringComparison.OrdinalIgnoreCase))
         {
             log.Error(
-                $"⛔ আপডেট {offer.Version}-এর হ্যাশ মেলেনি — " +
-                $"চাওয়া {offer.Sha256}, পাওয়া {file.Sha256}। ফাইল মুছে ফেলা হচ্ছে।");
+                $"⛔ The hash of update {offer.Version} does not match — " +
+                $"expected {offer.Sha256}, got {file.Sha256}. The file is being deleted.");
 
             TryDelete(file.SavedPath);
 
@@ -96,13 +96,13 @@ internal sealed class UpdateStager(
             {
                 Stage = UpdateStage.Corrupt,
                 MsiPath = null,
-                Detail = "sha256 মেলেনি",
+                Detail = "sha256 mismatch",
             };
             return;
         }
 
         _status = _status with { Stage = UpdateStage.Verified };
-        log.Info($"✅ আপডেট {offer.Version} যাচাই হয়েছে — বসানোর অপেক্ষায়: {file.SavedPath}");
+        log.Info($"✅ Update {offer.Version} verified — waiting to be installed: {file.SavedPath}");
 
         // পুরোনো ভার্সনের নামানো MSI আর দরকার নেই
         CleanOldMsi(file.SavedPath);
@@ -113,7 +113,7 @@ internal sealed class UpdateStager(
         try { File.Delete(path); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            log.Warn($"নষ্ট MSI মোছা গেল না — {path}: {ex.Message}");
+            log.Warn($"Could not delete the corrupt MSI — {path}: {ex.Message}");
         }
     }
 
@@ -133,7 +133,7 @@ internal sealed class UpdateStager(
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            log.Warn($"পুরোনো MSI সরানো গেল না: {ex.Message}");
+            log.Warn($"Could not remove the old MSI: {ex.Message}");
         }
     }
 }

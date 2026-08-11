@@ -89,7 +89,7 @@ describe('রেঞ্জ যাচাই (F08)', () => {
 
     expect(() =>
       parseReportRange('2000-01-01', '2026-08-11', { now: NOW }),
-    ).toThrow(/৩৭০|370/);
+    ).toThrow(/370/);
   });
 
   /**

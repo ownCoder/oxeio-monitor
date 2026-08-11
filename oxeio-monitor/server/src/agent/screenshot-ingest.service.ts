@@ -68,20 +68,20 @@ export class ScreenshotIngestService {
     thumb?: Express.Multer.File,
   ): Promise<ScreenshotResult> {
     if (!meta.clientUuid) {
-      throw new UnprocessableEntityException('meta-তে client_uuid নেই');
+      throw new UnprocessableEntityException('client_uuid is missing from meta');
     }
     if (device.employeeId === null) {
       throw new UnprocessableEntityException(
-        'এই ডিভাইস কোনো স্টাফের সাথে যুক্ত নয়',
+        'This device is not linked to any staff member',
       );
     }
     if (file.mimetype !== ALLOWED_SCREENSHOT_MIME) {
       throw new BadRequestException(
-        `শুধু ${ALLOWED_SCREENSHOT_MIME} নেওয়া হয় (ADR-007), পাওয়া গেছে ${file.mimetype}`,
+        `Only ${ALLOWED_SCREENSHOT_MIME} is accepted (ADR-007), got ${file.mimetype}`,
       );
     }
     if (file.size > MAX_SCREENSHOT_BYTES) {
-      throw new BadRequestException('ছবি ৫ MB-র বেশি');
+      throw new BadRequestException('Image is larger than 5 MB');
     }
 
     const capturedAt = this.clock.correct(meta.capturedAt, drift);
@@ -199,14 +199,14 @@ export class ScreenshotIngestService {
         // ⚠️ warn, error নয় — আপলোডটা সফল হয়েছে। কিন্তু নীরবেও ফেলা যায় না:
         //    এজেন্টের এনকোডার ভেঙে গেলে একমাত্র এই লাইনটাই বলবে।
         this.logger.warn(
-          `থাম্বনেইল নেওয়া হলো না (${rejection}): ${relPath} — ফুল ছবিটা ঠিকই জমেছে`,
+          `Thumbnail rejected (${rejection}): ${relPath} — the full screenshot was stored fine`,
         );
         return null;
       }
 
       const thumbRel = thumbPathFor(relPath);
       if (thumbRel === null) {
-        this.logger.error(`থাম্বনেইলের পথ বের করা গেল না: ${relPath}`);
+        this.logger.error(`Could not derive the thumbnail path: ${relPath}`);
         return null;
       }
 
@@ -224,8 +224,8 @@ export class ScreenshotIngestService {
       return thumbRel;
     } catch (error) {
       this.logger.warn(
-        `থাম্বনেইল জমল না: ${relPath} — ${String(error)} · ` +
-          `ফুল ছবিটা ঠিকই আছে, গ্যালারি সেটাই দেখাবে`,
+        `Thumbnail not stored: ${relPath} — ${String(error)} · ` +
+          `the full screenshot is fine, the gallery will show that`,
       );
       return null;
     }

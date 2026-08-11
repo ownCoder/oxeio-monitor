@@ -47,7 +47,7 @@ export class CsrfGuard implements CanActivate {
       fromHeader !== fromCookie
     ) {
       throw new ForbiddenException(
-        'CSRF টোকেন মেলেনি — X-CSRF-Token হেডারে cookie-র মানটা পাঠাতে হবে',
+        'CSRF token mismatch — send the cookie value in the X-CSRF-Token header',
       );
     }
 

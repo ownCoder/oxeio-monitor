@@ -317,43 +317,43 @@ export function backupAlertText(verdict: BackupVerdict): {
 } {
   const age =
     verdict.daysSinceSuccess === null
-      ? 'কখনো একটাও সফল ব্যাকআপ হয়নি'
-      : `শেষ সফল ব্যাকআপ ${verdict.daysSinceSuccess} দিন ${(verdict.hoursSinceSuccess ?? 0) % 24} ঘণ্টা আগে`;
+      ? 'There has never been a successful backup'
+      : `Last successful backup ${verdict.daysSinceSuccess}d ${(verdict.hoursSinceSuccess ?? 0) % 24}h ago`;
 
   switch (verdict.problem) {
     case 'not_configured':
       return {
-        title: 'ব্যাকআপ চলছে না — BACKUP_PASSPHRASE বসানো হয়নি',
+        title: 'Backup is not running — BACKUP_PASSPHRASE is not set',
         detail:
-          'এনক্রিপশনের পাসফ্রেজ না থাকায় রাতের ব্যাকআপ চালানোই হচ্ছে না। ' +
-          'বেতন ও স্ক্রিনশটের ডাটাবেস প্লেইনটেক্সটে ডিস্কে ফেলে রাখার চেয়ে ' +
-          'ব্যাকআপ বন্ধ থাকা ভালো — কিন্তু সেটা জেনে রাখা দরকার। ' +
-          '`.env`-এ BACKUP_PASSPHRASE বসিয়ে সার্ভার রিস্টার্ট করুন।',
+          'Without an encryption passphrase the nightly backup is not run at all. ' +
+          'Leaving backup off is better than dropping the salary and screenshot ' +
+          'database on disk in plaintext — but you need to know about it. ' +
+          'Set BACKUP_PASSPHRASE in `.env` and restart the server.',
       };
     case 'failed':
       return {
-        title: 'রাতের ব্যাকআপ ব্যর্থ হয়েছে',
-        detail: `${age}। সার্ভারের লগে ops/backup দেখুন — pg_dump পাওয়া যাচ্ছে কি না, ডিস্কে জায়গা আছে কি না।`,
+        title: 'The nightly backup failed',
+        detail: `${age}. Check ops/backup in the server log — is pg_dump available, is there space on disk?`,
       };
     case 'never':
       return {
-        title: 'একটাও ব্যাকআপ হয়নি',
+        title: 'No backup has ever been made',
         detail:
-          'ব্যাকআপ জব চালু আছে, কিন্তু আজ পর্যন্ত একটাও সফল ডাম্প তৈরি হয়নি। ' +
-          'সার্ভারের লগে ops/backup দেখুন।',
+          'The backup job is running, but not one successful dump has been produced so far. ' +
+          'Check ops/backup in the server log.',
       };
     case 'stale':
       return {
-        title: 'ব্যাকআপ থেমে গেছে',
-        detail: `${age}। জবটা আদৌ চলছে কি না দেখুন — সার্ভার রাত ২:৩০-এ চালু ছিল তো?`,
+        title: 'Backup has stopped',
+        detail: `${age}. Check whether the job runs at all — was the server up at 2:30 AM?`,
       };
     case 'copy_failed':
       return {
-        title: 'ব্যাকআপ এক্সটার্নাল ড্রাইভে কপি হয়নি',
+        title: 'Backup was not copied to the external drive',
         detail:
-          'ডাম্প তৈরি হয়েছে, কিন্তু BACKUP_COPY_TO-এর ড্রাইভে কপি করা যায়নি। ' +
-          'ড্রাইভটা লাগানো আছে কি না, আর তাতে জায়গা আছে কি না দেখুন। ' +
-          'একই ডিস্কে পড়ে থাকা ব্যাকআপ ওই ডিস্ক নষ্ট হলে কোনো কাজে আসবে না।',
+          'The dump was created, but it could not be copied to the BACKUP_COPY_TO drive. ' +
+          'Check whether the drive is attached and has space. ' +
+          'A backup sitting on the same disk is worthless once that disk dies.',
       };
   }
 }
@@ -395,17 +395,17 @@ export function healthVerdict(facts: HealthFacts): HealthVerdict {
   const problems: string[] = [];
 
   if (!facts.dbUp) {
-    return { status: 'down', problems: ['ডাটাবেসে সংযোগ নেই'] };
+    return { status: 'down', problems: ['No connection to the database'] };
   }
 
   if (facts.diskUsedPct === null) {
-    problems.push('ডিস্কের তথ্য পড়া যায়নি');
+    problems.push('Could not read disk info');
   } else if (facts.diskUsedPct >= 95) {
     problems.push(
-      `ডিস্ক ${Math.round(facts.diskUsedPct)}% ভরেছে — স্ক্রিনশট ইনজেস্ট যেকোনো সময় আটকে যাবে`,
+      `Disk ${Math.round(facts.diskUsedPct)}% full — screenshot ingest could stall at any moment`,
     );
   } else if (facts.diskUsedPct >= 80) {
-    problems.push(`ডিস্ক ${Math.round(facts.diskUsedPct)}% ভরেছে`);
+    problems.push(`Disk ${Math.round(facts.diskUsedPct)}% full`);
   }
 
   if (facts.backup) {
@@ -414,7 +414,7 @@ export function healthVerdict(facts: HealthFacts): HealthVerdict {
 
   if (facts.pendingAlerts > HEALTH_PENDING_ALERTS_MAX) {
     problems.push(
-      `${facts.pendingAlerts}টি অ্যালার্ট পাঠানোর অপেক্ষায় — dispatcher আটকে আছে?`,
+      `${facts.pendingAlerts} alerts waiting to be sent — is the dispatcher stuck?`,
     );
   }
 
@@ -434,18 +434,18 @@ export function healthVerdict(facts: HealthFacts): HealthVerdict {
  * অ্যালার্টে ডোমেইন, উইন্ডোর শিরোনাম বা টাকার অঙ্ক ঢোকালে denylist সেটা
  * চিনত না — আর ফাঁসটা নীরবে ঘটত, প্রতিদিন।
  *
- * এখানে যা যায়: **টাইপের বাংলা লেবেল · হোস্টনেম · কখন**। ব্যস।
+ * এখানে যা যায়: **টাইপের লেবেল · হোস্টনেম · কখন**। ব্যস।
  * কর্মীর নাম যায় না, কারণ "কে কী করেনি" কখনোই বাইরের চ্যানেলের বিষয় নয়।
  */
 const TYPE_LABELS: Readonly<Record<string, string>> = {
-  agent_down: 'এজেন্ট চুপ',
-  agent_killed: 'এজেন্ট বন্ধ বা আনইনস্টল হয়েছে',
-  disk_warning: 'সার্ভারের ডিস্ক ভরে আসছে',
-  disk_critical: 'সার্ভারের ডিস্ক প্রায় ভরা',
-  backup_failed: 'ব্যাকআপ ব্যর্থ',
-  clock_drift: 'এজেন্টের ঘড়ি সরে গেছে',
-  no_activity_today: 'একজনের সারাদিনে কোনো কাজ নেই',
-  device_overlap: 'একই ডিভাইসে একাধিক কর্মী',
+  agent_down: 'Agent silent',
+  agent_killed: 'Agent stopped or uninstalled',
+  disk_warning: 'Server disk filling up',
+  disk_critical: 'Server disk almost full',
+  backup_failed: 'Backup failed',
+  clock_drift: 'Agent clock has drifted',
+  no_activity_today: 'Someone has no work all day',
+  device_overlap: 'Multiple staff on one device',
 };
 
 /**
@@ -470,14 +470,14 @@ export interface TelegramAlertFacts {
 
 /** একটা অ্যালার্টের এক লাইন — ⚠️ title/detail এখানে ঢোকে না, ইচ্ছাকৃতভাবে */
 export function telegramLine(alert: TelegramAlertFacts, now: Date): string {
-  const label = TYPE_LABELS[alert.type] ?? 'অ্যালার্ট';
+  const label = TYPE_LABELS[alert.type] ?? 'Alert';
   const mark = alert.severity === 'critical' ? '🔴' : '🟡';
   const host = safeHostname(alert.hostname);
   const minutes = Math.max(
     0,
     Math.floor((now.getTime() - alert.createdAt.getTime()) / MINUTE_MS),
   );
-  const when = minutes < 1 ? 'এইমাত্র' : `${minutes} মিনিট আগে`;
+  const when = minutes < 1 ? 'just now' : `${minutes} min ago`;
 
   return `${mark} ${label}${host ? ` — ${host}` : ''} · ${when}`;
 }
@@ -493,8 +493,8 @@ export function telegramMessage(
 ): string {
   const header =
     alerts.length === 1
-      ? 'oXeio মনিটরিং'
-      : `oXeio মনিটরিং — ${alerts.length}টি অ্যালার্ট`;
+      ? 'oXeio Monitoring'
+      : `oXeio Monitoring — ${alerts.length} alerts`;
 
   return [header, '', ...alerts.map((a) => telegramLine(a, now))].join('\n');
 }

@@ -41,18 +41,18 @@ export class DeviceAuthGuard implements CanActivate {
 
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('device token লাগবে');
+      throw new UnauthorizedException('Device token required');
     }
 
     const device = await this.prisma.device.findFirst({
       where: { tokenHash: hashToken(header.slice(7).trim()) },
     });
-    if (!device) throw new UnauthorizedException('device token ভুল');
+    if (!device) throw new UnauthorizedException('Device token is invalid');
 
     // H06 — দূর থেকে revoke করলে এজেন্ট আর কিছু পাঠাতে পারবে না
     if (device.status === 'revoked') {
       throw new ForbiddenException({
-        message: 'এই ডিভাইস revoke করা হয়েছে',
+        message: 'This device has been revoked',
         command: 'revoke',
       });
     }

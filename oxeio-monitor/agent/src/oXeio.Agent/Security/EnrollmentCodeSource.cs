@@ -62,8 +62,8 @@ internal static class EnrollmentCodeSource
         if (Clean(explicitCode) is { } fromArgument)
         {
             log?.Invoke(
-                "⚠️ enrollment code কমান্ড লাইন থেকে নেওয়া হলো — এটা প্রসেস তালিকায় " +
-                "ও Task Scheduler-এর XML-এ থেকে যায়। ইনস্টলারে " + DropFileName + " ব্যবহার করুন।");
+                "⚠️ The enrolment code was taken from the command line — it stays visible in the " +
+                "process list and in Task Scheduler's XML. Use " + DropFileName + " in the installer.");
 
             return new EnrollmentCodeLookup(
                 new SecretText(fromArgument), EnrollmentCodeOrigin.Argument, "command line");
@@ -84,7 +84,7 @@ internal static class EnrollmentCodeSource
 
         return new EnrollmentCodeLookup(
             null, EnrollmentCodeOrigin.None,
-            $"কোথাও enrollment code পাওয়া গেল না ({DropFileName} / {EnvironmentVariableName} / আর্গুমেন্ট)");
+            $"No enrolment code found anywhere ({DropFileName} / {EnvironmentVariableName} / argument)");
     }
 
     /// <summary>
@@ -106,14 +106,14 @@ internal static class EnrollmentCodeSource
             }
             catch (Exception ex)
             {
-                log?.Invoke($"⚠️ {path} মোছা গেল না ({ex.GetType().Name}) — কোডটা ডিস্কে রয়ে গেল, হাতে মুছুন।");
+                log?.Invoke($"⚠️ Could not delete {path} ({ex.GetType().Name}) — the code is still on disk, delete it by hand.");
             }
 
             return code;
         }
         catch (Exception ex)
         {
-            log?.Invoke($"⚠️ {path} পড়া গেল না: {ex.GetType().Name}");
+            log?.Invoke($"⚠️ Could not read {path}: {ex.GetType().Name}");
             return null;
         }
     }
@@ -139,7 +139,7 @@ internal static class EnrollmentCodeSource
     {
         try
         {
-            Console.Write("enrollment code: ");
+            Console.Write("enrolment code: ");
 
             if (Console.IsInputRedirected)
             {

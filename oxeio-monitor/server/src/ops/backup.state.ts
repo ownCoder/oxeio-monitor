@@ -104,7 +104,7 @@ export class BackupStateStore {
       lastOutcome: outcome.ok ? 'ok' : 'failed',
       // ⚠️ বার্তাটা ছেঁটে রাখা হয় — pg_dump-এর stderr কয়েক হাজার লাইন হতে
       //    পারে, আর পুরোটা settings-এ জমলে প্রতিটা হেলথ কল ওটা টেনে আনত।
-      lastError: outcome.ok ? null : (outcome.error ?? 'অজানা ত্রুটি').slice(0, 500),
+      lastError: outcome.ok ? null : (outcome.error ?? 'unknown error').slice(0, 500),
       consecutiveFailures: outcome.ok ? 0 : (prev.consecutiveFailures ?? 0) + 1,
       observedSince: prev.observedSince ?? this.bootedAt.toISOString(),
     };
@@ -119,7 +119,7 @@ export class BackupStateStore {
       next.lastCopyOutcome = outcome.copy.ok ? 'ok' : 'failed';
       next.lastCopyError = outcome.copy.ok
         ? null
-        : (outcome.copy.error ?? 'অজানা ত্রুটি').slice(0, 500);
+        : (outcome.copy.error ?? 'unknown error').slice(0, 500);
       next.lastCopyAt = outcome.at.toISOString();
     }
 
@@ -145,7 +145,7 @@ export class BackupStateStore {
       return row.value as StoredBackupState;
     } catch (err) {
       this.logger.error(
-        `ব্যাকআপের অবস্থা পড়া যায়নি: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `Could not read backup state: ${err instanceof Error ? err.message : 'unknown error'}`,
       );
       return {};
     }
@@ -163,7 +163,7 @@ export class BackupStateStore {
       // ⚠️ লেখা না গেলেও ব্যাকআপটা তো হয়েই গেছে — এখান থেকে throw করলে
       //    সফল একটা ব্যাকআপ "ব্যর্থ" হিসেবে লগে উঠত।
       this.logger.error(
-        `ব্যাকআপের অবস্থা লেখা যায়নি: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `Could not write backup state: ${err instanceof Error ? err.message : 'unknown error'}`,
       );
     }
   }

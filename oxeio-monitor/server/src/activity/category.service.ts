@@ -134,10 +134,10 @@ export class CategoryService {
       where: { id },
       select: SELECT,
     });
-    if (!before) throw new NotFoundException(`${id} নম্বর রুল নেই`);
+    if (!before) throw new NotFoundException(`No rule with id ${id}`);
 
     if (Object.keys(dto).length === 0) {
-      throw new BadRequestException('বদলানোর মতো কোনো ফিল্ড দেওয়া হয়নি');
+      throw new BadRequestException('No fields were given to change');
     }
 
     // ⚠️ `matchType` বদলালে প্যাটার্ন আগের মতোই থাকতে পারে, কিন্তু নিয়ম
@@ -183,7 +183,7 @@ export class CategoryService {
       where: { id },
       select: SELECT,
     });
-    if (!rule) throw new NotFoundException(`${id} নম্বর রুল নেই`);
+    if (!rule) throw new NotFoundException(`No rule with id ${id}`);
 
     // ⚠️ মোছার **আগে** গোনা — পরে গুনলে সব সারিতে ইতিমধ্যেই null বসে গেছে
     const orphanedRows = await this.prisma.appUsage.count({
@@ -204,7 +204,7 @@ export class CategoryService {
 
     if (orphanedRows > 0) {
       this.logger.warn(
-        `রুল ${id} (${rule.pattern}) মোছায় ${orphanedRows}টি সারি অচেনা হয়ে গেল — recategorize চালানো দরকার`,
+        `Deleting rule ${id} (${rule.pattern}) left ${orphanedRows} rows uncategorized — a recategorize run is needed`,
       );
     }
 
@@ -213,8 +213,8 @@ export class CategoryService {
       orphanedRows,
       hint:
         orphanedRows === 0
-          ? 'কোনো পুরোনো সারি এই রুলে ছিল না'
-          : `${orphanedRows}টি সারির ক্যাটাগরি এখন null — অন্য কোনো রুল ওগুলোয় মেলে কি না দেখতে POST /api/v1/categories/recategorize চালান`,
+          ? 'No existing rows were using this rule'
+          : `${orphanedRows} rows now have a null category — run POST /api/v1/categories/recategorize to see whether any other rule matches them`,
     };
   }
 
@@ -286,7 +286,7 @@ export class CategoryService {
 
     if (clash) {
       throw new BadRequestException(
-        `"${pattern}" এই ধরনের রুল ইতিমধ্যেই আছে (id ${clash.id}) — ওটাই বদলান`,
+        `A rule of this kind for "${pattern}" already exists (id ${clash.id}) — edit that one instead`,
       );
     }
   }

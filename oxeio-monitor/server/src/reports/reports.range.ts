@@ -33,9 +33,7 @@ const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 export function parseWorkDate(text: string): Date {
   const m = ISO_DATE_RE.exec(text);
   if (!m) {
-    throw new RangeError(
-      `তারিখ দিতে হবে YYYY-MM-DD ফরম্যাটে — পাওয়া গেছে "${text}"`,
-    );
+    throw new RangeError(`Date must be in YYYY-MM-DD format — got "${text}"`);
   }
 
   const year = Number(m[1]);
@@ -48,7 +46,7 @@ export function parseWorkDate(text: string): Date {
     date.getUTCMonth() !== month - 1 ||
     date.getUTCDate() !== day
   ) {
-    throw new RangeError(`এমন তারিখ ক্যালেন্ডারে নেই — "${text}"`);
+    throw new RangeError(`No such date on the calendar — "${text}"`);
   }
 
   return date;
@@ -173,13 +171,13 @@ export function parseReportRange(
   const requestedTo = parseWorkDate(toText);
 
   if (requestedTo.getTime() < from.getTime()) {
-    throw new RangeError('শেষ তারিখ শুরুর তারিখের আগে হতে পারে না');
+    throw new RangeError('The end date cannot be before the start date');
   }
 
   const requestedDays = daysInclusive(from, requestedTo);
   if (requestedDays > maxDays) {
     throw new RangeError(
-      `রেঞ্জ সর্বোচ্চ ${maxDays} দিন — চাওয়া হয়েছে ${requestedDays} দিন`,
+      `The range can be at most ${maxDays} days — ${requestedDays} days were requested`,
     );
   }
 
@@ -187,7 +185,9 @@ export function parseReportRange(
   const today = workDateOf(opts.now ?? new Date());
 
   if (from.getTime() > today.getTime()) {
-    throw new RangeError('পুরো রেঞ্জটাই ভবিষ্যতে — এমন দিনের কোনো ডেটা নেই');
+    throw new RangeError(
+      'The whole range is in the future — there is no data for those days',
+    );
   }
 
   const clampedToToday = requestedTo.getTime() > today.getTime();
@@ -257,7 +257,7 @@ export function dailyTargetSec(
   workdaysInMonth: number,
 ): number {
   if (!Number.isFinite(monthlyTargetSec) || monthlyTargetSec < 0) {
-    throw new RangeError('মাসিক টার্গেট ঋণাত্মক বা অসংজ্ঞায়িত হতে পারে না');
+    throw new RangeError('The monthly target cannot be negative or undefined');
   }
   if (workdaysInMonth <= 0) return 0;
   return monthlyTargetSec / workdaysInMonth;

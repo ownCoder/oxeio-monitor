@@ -45,7 +45,7 @@ export const CODE_LENGTH = 12;
 export function formatEnrollmentCode(bytes: Uint8Array): string {
   if (bytes.length < CODE_LENGTH) {
     throw new RangeError(
-      `enrollment code বানাতে অন্তত ${CODE_LENGTH} বাইট লাগে, পাওয়া গেছে ${bytes.length}`,
+      `Building an enrolment code needs at least ${CODE_LENGTH} bytes, got ${bytes.length}`,
     );
   }
 

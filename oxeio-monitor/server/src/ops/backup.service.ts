@@ -130,15 +130,15 @@ export class BackupService {
     if (!this.passphrase) {
       // ⭐ "জোরে বলা" এখান থেকেই শুরু — বুটের সময়েই একবার, তারপর G04 রোজ।
       this.logger.error(
-        'BACKUP_PASSPHRASE নেই — রাতের ব্যাকআপ চলবে না। ' +
-          'এনক্রিপশন ছাড়া বেতন ও স্ক্রিনশটের ডাটাবেস ডিস্কে ফেলে রাখার চেয়ে ' +
-          'ব্যাকআপ বন্ধ থাকা নিরাপদ, কিন্তু এটা জেনে রাখা দরকার (G39)।',
+        'No BACKUP_PASSPHRASE — the nightly backup will not run. ' +
+          'Leaving backup off is safer than dropping the salary and screenshot ' +
+          'database on disk without encryption, but you need to know about it (G39).',
       );
     }
     if (!this.copyTo) {
       this.logger.warn(
-        'BACKUP_COPY_TO নেই — ব্যাকআপ শুধু সার্ভারের নিজের ডিস্কেই থাকবে (K03 বন্ধ)। ' +
-          'ওই ডিস্কটা মরে গেলে ব্যাকআপও সাথে যাবে।',
+        'No BACKUP_COPY_TO — backups will only live on the server\'s own disk (K03 off). ' +
+          'If that disk dies, the backups go with it.',
       );
     }
   }
@@ -165,7 +165,7 @@ export class BackupService {
     const result = await this.lock.run(() => this.execute(now));
 
     if (result === null) {
-      this.logger.warn('আগের ব্যাকআপ এখনো চলছে — এই দফা বাদ');
+      this.logger.warn('Previous backup still running — skipping this tick');
       return emptyResult('already_running');
     }
     return result;
@@ -176,13 +176,13 @@ export class BackupService {
 
     if (!this.passphrase) {
       await this.state.markObserved();
-      this.logger.error('BACKUP_PASSPHRASE নেই — ব্যাকআপ চালানো হলো না');
+      this.logger.error('No BACKUP_PASSPHRASE — backup was not run');
       return emptyResult('not_configured');
     }
 
     const conn = this.connection();
     if (!conn) {
-      const error = 'DATABASE_URL পড়া যায়নি — ব্যাকআপ চালানো যাচ্ছে না';
+      const error = 'Could not read DATABASE_URL — backup cannot run';
       this.logger.error(error);
       await this.state.record({ at: now, ok: false, error });
       return { ...emptyResult(null), error, durationMs: Date.now() - startedAt };
@@ -206,7 +206,7 @@ export class BackupService {
       //    কিছুই না লিখতে পারে (যেমন খালি স্কিমা বা বন্ধ পাইপ), আর তখন
       //    ডিস্কে একটা "ব্যাকআপ" পড়ে থাকত যেটা আসলে কিছুই নয়।
       if (sizeBytes < 512) {
-        throw new Error(`ডাম্পটা অস্বাভাবিক ছোট (${sizeBytes} বাইট)`);
+        throw new Error(`The dump is suspiciously small (${sizeBytes} bytes)`);
       }
 
       await writeFile(partPath + SHA_EXT, `${digest}  ${fileName}\n`, 'utf8');
@@ -218,11 +218,11 @@ export class BackupService {
       await rename(partPath, finalPath);
 
       this.logger.log(
-        `ব্যাকআপ হয়েছে: ${fileName} (${sizeBytes} বাইট, ${Math.round((Date.now() - startedAt) / 1000)} সেকেন্ড)`,
+        `Backup done: ${fileName} (${sizeBytes} bytes, ${Math.round((Date.now() - startedAt) / 1000)}s)`,
       );
     } catch (err) {
-      error = err instanceof Error ? err.message : 'অজানা ত্রুটি';
-      this.logger.error(`ব্যাকআপ ব্যর্থ: ${error}`);
+      error = err instanceof Error ? err.message : 'unknown error';
+      this.logger.error(`Backup failed: ${error}`);
       // ⚠️ অসম্পূর্ণ ফাইল রেখে যাওয়া চলবে না — পরে কেউ সেটাকেই ব্যাকআপ
       //    ভেবে বসত। নাম `.part` বলে ঘোরানোর নিয়ম চিনত না, ফলে চিরকাল থাকত।
       await quietUnlink(partPath, partPath + SHA_EXT);
@@ -298,7 +298,7 @@ export class BackupService {
     void exited.catch(() => undefined);
 
     const stdout = child.stdout;
-    if (!stdout) throw new Error('pg_dump-এর stdout পাওয়া যায়নি');
+    if (!stdout) throw new Error('Could not get stdout from pg_dump');
 
     const salt = randomBytes(8);
     const keyIv = pbkdf2Sync(this.passphrase, salt, PBKDF2_ITERATIONS, 48, 'sha256');
@@ -327,7 +327,7 @@ export class BackupService {
     } catch (err) {
       child.kill();
       throw new Error(
-        `ডাম্প লেখা যায়নি: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}` +
+        `Could not write the dump: ${err instanceof Error ? err.message : 'unknown error'}` +
           (stderr ? ` · pg_dump: ${firstLine(stderr)}` : ''),
       );
     }
@@ -341,7 +341,7 @@ export class BackupService {
 
     if (code !== 0) {
       throw new Error(
-        `pg_dump ${code} কোডে থেমেছে${stderr ? ` — ${firstLine(stderr)}` : ''}`,
+        `pg_dump exited with code ${code}${stderr ? ` — ${firstLine(stderr)}` : ''}`,
       );
     }
 
@@ -412,15 +412,15 @@ export class BackupService {
 
   /** ⚠️ ENOENT-এর ডিফল্ট বার্তাটা ("spawn pg_dump ENOENT") কিছুই বোঝায় না */
   private spawnHint(command: string, err: unknown): string {
-    const message = err instanceof Error ? err.message : 'অজানা ত্রুটি';
+    const message = err instanceof Error ? err.message : 'unknown error';
     if (!message.includes('ENOENT')) return message;
 
     return this.dockerContainer
-      ? `\`${command}\` চালানো গেল না (${message}) — BACKUP_DOCKER_BIN ঠিক আছে তো? ` +
-          `কন্টেইনারের নাম: ${this.dockerContainer}`
-      : `\`${command}\` PATH-এ পাওয়া যায়নি (${message}) — ` +
-          'PostgreSQL ক্লায়েন্ট টুল ইনস্টল করে BACKUP_PG_DUMP-এ পুরো পথ দিন, ' +
-          'অথবা Postgres Docker-এ চললে BACKUP_DOCKER_CONTAINER বসান।';
+      ? `Could not run \`${command}\` (${message}) — is BACKUP_DOCKER_BIN correct? ` +
+          `Container name: ${this.dockerContainer}`
+      : `\`${command}\` was not found on PATH (${message}) — ` +
+          'install the PostgreSQL client tools and give the full path in BACKUP_PG_DUMP, ' +
+          'or set BACKUP_DOCKER_CONTAINER if Postgres runs in Docker.';
   }
 
   private connection(): PgConnection | null {
@@ -454,7 +454,7 @@ export class BackupService {
       const dirInfo = await stat(target).catch(() => null);
       if (!dirInfo?.isDirectory()) {
         throw new Error(
-          `${target} পাওয়া যায়নি — এক্সটার্নাল ড্রাইভটা লাগানো আছে তো?`,
+          `${target} was not found — is the external drive attached?`,
         );
       }
 
@@ -464,14 +464,14 @@ export class BackupService {
       const expected = await readDigest(source + SHA_EXT);
       const actual = await sha256File(join(target, fileName));
       if (expected !== actual) {
-        throw new Error('কপি করা ফাইলের sha256 মিলছে না — কপিটা নষ্ট');
+        throw new Error('sha256 of the copied file does not match — the copy is corrupt');
       }
 
-      this.logger.log(`ব্যাকআপ কপি হয়েছে: ${join(target, fileName)}`);
+      this.logger.log(`Backup copied: ${join(target, fileName)}`);
       return { configured: true, ok: true, error: null, target };
     } catch (err) {
-      const error = err instanceof Error ? err.message : 'অজানা ত্রুটি';
-      this.logger.error(`ব্যাকআপ কপি ব্যর্থ (${target}): ${error}`);
+      const error = err instanceof Error ? err.message : 'unknown error';
+      this.logger.error(`Backup copy failed (${target}): ${error}`);
       return { configured: true, ok: false, error, target };
     }
   }
@@ -489,7 +489,7 @@ export class BackupService {
       } catch (err) {
         // ⚠️ ঘোরাতে না পারা ব্যাকআপকে ব্যর্থ করে না — ব্যাকআপটা তো হয়ে গেছে
         this.logger.warn(
-          `${dir} ঘোরানো গেল না: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+          `Could not rotate ${dir}: ${err instanceof Error ? err.message : 'unknown error'}`,
         );
       }
     }
@@ -524,7 +524,7 @@ export class BackupService {
     for (const name of orphans) await quietUnlink(join(dir, name));
 
     if (doomed.length > 0) {
-      this.logger.log(`${dir}: ${doomed.length}টি পুরোনো ব্যাকআপ সরানো হয়েছে`);
+      this.logger.log(`${dir}: removed ${doomed.length} old backups`);
     }
     return doomed.length;
   }
@@ -539,26 +539,26 @@ export class BackupService {
    */
   private async writeRestoreNote(): Promise<void> {
     const note = [
-      'oXeio — ব্যাকআপ পুনরুদ্ধার',
+      'oXeio — restoring a backup',
       '='.repeat(48),
       '',
-      'ফাইলগুলো AES-256-CBC দিয়ে এনক্রিপ্ট করা, `openssl enc`-এর ফরম্যাটে।',
-      'পাসফ্রেজ = সার্ভারের .env-এর BACKUP_PASSPHRASE (এখানে লেখা নেই, ইচ্ছাকৃতভাবে)।',
+      'These files are encrypted with AES-256-CBC, in the `openssl enc` format.',
+      "Passphrase = BACKUP_PASSPHRASE from the server's .env (deliberately not written here).",
       '',
-      '১· হ্যাশ মিলিয়ে দেখুন (ফাইলটা নষ্ট হয়নি তো?):',
+      '1. Verify the hash (is the file intact?):',
       '   sha256sum -c oxeio-YYYY-MM-DD-HHMM.dump.enc.sha256',
       '',
-      '২· ডিক্রিপ্ট:',
+      '2. Decrypt:',
       '   export BACKUP_PASSPHRASE=...',
       `   openssl enc -d -aes-256-cbc -pbkdf2 -iter ${PBKDF2_ITERATIONS} -md sha256 \\`,
       '     -in oxeio-YYYY-MM-DD-HHMM.dump.enc -out oxeio.dump \\',
       '     -pass env:BACKUP_PASSPHRASE',
       '',
-      '৩· ফেরত আনুন (pg_dump --format=custom, তাই pg_restore):',
+      '3. Restore (pg_dump --format=custom, so use pg_restore):',
       '   pg_restore -h localhost -U oxeio -d oxeio --clean --if-exists oxeio.dump',
       '',
-      'স্ক্রিনশটের ফাইলগুলো এই ডাম্পে নেই — ওগুলো storage/ ফোল্ডারে,',
-      'আলাদাভাবে কপি করতে হয় (07 § ৬.৪, রাত ৩টার robocopy)।',
+      'The screenshot files are not in this dump — they live in the storage/ folder',
+      'and are copied separately (07 § 6.4, the 3 AM robocopy).',
       '',
     ].join('\n');
 

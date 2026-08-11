@@ -70,7 +70,7 @@ export class TelegramChannel {
 
     if (!this.configured) {
       this.logger.log(
-        'TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID নেই — টেলিগ্রাম চ্যানেল বন্ধ (G08)',
+        'No TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID — Telegram channel disabled (G08)',
       );
     }
   }
@@ -153,7 +153,7 @@ export class TelegramChannel {
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         this.logger.error(
-          `টেলিগ্রাম পাঠানো যায়নি (HTTP ${res.status}): ${this.scrub(body).slice(0, 200)}`,
+          `Could not send to Telegram (HTTP ${res.status}): ${this.scrub(body).slice(0, 200)}`,
         );
         return 'failed';
       }
@@ -161,7 +161,7 @@ export class TelegramChannel {
       return 'sent';
     } catch (err) {
       this.logger.error(
-        `টেলিগ্রাম পাঠানো যায়নি: ${this.scrub(err instanceof Error ? err.message : 'অজানা ত্রুটি')}`,
+        `Could not send to Telegram: ${this.scrub(err instanceof Error ? err.message : 'unknown error')}`,
       );
       return 'failed';
     }
@@ -177,7 +177,7 @@ export class TelegramChannel {
         });
       } catch (err) {
         this.logger.warn(
-          `channels_sent লেখা যায়নি (alert ${a.id}): ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+          `Could not write channels_sent (alert ${a.id}): ${err instanceof Error ? err.message : 'unknown error'}`,
         );
       }
     }
@@ -198,8 +198,8 @@ export class TelegramChannel {
     for (const a of exhausted) this.attempts.delete(a.id.toString());
     await this.tag(exhausted, TELEGRAM_FAILED_TAG);
     this.logger.error(
-      `${exhausted.length}টি অ্যালার্ট টেলিগ্রামে পাঠানো গেল না — হাল ছাড়া হলো ` +
-        '(ইমেইলে যাওয়ার কথা ছিল, সেটা আলাদা)',
+      `${exhausted.length} alerts could not be sent to Telegram — giving up ` +
+        '(they should still have gone by email, that is separate)',
     );
     return exhausted.length;
   }

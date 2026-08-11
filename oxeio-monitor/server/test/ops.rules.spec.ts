@@ -300,7 +300,7 @@ describe('G04 — ব্যাকআপ অ্যালার্ট', () => {
     ).toBeNull();
   });
 
-  it('⚠️ প্রতিটা problem-এর জন্য বাংলা শিরোনাম আছে', () => {
+  it('⚠️ প্রতিটা problem-এর জন্য শিরোনাম আছে', () => {
     const problems = [
       'not_configured',
       'failed',
@@ -358,7 +358,7 @@ describe('K04 — হেলথ verdict', () => {
   it('ডিস্কের তথ্য পড়া না গেলেও সেটা একটা সমস্যা', () => {
     const verdict = healthVerdict({ ...healthy, diskUsedPct: null });
     expect(verdict.status).toBe('degraded');
-    expect(verdict.problems[0]).toContain('ডিস্ক');
+    expect(verdict.problems[0]).toMatch(/disk/i);
   });
 
   it('ব্যাকআপের verdict থাকলে হেলথেও সেটাই দেখায়', () => {
@@ -372,7 +372,7 @@ describe('K04 — হেলথ verdict', () => {
       },
     });
     expect(verdict.status).toBe('degraded');
-    expect(verdict.problems.join(' ')).toContain('ব্যাকআপ');
+    expect(verdict.problems.join(' ')).toContain('Backup');
   });
 
   it('অ্যালার্ট জমে গেলে dispatcher আটকে থাকার খবর', () => {
@@ -389,7 +389,7 @@ describe('K04 — হেলথ verdict', () => {
 describe('G08 — টেলিগ্রামের বার্তা', () => {
   const now = dhaka('2026-08-11T10:20:00');
 
-  it('টাইপের বাংলা লেবেল, হোস্টনেম আর কতক্ষণ আগে — এটুকুই', () => {
+  it('টাইপের লেবেল, হোস্টনেম আর কতক্ষণ আগে — এটুকুই', () => {
     const line = telegramLine(
       {
         type: 'agent_down',
@@ -399,9 +399,9 @@ describe('G08 — টেলিগ্রামের বার্তা', () => {
       },
       now,
     );
-    expect(line).toContain('এজেন্ট চুপ');
+    expect(line).toContain('Agent silent');
     expect(line).toContain('PC-07');
-    expect(line).toContain('20 মিনিট আগে');
+    expect(line).toContain('20 min ago');
   });
 
   it('⭐ কর্মীর নাম, ডোমেইন বা টাকার অঙ্ক পাঠানোর কোনো পথই নেই', () => {
@@ -419,7 +419,7 @@ describe('G08 — টেলিগ্রামের বার্তা', () => {
     );
     expect(message).not.toContain('facebook');
     expect(message).not.toContain('৳');
-    expect(message).toContain('সারাদিনে কোনো কাজ নেই');
+    expect(message).toContain('no work all day');
   });
 
   it('⚠️ হোস্টনেমের বাঁকা অক্ষর ছেঁকে ফেলা হয়', () => {
@@ -435,7 +435,7 @@ describe('G08 — টেলিগ্রামের বার্তা', () => {
       { type: 'কিছু-একটা', severity: 'info', createdAt: now },
       now,
     );
-    expect(line).toContain('অ্যালার্ট');
+    expect(line).toContain('Alert');
   });
 
   it('একাধিক হলে হেডারে সংখ্যা, তারপর প্রতি লাইনে একটা', () => {
@@ -446,7 +446,7 @@ describe('G08 — টেলিগ্রামের বার্তা', () => {
       ],
       now,
     );
-    expect(message).toContain('2টি অ্যালার্ট');
+    expect(message).toContain('2 alerts');
     expect(message.split('\n').filter((l) => l.startsWith('🔴') || l.startsWith('🟡'))).toHaveLength(2);
   });
 });

@@ -49,7 +49,7 @@ internal static class TaskInstaller
         }
         catch (Exception ex)
         {
-            output.WriteLine($"XML লেখা গেল না: {ex.Message}");
+            output.WriteLine($"Could not write the XML: {ex.Message}");
             return 4;
         }
 
@@ -58,9 +58,9 @@ internal static class TaskInstaller
             var code = RunSchtasks($"/Create /TN \"{TaskName}\" /XML \"{temp}\" /F", output);
 
             if (code == 0)
-                output.WriteLine($"✅ টাস্ক বসানো হয়েছে: {TaskName}  →  {exePath}");
+                output.WriteLine($"✅ Task installed: {TaskName}  →  {exePath}");
             else
-                output.WriteLine($"❌ schtasks এক্সিট কোড {code} — অ্যাডমিন হিসেবে চালানো হয়েছে তো?");
+                output.WriteLine($"❌ schtasks exit code {code} — was this run as administrator?");
 
             return code;
         }
@@ -73,7 +73,7 @@ internal static class TaskInstaller
     public static int Uninstall(TextWriter output)
     {
         var code = RunSchtasks($"/Delete /TN \"{TaskName}\" /F", output);
-        output.WriteLine(code == 0 ? "✅ টাস্ক মুছে ফেলা হয়েছে" : $"❌ schtasks এক্সিট কোড {code}");
+        output.WriteLine(code == 0 ? "✅ Task deleted" : $"❌ schtasks exit code {code}");
         return code;
     }
 
@@ -100,7 +100,7 @@ internal static class TaskInstaller
             using var process = Process.Start(info);
             if (process is null)
             {
-                output.WriteLine("schtasks চালু করা গেল না");
+                output.WriteLine("Could not start schtasks");
                 return 4;
             }
 
@@ -115,7 +115,7 @@ internal static class TaskInstaller
         }
         catch (Exception ex)
         {
-            output.WriteLine($"schtasks চালানো গেল না: {ex.GetType().Name} — {ex.Message}");
+            output.WriteLine($"Could not run schtasks: {ex.GetType().Name} — {ex.Message}");
             return 4;
         }
     }
@@ -132,10 +132,10 @@ internal static class TaskInstaller
                  || n.EndsWith("WatchdogTask.xml", StringComparison.OrdinalIgnoreCase));
 
         if (name is null)
-            throw new InvalidOperationException("টাস্কের XML রিসোর্স পাওয়া গেল না");
+            throw new InvalidOperationException("The task XML resource was not found");
 
         using var stream = assembly.GetManifestResourceStream(name)
-            ?? throw new InvalidOperationException("টাস্কের XML রিসোর্স খোলা গেল না");
+            ?? throw new InvalidOperationException("The task XML resource could not be opened");
 
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         return reader.ReadToEnd();

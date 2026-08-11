@@ -13,7 +13,7 @@ import { MAX_RANGE_DAYS, type GroupBy } from './reports.range';
 /** json = ড্যাশবোর্ডের জন্য · xlsx = F05 ডাউনলোড · pdf = F06 ছাপার জন্য */
 export type ReportFormat = 'json' | 'xlsx' | 'pdf';
 
-const DATE_MESSAGE = 'তারিখ দিতে হবে YYYY-MM-DD ফরম্যাটে';
+const DATE_MESSAGE = 'Date must be in YYYY-MM-DD format';
 
 /**
  * ⚠️ গ্লোবাল ValidationPipe-এ `whitelist + forbidNonWhitelisted` চালু, তাই
@@ -33,7 +33,7 @@ export class ReportRangeQuery {
 
   @IsOptional()
   @IsIn(['json', 'xlsx', 'pdf'], {
-    message: 'format হতে পারে json, xlsx অথবা pdf',
+    message: 'format must be json, xlsx or pdf',
   })
   format?: ReportFormat;
 
@@ -48,7 +48,7 @@ export class ReportRangeQuery {
 /** F02 — সাপ্তাহিক/মাসিক সারাংশ */
 export class SummaryQuery extends ReportRangeQuery {
   @IsOptional()
-  @IsIn(['week', 'month'], { message: 'groupBy হতে পারে week অথবা month' })
+  @IsIn(['week', 'month'], { message: 'groupBy must be week or month' })
   groupBy?: GroupBy;
 }
 
@@ -68,7 +68,7 @@ export class ProductivityQuery extends ReportRangeQuery {
   @IsOptional()
   @IsIn(['json', 'xlsx'], {
     message:
-      'productivity রিপোর্টের PDF নেই — format হতে পারে json অথবা xlsx (ছাপার জন্য attendance বা summary)',
+      'The productivity report has no PDF — format must be json or xlsx (use attendance or summary for printing)',
   })
   // ⚠️ `= undefined` মুছবেন না। `useDefineForClassFields` চালু (target
   //    ES2023), তাই ইনিশিয়ালাইজার ছাড়া বেস ক্লাসের ফিল্ড ওভাররাইড করা

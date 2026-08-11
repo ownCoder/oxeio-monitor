@@ -53,7 +53,7 @@ export class AlertMailer implements OnModuleDestroy {
 
     if (!this.config) {
       this.logger.log(
-        'SMTP কনফিগ নেই — অ্যালার্ট শুধু লগে লেখা হবে (SMTP_HOST বসালে ইমেইল চালু হবে)',
+        'No SMTP config — alerts will only be written to the log (set SMTP_HOST to enable email)',
       );
     }
   }
@@ -76,8 +76,8 @@ export class AlertMailer implements OnModuleDestroy {
         this.warnedMissing = true;
         this.logger.warn(
           this.config
-            ? 'অ্যালার্ট পাঠানোর মতো কোনো ইমেইল ঠিকানা নেই (owner-এর ইমেইল বা ALERT_EMAIL_TO দেখুন)'
-            : 'SMTP কনফিগ নেই — অ্যালার্ট ইমেইলে যাচ্ছে না',
+            ? 'No email address to send alerts to (check the owner email or ALERT_EMAIL_TO)'
+            : 'No SMTP config — alerts are not being emailed',
         );
       }
       return 'not_configured';
@@ -96,7 +96,7 @@ export class AlertMailer implements OnModuleDestroy {
       // ⚠️ শুধু বার্তা, stack নয় — SMTP-র error object-এ কখনো কখনো
       //    পাঠানো তথ্য (এমনকি auth স্ট্রিং) জুড়ে থাকে, সেটা লগে যাওয়া চলবে না।
       this.logger.error(
-        `অ্যালার্ট ইমেইল পাঠানো যায়নি: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `Could not send alert email: ${err instanceof Error ? err.message : 'unknown error'}`,
       );
       // পরের চেষ্টায় নতুন কানেকশন — ঝুলে থাকা সকেট ধরে রাখা হয় না
       this.dispose();
@@ -128,7 +128,7 @@ export class AlertMailer implements OnModuleDestroy {
     // ⚠️ EventEmitter-এ 'error' শোনার কেউ না থাকলে Node পুরো প্রসেস ফেলে দেয়।
     //    এই এক লাইনটাই "ভুল SMTP সার্ভার নামিয়ে দেবে না" প্রতিশ্রুতির শেষ পেরেক।
     transporter.on('error', (err: Error) => {
-      this.logger.error(`SMTP কানেকশনে ত্রুটি: ${err.message}`);
+      this.logger.error(`SMTP connection error: ${err.message}`);
     });
 
     this.transporter = transporter;

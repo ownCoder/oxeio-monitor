@@ -79,7 +79,7 @@ public class SyncHealthPolicyTests
         var text = SyncHealthPolicy.Describe(SyncHealth.Failing, 42);
 
         Assert.NotNull(text);
-        Assert.Contains("সার্ভারে পৌঁছাচ্ছে না, ডেটা লোকালি জমছে", text);
+        Assert.Contains("Can't reach server, data saved locally", text);
         Assert.Contains("42", text);
     }
 

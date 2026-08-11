@@ -53,7 +53,7 @@ internal sealed class WatchdogLoop
 
     public void Run(WaitHandle stop, TimeSpan period)
     {
-        _log.Write($"পাহারা শুরু — প্রতি {period.TotalSeconds:F0} সেকেন্ডে, ডেটা ফোল্ডার {_paths.DataDirectory}");
+        _log.Write($"Watch started — every {period.TotalSeconds:F0} seconds, data folder {_paths.DataDirectory}");
         _alarmOnDisk = File.Exists(_paths.Alarm);
 
         do
@@ -67,14 +67,14 @@ internal sealed class WatchdogLoop
                 // এখানে পৌঁছানোর কথা নয় — নিচের প্রতিটা ধাপ নিজেই ধরে। তবু
                 // এই catch-টাই শেষ ভরসা: একটা অপ্রত্যাশিত বাগ যেন পাহারাদারকে
                 // চিরতরে থামিয়ে না দেয়।
-                _log.Write($"❌ টিকে অপ্রত্যাশিত ত্রুটি: {ex.GetType().Name} — {ex.Message}");
+                _log.Write($"❌ Unexpected error in the tick: {ex.GetType().Name} — {ex.Message}");
             }
 
             // থামার অনুরোধ এলে সাথে সাথেই বেরোনো যায় — Sleep হলে ৩০ সেকেন্ড
             // অপেক্ষা করতে হতো, আর শাটডাউনে Windows ততক্ষণ অপেক্ষা করে না।
         } while (!stop.WaitOne(period) && !StopRequested());
 
-        _log.Write("পাহারা থামানো হলো");
+        _log.Write("Watch stopped");
     }
 
     // ── এক টিক ──────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ internal sealed class WatchdogLoop
         {
             // ঘড়িই পড়া গেল না — এই টিকে কোনো সিদ্ধান্ত নেওয়া নিরাপদ নয়।
             LogIfChanged(WatchdogAction.Hold, WatchdogReason.ProbeFailed, AgentHealth.Unknown,
-                "unbiased ঘড়ি পড়া গেল না — এই টিক বাদ", now);
+                "Could not read the unbiased clock — skipping this tick", now);
             return;
         }
 
@@ -102,18 +102,18 @@ internal sealed class WatchdogLoop
                 {
                     AlarmFile.Clear(_paths.Alarm);
                     _alarmOnDisk = false;
-                    _log.Write("✅ এজেন্ট আবার স্থিরভাবে চলছে — অ্যালার্ম তুলে নেওয়া হলো");
+                    _log.Write("✅ The agent is running steadily again — the alarm was cleared");
                 }
                 break;
 
             case WatchdogAction.GiveUp:
                 AlarmFile.Raise(
                     _paths.Alarm,
-                    $"{_ladder.Failures} বার চালু করেও এজেন্ট টেকেনি " +
-                    $"({Bengali(decision.Reason)})। পরের চেষ্টা ~{_ladder.Policy.CoolOff.TotalHours:F0} ঘণ্টা পর।");
+                    $"The agent did not survive {_ladder.Failures} launches " +
+                    $"({Describe(decision.Reason)}). Next attempt in ~{_ladder.Policy.CoolOff.TotalHours:F0} hours.");
                 _alarmOnDisk = true;
                 _ladder.MarkAlarmRaised();
-                _log.Write("🔴 হাল ছাড়া হলো — watchdog.alarm লেখা হয়েছে, ঠান্ডা হওয়ার অপেক্ষা");
+                _log.Write("🔴 Giving up — watchdog.alarm was written, waiting for the cool-off");
                 break;
 
             case WatchdogAction.Restart:
@@ -158,11 +158,11 @@ internal sealed class WatchdogLoop
     {
         if (pid is not { } victim)
         {
-            _log.Write("⚠️ জমে যাওয়া এজেন্ট, কিন্তু pid জানা নেই — কিছু করা হলো না");
+            _log.Write("⚠️ The agent is wedged, but the pid is unknown — nothing was done");
             return;
         }
 
-        _log.Write($"⛔ এজেন্ট জমে গেছে (হার্টবিট {AgentLiveness.StaleAfter.TotalSeconds:F0} সে.-এর বেশি পুরোনো) — বন্ধ করা হচ্ছে");
+        _log.Write($"⛔ The agent is wedged (heartbeat older than {AgentLiveness.StaleAfter.TotalSeconds:F0} s) — killing it");
 
         if (!AgentProcess.TryKill(victim, KillGrace, out var killDetail))
         {
@@ -170,7 +170,7 @@ internal sealed class WatchdogLoop
             //    ৩০ সেকেন্ডে চিরকাল একটা না-মরা প্রসেসকে মারতে চেষ্টা করে যেত,
             //    কোনো অ্যালার্ম না তুলেই — অর্থাৎ সমস্যাটা চিরকাল অদৃশ্য থাকত।
             _ladder.RecordLaunch(now);
-            _log.Write($"⚠️ {killDetail} (চেষ্টা {_ladder.Failures}/{_ladder.Policy.GiveUpAfter})");
+            _log.Write($"⚠️ {killDetail} (attempt {_ladder.Failures}/{_ladder.Policy.GiveUpAfter})");
             return;
         }
 
@@ -181,7 +181,7 @@ internal sealed class WatchdogLoop
         //    সেটাকে ব্যর্থতা হিসেবে গুনত। লক খালি হয়েছে দেখেই কেবল এগোনো।
         if (InstanceLock.Probe(_paths.AgentLock) != LockProbe.Free)
         {
-            _log.Write("   লক এখনো ছাড়েনি — পরের টিকে চালু করা হবে");
+            _log.Write("   The lock has not been released yet — it will be started on the next tick");
             return;
         }
 
@@ -199,16 +199,16 @@ internal sealed class WatchdogLoop
 
         if (exe is null)
         {
-            _log.Write($"❌ {AgentPaths.AgentExeName} পাওয়া গেল না ({AppContext.BaseDirectory}) — " +
-                       $"চেষ্টা {_ladder.Failures}/{_ladder.Policy.GiveUpAfter}");
+            _log.Write($"❌ {AgentPaths.AgentExeName} was not found ({AppContext.BaseDirectory}) — " +
+                       $"attempt {_ladder.Failures}/{_ladder.Policy.GiveUpAfter}");
             return;
         }
 
         var ok = AgentProcess.TryStart(exe, out _, out var detail);
 
-        _log.Write($"{(ok ? "▶" : "❌")} এজেন্ট চালু: {detail} " +
-                   $"(চেষ্টা {_ladder.Failures}/{_ladder.Policy.GiveUpAfter}, " +
-                   $"পরেরটা {_ladder.TimeUntilNextLaunch(now).TotalSeconds:F0} সে. পর)");
+        _log.Write($"{(ok ? "▶" : "❌")} Agent start: {detail} " +
+                   $"(attempt {_ladder.Failures}/{_ladder.Policy.GiveUpAfter}, " +
+                   $"next one in {_ladder.TimeUntilNextLaunch(now).TotalSeconds:F0} s)");
     }
 
     // ── থামার অনুরোধ ────────────────────────────────────────────────────────
@@ -226,7 +226,7 @@ internal sealed class WatchdogLoop
         {
             if (!File.Exists(_paths.StopFile)) return false;
 
-            _log.Write("🛑 watchdog.stop পাওয়া গেছে — থামছি");
+            _log.Write("🛑 watchdog.stop found — stopping");
             File.Delete(_paths.StopFile);
             return true;
         }
@@ -261,12 +261,12 @@ internal sealed class WatchdogLoop
     private static string Describe(WatchdogDecision decision)
     {
         var retry = decision.RetryIn is { } left && left > TimeSpan.Zero
-            ? $" (আর {left.TotalSeconds:F0} সে.)"
+            ? $" ({left.TotalSeconds:F0} s left)"
             : string.Empty;
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"{Symbol(decision.Health)} {Bengali(decision.Health)} — {Bengali(decision.Reason)}{retry}");
+            $"{Symbol(decision.Health)} {Describe(decision.Health)} — {Describe(decision.Reason)}{retry}");
     }
 
     private static string Symbol(AgentHealth health) => health switch
@@ -278,28 +278,28 @@ internal sealed class WatchdogLoop
         _ => "❓",
     };
 
-    private static string Bengali(AgentHealth health) => health switch
+    private static string Describe(AgentHealth health) => health switch
     {
-        AgentHealth.Healthy => "এজেন্ট সুস্থ",
-        AgentHealth.NotRunning => "এজেন্ট চলছে না",
-        AgentHealth.Wedged => "এজেন্ট জমে গেছে",
-        AgentHealth.Unreachable => "এজেন্ট আছে কিন্তু নাগালের বাইরে",
-        _ => "অবস্থা জানা যায়নি",
+        AgentHealth.Healthy => "the agent is healthy",
+        AgentHealth.NotRunning => "the agent is not running",
+        AgentHealth.Wedged => "the agent is wedged",
+        AgentHealth.Unreachable => "the agent is there but out of reach",
+        _ => "the state is unknown",
     };
 
-    private static string Bengali(WatchdogReason reason) => reason switch
+    private static string Describe(WatchdogReason reason) => reason switch
     {
-        WatchdogReason.Healthy => "হার্টবিট তাজা",
-        WatchdogReason.AgentMissing => "কেউ agent.lock ধরে নেই",
-        WatchdogReason.HeartbeatStale => "হার্টবিট থেমে গেছে",
-        WatchdogReason.ForeignInstance => "লক ধরা আছে কিন্তু কোন প্রসেস জানা যায়নি",
-        WatchdogReason.BackoffPending => "ব্যাকঅফ চলছে",
-        WatchdogReason.CoolOffPending => "হাল ছাড়া হয়েছে, ঠান্ডা হচ্ছে",
-        WatchdogReason.CoolOffProbe => "ঠান্ডা হওয়ার পর একবার চেষ্টা",
-        WatchdogReason.LadderExhausted => "বারবার চেষ্টা করেও এজেন্ট টেকেনি",
-        WatchdogReason.ShuttingDown => "Windows বন্ধ হচ্ছে",
-        WatchdogReason.SessionNotUsable => "এই সেশন থেকে এজেন্ট চালানো যাবে না",
-        WatchdogReason.ProbeFailed => "lock ফাইল পড়াই গেল না",
+        WatchdogReason.Healthy => "the heartbeat is fresh",
+        WatchdogReason.AgentMissing => "nobody is holding agent.lock",
+        WatchdogReason.HeartbeatStale => "the heartbeat has stopped",
+        WatchdogReason.ForeignInstance => "the lock is held but the process is unknown",
+        WatchdogReason.BackoffPending => "backoff in progress",
+        WatchdogReason.CoolOffPending => "gave up, cooling off",
+        WatchdogReason.CoolOffProbe => "one attempt after the cool-off",
+        WatchdogReason.LadderExhausted => "the agent did not survive repeated attempts",
+        WatchdogReason.ShuttingDown => "Windows is shutting down",
+        WatchdogReason.SessionNotUsable => "the agent cannot be started from this session",
+        WatchdogReason.ProbeFailed => "the lock file could not be read at all",
         _ => reason.ToString(),
     };
 }

@@ -88,7 +88,7 @@ export class AuditService {
       });
     } catch (err) {
       this.logger.error(
-        `audit_log লেখা যায়নি: ${entry.action}`,
+        `Could not write audit_log: ${entry.action}`,
         err instanceof Error ? err.stack : undefined,
       );
     }

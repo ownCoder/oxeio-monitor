@@ -71,7 +71,7 @@ export interface TeamReport extends TeamSiteReport {
  *   যাবে না, আর কোনো অবস্থাতেই বেতনের হিসাবে ঢোকে না
  */
 const OVERLAP_CAVEAT =
-  'একজনের একাধিক ডিভাইস চললে সময় যোগ হয়ে যায় (§ ২.১-গ) — অনুপাত ঠিক থাকে, কিন্তু পরম সেকেন্ডকে কাজের ঘণ্টা ধরা যাবে না';
+  'When one person runs more than one device the time is added up (§ 2.1-c) — the ratios stay correct, but the absolute seconds must not be treated as worked hours';
 
 @Injectable()
 export class ActivityService {
@@ -182,7 +182,7 @@ export class ActivityService {
       // ⚠️ অ্যাপ ও সাইটের সময় **যোগ করা যাবে না** — chrome.exe-এর ৩ ঘণ্টার
       //    ভেতরেই youtube.com-এর ১ ঘণ্টা আছে। দুটো তালিকা একই সময়ের
       //    দুই রকম কাটাছেঁড়া, দুটো আলাদা ভাগ নয়।
-      caveat: `${OVERLAP_CAVEAT}। অ্যাপ ও সাইটের সময় একই সময়ের দুই রকম হিসাব — যোগ করা যাবে না`,
+      caveat: `${OVERLAP_CAVEAT}. App time and site time are two different breakdowns of the same time — they must not be added together`,
     };
   }
 
@@ -278,7 +278,7 @@ export class ActivityService {
     });
 
     if (employeeId !== undefined && rows.length === 0) {
-      throw new NotFoundException(`${employeeId} নম্বর কর্মী নেই`);
+      throw new NotFoundException(`No staff member with id ${employeeId}`);
     }
 
     return rows;

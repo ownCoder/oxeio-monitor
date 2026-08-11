@@ -55,7 +55,7 @@ export class DigestJob {
         return await this.digest.runOnce(now);
       } catch (err) {
         this.logger.error(
-          `দৈনিক ডাইজেস্ট তৈরি করা যায়নি: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+          `Could not build the daily digest: ${err instanceof Error ? err.message : 'unknown error'}`,
           err instanceof Error ? err.stack : undefined,
         );
         return null;

@@ -95,7 +95,7 @@ export class HolidaysService {
     ip: string,
   ): Promise<HolidayView> {
     const before = await this.prisma.holiday.findUnique({ where: { id } });
-    if (!before) throw new NotFoundException('ছুটি পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Holiday not found');
 
     const row = await this.prisma.holiday
       .update({
@@ -138,7 +138,7 @@ export class HolidaysService {
     ip: string,
   ): Promise<{ deleted: HolidayView }> {
     const before = await this.prisma.holiday.findUnique({ where: { id } });
-    if (!before) throw new NotFoundException('ছুটি পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Holiday not found');
 
     await this.prisma.holiday.delete({ where: { id } });
 
@@ -152,7 +152,9 @@ export class HolidaysService {
 
   private parse(value: string): Date {
     const parsed = parseCalendarDate(value);
-    if (!parsed) throw new BadRequestException('holidayDate একটা বৈধ তারিখ নয়');
+    if (!parsed) {
+      throw new BadRequestException('holidayDate is not a valid date');
+    }
     return parsed;
   }
 
@@ -161,7 +163,9 @@ export class HolidaysService {
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === 'P2002'
     ) {
-      return new ConflictException(`${date} তারিখে আগেই একটা ছুটি বসানো আছে`);
+      return new ConflictException(
+        `A holiday has already been set for ${date}`,
+      );
     }
     return err;
   }

@@ -41,7 +41,7 @@ export class BackupCheck {
 
     const { title, detail } = backupAlertText(verdict);
 
-    this.logger.warn(`ব্যাকআপ সমস্যা (${verdict.problem}): ${title}`);
+    this.logger.warn(`Backup problem (${verdict.problem}): ${title}`);
 
     return this.alerts.raiseMany(
       [
@@ -56,7 +56,7 @@ export class BackupCheck {
             // ⚠️ শেষ ত্রুটির বার্তাটা যোগ করা হয় কারণ ওটা না থাকলে মালিককে
             //    সার্ভারে লগইন করে লগ পড়তে হতো — আর তখন অ্যালার্টটা শুধু
             //    দুশ্চিন্তা দিত, দিক নয়।
-            (snapshot.lastError ? ` (শেষ ত্রুটি: ${snapshot.lastError})` : ''),
+            (snapshot.lastError ? ` (last error: ${snapshot.lastError})` : ''),
           meta: {
             problem: verdict.problem,
             hoursSinceSuccess: verdict.hoursSinceSuccess,

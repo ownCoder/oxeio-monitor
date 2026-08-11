@@ -19,7 +19,7 @@ internal enum TrayFontRole
 }
 
 /// <summary>
-/// বাংলা লেখার ফন্ট, DPI অনুযায়ী ক্যাশ করা।
+/// জানালার লেখার ফন্ট, DPI অনুযায়ী ক্যাশ করা।
 ///
 /// ⚠️ ফন্ট একটা GDI হ্যান্ডেল। প্রতিটা <c>OnPaint</c>-এ <c>new Font(...)</c> লিখলে
 /// দেখতে নিরীহ লাগে (GC তো আছেই), কিন্তু ফাইনালাইজার চলার আগেই হাজারখানেক
@@ -31,15 +31,19 @@ internal enum TrayFontRole
 internal sealed class TrayFonts : IDisposable
 {
     /// <summary>
-    /// অগ্রাধিকার ক্রমে বাংলা-সক্ষম ফন্ট। Nirmala UI Windows 8 থেকে সব
-    /// সংস্করণেই থাকে; বাকিগুলো নিছক নিরাপত্তা।
+    /// অগ্রাধিকার ক্রমে ফন্ট। Segoe UI Windows-এর নিজস্ব UI ফন্ট, Vista থেকে
+    /// সব সংস্করণে আছে — আমাদের সর্বনিম্ন লক্ষ্য Windows 10 1809-এর অনেক আগে।
+    /// বাকি দুটো নিছক নিরাপত্তা, কেউ সিস্টেম ফন্ট আনইনস্টল করে ফেললে।
     ///
-    /// ⚠️ যে ফন্টে বাংলা গ্লিফ নেই সেটা দিলে এক্সসেপশন আসে না — শুধু চৌকো বাক্স
-    /// দেখা যায়। অর্থাৎ ভুলটা কেবল স্ক্রিনে ধরা পড়ে, কোনো লগে নয়।
+    /// ⚠️ আগে এখানে "Nirmala UI"/"Shonar Bangla"/"Vrinda" প্রথমে ছিল, কারণ
+    /// লেখা ছিল বাংলা। পর্দার সব লেখা ইংরেজি হওয়ার পর ওই তালিকাটা শুধু
+    /// অপ্রয়োজনীয় নয়, ক্ষতিকরও: Nirmala UI ইন্ডিক লিপির জন্য বানানো, তার
+    /// ল্যাটিন মেট্রিক Segoe UI-এর মতো নয়, আর Windows-এর বাকি সব UI-র পাশে
+    /// জানালাটা বেমানান দেখাত।
     /// </summary>
     private static readonly string[] Candidates =
     [
-        "Nirmala UI", "Shonar Bangla", "Vrinda", "Segoe UI",
+        "Segoe UI", "Tahoma", "Arial",
     ];
 
     private readonly Dictionary<(TrayFontRole Role, int Dpi), Font> _cache = new();
@@ -89,7 +93,8 @@ internal sealed class TrayFonts : IDisposable
             try
             {
                 // ইনস্টল করা না থাকলে ArgumentException — এটাই একমাত্র নির্ভরযোগ্য
-                // পরীক্ষা, কারণ new Font(...) অজানা নাম পেলে চুপচাপ ফলব্যাক করে
+                // পরীক্ষা, কারণ new Font(...) অজানা নাম পেলে চুপচাপ ফলব্যাক করে,
+                // অর্থাৎ ভুলটা কেবল স্ক্রিনে ধরা পড়ত, কোনো লগে নয়
                 using var family = new FontFamily(candidate);
                 return candidate;
             }

@@ -151,7 +151,7 @@ internal sealed class DeviceCredentials : IDeviceCredentials, IDeviceTokenSource
         }
 
         if (status is CredentialLoadStatus.Unreadable or CredentialLoadStatus.BindingMismatch)
-            _log?.Invoke($"⚠️ ক্রেডেনশিয়াল: {status} — {detail}");
+            _log?.Invoke($"⚠️ Credentials: {status} — {detail}");
 
         if (changed) RaiseChanged();
         return changed;
@@ -185,11 +185,11 @@ internal sealed class DeviceCredentials : IDeviceCredentials, IDeviceTokenSource
             _revoked = true;
             _record = null;
             _status = CredentialLoadStatus.NotEnrolled;
-            _detail = "ডিভাইস বাতিল করা হয়েছে: " + reason;
+            _detail = "This device has been revoked: " + reason;
         }
 
         _store.TryDelete("revoke — " + reason);
-        _log?.Invoke($"⛔ ডিভাইস বাতিল: {reason}। ট্র্যাকিং স্থায়ীভাবে বন্ধ।");
+        _log?.Invoke($"⛔ Device revoked: {reason}. Tracking is permanently stopped.");
 
         RaiseChanged();
     }
@@ -212,7 +212,7 @@ internal sealed class DeviceCredentials : IDeviceCredentials, IDeviceTokenSource
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"⚠️ credentials Changed হ্যান্ডলার ব্যর্থ: {ex.GetType().Name}: {ex.Message}");
+                _log?.Invoke($"⚠️ credentials Changed handler failed: {ex.GetType().Name}: {ex.Message}");
             }
         }
     }
@@ -222,8 +222,8 @@ internal sealed class DeviceCredentials : IDeviceCredentials, IDeviceTokenSource
     {
         lock (_gate)
         {
-            if (_revoked) return "বাতিল (revoked)";
-            if (_record is null) return $"enroll করা হয়নি — {_status}{(_detail is null ? "" : ": " + _detail)}";
+            if (_revoked) return "revoked";
+            if (_record is null) return $"not enrolled — {_status}{(_detail is null ? "" : ": " + _detail)}";
 
             return $"device #{_record.DeviceId} · {_record.Employee.EmpCode} " +
                    $"({_record.Employee.FullName}) · token {_record.Token.Fingerprint}";

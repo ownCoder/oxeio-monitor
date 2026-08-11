@@ -23,20 +23,20 @@ internal static class SessionGuard
     public static Result Check()
     {
         if (!Kernel32.ProcessIdToSessionId(Kernel32.GetCurrentProcessId(), out var sessionId))
-            return new Result(false, 0, 0, "সেশন আইডি জানা গেল না");
+            return new Result(false, 0, 0, "Could not determine the session id");
 
         var console = Kernel32.WTSGetActiveConsoleSessionId();
 
         if (sessionId == 0)
         {
             return new Result(false, sessionId, console,
-                "Session 0-তে চলছে — এখান থেকে ইনপুট বা ডেস্কটপ কিছুই দেখা যায় না। " +
-                "এজেন্টকে ইউজার সেশনে চালাতে হবে (Task Scheduler → At log on)।");
+                "Running in Session 0 — no input or desktop is visible from here. " +
+                "The agent must run in a user session (Task Scheduler → At log on).");
         }
 
         return new Result(true, sessionId, console,
             sessionId == console
-                ? "কনসোল সেশনে চলছে"
-                : "কনসোল নয় এমন সেশনে চলছে (সম্ভবত RDP)");
+                ? "Running in the console session"
+                : "Running in a non-console session (probably RDP)");
     }
 }

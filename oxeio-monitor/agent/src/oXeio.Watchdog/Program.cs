@@ -63,7 +63,7 @@ internal static class Program
             return 1;
         }
 
-        log.Write($"সেশন {session.SessionId} (কনসোল {session.ConsoleSessionId}) — {session.Explanation}");
+        log.Write($"Session {session.SessionId} (console {session.ConsoleSessionId}) — {session.Explanation}");
 
         // ⚠️ দুটো watchdog চললে একজনের চালু করা এজেন্টকে অন্যজন "অচেনা" ভেবে
         //    গোলমাল বাধাত, আর দুই মই আলাদা আলাদা গুনে ঝড়টাই দ্বিগুণ করত।
@@ -71,7 +71,7 @@ internal static class Program
         using var self = InstanceLock.TryAcquire(paths.WatchdogLock);
         if (self is null)
         {
-            log.Write("⚠️ আরেকটা watchdog আগে থেকেই চলছে — এইটা বেরিয়ে যাচ্ছে");
+            log.Write("⚠️ Another watchdog is already running — this one is exiting");
             return 2;
         }
 

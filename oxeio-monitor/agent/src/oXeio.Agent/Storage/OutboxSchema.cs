@@ -172,8 +172,8 @@ internal static class OutboxSchema
             // ডাউনগ্রেড (নতুন এজেন্ট থেকে পুরোনোয় ফেরত)। থামিয়ে দিলে মেশিনটা
             // ডেটা জমানোই বন্ধ করত; কলামগুলো কেবল যোগ হয় বলে পুরোনো কোয়েরি
             // চলতে থাকার সম্ভাবনাই বেশি। তাই সরবে অভিযোগ করে এগিয়ে যাই।
-            log($"⚠️ outbox স্কিমা v{from}, কিন্তু এই বিল্ড বোঝে v{Version} — " +
-                "সম্ভবত এজেন্ট ডাউনগ্রেড হয়েছে। চালিয়ে যাচ্ছি।");
+            log($"⚠️ outbox schema is v{from}, but this build understands v{Version} — " +
+                "the agent was probably downgraded. Carrying on.");
             return (from, from);
         }
 

@@ -33,7 +33,7 @@ export interface PayrollLine {
    * আর সেটা কেউ নেয়নি। নিজে থেকে একটা হার ধরে নিলে সেটা নীরবে নীতি
    * হয়ে যেত।
    */
-  overtimeNote: 'হিসাব করা হয়নি — হার নির্ধারিত নয়';
+  overtimeNote: 'Not calculated — no rate has been decided';
 }
 
 /**
@@ -45,13 +45,13 @@ export function computePayroll(input: PayrollInput): PayrollLine {
   const { monthlySalary, targetSec, creditedSec } = input;
 
   if (!Number.isFinite(monthlySalary) || monthlySalary < 0) {
-    throw new RangeError('বেতন ঋণাত্মক বা অসংজ্ঞায়িত হতে পারে না');
+    throw new RangeError('Salary cannot be negative or undefined');
   }
   if (!Number.isFinite(targetSec) || targetSec <= 0) {
-    throw new RangeError('মাসিক টার্গেট শূন্য বা ঋণাত্মক হতে পারে না');
+    throw new RangeError('The monthly target cannot be zero or negative');
   }
   if (!Number.isFinite(creditedSec) || creditedSec < 0) {
-    throw new RangeError('গোনা সময় ঋণাত্মক হতে পারে না');
+    throw new RangeError('Credited time cannot be negative');
   }
 
   const salaryPaisa = Math.round(monthlySalary * PAISA_PER_TAKA);
@@ -77,7 +77,7 @@ export function computePayroll(input: PayrollInput): PayrollLine {
     // কর্তন কখনো বেতনের বেশি হতে পারে না — কেউ পুরো মাস অনুপস্থিত থাকলে
     // deficit = target, তখন কর্তন = পুরো বেতন, প্রদেয় = ০। ঋণাত্মক নয়।
     payablePaisa: Math.max(0, salaryPaisa - deductionPaisa),
-    overtimeNote: 'হিসাব করা হয়নি — হার নির্ধারিত নয়',
+    overtimeNote: 'Not calculated — no rate has been decided',
   };
 }
 

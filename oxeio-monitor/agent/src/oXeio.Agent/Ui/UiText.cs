@@ -5,42 +5,42 @@ using oXeio.Core.Time;
 namespace oXeio.Agent.Ui;
 
 /// <summary>
-/// tray-তে দেখানো সংখ্যা ও সময়ের বাংলা রূপ।
+/// tray-তে দেখানো সংখ্যা ও সময়ের রূপ। পর্দার সব লেখা ইংরেজি, অঙ্কও ASCII।
 ///
-/// ⚠️ csproj-এ <c>InvariantGlobalization=true</c>। মানে <c>new CultureInfo("bn-BD")</c>
-/// চুপচাপ invariant হয়ে যায় আর <c>ToString(culture)</c> কখনোই বাংলা অঙ্ক দেয় না —
-/// কোনো এক্সসেপশন ছাড়াই, তাই ভুলটা ধরাও পড়ে না। সেজন্য অঙ্কগুলো এখানে হাতে
-/// বদলানো হয়। কালচার ডেটার উপর কোনো নির্ভরতা নেই, ইচ্ছাকৃতভাবে।
+/// ⚠️ csproj-এ <c>InvariantGlobalization=true</c>। মানে <c>new CultureInfo(...)</c>
+/// চুপচাপ invariant হয়ে যায়, কোনো এক্সসেপশন ছাড়াই — তাই কালচারের উপর কোনো
+/// নির্ভরতা রাখা হয় না, প্রতিটা <c>ToString</c>-এ স্পষ্ট করে
+/// <see cref="CultureInfo.InvariantCulture"/> দেওয়া। মেশিনের locale যা-ই হোক,
+/// স্টাফ আর ড্যাশবোর্ড হুবহু একই সংখ্যা দেখে।
 /// </summary>
-internal static class BanglaText
+internal static class UiText
 {
-    private const string BengaliDigits = "০১২৩৪৫৬৭৮৯";
-
     private static readonly string[] Months =
     [
-        "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
-        "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর",
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
     ];
 
-    /// <summary>ASCII ০-৯ → বাংলা অঙ্ক। বাকি সব অক্ষর অপরিবর্তিত।</summary>
-    public static string Digits(string ascii)
+    public static string Number(int value) =>
+        value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// টার্গেট ঘণ্টা — পূর্ণ সংখ্যা হলে দশমিক ছাড়া, নইলে এক ঘর।
+    ///
+    /// ⚠️ "২০৮.০ hours" লেখা মানে স্টাফকে বোঝানো যে দশমিকটা গুরুত্বপূর্ণ, অথচ
+    /// টার্গেট প্রায় সবসময়ই গোল সংখ্যা। আধা-ঘণ্টার টার্গেট (২০৭.৫) থাকলে
+    /// সেটা লুকানোও যাবে না — তাই দুটো রূপ।
+    /// </summary>
+    public static string Hours(double hours)
     {
-        if (string.IsNullOrEmpty(ascii)) return string.Empty;
+        if (double.IsNaN(hours) || double.IsInfinity(hours)) return "0";
 
-        var chars = ascii.ToCharArray();
-        for (var i = 0; i < chars.Length; i++)
-        {
-            var c = chars[i];
-            if (c >= '0' && c <= '9') chars[i] = BengaliDigits[c - '0'];
-        }
-
-        return new string(chars);
+        return Math.Abs(hours - Math.Round(hours)) < 0.05
+            ? Number((int)Math.Round(hours))
+            : hours.ToString("0.#", CultureInfo.InvariantCulture);
     }
 
-    public static string Number(int value) =>
-        Digits(value.ToString(CultureInfo.InvariantCulture));
-
-    /// <summary>ঘণ্টা:মিনিট — যেমন <c>১২৭:৩০</c>।</summary>
+    /// <summary>ঘণ্টা:মিনিট — যেমন <c>127:30</c>।</summary>
     public static string Duration(TimeSpan span)
     {
         // ঋণাত্মক সময় দেখানোর কোনো মানে নেই; ভুল হিসাব এলে শূন্য দেখানোই ভালো
@@ -53,12 +53,11 @@ internal static class BanglaText
         var hours = (int)span.TotalHours;
         var minutes = span.Minutes;
 
-        return Digits(
-            hours.ToString(CultureInfo.InvariantCulture) + ":" +
-            minutes.ToString("00", CultureInfo.InvariantCulture));
+        return hours.ToString(CultureInfo.InvariantCulture) + ":" +
+               minutes.ToString("00", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>০.৬১ → <c>৬১%</c>। ১-এর উপরে ক্ল্যাম্প করা হয় না (ADR — বাড়তি কাজ অদৃশ্য নয়)।</summary>
+    /// <summary>০.৬১ → <c>61%</c>। ১-এর উপরে ক্ল্যাম্প করা হয় না (ADR — বাড়তি কাজ অদৃশ্য নয়)।</summary>
     public static string Percent(double ratio)
     {
         if (double.IsNaN(ratio) || double.IsInfinity(ratio)) ratio = 0;
@@ -80,12 +79,11 @@ internal static class BanglaText
     public static string Clock(DateTimeOffset instant)
     {
         var local = DhakaTime.LocalTimeOf(instant);
-        return Digits(
-            local.Hour.ToString("00", CultureInfo.InvariantCulture) + ":" +
-            local.Minute.ToString("00", CultureInfo.InvariantCulture));
+        return local.Hour.ToString("00", CultureInfo.InvariantCulture) + ":" +
+               local.Minute.ToString("00", CultureInfo.InvariantCulture);
     }
 
-    /// <summary>ঢাকার তারিখ — যেমন <c>৯ আগস্ট ২০২৬</c>।</summary>
+    /// <summary>ঢাকার তারিখ — যেমন <c>9 August 2026</c>।</summary>
     public static string WorkDate(DateTimeOffset instant)
     {
         var date = DhakaTime.WorkDateOf(instant);
@@ -96,10 +94,10 @@ internal static class BanglaText
     /// <summary>
     /// সর্বোচ্চ <paramref name="max"/> UTF-16 একক পর্যন্ত ছেঁটে দেয়।
     ///
-    /// ⚠️ সরাসরি <c>Substring</c> করলে বাংলা লেখা ভেঙে যায়: "ছে"-র মাঝখানে কাটলে
-    /// পড়ে থাকে একটা এতিম কার-চিহ্ন, যেটা রেন্ডারার আগের অক্ষরের সাথে জুড়ে
-    /// সম্পূর্ণ অন্য শব্দ বানায়। surrogate pair-এর মাঝে কাটলে তো ক্র্যাশ-সদৃশ
-    /// আবর্জনাই আসে। তাই কাটাকাটি হয় text element (grapheme) সীমানায়।
+    /// ⚠️ সরাসরি <c>Substring</c> করা যাবে না। লেখা ইংরেজি হলেও এখানে ✅/⚠ জাতীয়
+    /// চিহ্ন আসে, আর স্টাফের নামে যেকোনো হরফ থাকতে পারে — surrogate pair-এর
+    /// মাঝখানে কাটলে পড়ে থাকে একটা অর্ধেক কোড-পয়েন্ট, যেটা রেন্ডারার আবর্জনা
+    /// হিসেবে আঁকে। তাই কাটাকাটি হয় text element (grapheme) সীমানায়।
     /// </summary>
     public static string Truncate(string text, int max)
     {

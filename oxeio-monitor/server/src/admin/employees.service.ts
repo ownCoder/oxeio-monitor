@@ -99,7 +99,7 @@ export class EmployeesService {
       where: { id },
       select: EMPLOYEE_SELECT,
     });
-    if (!row) throw new NotFoundException('কর্মচারী পাওয়া যায়নি');
+    if (!row) throw new NotFoundException('Staff member not found');
 
     await this.recordSalaryRead(actor, ip, [row], String(id));
 
@@ -162,7 +162,7 @@ export class EmployeesService {
       where: { id },
       select: { id: true, empCode: true, monthlySalary: true },
     });
-    if (!before) throw new NotFoundException('কর্মচারী পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Staff member not found');
 
     if (dto.policyId !== undefined && dto.policyId !== null) {
       await this.assertPolicyExists(dto.policyId);
@@ -250,10 +250,12 @@ export class EmployeesService {
       where: { id },
       select: { id: true, empCode: true, status: true },
     });
-    if (!before) throw new NotFoundException('কর্মচারী পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Staff member not found');
     if (before.status === 'inactive') {
       // ⚠️ চুপচাপ আবার চালালে আগের `leftOn` মুছে আজকের তারিখ বসে যেত
-      throw new ConflictException('এই কর্মচারী আগেই নিষ্ক্রিয় করা হয়েছে');
+      throw new ConflictException(
+        'This staff member has already been deactivated',
+      );
     }
 
     const now = new Date();
@@ -312,7 +314,7 @@ export class EmployeesService {
     });
 
     this.logger.log(
-      `${before.empCode} নিষ্ক্রিয় — ${devicesRevoked}টি ডিভাইস revoke, ${codesExpired}টি কোড বাতিল`,
+      `${before.empCode} deactivated — ${devicesRevoked} devices revoked, ${codesExpired} codes cancelled`,
     );
 
     return toEmployeeView(row, actor.role);
@@ -332,9 +334,9 @@ export class EmployeesService {
       where: { id },
       select: { id: true, empCode: true, status: true },
     });
-    if (!before) throw new NotFoundException('কর্মচারী পাওয়া যায়নি');
+    if (!before) throw new NotFoundException('Staff member not found');
     if (before.status === 'active') {
-      throw new ConflictException('এই কর্মচারী আগে থেকেই সক্রিয়');
+      throw new ConflictException('This staff member is already active');
     }
 
     const row = await this.prisma.employee.update({
@@ -413,12 +415,14 @@ export class EmployeesService {
       select: { id: true },
     });
     // ⚠️ FK ভাঙলে Prisma P2003 ছুড়ত আর সেটা ৫০০ হয়ে যেত — এখানেই ধরা
-    if (!policy) throw new BadRequestException('এই policyId-র work policy নেই');
+    if (!policy) {
+      throw new BadRequestException('There is no work policy with this policyId');
+    }
   }
 
   private calendarDate(value: string, field: string): Date {
     const parsed = parseCalendarDate(value);
-    if (!parsed) throw new BadRequestException(`${field} একটা বৈধ তারিখ নয়`);
+    if (!parsed) throw new BadRequestException(`${field} is not a valid date`);
     return parsed;
   }
 
@@ -437,9 +441,11 @@ export class EmployeesService {
       // ⚠️ দুটো UNIQUE কলামই একই P2002 দেয়। কোনটা সংঘাত করল না বললে
       //    ব্যবহারকারী "ডুপ্লিকেট" দেখে empCode বদলাতে থাকত, অথচ দোষ email-এর।
       if (target.includes('email')) {
-        return new ConflictException(`"${email}" ইমেইল আরেকজনের নামে আছে`);
+        return new ConflictException(
+          `The email "${email}" is already registered to someone else`,
+        );
       }
-      return new ConflictException(`"${empCode}" কোড আগেই ব্যবহার হয়েছে`);
+      return new ConflictException(`The code "${empCode}" is already in use`);
     }
     return err;
   }

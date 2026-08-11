@@ -37,7 +37,7 @@ export class SignedUrlService implements OnModuleInit {
       // TokenService-এর মতোই fail fast — দুর্বল সিক্রেটে সই করা মানে
       // যে-কেউ নিজের হাতে যেকোনো স্ক্রিনশটের লিঙ্ক বানিয়ে নিতে পারবে।
       throw new Error(
-        'SCREENSHOT_URL_SECRET / JWT_SECRET সেট করা নেই বা ৩২ অক্ষরের কম। .env দেখুন।',
+        'SCREENSHOT_URL_SECRET / JWT_SECRET is unset or shorter than 32 characters. Check .env.',
       );
     }
 

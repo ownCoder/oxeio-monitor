@@ -88,12 +88,12 @@ export class RecategorizeDto {
 export class RangeQueryDto {
   /** না দিলে চলতি মাসের ১ তারিখ */
   @IsOptional()
-  @Matches(DATE_FORMAT, { message: '`from` দিতে হবে YYYY-MM-DD ফরম্যাটে' })
+  @Matches(DATE_FORMAT, { message: '`from` must be in YYYY-MM-DD format' })
   from?: string;
 
   /** না দিলে ঢাকার আজকের তারিখ */
   @IsOptional()
-  @Matches(DATE_FORMAT, { message: '`to` দিতে হবে YYYY-MM-DD ফরম্যাটে' })
+  @Matches(DATE_FORMAT, { message: '`to` must be in YYYY-MM-DD format' })
   to?: string;
 }
 

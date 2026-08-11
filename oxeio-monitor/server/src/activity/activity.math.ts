@@ -83,7 +83,7 @@ export function addSeconds(
   seconds: number,
 ): void {
   if (!Number.isFinite(seconds) || seconds < 0) {
-    throw new RangeError('সময় ঋণাত্মক বা অসংজ্ঞায়িত হতে পারে না');
+    throw new RangeError('Time cannot be negative or undefined');
   }
 
   switch (category) {
@@ -580,7 +580,7 @@ export function foldTeamSites(
 // ── রুলের প্যাটার্ন যাচাই (D06) ──────────────────────────────────────────────
 
 /**
- * ⭐ মালিকের লেখা প্যাটার্নে সমস্যা আছে কি না — থাকলে বাংলা বার্তা, নইলে `null`।
+ * ⭐ মালিকের লেখা প্যাটার্নে সমস্যা আছে কি না — থাকলে বার্তা, নইলে `null`।
  *
  * ⚠️ **এটা লেখার সময়ই ধরতে হয়।** `compile()` ভুল প্যাটার্ন **নীরবে বাদ**
  * দেয় (ingest ভেঙে পড়া ঠেকাতে, আর সেটাই ঠিক)। ফলে যাচাই না করলে মালিক
@@ -598,17 +598,17 @@ export function patternProblem(
   const value = pattern.trim();
 
   if (value.length === 0) {
-    return 'প্যাটার্ন খালি হতে পারে না';
+    return 'The pattern cannot be empty';
   }
 
   switch (matchType) {
     case 'process':
       // পুরো পাথ কখনো মেলে না — `app_usage`-এ শুধু ফাইলের নাম জমা হয়
       if (value.includes('\\') || value.includes('/')) {
-        return 'প্রসেসের প্যাটার্নে পুরো পাথ নয়, শুধু ফাইলের নাম দিন (যেমন code.exe)';
+        return 'Give only the file name in a process pattern, not the full path (for example code.exe)';
       }
       if (value.includes(' ') && !value.toLowerCase().endsWith('.exe')) {
-        return 'প্রসেসের নাম দেখতে ফাইলের নামের মতো হতে হবে (যেমন code.exe)';
+        return 'A process name must look like a file name (for example code.exe)';
       }
       return null;
 
@@ -616,24 +616,24 @@ export function patternProblem(
       // ⚠️ ফুল URL কখনো জমা হয় না (ADR-013) — তাই '/'-ওয়ালা প্যাটার্ন
       //    কোনোদিন মিলত না, আর মালিক ভাবতেন নিয়মটা কাজ করছে
       if (value.includes('://') || value.includes('/')) {
-        return 'শুধু ডোমেইন দিন, পুরো URL নয় (যেমন youtube.com)';
+        return 'Give the domain only, not the full URL (for example youtube.com)';
       }
       if (value.includes(' ')) {
-        return 'ডোমেইনে ফাঁকা জায়গা থাকতে পারে না';
+        return 'A domain cannot contain spaces';
       }
       if (!value.includes('.') && value !== 'localhost') {
-        return 'ডোমেইনে অন্তত একটা ডট থাকতে হবে (যেমন youtube.com)';
+        return 'A domain must contain at least one dot (for example youtube.com)';
       }
       return null;
 
     case 'title_regex':
       if (pattern.length > MAX_REGEX_LENGTH) {
-        return `regex ${MAX_REGEX_LENGTH} অক্ষরের বেশি হতে পারে না — লম্বা regex পুরো সার্ভার আটকে দিতে পারে`;
+        return `A regex cannot be longer than ${MAX_REGEX_LENGTH} characters — a long regex can lock up the whole server`;
       }
       try {
         new RegExp(pattern, 'i');
       } catch {
-        return 'regex-টা ঠিক নয় — JavaScript এটা কম্পাইল করতে পারছে না';
+        return 'The regex is not valid — JavaScript cannot compile it';
       }
       return null;
   }
@@ -673,14 +673,14 @@ export function toDateKey(date: Date): string {
  */
 export function parseWorkDate(text: string): Date {
   if (!DATE_PATTERN.test(text)) {
-    throw new RangeError(`তারিখ দিতে হবে YYYY-MM-DD ফরম্যাটে — পাওয়া গেছে "${text}"`);
+    throw new RangeError(`Date must be in YYYY-MM-DD format — got "${text}"`);
   }
 
   const [year, month, day] = text.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
 
   if (toDateKey(date) !== text) {
-    throw new RangeError(`"${text}" কোনো আসল তারিখ নয়`);
+    throw new RangeError(`"${text}" is not a real date`);
   }
 
   return date;
@@ -710,7 +710,7 @@ export function resolveRange(
       : parseWorkDate(from);
 
   if (start.getTime() > end.getTime()) {
-    throw new RangeError('`from` কখনো `to`-এর পরে হতে পারে না');
+    throw new RangeError('`from` can never be after `to`');
   }
 
   const days =
@@ -718,7 +718,7 @@ export function resolveRange(
 
   if (days > maxDays) {
     throw new RangeError(
-      `রেঞ্জ সর্বোচ্চ ${maxDays} দিনের — চাওয়া হয়েছে ${days} দিন`,
+      `The range can be at most ${maxDays} days — ${days} days were requested`,
     );
   }
 

@@ -381,14 +381,14 @@ export function shouldFlagNoActivity(input: NoActivityInput): boolean {
 // ৭. G07 — কোন অ্যালার্টগুলো এখন ইমেইলে যাবে
 // ════════════════════════════════════════════════════════════════════════════
 
-/** বিষয়ে যে বাংলা লেবেলটা বসে */
+/** বিষয়ে যে লেবেলটা বসে */
 export function severityLabel(severity: string): string {
   switch (severity) {
     case 'critical':
-      return 'গুরুতর';
+      return 'Critical';
     case 'warning':
-      return 'সতর্কতা';
+      return 'Warning';
     default:
-      return 'তথ্য';
+      return 'Info';
   }
 }

@@ -42,7 +42,7 @@ internal sealed class MessageWindow : NativeWindow, IDisposable
         });
 
         if (Handle == 0)
-            throw new Win32Exception(Marshal.GetLastPInvokeError(), "উইন্ডো তৈরি করা গেল না");
+            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Could not create the window");
     }
 
     protected override void WndProc(ref Message m)

@@ -120,7 +120,7 @@ internal sealed class LivenessBeacon : IDisposable
         {
             // একটা হার্টবিট মিস হওয়া মারাত্মক নয় — stale হতে ১২০ সেকেন্ড লাগে,
             // অর্থাৎ পরপর ৮টা মিস করলে তবেই।
-            Debug.WriteLine($"হার্টবিট লেখা গেল না: {ex.Message}");
+            Debug.WriteLine($"could not write the heartbeat: {ex.Message}");
         }
     }
 

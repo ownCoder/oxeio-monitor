@@ -91,14 +91,14 @@ public class MonthlyMilestoneTests
         Assert.Equal("2026-09", MonthlyMilestone.MonthKeyOf(justAfterMidnight));
     }
 
-    /// <summary>বেলুনের লেখায় বাংলা অঙ্ক, আর কোনো নির্দেশ নেই।</summary>
+    /// <summary>বেলুনের লেখায় টার্গেটের সংখ্যাটা আছে, আর কোনো নির্দেশ নেই।</summary>
     [Fact]
     public void বেলুনের_লেখা_শুধু_খবর()
     {
         var text = MonthlyMilestone.Text(208);
 
-        Assert.Contains("২০৮", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("বিশ্রাম", text, StringComparison.Ordinal);
+        Assert.Contains("208", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("rest", text, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── ডিস্কের স্মৃতি ───────────────────────────────────────────────────────

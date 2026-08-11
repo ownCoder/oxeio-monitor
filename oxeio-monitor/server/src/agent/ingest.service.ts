@@ -61,7 +61,7 @@ export class IngestService {
     const missing = items.findIndex((i) => !i.clientUuid);
     if (missing >= 0) {
       throw new UnprocessableEntityException(
-        `${missing} নম্বর রেকর্ডে client_uuid নেই — ডুপ্লিকেট ঠেকাতে এটা বাধ্যতামূলক`,
+        `Record ${missing} has no client_uuid — it is required to prevent duplicates`,
       );
     }
   }
@@ -196,7 +196,7 @@ export class IngestService {
     const employeeId = device.employeeId;
     if (employeeId === null) {
       throw new UnprocessableEntityException(
-        'এই ডিভাইস কোনো স্টাফের সাথে যুক্ত নয়',
+        'This device is not linked to any staff member',
       );
     }
 
@@ -272,8 +272,8 @@ export class IngestService {
     split: number,
   ): Promise<void> {
     this.logger.warn(
-      `device ${device.id}: ${split}টি সেগমেন্ট মধ্যরাতে সার্ভারেই ভাগ করতে হলো — ` +
-        'এজেন্টের নিজেরই ভাগ করার কথা',
+      `device ${device.id}: ${split} segment(s) had to be split at midnight on the server — ` +
+        'the agent was supposed to split them itself',
     );
     await this.prisma.event.create({
       data: {
@@ -300,7 +300,7 @@ export class IngestService {
     const employeeId = device.employeeId;
     if (employeeId === null) {
       throw new UnprocessableEntityException(
-        'এই ডিভাইস কোনো স্টাফের সাথে যুক্ত নয়',
+        'This device is not linked to any staff member',
       );
     }
 
@@ -377,7 +377,7 @@ export class IngestService {
       if (!isForeignKeyViolation(error)) throw error;
 
       this.logger.warn(
-        'ক্যাটাগরির নিয়ম বদলে গেছে — ক্যাশ ফেলে আবার চেষ্টা করছি',
+        'Category rules changed — dropping the cache and retrying',
       );
       this.categories.invalidate();
 

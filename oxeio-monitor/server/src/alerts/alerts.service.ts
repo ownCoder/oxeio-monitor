@@ -132,7 +132,7 @@ export class AlertsService {
     const kept = suppressFlood(inputs, lastRaisedByKey, now);
     const suppressed = inputs.length - kept.length;
     if (kept.length === 0) {
-      this.logger.debug(`${suppressed}টি অ্যালার্ট throttle-এ আটকেছে`);
+      this.logger.debug(`${suppressed} alerts held back by throttle`);
       return 0;
     }
 
@@ -152,8 +152,8 @@ export class AlertsService {
     });
 
     this.logger.warn(
-      `${kept.length}টি নতুন অ্যালার্ট: ${kept.map((k) => k.type).join(', ')}` +
-        (suppressed > 0 ? ` (${suppressed}টি throttle-এ আটকেছে)` : ''),
+      `${kept.length} new alerts: ${kept.map((k) => k.type).join(', ')}` +
+        (suppressed > 0 ? ` (${suppressed} held back by throttle)` : ''),
     );
 
     return kept.length;
@@ -197,7 +197,7 @@ export class AlertsService {
       where: { id },
       select: { id: true },
     });
-    if (!existing) throw new NotFoundException('এমন কোনো অ্যালার্ট নেই');
+    if (!existing) throw new NotFoundException('No such alert');
 
     await this.prisma.alert.updateMany({
       where: { id, acknowledgedAt: null },
@@ -219,7 +219,7 @@ export class AlertsService {
  */
 function parseAlertId(raw: string): bigint {
   if (!/^\d{1,19}$/.test(raw)) {
-    throw new BadRequestException('অ্যালার্ট আইডি ঠিক নেই');
+    throw new BadRequestException('Invalid alert id');
   }
   return BigInt(raw);
 }

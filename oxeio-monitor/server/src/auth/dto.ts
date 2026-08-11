@@ -12,12 +12,12 @@ import {
 import { MIN_PASSWORD_LENGTH } from './auth.constants';
 
 export class LoginDto {
-  @IsEmail({}, { message: 'ইমেইল ঠিক নেই' })
+  @IsEmail({}, { message: 'Email is not valid' })
   @MaxLength(200)
   email!: string;
 
   @IsString()
-  @MinLength(1, { message: 'পাসওয়ার্ড দিন' })
+  @MinLength(1, { message: 'Enter your password' })
   @MaxLength(200)
   password!: string;
 
@@ -41,7 +41,7 @@ export class LoginDto {
 /** ⚠️ ৬ অঙ্ক, কিন্তু স্পেস/ড্যাশ মেনে নেওয়া হয় — normalize সার্ভারেই হয় */
 export class TotpCodeDto {
   @IsString()
-  @MinLength(6, { message: '৬ অঙ্কের কোড দিন' })
+  @MinLength(6, { message: 'Enter the 6-digit code' })
   @MaxLength(10)
   code!: string;
 }
@@ -53,7 +53,7 @@ export class TotpCodeDto {
  */
 export class PasswordConfirmDto {
   @IsString()
-  @MinLength(1, { message: 'পাসওয়ার্ড দিন' })
+  @MinLength(1, { message: 'Enter your password' })
   @MaxLength(200)
   password!: string;
 }
@@ -65,14 +65,14 @@ export class ChangePasswordDto {
 
   @IsString()
   @MinLength(MIN_PASSWORD_LENGTH, {
-    message: `নতুন পাসওয়ার্ড অন্তত ${MIN_PASSWORD_LENGTH} অক্ষরের হতে হবে`,
+    message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters`,
   })
   @MaxLength(200)
   newPassword!: string;
 }
 
 export class CreatePortalAccountDto {
-  @IsEmail({}, { message: 'ইমেইল ঠিক নেই' })
+  @IsEmail({}, { message: 'Email is not valid' })
   @MaxLength(200)
   email!: string;
 

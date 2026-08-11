@@ -35,7 +35,7 @@ export class MustChangePasswordGuard implements CanActivate {
     if (allowed) return true;
 
     throw new ForbiddenException({
-      message: 'প্রথমে পাসওয়ার্ড বদলাতে হবে',
+      message: 'You must change your password first',
       mustChangePassword: true,
     });
   }

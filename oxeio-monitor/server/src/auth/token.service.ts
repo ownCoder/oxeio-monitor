@@ -31,7 +31,7 @@ export class TokenService implements OnModuleInit {
     if (!secret || secret.length < 32) {
       // fail fast — দুর্বল সিক্রেট নিয়ে সার্ভার ওঠার চেয়ে না ওঠাই ভালো
       throw new Error(
-        'JWT_SECRET সেট করা নেই বা ৩২ অক্ষরের কম। .env দেখুন।',
+        'JWT_SECRET is not set or is shorter than 32 characters. Check .env.',
       );
     }
     this.key = new TextEncoder().encode(secret);

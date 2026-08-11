@@ -16,7 +16,7 @@ export const NUM_FMT_2 = '0.00';
 
 export interface ExcelColumn<T> {
   header: string;
-  /** Excel-এর অক্ষর-চওড়া একক; বাংলা হেডার একটু বেশি জায়গা নেয় */
+  /** Excel-এর অক্ষর-চওড়া একক; লম্বা ইংরেজি হেডার একটু বেশি জায়গা নেয় */
   width: number;
   numFmt?: string;
   value: (row: T) => CellValue;
@@ -107,8 +107,8 @@ export async function buildWorkbook(
 
   const infoSheet = wb.addWorksheet('Info');
   infoSheet.columns = [
-    { header: 'বিষয়', width: 28 },
-    { header: 'মান', width: 46 },
+    { header: 'Item', width: 28 },
+    { header: 'Value', width: 46 },
   ];
   for (const [key, value] of info) infoSheet.addRow([key, value]);
   infoSheet.getRow(1).font = { bold: true };

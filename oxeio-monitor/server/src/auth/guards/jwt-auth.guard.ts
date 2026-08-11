@@ -33,11 +33,13 @@ export class JwtAuthGuard implements CanActivate {
     const cookies = req.cookies as Record<string, string> | undefined;
     const token = cookies?.[SESSION_COOKIE];
 
-    if (!token) throw new UnauthorizedException('লগইন করুন');
+    if (!token) throw new UnauthorizedException('Please sign in');
 
     const user = await this.tokens.verify(token);
     // মেয়াদ শেষ হওয়াও এখানেই ধরা পড়ে → ৩০ মিনিট নিষ্ক্রিয়তায় auto logout (I09)
-    if (!user) throw new UnauthorizedException('সেশনের মেয়াদ শেষ, আবার লগইন করুন');
+    if (!user) {
+      throw new UnauthorizedException('Session expired, please sign in again');
+    }
 
     req.user = user;
 

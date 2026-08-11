@@ -172,7 +172,7 @@ export class OpsHealthService {
       return { up: true, latencyMs: Date.now() - startedAt };
     } catch (err) {
       this.logger.error(
-        `হেলথ: DB পিং ব্যর্থ — ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`,
+        `Health: DB ping failed — ${err instanceof Error ? err.message : 'unknown error'}`,
       );
       return { up: false, latencyMs: null };
     }

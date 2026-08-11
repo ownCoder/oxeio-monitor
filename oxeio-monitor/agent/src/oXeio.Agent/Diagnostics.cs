@@ -49,17 +49,17 @@ internal static class Diagnostics
         Line($"session   : id={guard.SessionId} console={guard.ConsoleSessionId} — {guard.Explanation}");
         if (!guard.CanTrack)
         {
-            Line("❌ এই সেশনে সময় গোনা হবে না। থামছি।");
+            Line("❌ Time will not be counted in this session. Stopping.");
             return 1;
         }
 
         var dpi = DpiGuard.Check();
         Line(dpi.Ok
-            ? $"DPI       : ✅ {dpi.Awareness} — ম্যানিফেস্ট কাজ করেছে"
-            : $"DPI       : ❌ {dpi.Awareness} — স্ক্রিনশট ঝাপসা আসবে, ম্যানিফেস্ট দেখুন");
+            ? $"DPI       : ✅ {dpi.Awareness} — the manifest worked"
+            : $"DPI       : ❌ {dpi.Awareness} — screenshots will be blurry, check the manifest");
 
         var lockState = LockStateProbe.Query();
-        Line($"lock state: {lockState}  (ইভেন্টের অপেক্ষা না করে শুরুতেই জেনে নেওয়া)");
+        Line($"lock state: {lockState}  (read at startup instead of waiting for an event)");
 
         _machine = new IdleStateMachine(
             IdleThreshold,
@@ -73,24 +73,24 @@ internal static class Diagnostics
 
         var (sessionOk, sessionErr) = session.TryRegister();
         Line(sessionOk
-            ? "session notifications: ✅ রেজিস্টার হয়েছে"
-            : $"session notifications: ❌ ব্যর্থ (Win32 {sessionErr})" +
+            ? "session notifications: ✅ registered"
+            : $"session notifications: ❌ failed (Win32 {sessionErr})" +
               (sessionErr == Win32.RPC_S_INVALID_BINDING
-                  ? " — Terminal Services এখনো প্রস্তুত নয়, রিট্রাই দরকার"
+                  ? " — Terminal Services is not ready yet, a retry is needed"
                   : ""));
 
         var (powerOk, powerErr) = power.TryRegister();
         Line(powerOk
-            ? "power notifications  : ✅ রেজিস্টার হয়েছে"
-            : $"power notifications  : ❌ ব্যর্থ (Win32 {powerErr})");
+            ? "power notifications  : ✅ registered"
+            : $"power notifications  : ❌ failed (Win32 {powerErr})");
 
-        Line($"capture window       : {(Capture.Allows(DateTimeOffset.UtcNow) ? "খোলা" : "বন্ধ")} (০৭:০০–২৩:০০)");
+        Line($"capture window       : {(Capture.Allows(DateTimeOffset.UtcNow) ? "open" : "closed")} (07:00–23:00)");
         Line("");
 
         TestCapture();
         TestAppTracking();
 
-        Line("চলছে… Ctrl+C দিয়ে থামান। ৬০ সেকেন্ড মাউস/কি-বোর্ড না ছুঁয়ে দেখুন।");
+        Line("Running… press Ctrl+C to stop. Try not touching the mouse/keyboard for 60 seconds.");
         Line("");
 
         Console.CancelKeyPress += (_, e) =>
@@ -121,14 +121,14 @@ internal static class Diagnostics
     /// </summary>
     private static void TestAppTracking()
     {
-        Line("── অ্যাপ ও সাইট ট্র্যাকিং (D01–D04) ─────────────────");
+        Line("── App and site tracking (D01–D04) ──────────────────");
 
         var config = AgentConfig.Default.AppTracking;
-        Line($"কনফিগ: {(config.Enabled ? "চালু" : "বন্ধ")}, সর্বনিম্ন {config.MinDurationSec} সে.");
+        Line($"config: {(config.Enabled ? "on" : "off")}, minimum {config.MinDurationSec} s");
 
         if (!config.Enabled)
         {
-            Line("   (বন্ধ — foreground উইন্ডো পড়াই হবে না)");
+            Line("   (off — the foreground window is not even read)");
             Line("");
             return;
         }
@@ -136,7 +136,7 @@ internal static class Diagnostics
         var service = new AppUsageService(TimeSpan.FromSeconds(config.MinDurationSec));
         var seen = new List<AppUsageRecord>();
 
-        Line("১০ সেকেন্ড নমুনা নিচ্ছি — এখন ব্রাউজারে গিয়ে একটা সাইট খুলুন…");
+        Line("Sampling for 10 seconds — open a site in your browser now…");
 
         for (var i = 0; i < 10; i++)
         {
@@ -150,7 +150,7 @@ internal static class Diagnostics
         var current = service.CurrentProcess;
         seen.AddRange(service.CloseAll(Clock.Now));
 
-        Line($"   এখন সামনে  : {current ?? "(কোনো উইন্ডো পড়া গেল না)"}");
+        Line($"   foreground : {current ?? "(no window could be read)"}");
 
         // ⚠️ "UI Automation বন্ধ" পতাকাটা দিয়ে বিচার করা যায় না — ওটা টানা
         //    ২০ বার ব্যর্থ হলে ওঠে, আর ১০ সেকেন্ডে ২০ বার চেষ্টাই হয় না।
@@ -158,17 +158,17 @@ internal static class Diagnostics
         var browser = seen.FirstOrDefault(r => r.IsBrowser == true);
         Line(browser switch
         {
-            null => "   address bar: — নমুনার সময় কোনো ব্রাউজার সামনে ছিল না, পরীক্ষা হয়নি",
-            { Domain: { } d } => $"   address bar: ✅ পড়া যাচ্ছে — {d}",
-            _ => "   address bar: ❌ ব্রাউজার সামনে ছিল, ডোমেইন পড়া গেল না " +
-                 "(অথবা ছদ্মবেশী উইন্ডো — তখন এটাই ঠিক আচরণ)",
+            null => "   address bar: — no browser was in the foreground while sampling, not tested",
+            { Domain: { } d } => $"   address bar: ✅ readable — {d}",
+            _ => "   address bar: ❌ a browser was in the foreground, the domain could not be read " +
+                 "(or an incognito window — then this is the correct behaviour)",
         });
 
         foreach (var r in seen)
         {
             // ⚠️ টাইটেল ছাপা হয় না — পড়ার সময় কেউ পাশে থাকতে পারে
-            Line($"   ▸ {r.ProcessName} {r.DurationSec} সে." +
-                 (r.Domain is null ? "" : $"  ডোমেইন: {r.Domain}"));
+            Line($"   ▸ {r.ProcessName} {r.DurationSec} s" +
+                 (r.Domain is null ? "" : $"  domain: {r.Domain}"));
         }
 
         Line("");
@@ -183,12 +183,12 @@ internal static class Diagnostics
     private static void TestCapture()
     {
         var monitors = MonitorEnumerator.Enumerate();
-        Line($"মনিটর: {monitors.Count}টি");
+        Line($"Monitors: {monitors.Count}");
         foreach (var m in monitors)
         {
             Line($"   ▸ {m.DeviceName}  {m.Width}×{m.Height}  " +
                  $"@{m.Bounds.Left},{m.Bounds.Top}  DPI {m.Dpi} ({m.Scale:P0})" +
-                 (m.IsPrimary ? "  [প্রাইমারি]" : ""));
+                 (m.IsPrimary ? "  [primary]" : ""));
         }
 
         var outDir = Path.Combine(Path.GetTempPath(), "oXeio-capture-test");
@@ -199,27 +199,27 @@ internal static class Diagnostics
             new FallbackCapturer(dxgi, new GdiCapturer()));
 
         Line($"");
-        Line($"ক্যাপচার ইঞ্জিন: {service.EngineName}");
+        Line($"Capture engine: {service.EngineName}");
 
         // ⭐ DXGI ছবি দেয় শুধু তখনই যখন পর্দায় কিছু বদলায়। স্থির ডেস্কটপে ও
         //    কিছুই দেয় না — সেটা ভুল নয়, নকশা। তাই দুই অবস্থাতেই পরীক্ষা করা হয়:
         //    একবার পর্দা নড়তে নড়তে, একবার একদম স্থির অবস্থায়।
         Line("");
-        Line("── ১· পর্দা নড়ছে (DXGI-র কাজের অবস্থা) ─────────────");
+        Line("── 1· Screen moving (DXGI's working path) ───────────");
         var moving = RunWithMotion(service.CaptureAll);
         Report(moving, outDir, "moving", dxgi);
         ReportFailures(service);
 
-        Line("── ২· পর্দা স্থির (GDI-তে নামার কথা) ────────────────");
+        Line("── 2· Screen still (should fall back to GDI) ────────");
         Thread.Sleep(1200); // সব অ্যানিমেশন থামার সময়
         var still = service.CaptureAll();
         Report(still, outDir, "still", dxgi);
         ReportFailures(service);
 
         if (moving.Count == 0 && still.Count == 0)
-            Line("❌ একটাও ছবি তোলা গেল না");
+            Line("❌ Not a single image could be captured");
 
-        Line($"   ছবিগুলো: {outDir}");
+        Line($"   Images: {outDir}");
         Line("");
     }
 
@@ -238,7 +238,7 @@ internal static class Diagnostics
             const string frames = "|/-\\";
             for (var i = 0; !stop.IsSet; i++)
             {
-                Console.Write($"\r   ছবি তোলা হচ্ছে {frames[i % frames.Length]} ");
+                Console.Write($"\r   capturing {frames[i % frames.Length]} ");
                 Thread.Sleep(40);
             }
         })
@@ -266,11 +266,11 @@ internal static class Diagnostics
                 Path.Combine(outDir, $"{tag}-monitor-{r.MonitorIndex}.webp"), r.Webp);
 
             var verdict = r.ProtectedContentMasked
-                ? "⚠️ DRM কনটেন্ট বাদ পড়েছে (OS জানিয়েছে)"
+                ? "⚠️ DRM content was left out (the OS said so)"
                 : r.Degraded ? $"⚠️ {r.Quality.Reason}"
-                : $"✅ কালো {r.Quality.BlackRatio:P0}";
+                : $"✅ black {r.Quality.BlackRatio:P0}";
 
-            Line($"   ▸ মনিটর {r.MonitorIndex}: {r.Width}×{r.Height} → " +
+            Line($"   ▸ monitor {r.MonitorIndex}: {r.Width}×{r.Height} → " +
                  $"{r.Webp.Length / 1024.0:F0} KB  ({r.Elapsed.TotalMilliseconds:F0} ms)  " +
                  $"[{r.Engine}]  {verdict}");
         }
@@ -282,7 +282,7 @@ internal static class Diagnostics
     private static void ReportFailures(ScreenCaptureService service)
     {
         foreach (var name in service.LastFailedMonitors)
-            Line($"   ❌ {name}: কোনো ইঞ্জিনই ছবি দিতে পারেনি");
+            Line($"   ❌ {name}: no engine could produce an image");
     }
 
     // ── প্রতি সেকেন্ডের কাজ ────────────────────────────────────────────────
@@ -299,7 +299,7 @@ internal static class Diagnostics
             if (!sample.Valid)
             {
                 // নমুনা বাদ — কোনো ডিফল্ট বসানো হয় না
-                Line($"⚠️  GetLastInputInfo ব্যর্থ (Win32 {sample.Win32Error}) — এই সেকেন্ড বাদ");
+                Line($"⚠️  GetLastInputInfo failed (Win32 {sample.Win32Error}) — this second is skipped");
                 Thread.Sleep(Tick);
                 continue;
             }
@@ -310,14 +310,14 @@ internal static class Diagnostics
 
             if (gap.Detected)
             {
-                Line($"💤 ফাঁক ধরা পড়ল: {gap.SuspendedAt:HH:mm:ss} → {gap.ResumedAt:HH:mm:ss} " +
-                     $"(ঘুমিয়ে ছিল ~{gap.SleptFor.TotalMinutes:F1} মিনিট)");
+                Line($"💤 Gap detected: {gap.SuspendedAt:HH:mm:ss} → {gap.ResumedAt:HH:mm:ss} " +
+                     $"(asleep for ~{gap.SleptFor.TotalMinutes:F1} minutes)");
                 Record(_machine.OnSuspend(gap.SuspendedAt));
                 Record(_machine.OnResume(gap.ResumedAt));
             }
 
             if (sample.ClampedFuture)
-                Line("⚠️  শেষ ইনপুটের সময় ভবিষ্যতে দেখাচ্ছিল — শূন্যে আটকানো হলো");
+                Line("⚠️  Last input time looked like it was in the future — clamped to zero");
 
             Record(_machine.Tick(now, sample.SinceLastInput, _sessionSuspended));
 
@@ -331,7 +331,7 @@ internal static class Diagnostics
                     $"  {DateTimeOffset.Now:HH:mm:ss}  state={_machine.State,-6} " +
                     $"idle={sample.SinceLastInput.TotalSeconds,6:F0}s  " +
                     $"segments={_segmentCount}  " +
-                    $"বুট থেকে ঘুম={sleptSinceBoot.TotalMinutes:F1}মি");
+                    $"slept since boot={sleptSinceBoot.TotalMinutes:F1}m");
             }
 
             Thread.Sleep(Tick);
@@ -356,7 +356,7 @@ internal static class Diagnostics
                 var code = (int)m.WParam;
                 var change = SessionMonitor.Interpret(code);
                 Line($"🔔 session: {SessionMonitor.Describe(code)}" +
-                     (change is null ? " (ট্র্যাকিংয়ে প্রভাব নেই)" : $" → {change}"));
+                     (change is null ? " (no effect on tracking)" : $" → {change}"));
 
                 if (change == SessionChange.Suspend) _sessionSuspended = true;
                 else if (change == SessionChange.Resume) _sessionSuspended = false;
@@ -384,7 +384,7 @@ internal static class Diagnostics
             }
 
             case Win32.WM_TIMECHANGE:
-                Line("🕐 সিস্টেমের ঘড়ি বদলানো হয়েছে — monotonic ঘড়ি অপ্রভাবিত");
+                Line("🕐 The system clock was changed — the monotonic clock is unaffected");
                 break;
         }
     }
@@ -399,27 +399,27 @@ internal static class Diagnostics
             Totals[s.State] = Totals.GetValueOrDefault(s.State) + s.DurationSec;
 
             Line($"   ▸ {s.State,-6} {s.StartedAt:HH:mm:ss} → {s.EndedAt:HH:mm:ss} " +
-                 $"= {s.DurationSec,5}s  {(s.CountsAsWork ? "✅ গোনা হলো" : "⏸ গোনা হয়নি")}");
+                 $"= {s.DurationSec,5}s  {(s.CountsAsWork ? "✅ counted" : "⏸ not counted")}");
         }
     }
 
     private static void Summary()
     {
         Line("");
-        Line("── সারাংশ ──────────────────────────────");
+        Line("── Summary ─────────────────────────────");
         foreach (var (state, seconds) in Totals.OrderByDescending(k => k.Value))
             Line($"  {state,-6} {TimeSpan.FromSeconds(seconds):hh\\:mm\\:ss}");
 
         var worked = Totals.GetValueOrDefault(SegmentState.Active);
         Line($"  ─────────────────────");
-        Line($"  কাজ হিসেবে গোনা হলো: {TimeSpan.FromSeconds(worked):hh\\:mm\\:ss}");
+        Line($"  Counted as work: {TimeSpan.FromSeconds(worked):hh\\:mm\\:ss}");
     }
 
     private static void Banner()
     {
         Line("╭──────────────────────────────────────────────╮");
-        Line("│  oXeio Agent — Win32 ডায়াগনস্টিক             │");
-        Line("│  এটা এখনো পূর্ণ এজেন্ট নয়                    │");
+        Line("│  oXeio Agent — Win32 diagnostics             │");
+        Line("│  This is not a full agent yet                │");
         Line("╰──────────────────────────────────────────────╯");
         Line("");
     }

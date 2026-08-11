@@ -32,10 +32,11 @@ export class LoginThrottleService {
     if (!a || a.lockedUntil <= Date.now()) return;
 
     const seconds = Math.ceil((a.lockedUntil - Date.now()) / 1000);
+    const minutes = Math.ceil(seconds / 60);
     throw new HttpException(
       {
         statusCode: HttpStatus.TOO_MANY_REQUESTS,
-        message: `অনেকবার ভুল হয়েছে। ${Math.ceil(seconds / 60)} মিনিট পর আবার চেষ্টা করুন।`,
+        message: `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
         retryAfterSeconds: seconds,
       },
       HttpStatus.TOO_MANY_REQUESTS,

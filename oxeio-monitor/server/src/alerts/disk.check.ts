@@ -56,14 +56,14 @@ export class DiskCheck {
           employeeId: null,
           title:
             verdict.severity === 'critical'
-              ? `ডিস্ক প্রায় ভরে গেছে — ${rounded}%`
-              : `ডিস্ক ${rounded}% ভরেছে`,
+              ? `Disk almost full — ${rounded}%`
+              : `Disk ${rounded}% full`,
           detail:
-            `${this.storageRoot} ড্রাইভে ${humanBytes(freeBytes)} খালি আছে ` +
-            `(মোট ${humanBytes(totalBytes)})। ` +
+            `${this.storageRoot} has ${humanBytes(freeBytes)} free ` +
+            `(of ${humanBytes(totalBytes)}). ` +
             (verdict.severity === 'critical'
-              ? `${DISK_CRITICAL_PCT}% পেরিয়েছে — জায়গা শেষ হলে স্ক্রিনশট আপলোড ও ইনজেস্ট দুটোই আটকে যাবে। এখনই পুরোনো ব্যাকআপ সরান।`
-              : `${DISK_WARN_PCT}% পেরিয়েছে — retention জব ঠিকমতো চলছে কি না দেখুন।`),
+              ? `Past ${DISK_CRITICAL_PCT}% — once space runs out both screenshot upload and ingest will stall. Remove old backups now.`
+              : `Past ${DISK_WARN_PCT}% — check that the retention job is running properly.`),
           meta: {
             path: this.storageRoot,
             usedPct: rounded,
@@ -107,7 +107,7 @@ export class DiskCheck {
     if (!this.warnedUnreadable) {
       this.warnedUnreadable = true;
       this.logger.warn(
-        `ডিস্কের তথ্য পড়া যায়নি (${this.storageRoot}) — G03 চেক চলছে না`,
+        `Could not read disk info (${this.storageRoot}) — the G03 check is not running`,
       );
     }
     return null;

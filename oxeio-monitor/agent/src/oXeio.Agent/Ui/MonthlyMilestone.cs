@@ -75,16 +75,10 @@ internal static class MonthlyMilestone
 
     /// <summary>
     /// বেলুনের লেখা। ⚠️ কোনো নির্দেশ নেই, কোনো অনুরোধ নেই — শুধু খবর।
-    /// "এবার বিশ্রাম নিন" বা "আর কাজ করতে হবে না" জাতীয় কিছু লিখলে সেটা
+    /// "এবার বিশ্রাম নিন" (rest) বা "আর কাজ করতে হবে না" জাতীয় কিছু লিখলে সেটা
     /// নীতিগত নির্দেশ হয়ে যেত, অথচ ২০৮ ঘণ্টা একটা লক্ষ্য, সীমা নয় —
     /// এর পরের ঘণ্টাগুলোও পুরোপুরি গোনা হয়।
     /// </summary>
-    public static string Text(double targetHours)
-    {
-        var hours = Math.Abs(targetHours - Math.Round(targetHours)) < 0.05
-            ? BanglaText.Number((int)Math.Round(targetHours))
-            : BanglaText.Digits(targetHours.ToString("0.#", CultureInfo.InvariantCulture));
-
-        return $"✅ এ মাসের {hours} ঘণ্টা পূর্ণ হয়েছে";
-    }
+    public static string Text(double targetHours) =>
+        $"✅ This month's {UiText.Hours(targetHours)} hours are complete";
 }

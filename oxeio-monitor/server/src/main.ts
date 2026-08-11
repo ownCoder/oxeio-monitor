@@ -45,8 +45,8 @@ function loadTlsOptions(): { key: Buffer; cert: Buffer } | undefined {
   if (!certPath || !keyPath) {
     const missing = certPath ? 'TLS_KEY' : 'TLS_CERT';
     throw new Error(
-      `TLS আংশিকভাবে কনফিগার করা — ${missing} নেই। ` +
-        'TLS_CERT আর TLS_KEY দুটোই দিতে হয়, অথবা দুটোই বাদ দিতে হয় (তখন HTTP)।',
+      `TLS is only half configured — ${missing} is missing. ` +
+        'Set both TLS_CERT and TLS_KEY, or neither (then it runs on HTTP).',
     );
   }
 
@@ -58,7 +58,7 @@ function loadTlsOptions(): { key: Buffer; cert: Buffer } | undefined {
       return readFileSync(path);
     } catch (cause) {
       const why = cause instanceof Error ? cause.message : String(cause);
-      throw new Error(`${label} পড়া যায়নি (${path}) — ${why}`);
+      throw new Error(`Could not read ${label} (${path}) — ${why}`);
     }
   };
 
@@ -102,6 +102,6 @@ void bootstrap().catch((error: unknown) => {
   const why = error instanceof Error ? error.message : String(error);
   // ⚠️ `console` — pino logger নয়। এই পর্যায়ে DI কনটেইনার ভেঙে পড়া
   //    থাকতে পারে, অর্থাৎ logger-টাই হয়তো নেই।
-  console.error(`oXeio API চালু করা যায়নি: ${why}`);
+  console.error(`oXeio API failed to start: ${why}`);
   process.exit(1);
 });

@@ -151,7 +151,7 @@ internal sealed class DeviceTokenStore
 
             var blob = File.ReadAllBytes(FilePath);
             if (blob.Length == 0)
-                return new CredentialLoad(CredentialLoadStatus.Unreadable, null, "ফাইল খালি");
+                return new CredentialLoad(CredentialLoadStatus.Unreadable, null, "the file is empty");
 
             try
             {
@@ -164,7 +164,7 @@ internal sealed class DeviceTokenStore
                 //    হয়েছে। রিট্রাই করে লাভ নেই — নতুন enroll লাগবে।
                 return new CredentialLoad(
                     CredentialLoadStatus.Unreadable, null,
-                    "DPAPI খুলতে পারল না (সম্ভবত ফাইলটা অন্য মেশিনের): " + ex.Message);
+                    "DPAPI could not unprotect it (the file is probably from another machine): " + ex.Message);
             }
 
             var record = Parse(plaintext, out var parseError);
@@ -211,14 +211,14 @@ internal sealed class DeviceTokenStore
     {
         if (!string.Equals(record.MachineGuid, identity.MachineGuid, StringComparison.OrdinalIgnoreCase))
         {
-            return $"machineGuid বদলে গেছে (জমা ছিল {record.MachineGuid}, এখন {identity.MachineGuid}) — " +
-                   "Windows আবার ইনস্টল হয়েছে বা ফাইলটা অন্য মেশিন থেকে এসেছে।";
+            return $"machineGuid changed (stored {record.MachineGuid}, now {identity.MachineGuid}) — " +
+                   "Windows was reinstalled, or the file came from another machine.";
         }
 
         if (!string.Equals(record.Hostname, identity.Hostname, StringComparison.OrdinalIgnoreCase))
         {
-            return $"hostname বদলে গেছে (জমা ছিল {record.Hostname}, এখন {identity.Hostname}) — " +
-                   "PC রিনেম হয়েছে, অথবা এটা ক্লোন করা ইমেজ। নতুন enrollment code দিয়ে আবার enroll করুন।";
+            return $"hostname changed (stored {record.Hostname}, now {identity.Hostname}) — " +
+                   "the PC was renamed, or this is a cloned image. Enrol again with a new enrolment code.";
         }
 
         return null;
@@ -244,7 +244,7 @@ internal sealed class DeviceTokenStore
 
             WriteAtomic(blob);
 
-            _log?.Invoke($"ক্রেডেনশিয়াল জমা হলো: {record} → {FilePath}");
+            _log?.Invoke($"Credentials saved: {record} → {FilePath}");
             return new CredentialSave(true, null);
         }
         catch (Exception ex)
@@ -399,12 +399,12 @@ internal sealed class DeviceTokenStore
         try
         {
             if (File.Exists(FilePath)) File.Delete(FilePath);
-            _log?.Invoke($"ক্রেডেনশিয়াল মুছে ফেলা হলো — {reason}");
+            _log?.Invoke($"Credentials deleted — {reason}");
             return true;
         }
         catch (Exception ex)
         {
-            _log?.Invoke($"❌ ক্রেডেনশিয়াল মোছা গেল না ({reason}): {ex.Message}");
+            _log?.Invoke($"❌ Could not delete the credentials ({reason}): {ex.Message}");
             return false;
         }
     }
@@ -415,11 +415,11 @@ internal sealed class DeviceTokenStore
         {
             var target = Path.Combine(DirectoryPath, QuarantineFileName);
             File.Move(FilePath, target, overwrite: true);
-            _log?.Invoke($"⚠️ ক্রেডেনশিয়াল সরিয়ে রাখা হলো ({QuarantineFileName}) — {reason}");
+            _log?.Invoke($"⚠️ Credentials moved aside ({QuarantineFileName}) — {reason}");
         }
         catch (Exception ex)
         {
-            _log?.Invoke($"⚠️ ক্রেডেনশিয়াল সরানো গেল না: {ex.Message}");
+            _log?.Invoke($"⚠️ Could not move the credentials aside: {ex.Message}");
         }
     }
 
@@ -475,14 +475,14 @@ internal sealed class DeviceTokenStore
             var version = root.TryGetProperty("v", out var v) ? v.GetInt32() : 0;
             if (version != SchemaVersion)
             {
-                error = $"অচেনা স্কিমা ভার্সন {version} (চাই {SchemaVersion})";
+                error = $"unknown schema version {version} (expected {SchemaVersion})";
                 return null;
             }
 
             var token = root.GetProperty("deviceToken").GetString();
             if (string.IsNullOrWhiteSpace(token))
             {
-                error = "deviceToken খালি";
+                error = "deviceToken is empty";
                 return null;
             }
 
@@ -511,7 +511,7 @@ internal sealed class DeviceTokenStore
         {
             // ⚠️ JsonException-এর মেসেজে কখনো কখনো আশপাশের কাঁচা টেক্সট থাকে,
             //    আর সেই টেক্সটে টোকেন থাকতে পারে। তাই ex.Message ব্যবহার করা হয় না।
-            error = "ক্রেডেনশিয়াল ফাইল পড়া গেল না (" + ex.GetType().Name + ")";
+            error = "could not read the credentials file (" + ex.GetType().Name + ")";
             return null;
         }
     }

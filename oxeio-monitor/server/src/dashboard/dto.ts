@@ -16,7 +16,7 @@ export class WorkDateQueryDto {
   @IsOptional()
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'date দিতে হবে YYYY-MM-DD ফরম্যাটে',
+    message: 'date must be in YYYY-MM-DD format',
   })
   date?: string;
 }

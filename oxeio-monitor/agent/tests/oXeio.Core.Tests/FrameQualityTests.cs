@@ -37,7 +37,7 @@ public class FrameQualityTests
 
         Assert.True(a.Degraded);
         Assert.Equal(1.0, a.BlackRatio);
-        Assert.Equal("প্রায় পুরোটাই কালো", a.Reason);
+        Assert.Equal("almost entirely black", a.Reason);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class FrameQualityTests
 
         Assert.True(a.Degraded);
         Assert.Equal(0, a.BlackRatio);
-        Assert.Equal("প্রায় পুরোটাই এক রঙের", a.Reason);
+        Assert.Equal("almost entirely one colour", a.Reason);
     }
 
     [Fact]

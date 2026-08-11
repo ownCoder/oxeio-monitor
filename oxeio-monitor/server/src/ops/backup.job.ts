@@ -60,15 +60,15 @@ export class BackupJob implements OnApplicationBootstrap {
 
     if (!registered) {
       this.logger.error(
-        `রাতের ব্যাকআপ জব (${JOB_NAME}) রেজিস্টার হয়নি — ScheduleModule.forRoot() ` +
-          'কোথাও আছে তো? এই অবস্থায় ব্যাকআপ চলবে না।',
+        `The nightly backup job (${JOB_NAME}) was not registered — is ScheduleModule.forRoot() ` +
+          'present anywhere? Backups will not run in this state.',
       );
       return;
     }
 
     this.logger.log(
-      `রাতের ব্যাকআপ চালু (${BACKUP_CRON}, ${JOB_TIMEZONE})` +
-        (this.backup.configured ? '' : ' — কিন্তু BACKUP_PASSPHRASE নেই, চলবে না'),
+      `Nightly backup enabled (${BACKUP_CRON}, ${JOB_TIMEZONE})` +
+        (this.backup.configured ? '' : ' — but there is no BACKUP_PASSPHRASE, so it will not run'),
     );
   }
 

@@ -97,7 +97,7 @@ export class RetentionJob {
     const result = await this.lock.run(() => this.purge(now));
 
     if (result === null) {
-      this.logger.warn('আগের retention রান এখনো চলছে — এই দফা বাদ');
+      this.logger.warn('Previous retention run still going — skipping this tick');
       return {
         cutoff: null,
         marked: 0,
@@ -185,7 +185,7 @@ export class RetentionJob {
           //    আর সমস্যাটা চুপচাপ চাপা পড়ত। প্রতি রানে আবার চেঁচাবে।
           result.unsafePaths++;
           this.logger.error(
-            `screenshot ${row.id}: file_path storage রুটের বাইরে — ছোঁয়া হয়নি`,
+            `screenshot ${row.id}: file_path is outside the storage root — left untouched`,
           );
           continue;
         }
@@ -212,7 +212,7 @@ export class RetentionJob {
 
       if (batch === MAX_BATCHES - 1) {
         this.logger.warn(
-          `retention ${MAX_BATCHES} ব্যাচেই থামল — বাকিটা পরের রাতে`,
+          `retention stopped at ${MAX_BATCHES} batches — the rest tomorrow night`,
         );
       }
     }
@@ -221,10 +221,10 @@ export class RetentionJob {
 
     this.logger.log(
       `retention · cutoff ${cutoff.toISOString().slice(0, 10)} · ` +
-        `মার্ক ${result.marked} · ফাইল ${result.filesDeleted} ` +
-        `(অনুপস্থিত ${result.filesMissing}) · সারি ${result.rowsDeleted}` +
-        (result.failed > 0 ? ` · ব্যর্থ ${result.failed}` : '') +
-        (result.unsafePaths > 0 ? ` · ⚠️ অনিরাপদ পাথ ${result.unsafePaths}` : ''),
+        `marked ${result.marked} · files ${result.filesDeleted} ` +
+        `(missing ${result.filesMissing}) · rows ${result.rowsDeleted}` +
+        (result.failed > 0 ? ` · failed ${result.failed}` : '') +
+        (result.unsafePaths > 0 ? ` · ⚠️ unsafe paths ${result.unsafePaths}` : ''),
     );
 
     return result;
@@ -253,7 +253,7 @@ export class RetentionJob {
           missing++;
           continue;
         }
-        this.logger.warn(`ফাইল মোছা যায়নি: ${rel} — ${String(error)}`);
+        this.logger.warn(`Could not delete file: ${rel} — ${String(error)}`);
         return 'failed';
       }
     }
