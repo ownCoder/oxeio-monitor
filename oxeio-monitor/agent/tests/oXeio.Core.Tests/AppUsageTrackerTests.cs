@@ -219,4 +219,38 @@ public class AppUsageTrackerTests
         Assert.Single(closed);
         Assert.Null(t.CurrentProcess);
     }
+
+    // ── A07 · ছবির সাথে জোড়া লাগানোর জন্য "এখন সামনে কী" ────────────────────
+
+    /// <summary>
+    /// ⚠️ D04-এর ৫ সেকেন্ডের নিয়ম <b>রেকর্ডের</b> নিয়ম, "এখন সামনে কী"-র নয়।
+    /// প্রথম সেকেন্ডেই তোলা ছবির পাশেও নামটা বসা চাই — নইলে যে ছবিগুলো ঠিক
+    /// অ্যাপ বদলানোর মুহূর্তে ওঠে সেগুলোই চিরকাল নামহীন থাকত।
+    /// </summary>
+    [Fact]
+    public void সামনের_উইন্ডো_প্রথম_মুহূর্ত_থেকেই_জানা_যায়()
+    {
+        var t = New();
+
+        t.Observe(App("excel.exe", "Q3 budget.xlsx"), T0, SegmentState.Active);
+
+        Assert.Equal("excel.exe", t.Current?.ProcessName);
+        Assert.Equal("Q3 budget.xlsx", t.Current?.WindowTitle);
+    }
+
+    /// <summary>
+    /// ⭐ স্ক্রিনশট ওঠে <b>শুধু</b> ACTIVE-এ (A04), আর এখানে ACTIVE ছাড়া
+    /// <c>Current</c> খালি — অর্থাৎ ছবির সাথে নাম জোড়া লাগাতে গিয়ে
+    /// "লক করা পর্দার সামনে কী ছিল" কখনো বসতে পারে না।
+    /// </summary>
+    [Fact]
+    public void ACTIVE_ছাড়া_সামনের_উইন্ডো_বলা_হয়_না()
+    {
+        var t = New();
+
+        t.Observe(App("excel.exe"), T0, SegmentState.Active);
+        t.Observe(App("excel.exe"), T0.AddSeconds(10), SegmentState.Locked);
+
+        Assert.Null(t.Current);
+    }
 }

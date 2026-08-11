@@ -280,8 +280,14 @@ internal static class SyncWire
         MonitorIndex = meta.MonitorIndex,
         Width = meta.Width,
         Height = meta.Height,
-        ActiveApp = meta.ActiveApp,
-        ActiveTitle = meta.ActiveTitle,
+
+        // ⚠️ app usage-এর মতোই দৈর্ঘ্য এখানেই বাঁধা (G60) — সার্ভারের সীমা
+        //    `activeApp` ২৬০, `activeTitle` ১০০০। ছাড়ালে ৪০০, আর স্ক্রিনশটে
+        //    ৪০০ মানে Permanent: ছবিটা কিউ থেকে **মুছে** যেত, অথচ দোষ ছিল
+        //    কেবল একটা লম্বা উইন্ডো-টাইটেলের। নামটা আসে অন্য প্রোগ্রামের
+        //    version resource থেকে — আমাদের হাতে নয়।
+        ActiveApp = Clamp(meta.ActiveApp, 260),
+        ActiveTitle = Clamp(meta.ActiveTitle, 1000),
     };
 
     // ── যা পড়া হয় ───────────────────────────────────────────────────────────
