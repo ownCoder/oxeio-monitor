@@ -43,6 +43,7 @@ const meta: ReportMeta = {
   days: 11,
   generatedAt: '2026-08-11T12:34:56.000Z',
   excludedEmployees: [],
+  monthTargetHours: {},
 };
 
 function attendance(over: Partial<AttendanceReport> = {}): AttendanceReport {

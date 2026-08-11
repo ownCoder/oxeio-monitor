@@ -30,6 +30,7 @@ const meta: ReportMeta = {
   days: 11,
   generatedAt: '2026-08-11T12:30:00.000Z',
   excludedEmployees: [],
+  monthTargetHours: {},
 };
 
 const attendance: AttendanceReport = {

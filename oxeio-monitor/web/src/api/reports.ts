@@ -34,6 +34,13 @@ export interface ReportMeta {
   generatedAt: string;
   /** ⭐ যাদের রাখা যায়নি — চুপচাপ বাদ না দিয়ে নাম ধরে জানানো হয় */
   excludedEmployees: string[];
+
+  /**
+   * কর্মীপ্রতি **পুরো মাসের** টার্গেট ঘণ্টা (`employeeId` → ঘণ্টা)।
+   * ⚠️ এটা নিজে হিসাব করা যাবে না — আগে করা হতো, আর ভবিষ্যতের সরকারি
+   * ছুটি বাদ পড়ায় ২০৮-এর জায়গায় ২১৬ দেখাত।
+   */
+  monthTargetHours: Record<number, number>;
 }
 
 /**

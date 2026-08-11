@@ -146,7 +146,6 @@ export function buildMonthGrid(
     let workedHours = 0;
     let expectedHours = 0;
     let daysWithWork = 0;
-    let elapsedDays = 0;
     let weeklyOffWeekday: number | null = null;
     let firstDay: string | null = null;
     let lastDay: string | null = null;
@@ -162,7 +161,6 @@ export function buildMonthGrid(
 
       firstDay ??= date;
       lastDay = date;
-      elapsedDays += 1;
 
       creditedHours += row.creditedHours;
       workedHours += row.workedHours;
@@ -183,15 +181,14 @@ export function buildMonthGrid(
       });
     }
 
-    const monthTarget = monthTargetOf({
-      days,
-      lastCovered,
-      clamped: report.meta.clampedToToday,
-      expectedHours,
-      dailyTarget,
-      elapsedDays,
-      weeklyOffWeekday,
-    });
+    // ⭐ সার্ভার পুরো মাসের টার্গেট **জানে** — নীতিতে লেখা সংখ্যা (২০৮)।
+    //    আগে এটা এখানে অনুমান করা হতো: হয়ে যাওয়া দিনের যোগফল + বাকি
+    //    দিনের দৈনিক টার্গেট। ⚠️ বাকি দিন গোনার সময় শুধু সাপ্তাহিক ছুটি
+    //    বাদ যেত, **সরকারি ছুটি নয়** — আগস্ট ২০২৬-এ তাই ২০৮ নয় ২১৬
+    //    দেখাত, অর্থাৎ প্রত্যেকে ৮ ঘণ্টা বেশি পিছিয়ে আছেন মনে হতো।
+    //    অথচ পে-রোল হিসাব করত ২০৮ ধরে — ড্যাশবোর্ড আর বেতন দুটো আলাদা
+    //    সংখ্যা বললে কোনোটাই বিশ্বাসযোগ্য থাকে না।
+    const monthTarget = report.meta.monthTargetHours[employeeId] ?? null;
 
     rows.push({
       employeeId,
@@ -205,8 +202,9 @@ export function buildMonthGrid(
       paceHours: creditedHours - expectedHours,
       daysWithWork,
       dailyTargetHours: dailyTarget,
-      monthTargetHours: monthTarget.hours,
-      monthTargetEstimated: monthTarget.estimated,
+      monthTargetHours: monthTarget,
+      // সার্ভার থেকে আসা সংখ্যা — আর অনুমান নয়
+      monthTargetEstimated: false,
       // ⭐ মাসের মাঝে যোগ দিলে/ছেড়ে গেলে তাঁর টার্গেট এমনিতেই কম — সেটা
       //   না বললে "ইনি তো মাত্র ১০৪ ঘণ্টা" দেখে ভুল সিদ্ধান্ত হতো
       partial:
@@ -266,54 +264,6 @@ function blankCell(date: string, kind: CellKind): DayCell {
     creditedHours: 0,
     targetHours: 0,
     level: 0,
-  };
-}
-
-/**
- * পুরো মাসের টার্গেট।
- *
- * ⭐⚠️ চলতি মাসে এই সংখ্যাটা **সার্ভার থেকে পাওয়া যায় না**: `/reports/*`
- *   সব রেঞ্জ আজ পর্যন্ত ছেঁটে দেয়, তাই `Σ targetHours` মানে "এ পর্যন্ত
- *   হওয়ার কথা", পুরো মাসের ২০৮ নয়। আর বাকি দিনে কোন কোন দিন ছুটি ঘোষণা
- *   হবে সেটাও এখান থেকে জানার উপায় নেই (`/holidays` owner-only)।
- *
- *   তাই বাকিটা এখানে **আন্দাজ** করা হয় — জানা সাপ্তাহিক ছুটি বাদ দিয়ে —
- *   আর `estimated` সত্যি করে ফেরত যায় যাতে পর্দায় `≈` বসে। আন্দাজটাকে
- *   পাকা সংখ্যার মতো দেখালে নতুন ছুটি ঘোষণার দিন সবার টার্গেট নীরবে
- *   বদলে যেত আর কেউ বুঝত না কেন।
- *
- * ⚠️ মাসের প্রথম কয়েক দিনে সাপ্তাহিক ছুটির দিনটাই এখনো আসেনি — তখন কোন
- *    বার ছুটি সেটা অনুমান করা যায় না, আর অনুমান করে ফেললে টার্গেট ৪–৫
- *    দিনের সমান বেশি দেখাত। সেক্ষেত্রে `null` — পর্দায় "—"।
- */
-function monthTargetOf(input: {
-  days: string[];
-  lastCovered: string;
-  clamped: boolean;
-  expectedHours: number;
-  dailyTarget: number | null;
-  elapsedDays: number;
-  weeklyOffWeekday: number | null;
-}): { hours: number | null; estimated: boolean } {
-  const remaining = input.days.filter((d) => d > input.lastCovered);
-
-  // মাস শেষ — সার্ভার পুরো মাসের সব দিনের টার্গেট যোগ করেই পাঠিয়েছে
-  if (remaining.length === 0) {
-    return { hours: input.expectedHours, estimated: false };
-  }
-  if (input.dailyTarget === null) return { hours: null, estimated: false };
-
-  // এক সপ্তাহ না গেলে সাপ্তাহিক ছুটির বার সম্পর্কে নিশ্চিত হওয়া যায় না
-  const knowsOffDay = input.weeklyOffWeekday !== null || input.elapsedDays >= 7;
-  if (!knowsOffDay) return { hours: null, estimated: false };
-
-  const workdaysLeft = remaining.filter(
-    (d) => input.weeklyOffWeekday === null || weekdayIndexOf(d) !== input.weeklyOffWeekday,
-  ).length;
-
-  return {
-    hours: input.expectedHours + input.dailyTarget * workdaysLeft,
-    estimated: true,
   };
 }
 

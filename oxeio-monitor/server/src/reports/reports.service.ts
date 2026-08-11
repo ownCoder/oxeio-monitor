@@ -808,5 +808,11 @@ function metaOf(ctx: ReportContext): ReportMeta {
     days: ctx.range.days,
     generatedAt: new Date().toISOString(),
     excludedEmployees: ctx.excluded,
+
+    // ⭐ পুরো মাসের টার্গেট — হিসাব নয়, নীতিতে লেখা সংখ্যা। ওয়েব পাতা
+    //    এটা নিজে বানাতে গিয়ে সরকারি ছুটি বাদ দিতে ভুলত (২০৮ → ২১৬)।
+    monthTargetHours: Object.fromEntries(
+      ctx.employees.map((e) => [e.id, e.monthlyTargetSec / HOUR]),
+    ),
   };
 }
