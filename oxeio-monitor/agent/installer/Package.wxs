@@ -180,6 +180,41 @@
                   Impersonate="no"
                   Return="ignore" />
 
+    <!--
+      ⭐⭐ ইনস্টল শেষে watchdog **চালু করা**।
+
+      ⚠️ এটা না থাকায় ০.৩.১ বসানোর পরেও কিছুই চলত না। টাস্কটা তৈরি হতো
+      ঠিকই, কিন্তু তার ট্রিগার **লগঅন** — তাই মালিক ডাবল-ক্লিক করে ইনস্টল
+      শেষ করার পর পরের লগঅন বা রিবুট পর্যন্ত কোনো জানালা আসত না, কোনো
+      ঘণ্টা গোনা হতো না। ইনস্টলার সফল বলত, অথচ কিছুই হতো না।
+
+      ⚠️ `schtasks /Run` দিয়ে টাস্কটা চালানো যায় **না** — principal
+      Group=Users (H02, যাতে যে-ই লগইন করুক তার জন্য চলে)। Group টাস্কের
+      কোনো একক ইউজার নেই, তাই Task Scheduler on-demand চালাতে অস্বীকার
+      করে ("The system cannot find the file specified" — যাচাই করা হয়েছে)।
+      exe সরাসরি চালানোই একমাত্র পথ।
+
+      ⚠️ Execute="immediate" ইচ্ছাকৃত, deferred নয়। deferred অ্যাকশন
+      SYSTEM হিসেবে সেশন ০-তে চলে — সেখান থেকে চালালে সাইন-ইন জানালা কেউ
+      দেখতেই পেত না, আর স্ক্রিনও ধরা পড়ত না। immediate অ্যাকশন চলে msiexec-এর
+      client প্রসেসে, অর্থাৎ যিনি ইনস্টল করছেন তাঁর ডেস্কটপ সেশনে।
+
+      ⚠️⚠️ Return="asyncNoWait" **বাদ দেওয়া যাবে না**। watchdog কোনোদিন
+      নিজে থেকে বেরোয় না, তাই check বা ignore দিলে ইনস্টলার তার শেষের
+      অপেক্ষায় চিরকাল ঝুলে থাকত।
+
+      ⚠️ অ্যাডমিন নিজের অ্যাকাউন্টে ইনস্টল করলে জানালাটা তাঁর সেশনে ওঠে,
+      স্টাফের নয়। ক্ষতি নেই — ProgramData-র ACL-এ Users = Modify আর
+      ObjectInherit আছে (AgentDataDirectory), তাই অ্যাডমিনের তৈরি ফাইলও
+      পরে স্টাফ লিখতে পারে; আর স্টাফের লগঅনে টাস্কটা এমনিতেই চালু হবে।
+    -->
+    <CustomAction Id="StartWatchdog"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]oXeio.Watchdog.exe&quot;"
+                  Execute="immediate"
+                  Impersonate="yes"
+                  Return="asyncNoWait" />
+
     <!-- ⚠️ Return="ignore" — প্রসেস না চললে taskkill অশূন্য ফেরত দেয়, আর
          সেটা এখানে স্বাভাবিক। check দিলে "চলছিল না" কারণেই আনইনস্টল ব্যর্থ হতো। -->
     <CustomAction Id="StopAgent"
@@ -212,6 +247,12 @@
       <!-- ফাইল বসার পরে — না হলে ডাকার মতো exe-ই থাকত না -->
       <Custom Action="PrepareDataDir" After="InstallFiles" Condition="NOT Installed OR REINSTALL" />
       <Custom Action="InstallLogonTask" After="PrepareDataDir" Condition="NOT Installed OR REINSTALL" />
+
+      <!-- ⚠️ InstallFinalize-এর **পরে** — তার আগে ফাইলগুলো এখনো চূড়ান্ত
+           হয়নি, আর StopWatchdog-এর taskkill সবে-চালু প্রসেসটাকেই মেরে ফেলত।
+           আনইনস্টলে চলে না: তখন Installed সত্য, REINSTALL মিথ্যা। -->
+      <Custom Action="StartWatchdog" After="InstallFinalize"
+              Condition="NOT Installed OR REINSTALL" />
     </InstallExecuteSequence>
 
   </Package>
