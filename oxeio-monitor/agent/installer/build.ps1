@@ -16,7 +16,11 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Version = '0.1.0',
+    # ⚠️ ডিফল্ট **হার্ডকোড করা নয়** — Directory.Build.props থেকে পড়া হয়
+    #    (নিচে)। আগে এখানে '0.1.0' লেখা ছিল আর Program.cs-এও আলাদা করে
+    #    একই সংখ্যা; দুটো আলাদা হলে MSI এক ভার্সন বসাত আর এজেন্ট
+    #    heartbeat-এ আরেকটা বলত, ফলে H04 চিরকাল একই আপডেট অফার করত।
+    [string]$Version,
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64'
 )
@@ -28,6 +32,29 @@ $agentRoot = Split-Path -Parent $here
 $publishDir = Join-Path $here 'obj\publish'
 $outDir = Join-Path $here 'bin'
 $msi = Join-Path $outDir 'oXeioAgent.msi'
+
+# ── ভার্সন — একমাত্র উৎস Directory.Build.props ───────────────────────────────
+# ⚠️ হাতে -Version দিলে সেটাই জেতে (হটফিক্স বিল্ডের জন্য), কিন্তু তখন
+#    assembly-র ভার্সন আর MSI-র ভার্সন আলাদা হয়ে যাবে — নিচে সতর্ক করা হয়।
+$propsPath = Join-Path $agentRoot 'Directory.Build.props'
+$propsVersion = ([xml](Get-Content $propsPath)).Project.PropertyGroup.Version
+
+if (-not $propsVersion) {
+    throw "Directory.Build.props-এ <Version> পাওয়া গেল না: $propsPath"
+}
+
+if (-not $Version) {
+    $Version = $propsVersion
+} elseif ($Version -ne $propsVersion) {
+    Write-Warning @"
+MSI বসবে $Version দিয়ে, কিন্তু এজেন্টের assembly বলবে $propsVersion।
+⚠️ সার্ভার heartbeat-এর ভার্সন দেখেই আপডেট অফার করবে কি না ঠিক করে (G59) —
+   দুটো আলাদা হলে ওই মেশিনকে একই আপডেট বারবার অফার করা হবে।
+   Directory.Build.props-এ <Version> বদলে আবার চালানোই ঠিক পথ।
+"@
+}
+
+Write-Host "   version: $Version" -ForegroundColor DarkGray
 
 Write-Host '── ১· publish ────────────────────────────────' -ForegroundColor Cyan
 
