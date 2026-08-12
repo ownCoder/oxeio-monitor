@@ -365,6 +365,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
     adjustmentSec: 0,
     targetSec: TARGET,
     expectedWorkdays: 27,
+    monthWorkdays: 27,
     workdaysElapsed: 10,
     daysWithWork: 10,
   };

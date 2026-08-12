@@ -179,7 +179,11 @@ describe('heartbeat', () => {
     expect(res.body.progress).toBeTruthy();
     expect(res.body.progress.todayActiveSec).toBe(worked.durationSec);
     expect(res.body.progress.monthActiveSec).toBe(worked.durationSec);
-    expect(res.body.progress.monthlyTargetHours).toBe(208);
+    // ⭐ G37 — কর্মদিবস × ৮, তাই মাসভেদে বদলায় (ADR-025)। দাবিটা নিয়মের।
+    const target = res.body.progress.monthlyTargetHours as number;
+    expect(target % 8).toBe(0);
+    expect(target).toBeGreaterThanOrEqual(20 * 8);
+    expect(target).toBeLessThanOrEqual(27 * 8);
 
     // ── আজ ও ৭ দিনের টার্গেট — tray-র তিনটে বারের জন্য ──────────────────
 
@@ -205,7 +209,7 @@ describe('heartbeat', () => {
 
     // ⚠️ মাসের টার্গেটের চেয়ে বড় হতে পারে না — হলে বুঝতে হবে দৈনিক ভাগটা
     //    ভুল হরে ভাগ হচ্ছে, আর tray-তে ৭ দিনের বার সবসময় ভরা দেখাত
-    expect(week7TargetSec).toBeLessThanOrEqual(208 * 3600);
+    expect(week7TargetSec).toBeLessThanOrEqual(target * 3600);
   });
 
   /**

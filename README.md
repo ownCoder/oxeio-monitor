@@ -5,11 +5,11 @@
 
 | | |
 |---|---|
-| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (**৬৬ endpoint**) · ড্যাশবোর্ড (৬ পাতা)। **৯৩৯ টেস্ট পাস** (সার্ভার ৫৯৬ · এজেন্ট ৩৪৩)। ১১ আগস্ট আসল এজেন্ট প্রথমবার সার্ভারে ডেটা পাঠিয়েছে — রাতে **নিজের তোলা স্ক্রিনশটও**। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
+| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (**৭৬ endpoint**) · ড্যাশবোর্ড (৬ পাতা)। **১২১০ টেস্ট পাস** (সার্ভার ৭২৭ · এজেন্ট ৪১৮ · ওয়েব ৬৪)। ১১ আগস্ট আসল এজেন্ট প্রথমবার সার্ভারে ডেটা পাঠিয়েছে — রাতে **নিজের তোলা স্ক্রিনশটও**। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
 | **প্রতিষ্ঠান** | oXeio |
 | **স্টাফ** | ১৫ জন · সব Windows PC |
 | **ট্র্যাকিং** | **কোনো শিফট নেই** — দিনের যেকোনো সময় active থাকলেই গোনা হয় (২৪ ঘণ্টা) |
-| **টার্গেট** | **মাসে ২০৮ ঘণ্টা** প্রকৃত কাজ (২৬ দিন × ৮ ঘণ্টার সমান) |
+| **টার্গেট** | **কর্মদিবস × ৮ ঘণ্টা** প্রকৃত কাজ — মাসভেদে ১৯২–২১৬ঘ (ফেব্রু ২৪ দিন · আগস্ট ২৭)। ⚠️ ফ্ল্যাট ২০৮ নয়; মাঝপথে যোগ দিলে টার্গেট ও বেতন **দুটোই** prorate হয় ([G37](docs/08-Gap-Analysis.md)) |
 | **স্ক্রিনশট** | প্রতি ৫ মিনিটে র‍্যান্ডম · শুধু **০৭:০০ – ২৩:০০** · ৯০ দিন পর অটো ডিলিট |
 | **সার্ভার** | অফিসের PC — 24 GB RAM, 1 TB NVMe, Windows |
 | **আনুমানিক সময়** | ৭ সপ্তাহ (MVP ৩ সপ্তাহে) |
@@ -49,7 +49,7 @@
 | 05 | [Options & Decisions](docs/05-Options-Decisions.md) | প্রতিটা টেকনিক্যাল সিদ্ধান্তের বিকল্প, তুলনা ও কারণ (ADR) |
 | 06 | [Research](docs/06-Research.md) | প্রতিযোগী বিশ্লেষণ, Windows API গবেষণা, আইনি দিক, ৩ বছরের খরচ |
 | 07 | [Technical Spec](docs/07-Technical-Spec.md) | DB স্কিমা, API কনট্রাক্ট, এজেন্ট state machine, সার্ভার সেটআপ |
-| 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো — **G1–G77** |
+| 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো — **G1–G80** |
 | 09 | [Build Log](docs/09-Build-Log.md) | ⭐ **এখন পর্যন্ত কী হয়েছে, কী আটকে আছে, পরের ধাপ** |
 | 🎨 | [UI Mockup](docs/mockup/dashboard-mockup.html) | ৭টি স্ক্রিনের ক্লিকযোগ্য ডিজাইন মকআপ |
 | 🎨 | [Tray Mockup](docs/mockup/tray-today-mockup.html) | এজেন্টের "Today's hours" জানালার রি-ডিজাইন — আগে/পরে, চারটে স্টেট, দুই থিম |
@@ -61,7 +61,7 @@
 `oxeio-monitor/`
 
 - **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · **৭৬ endpoint**
-  (৫৬ ড্যাশবোর্ড · ১০ auth · ১০ এজেন্ট) · **৬৯৩ টেস্ট**
+  (৫৬ ড্যাশবোর্ড · ১০ auth · ১০ এজেন্ট) · **৭২৭ টেস্ট**
   agent ingest · dashboard · activity (ক্যাটাগরি) · screenshots · reports (Excel/PDF) ·
   admin · alerts · ops (ব্যাকআপ/হেলথ) · summary (nightly jobs) · digest · payroll
 - **`agent/`** C# .NET 8 · **৪১৮ টেস্ট** (Core ৩২১ · Agent ৯৭) · `oXeio.Core` (নিয়ম, শূন্য Win32) +
@@ -137,7 +137,7 @@ cd oxeio-monitor/agent && dotnet run --project src/oXeio.Agent -- --diagnose
 ঠিক থাকলে MSI বানান — **সার্ভারের ঠিকানা ভেতরে বেক করে**:
 
 ```bash
-cd oxeio-monitor/agent/installer && powershell -File build.ps1 -ServerUrl "https://oxeio.office.local"
+cd oxeio-monitor/agent/installer && powershell -File build.ps1
 ```
 
 ⭐ তারপর প্রতিটা PC-তে শুধু **ডাবল-ক্লিক** (অ্যাডমিন হিসেবে), আর স্টাফ
@@ -152,7 +152,7 @@ account। ওই লগইন দিয়েই সে পরে নিজে�
 হয়, ২৪ ঘণ্টায় মেয়াদ শেষ:
 
 ```bash
-msiexec /i oXeioAgent-0.3.4.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
+msiexec /i oXeioAgent-0.3.5.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
 ```
 
 ### অফিসের সার্ভারে — ডেভ নয়

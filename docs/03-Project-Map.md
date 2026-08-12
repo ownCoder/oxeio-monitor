@@ -141,7 +141,7 @@ oxeio-monitor/
 │   │   ├── Package.wxs                     ✅ ডাবল-ক্লিক ইনস্টল · রেজিস্ট্রি · টাস্ক
 │   │   │   #    ⚠️ StartWatchdog — ইনস্টল শেষে চালুও করে (G78)
 │   │   └── build.ps1                       ✅ publish → wix build · ঠিকানা ডিফল্টেই বেক
-│   ├── tests/oXeio.Core.Tests/             ✅ ৩২১টি ইউনিট টেস্ট (net8.0)
+│   ├── tests/oXeio.Core.Tests/             ✅ ৩২২টি ইউনিট টেস্ট (net8.0)
 │   └── tests/oXeio.Agent.Tests/            ✅ ৯৭টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
@@ -199,7 +199,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৬৯৩টি টেস্ট, ৩৩টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — ৭২৭টি টেস্ট, ৩৫টি ফাইল
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts

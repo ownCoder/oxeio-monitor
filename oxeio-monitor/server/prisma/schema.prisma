@@ -551,8 +551,13 @@ model MonthlySummary {
   expectedSec      Int       @default(0) @map("expected_sec")
   /// credited − expected · ধনাত্মক = এগিয়ে
   paceSec          Int       @default(0) @map("pace_sec")
-  /// ⭐ ওই মাসের মোট কর্মদিবস — ক্যালেন্ডার থেকে গোনা, হার্ডকোড নয়
+  /// ⭐ **তার নিজের** কর্মদিবস (d) — joined_on … left_on-এর ভেতরে যতগুলো পড়ে।
+  /// ⚠️ G37-এর আগে এটা ছিল "ওই মাসের মোট কর্মদিবস"; মানেটা বদলেছে (ADR-025)।
   expectedWorkdays Int       @map("expected_workdays")
+  /// ⭐ ওই মাসের মোট কর্মদিবস (D) — বেতনের ভগ্নাংশ d÷D-এর হর।
+  /// ⚠️ আলাদা করে রাখা হয়, পে-রোলের সময় আবার গোনা হয় না: ছুটির তালিকা
+  /// বদলালে d আর D দুই আলাদা সময়ের হিসাব হয়ে যেত, আর ভগ্নাংশটা ভুল হতো।
+  monthWorkdays    Int       @default(0) @map("month_workdays")
   /// ⭐ আজ পর্যন্ত কত কর্মদিবস গেছে
   workdaysElapsed  Int       @default(0) @map("workdays_elapsed")
   daysWithWork     Int       @default(0) @map("days_with_work")

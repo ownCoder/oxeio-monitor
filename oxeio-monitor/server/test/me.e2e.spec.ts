@@ -135,7 +135,18 @@ describe('GET /me', () => {
     expect(res.body.employee.empCode).toBe('OX-001');
     expect(res.body.employee.designation).toBe('Developer');
     expect(res.body.progress.todayActiveSec).toBe(3 * 3600);
-    expect(res.body.progress.monthlyTargetHours).toBe(208);
+    /**
+     * ⭐ **G37 · ADR-025** — টার্গেট আর ফ্ল্যাট ২০৮ নয়, **কর্মদিবস × ৮**।
+     * তাই মাসভেদে বদলায় (ফেব্রু ১৯২ · সেপ্টে ২০৮ · আগস্ট ২১৬), আর একটা
+     * স্থির সংখ্যা লিখে রাখলে টেস্টটা মাস বদলালেই ভাঙত।
+     *
+     * ⚠️ এখানে আসল দাবিটা সংখ্যা নয়, **নিয়ম**: টার্গেট ৮-এর গুণিতক, আর
+     * মাসের কর্মদিবসের সীমার ভেতরে (২০ … ২৭ দিন)।
+     */
+    const target = res.body.progress.monthlyTargetHours as number;
+    expect(target % 8).toBe(0);
+    expect(target).toBeGreaterThanOrEqual(20 * 8);
+    expect(target).toBeLessThanOrEqual(27 * 8);
   });
 
   /**

@@ -60,7 +60,23 @@ export function PayrollTab({ month }: { month: string }) {
       key: 'target',
       header: 'Target',
       align: 'right',
-      render: (row) => <Hours hours={row.targetHours} tone="muted" />,
+      /**
+       * ⭐ **G37** — টার্গেট এখন **তার কর্মদিবস × ৮**, ফ্ল্যাট ২০৮ নয়।
+       *
+       * ⚠️ পুরো মাস না থাকলে নিচে দিনের হিসাবটা দেখানো হয় (`১৩ / ২৭ দিন`)।
+       * ছাড়া দিলে owner দেখতেন একজনের টার্গেট ২১৬ঘ আর আরেকজনের ১০৪ঘ,
+       * কোনো ব্যাখ্যা ছাড়াই — আর বেতনের ঘরেও কম সংখ্যা, কারণ অদৃশ্য।
+       */
+      render: (row) => (
+        <div className="flex flex-col items-end">
+          <Hours hours={row.targetHours} tone="muted" />
+          {row.workdays < row.monthWorkdays && (
+            <span className="text-xs text-idle" title="Joined or left mid-month — target and salary are both prorated">
+              {row.workdays} / {row.monthWorkdays} days
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'credited',

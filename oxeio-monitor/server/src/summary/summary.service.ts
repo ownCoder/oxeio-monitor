@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
+import { prorate } from './proration';
 import {
   countWorkdays,
   hoursToSec,
@@ -16,11 +17,23 @@ import {
 /** work policy না থাকলে স্পেকের ডিফল্ট (07 § ১) */
 const DEFAULT_TARGET_HOURS = 208;
 
+/**
+ * ⚠️ পলিসি না থাকলে ২৬ — কারণ ২০৮ ÷ ২৬ = ৮ ঘণ্টা, স্পেকের দৈনিক টার্গেট।
+ * দুটো ডিফল্ট আলাদা হয়ে গেলে দৈনিক টার্গেট নীরবে অন্য সংখ্যা হয়ে যেত।
+ */
+const DEFAULT_POLICY_WORKDAYS = 26;
+
 interface EmployeePolicy {
   id: number;
+  /** পলিসির মাসিক টার্গেট (২০৮ঘ) — ⚠️ এটা আর সরাসরি target_sec নয়, G37-এর পর */
   targetSec: number;
+  /** পলিসির `expected_workdays` (২৬) — দৈনিক টার্গেট এটা দিয়েই ভাগ হয় */
+  policyWorkdays: number;
   /** ISO দিন (শুক্র = ৫), null = প্রতিটি দিনই কর্মদিবস */
   weeklyOffDay: number | null;
+  /** G37 — `null` = আগে থেকেই আছে / এখনো আছে */
+  joinedOn: Date | null;
+  leftOn: Date | null;
 }
 
 export interface RefreshResult {
@@ -206,15 +219,50 @@ export class SummaryService {
     for (const e of employees) {
       const rows = daysBy.get(e.id) ?? [];
 
+      /**
+       * ⭐⭐ **G37 · ADR-025** — টার্গেট আর ফ্ল্যাট ২০৮ নয়, **তার কর্মদিবস
+       * × দৈনিক টার্গেট**। যে ১৫ তারিখে যোগ দিয়েছে তার টার্গেট ১৪ × ৮।
+       *
+       * ⚠️ `expectedWorkdays` কলামটার **মানে এখানেই বদলায়** — "মাসের
+       * কর্মদিবস" থেকে "তার কর্মদিবস"। D আলাদা কলামে যায়, কারণ পে-রোলে
+       * d ÷ D লাগে আর দুটো একই সময়ের হিসাব হওয়া চাই।
+       */
+      const p = prorate({
+        monthStart: start,
+        monthEnd: end,
+        joinedOn: e.joinedOn,
+        leftOn: e.leftOn,
+        weeklyOffDay: e.weeklyOffDay,
+        holidays,
+        monthlyTargetSec: e.targetSec,
+        policyWorkdays: e.policyWorkdays,
+      });
+
+      /**
+       * ⚠️ `workdaysElapsed`-ও তার কর্মকালের ভেতরেই গোনা হয়। নইলে ১৫
+       * তারিখে যোগ দেওয়া কর্মী মাসের শুরু থেকে "পিছিয়ে" দেখাত — প্রথম
+       * দিনেই ৮০ ঘণ্টা ঘাটতি নিয়ে শুরু করত।
+       */
+      const elapsedFrom =
+        e.joinedOn !== null && e.joinedOn.getTime() > start.getTime()
+          ? e.joinedOn
+          : start;
+
+      const elapsedEnd =
+        e.leftOn !== null && elapsedTo !== null && e.leftOn.getTime() < elapsedTo.getTime()
+          ? e.leftOn
+          : elapsedTo;
+
       const numbers = rollupMonth({
         workedSec: sum(rows.map((r) => r.workedSec)),
         adjustmentSec: sum(rows.map((r) => r.adjustmentSec)),
-        targetSec: e.targetSec,
-        expectedWorkdays: countWorkdays(start, end, e.weeklyOffDay, holidays),
+        targetSec: p.targetSec,
+        expectedWorkdays: p.employeeWorkdays,
+        monthWorkdays: p.monthWorkdays,
         workdaysElapsed:
-          elapsedTo === null
+          elapsedEnd === null || elapsedFrom.getTime() > elapsedEnd.getTime()
             ? 0
-            : countWorkdays(start, elapsedTo, e.weeklyOffDay, holidays),
+            : countWorkdays(elapsedFrom, elapsedEnd, e.weeklyOffDay, holidays),
         daysWithWork: rows.filter((r) => r.workedSec > 0).length,
       });
 
@@ -258,7 +306,15 @@ export class SummaryService {
       where: { status: 'active' },
       select: {
         id: true,
-        policy: { select: { monthlyTargetHours: true, weeklyOffDay: true } },
+        joinedOn: true,
+        leftOn: true,
+        policy: {
+          select: {
+            monthlyTargetHours: true,
+            weeklyOffDay: true,
+            expectedWorkdays: true,
+          },
+        },
       },
       orderBy: { id: 'asc' },
     });
@@ -268,7 +324,10 @@ export class SummaryService {
       targetSec: hoursToSec(
         Number(r.policy?.monthlyTargetHours ?? DEFAULT_TARGET_HOURS),
       ),
+      policyWorkdays: r.policy?.expectedWorkdays ?? DEFAULT_POLICY_WORKDAYS,
       weeklyOffDay: r.policy?.weeklyOffDay ?? null,
+      joinedOn: r.joinedOn,
+      leftOn: r.leftOn,
     }));
   }
 }

@@ -11,6 +11,9 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       monthlySalary: 13000,
       targetSec: TARGET,
       creditedSec: TARGET,
+      // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+      workdays: 26,
+      monthWorkdays: 26,
     });
 
     expect(line.shortfallSec).toBe(0);
@@ -23,6 +26,9 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       monthlySalary: 13000,
       targetSec: TARGET,
       creditedSec: TARGET + 10 * 3600,
+      // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+      workdays: 26,
+      monthWorkdays: 26,
     });
 
     expect(line.deductionPaisa).toBe(0);
@@ -36,6 +42,9 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       monthlySalary: 13000,
       targetSec: TARGET,
       creditedSec: TARGET - 20 * 3600,
+      // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+      workdays: 26,
+      monthWorkdays: 26,
     });
 
     expect(paisaToTaka(line.hourlyRatePaisa)).toBe('62.50');
@@ -54,6 +63,9 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       monthlySalary: 10000,
       targetSec: TARGET,
       creditedSec: TARGET - 20 * 3600,
+      // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+      workdays: 26,
+      monthWorkdays: 26,
     });
 
     expect(paisaToTaka(line.deductionPaisa)).toBe('961.54');
@@ -67,24 +79,127 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       monthlySalary: 15000,
       targetSec: TARGET,
       creditedSec: 0,
+      // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+      workdays: 26,
+      monthWorkdays: 26,
     });
 
     expect(paisaToTaka(line.deductionPaisa)).toBe('15000.00');
     expect(line.payablePaisa).toBe(0);
   });
 
-  it('টার্গেট শূন্য হলে অসীম কর্তনের বদলে থেমে যায়', () => {
-    // work policy-তে ২০৮ বসানো, তাই এটা হওয়ার কথা নয় — কিন্তু হলে
-    // চুপচাপ Infinity বেরিয়ে গিয়ে অসম্ভব একটা বিল দাঁড়াত
+  /**
+   * ⚠️⚠️ **কর্মদিবস থাকা সত্ত্বেও টার্গেট শূন্য = পলিসি ভুল বসানো।**
+   * মেনে নিলে ঘাটতি অসম্ভব হতো, কর্তনও শূন্য — অর্থাৎ কেউ এক ঘণ্টা কাজ
+   * না করেই পুরো বেতন পেত। G37-এর পরেও এই শর্তটা রাখা হয়েছে।
+   */
+  it('কর্মদিবস আছে অথচ টার্গেট শূন্য — নাকচ', () => {
     expect(() =>
-      computePayroll({ monthlySalary: 13000, targetSec: 0, creditedSec: 0 }),
+      computePayroll({
+        monthlySalary: 13000,
+        targetSec: 0,
+        creditedSec: 0,
+        workdays: 26,
+        monthWorkdays: 26,
+      }),
     ).toThrow(RangeError);
   });
 
   it('ঋণাত্মক বেতন নাকচ হয়', () => {
     expect(() =>
-      computePayroll({ monthlySalary: -1, targetSec: TARGET, creditedSec: 0 }),
+      computePayroll({
+        monthlySalary: -1,
+        targetSec: TARGET,
+        creditedSec: 0,
+        workdays: 26,
+        monthWorkdays: 26,
+      }),
     ).toThrow(RangeError);
+  });
+
+  // ── G37 · ADR-025 — মাঝপথে যোগ দিলে ──────────────────────────────────
+
+  describe('G37 — proration', () => {
+    /** ১৫ তারিখে যোগ: d = ১৪, D = ২৬, টার্গেট ১৪ × ৮ = ১১২ঘ */
+    const HALF = {
+      monthlySalary: 20000,
+      targetSec: 112 * 3600,
+      workdays: 14,
+      monthWorkdays: 26,
+    };
+
+    it('বেতনও prorate হয় — d ÷ D', () => {
+      const line = computePayroll({ ...HALF, creditedSec: 112 * 3600 });
+
+      // ২০০০০ × ১৪ ÷ ২৬ = ১০,৭৬৯.২৩
+      expect(line.payablePaisa).toBe(Math.round((2000000 * 14) / 26));
+      expect(line.deductionPaisa).toBe(0);
+    });
+
+    /**
+     * ⭐⭐ **এই ফাইলের সবচেয়ে জরুরি টেস্ট।** বেতন ও টার্গেট দুটোই prorate
+     * করলে ঘণ্টাপ্রতি হার d-নিরপেক্ষ হয়ে যায় — S ÷ (D × ৮)। শুধু টার্গেট
+     * prorate করলে এই হার দ্বিগুণ হতো, আর কোনো একক সংখ্যা দেখে সেটা ধরা
+     * পড়ত না।
+     */
+    it('ঘণ্টাপ্রতি হার পুরো-মাসের কর্মীর সমান', () => {
+      const partial = computePayroll({ ...HALF, creditedSec: 0 });
+      const full = computePayroll({
+        monthlySalary: 20000,
+        targetSec: 208 * 3600,
+        creditedSec: 0,
+        workdays: 26,
+        monthWorkdays: 26,
+      });
+
+      expect(partial.hourlyRatePaisa).toBe(full.hourlyRatePaisa);
+    });
+
+    it('অর্ধেক মাসে অর্ধেক কাজ করলে prorated বেতনের অর্ধেক কাটে', () => {
+      const line = computePayroll({ ...HALF, creditedSec: 56 * 3600 });
+
+      const prorated = Math.round((2000000 * 14) / 26);
+      expect(line.deductionPaisa).toBe(Math.round(prorated / 2));
+    });
+
+    /** ⚠️ ওই মাসে ছিলই না — টার্গেট ০, বেতনও ০, আর কোনো ছোড়াছুড়ি নয় */
+    it('মাসে একদিনও না থাকলে সবই শূন্য', () => {
+      const line = computePayroll({
+        monthlySalary: 20000,
+        targetSec: 0,
+        creditedSec: 0,
+        workdays: 0,
+        monthWorkdays: 26,
+      });
+
+      expect(line.payablePaisa).toBe(0);
+      expect(line.deductionPaisa).toBe(0);
+      expect(line.shortfallSec).toBe(0);
+    });
+
+    /**
+     * ⭐ **O9 — পুরো মাসটাই ছুটি (D = ০)।** কারো কর্মদিবস নেই, ঘাটতিও
+     * অসম্ভব — মালিকের সিদ্ধান্ত: পুরো বেতন।
+     */
+    it('পুরো মাস ছুটি হলে পুরো বেতন', () => {
+      const line = computePayroll({
+        monthlySalary: 20000,
+        targetSec: 0,
+        creditedSec: 0,
+        workdays: 0,
+        monthWorkdays: 0,
+      });
+
+      expect(line.payablePaisa).toBe(2000000);
+    });
+
+    /** ⚠️ টার্গেটের বেশি কাজ করলেও prorated বেতনই সর্বোচ্চ (ADR-023) */
+    it('টার্গেটের বেশি কাজেও বাড়তি টাকা নয়', () => {
+      const line = computePayroll({ ...HALF, creditedSec: 200 * 3600 });
+
+      expect(line.payablePaisa).toBe(Math.round((2000000 * 14) / 26));
+      expect(line.overtimeSec).toBe(88 * 3600);
+    });
   });
 
   it('পয়সা থেকে টাকায় রূপান্তর দশমিক ঠিক রাখে', () => {
@@ -103,6 +218,9 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
           monthlySalary: salary,
           targetSec: TARGET,
           creditedSec: workedHours * 3600,
+          // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
+          workdays: 26,
+          monthWorkdays: 26,
         });
 
         expect(line.payablePaisa).toBeGreaterThanOrEqual(0);

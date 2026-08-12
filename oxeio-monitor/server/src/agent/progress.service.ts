@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { prorate } from '../summary/proration';
 import { countWorkdays } from '../summary/summary.math';
 import { PrismaService } from '../prisma/prisma.service';
 import { paceSecOf } from './progress.math';
@@ -129,9 +130,18 @@ export class ProgressService {
         this.prisma.employee.findUnique({
           where: { id: employeeId },
           select: {
+            // ⭐ G37 — কর্মকালের দুই প্রান্ত, tray-র টার্গেটও prorate হয়
+            joinedOn: true,
+            leftOn: true,
             // ⚠️ `weeklyOffDay` কর্মীর নয়, **work policy**-র কলাম — সাপ্তাহিক
             //    ছুটি নীতির অংশ, ব্যক্তিগত বৈশিষ্ট্য নয়।
-            policy: { select: { monthlyTargetHours: true, weeklyOffDay: true } },
+            policy: {
+              select: {
+                monthlyTargetHours: true,
+                weeklyOffDay: true,
+                expectedWorkdays: true,
+              },
+            },
           },
         }),
         /**
@@ -166,18 +176,44 @@ export class ProgressService {
 
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
     const off = employee?.policy?.weeklyOffDay ?? null;
-    const expectedWorkdays = countWorkdays(monthStart, monthEnd, off, holidays);
-    const workdaysElapsed = countWorkdays(monthStart, today, off, holidays);
 
     /**
-     * এক কর্মদিবসের ভাগ। ⚠️ `expectedWorkdays` ০ হতে পারে না বাস্তবে, তবু
-     * ভাগ করার আগে পাহারা — নইলে একটা ভুল পলিসিতে `Infinity` তারে উঠে
-     * এজেন্টের প্রোগ্রেস বার অসীম হয়ে যেত।
+     * ⭐⭐ **G37 · ADR-025 — tray-র টার্গেটও prorate হয়।**
+     *
+     * ⚠️⚠️ এটা বাদ দিলে **সবচেয়ে খারাপ ধরনের বাগ** হতো: ১৫ তারিখে যোগ
+     * দেওয়া স্টাফের tray দেখাত "x / ২০৮ঘ", আর ড্যাশবোর্ড ও পে-রোল শিট
+     * দেখাত "x / ১১২ঘ"। দুই জায়গায় দুই সংখ্যা মানে একটা মিথ্যা বলছে, আর
+     * এই ফিচারটার পুরো উদ্দেশ্যই আস্থা ([§ ২.১-ঙ](../../../docs/07-Technical-Spec.md))।
      */
-    const perWorkdayTargetSec =
-      expectedWorkdays > 0
-        ? Math.round((monthlyTargetHours * 3600) / expectedWorkdays)
-        : 0;
+    const p = prorate({
+      monthStart,
+      monthEnd,
+      joinedOn: employee?.joinedOn ?? null,
+      leftOn: employee?.leftOn ?? null,
+      weeklyOffDay: off,
+      holidays,
+      monthlyTargetSec: monthlyTargetHours * 3600,
+      policyWorkdays: employee?.policy?.expectedWorkdays ?? 26,
+    });
+
+    const expectedWorkdays = p.employeeWorkdays;
+
+    /** ⚠️ গত কর্মদিবসও তার কর্মকালের ভেতরেই — নইলে যোগ দেওয়ার দিনই "পিছিয়ে" */
+    const elapsedFrom =
+      employee?.joinedOn && employee.joinedOn.getTime() > monthStart.getTime()
+        ? employee.joinedOn
+        : monthStart;
+
+    const workdaysElapsed =
+      elapsedFrom.getTime() > today.getTime()
+        ? 0
+        : countWorkdays(elapsedFrom, today, off, holidays);
+
+    /**
+     * এক কর্মদিবসের ভাগ। ⚠️ পলিসি থেকে সরাসরি, তার কর্মদিবস দিয়ে ভাগ করে
+     * নয় — দৈনিক টার্গেট সবার জন্য একই ৮ ঘণ্টা, কে কবে যোগ দিল তাতে বদলায় না।
+     */
+    const perWorkdayTargetSec = Math.round(p.dailyTargetSec);
 
     // আজ কর্মদিবস কি না — countWorkdays দুই প্রান্তই ধরে, তাই একদিনের রেঞ্জ
     const todayIsWorkday = countWorkdays(today, today, off, holidays) > 0;
@@ -185,7 +221,8 @@ export class ProgressService {
     return {
       todayActiveSec: todayRow._sum.durationSec ?? 0,
       monthActiveSec,
-      monthlyTargetHours,
+      // ⭐ G37 — এজেন্ট যা দেখাবে সেটা **তার** টার্গেট, ফ্ল্যাট ২০৮ নয়
+      monthlyTargetHours: p.targetSec / 3600,
       dailyTargetSec: todayIsWorkday ? perWorkdayTargetSec : 0,
       week7ActiveSec: week7Row._sum.durationSec ?? 0,
       week7TargetSec:
@@ -198,7 +235,7 @@ export class ProgressService {
          * বললেই আস্থা শেষ, আর এই ফিচারটার উদ্দেশ্যই আস্থা।
          */
         creditedSec: monthActiveSec + (adjustmentRow._sum.deltaSec ?? 0),
-        monthlyTargetHours,
+        monthlyTargetHours: p.targetSec / 3600,
         expectedWorkdays,
         workdaysElapsed,
       }),

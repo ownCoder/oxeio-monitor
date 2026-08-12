@@ -12,10 +12,24 @@ export const PAISA_PER_TAKA = 100;
 export interface PayrollInput {
   /** মাসিক বেতন, টাকায়। */
   monthlySalary: number;
-  /** ওই মাসের টার্গেট — সাধারণত ২০৮ ঘণ্টা, কিন্তু পলিসি থেকেই আসে। */
+  /**
+   * ওই কর্মীর ওই মাসের টার্গেট — **তার কর্মদিবস × দৈনিক টার্গেট**
+   * (`prorate()` থেকে)। ⚠️ আর ফ্ল্যাট ২০৮ নয়।
+   */
   targetSec: number;
   /** worked + adjustment — টার্গেটের সাথে এটাই মেলানো হয়। */
   creditedSec: number;
+
+  /**
+   * **G37 · ADR-025** — তার কর্মদিবস (d) ও মাসের কর্মদিবস (D)।
+   *
+   * ⚠️⚠️ **ঐচ্ছিক করা হয়নি, ইচ্ছাকৃতভাবে।** ডিফল্ট বসালে নতুন কোনো কলার
+   * চুপচাপ proration ছাড়াই বেতন হিসাব করত — অর্থাৎ ১৫ তারিখে যোগ দেওয়া
+   * কর্মী পুরো মাসের বেতন পেত, আর ভুলটা ধরা পড়ত মাস শেষে। `required`
+   * দিলে কম্পাইলারই পাহারা দেয়।
+   */
+  workdays: number;
+  monthWorkdays: number;
 }
 
 export interface PayrollLine {
@@ -42,19 +56,65 @@ export interface PayrollLine {
  * কারো বেতন থেকে অসীম টাকা কাটার হিসাব দাঁড়াত।
  */
 export function computePayroll(input: PayrollInput): PayrollLine {
-  const { monthlySalary, targetSec, creditedSec } = input;
+  const { monthlySalary, targetSec, creditedSec, workdays, monthWorkdays } = input;
 
   if (!Number.isFinite(monthlySalary) || monthlySalary < 0) {
     throw new RangeError('Salary cannot be negative or undefined');
   }
-  if (!Number.isFinite(targetSec) || targetSec <= 0) {
-    throw new RangeError('The monthly target cannot be zero or negative');
-  }
   if (!Number.isFinite(creditedSec) || creditedSec < 0) {
     throw new RangeError('Credited time cannot be negative');
   }
+  if (!Number.isFinite(workdays) || workdays < 0) {
+    throw new RangeError('Workdays cannot be negative or undefined');
+  }
+  if (!Number.isFinite(monthWorkdays) || monthWorkdays < 0) {
+    throw new RangeError('The month workdays cannot be negative or undefined');
+  }
 
-  const salaryPaisa = Math.round(monthlySalary * PAISA_PER_TAKA);
+  const basePaisa = Math.round(monthlySalary * PAISA_PER_TAKA);
+
+  /**
+   * ⭐⭐ **প্রযোজ্য বেতন = মাসিক × d ÷ D** — G37-এর মূল লাইন।
+   *
+   * ⚠️ ভাগ ও গুণ **একসাথে**, আগে ভগ্নাংশ বের করে নয়। `salaryFraction()`
+   * আলাদা করে দেওয়া আছে বটে, কিন্তু টাকার হিসাবে সেটা ব্যবহার করা হয় না —
+   * দুবার round করলে কারো বেতনে কয়েক পয়সার হেরফের হতো।
+   *
+   * ⭐ D = ০ (পুরো মাস ছুটি) → পুরো বেতন (O9)। ঘাটতি তখন অসম্ভব, কারণ
+   * টার্গেটও ০।
+   */
+  const salaryPaisa =
+    monthWorkdays <= 0
+      ? basePaisa
+      : Math.round((basePaisa * Math.min(workdays, monthWorkdays)) / monthWorkdays);
+
+  /**
+   * ⚠️⚠️ **টার্গেট ০ — বৈধ, কিন্তু শুধু একটা কারণেই।**
+   *
+   * কারো কোনো কর্মদিবসই না থাকলে (মাসের পরে যোগ দিয়েছে, বা পুরো মাস ছুটি)
+   * টার্গেট ০ হওয়াই ঠিক, আর তখন ঘাটতিও অসম্ভব।
+   *
+   * ⚠️ কিন্তু কর্মদিবস **থাকা সত্ত্বেও** টার্গেট ০ মানে পলিসিটাই ভুল
+   * বসানো — আর সেটা চুপচাপ মেনে নিলে ফল ভয়ংকর: ঘাটতি অসম্ভব, তাই কর্তনও
+   * শূন্য, অর্থাৎ **কেউ এক ঘণ্টা কাজ না করেই পুরো বেতন পেত**। তাই ওই
+   * অবস্থায় আগের মতোই ছোড়া হয়।
+   */
+  if (!Number.isFinite(targetSec) || targetSec <= 0) {
+    if (workdays > 0) {
+      throw new RangeError('The monthly target cannot be zero or negative');
+    }
+
+    return {
+      hourlyRatePaisa: 0,
+      shortfallSec: 0,
+      overtimeSec: Math.max(0, creditedSec),
+      deductionPaisa: 0,
+      // ⚠️ কর্মদিবস ০ মানে d/D-ও ০, তাই এটা ০ — শুধু D = ০ হলে পুরো বেতন
+      payablePaisa: salaryPaisa,
+      overtimeNote: 'Not calculated — no rate has been decided',
+    };
+  }
+
   const targetHours = targetSec / 3600;
 
   // ⚠️ হার আলাদা করে round করা হয় **না** কর্তনের হিসাবে — নিচে সরাসরি

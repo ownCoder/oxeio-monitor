@@ -352,9 +352,12 @@ export interface MonthInput {
   /** Σ দৈনিক worked_sec — কেন যোগ করাই যথেষ্ট, `rollupMonth()`-এর নোট দেখুন */
   workedSec: number;
   adjustmentSec: number;
-  /** work policy থেকে, হার্ডকোড ২০৮ নয় */
+  /** ⭐ G37 — **তার কর্মদিবস × দৈনিক টার্গেট** (`prorate()` থেকে), ফ্ল্যাট ২০৮ নয় */
   targetSec: number;
+  /** ⭐ G37 — **তার নিজের** কর্মদিবস (d) */
   expectedWorkdays: number;
+  /** ⭐ G37 — ওই মাসের মোট কর্মদিবস (D), বেতনের ভগ্নাংশের হর */
+  monthWorkdays: number;
   workdaysElapsed: number;
   /** যত দিনে worked_sec > 0 */
   daysWithWork: number;
@@ -368,6 +371,7 @@ export interface MonthNumbers {
   expectedSec: number;
   paceSec: number;
   expectedWorkdays: number;
+  monthWorkdays: number;
   workdaysElapsed: number;
   daysWithWork: number;
   avgDailySec: number;
@@ -396,12 +400,25 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     adjustmentSec,
     targetSec,
     expectedWorkdays,
+    monthWorkdays,
     workdaysElapsed,
     daysWithWork,
   } = input;
 
-  if (!Number.isFinite(targetSec) || targetSec <= 0) {
-    throw new RangeError('Monthly target cannot be zero or negative');
+  /**
+   * ⚠️⚠️ **টার্গেট ০ এখন বৈধ — কিন্তু শুধু একটাই কারণে** (G37): তার ওই
+   * মাসে কোনো কর্মদিবসই নেই (মাসের পরে যোগ দিয়েছে, আগেই চলে গেছে, বা
+   * পুরো মাসটাই ছুটি)। তখন ঘাটতিও অসম্ভব।
+   *
+   * ⚠️ কর্মদিবস **থাকা সত্ত্বেও** টার্গেট ০ মানে পলিসি ভুল বসানো, আর
+   * সেটা মেনে নিলে কেউ এক ঘণ্টা কাজ না করেই "টার্গেট পূরণ" দেখাত।
+   * `payroll.math.ts`-এ হুবহু একই শর্ত।
+   */
+  if (!Number.isFinite(targetSec) || targetSec < 0) {
+    throw new RangeError('Monthly target cannot be negative');
+  }
+  if (targetSec === 0 && expectedWorkdays > 0) {
+    throw new RangeError('Monthly target cannot be zero when there are workdays');
   }
 
   /**
@@ -428,13 +445,19 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     expectedSec,
     paceSec: creditedSec - expectedSec,
     expectedWorkdays,
+    monthWorkdays,
     workdaysElapsed,
     daysWithWork,
     // ⚠️ শূন্য দিয়ে ভাগ — কেউ সারা মাসে একদিনও কাজ না করলে Infinity বসত
     avgDailySec: daysWithWork > 0 ? Math.round(workedSec / daysWithWork) : 0,
     overtimeSec: Math.max(0, creditedSec - targetSec),
     shortfallSec: Math.max(0, targetSec - creditedSec),
-    targetMet: creditedSec >= targetSec,
+    /**
+     * ⚠️ টার্গেট ০ হলে `creditedSec >= 0` সবসময় সত্যি — অর্থাৎ যে ওই মাসে
+     * ছিলই না, সে-ও "✅ টার্গেট পূরণ" দেখাত, আর `target_met_at`-এ একটা
+     * সময়ও বসে যেত। অর্জন বলে দাবি করার মতো কিছু সেখানে ঘটেনি।
+     */
+    targetMet: targetSec > 0 && creditedSec >= targetSec,
   };
 }
 

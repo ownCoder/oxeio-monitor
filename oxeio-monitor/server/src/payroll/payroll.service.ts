@@ -12,6 +12,15 @@ export interface PayrollRow {
   /** null = এই কর্মীর বেতন বসানো নেই — শূন্য ধরা হয় না, আলাদা করে দেখানো হয় */
   monthlySalary: string | null;
   targetHours: string;
+  /**
+   * ⭐ **G37** — তার কর্মদিবস (d) ও মাসের কর্মদিবস (D)।
+   *
+   * ⚠️ শিটে দেখানোর জন্য **অপরিহার্য**: prorated সারিতে বেতনের ঘরে
+   * পুরো মাসিক বেতনের চেয়ে কম সংখ্যা থাকে, আর কেন কম সেটা না দেখালে
+   * প্রতিটা মাসে কেউ না কেউ জিজ্ঞেস করত — বা খারাপ ক্ষেত্রে, ভুল ধরে নিত।
+   */
+  workdays: number;
+  monthWorkdays: number;
   creditedHours: string;
   shortfallHours: string;
   overtimeHours: string;
@@ -90,6 +99,8 @@ export class PayrollService {
         fullName: e.fullName,
         designation: e.designation,
         targetHours: hours(summary.targetSec),
+        workdays: summary.expectedWorkdays,
+        monthWorkdays: summary.monthWorkdays,
         creditedHours: hours(summary.creditedSec),
         shortfallHours: hours(Math.max(0, summary.targetSec - summary.creditedSec)),
         overtimeHours: hours(Math.max(0, summary.creditedSec - summary.targetSec)),
@@ -113,6 +124,10 @@ export class PayrollService {
         monthlySalary: Number(e.monthlySalary),
         targetSec: summary.targetSec,
         creditedSec: summary.creditedSec,
+        // ⭐ G37 — d ও D সারিতেই লেখা আছে, এখানে আবার গোনা হয় না।
+        //    গুনলে ছুটির তালিকা বদলালে d আর D দুই আলাদা সময়ের হিসাব হতো।
+        workdays: summary.expectedWorkdays,
+        monthWorkdays: summary.monthWorkdays,
       });
 
       rows.push({

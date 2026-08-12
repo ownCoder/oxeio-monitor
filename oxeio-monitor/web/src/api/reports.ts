@@ -209,6 +209,9 @@ export interface PayrollRow {
    */
   monthlySalary: string | null;
   targetHours: string;
+  /** ⭐ G37 — তার কর্মদিবস (d) ও মাসের কর্মদিবস (D)। d < D মানে prorated */
+  workdays: number;
+  monthWorkdays: number;
   creditedHours: string;
   shortfallHours: string;
   overtimeHours: string;
