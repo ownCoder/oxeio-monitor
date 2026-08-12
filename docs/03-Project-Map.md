@@ -223,7 +223,10 @@ oxeio-monitor/
 │       ├── pages/GalleryPage.tsx           ✅ E06 গ্রিড + লাইটবক্স + কি-বোর্ড নেভ
 │       ├── pages/MonthlyPage.tsx           ✅ E07 হিটম্যাপ
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
+│       ├── pages/AlertsPage.tsx            ✅ ⭐ G01–G07 · K04 — অ্যালার্ট ও হেলথ
+│       │   #  ⚠️ `api/alerts.ts` অনেক আগে লেখা, কিন্তু কোনো পাতা ছোঁয়নি
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
+│       │   └── AgentVersionsTab.tsx        ✅ ⭐ H04 — নতুন বিল্ড বিলি করা
 │       ├── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
 │       ├── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
 │       └── pages/MyDataPage.tsx            ✅ ⭐ J05 — tray-র "My data" এখানে নামে

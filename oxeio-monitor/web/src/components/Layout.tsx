@@ -60,6 +60,11 @@ const NAV: NavItem[] = [
    */
   { to: '/monthly', label: 'Monthly', roles: ['owner', 'manager'] },
   { to: '/reports', label: 'Reports', roles: ['owner', 'manager'] },
+  /**
+   * ⚠️ owner-only — অ্যালার্টে হোস্টনেম, কর্মীর নাম আর ডিভাইসের অবস্থা
+   * একসাথে থাকে (§ ৪.৩)। ম্যানেজারকে ব্যাজটাও দেখানো হয় না।
+   */
+  { to: '/alerts', label: 'Alerts', roles: ['owner'] },
   // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
   { to: '/settings', label: 'Settings', roles: ['owner'] },
   /**

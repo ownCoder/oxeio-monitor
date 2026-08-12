@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
+import { AlertsPage } from './pages/AlertsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { GalleryPage } from './pages/GalleryPage';
@@ -106,6 +107,13 @@ function Router() {
              নীরবে বাদ দেয়, তাই `false` বসানো নিরাপদ — v7-এর ডকুমেন্টেড
              আচরণ, ঠিক এই ধরনের শর্তের জন্যই রাখা।)
         */}
+        {/*
+          ⚠️ owner না হলে রুটটা **থাকেই না** — সেটিংসের মতোই। অ্যালার্টে
+          হোস্টনেম, কর্মীর নাম আর ডিভাইসের অবস্থা একসাথে থাকে, আর
+          সেগুলো ম্যানেজারের নাগালের বাইরে (স্পেক § ৪.৩)।
+        */}
+        {isOwner && <Route path="alerts" element={<AlertsPage />} />}
+
         {isOwner && <Route path="settings" element={<SettingsPage />} />}
 
         <Route path="*" element={<NotFoundPage />} />

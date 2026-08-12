@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { AgentVersionsController } from './agent-versions.controller';
+import { AgentVersionsService } from './agent-versions.service';
 import { AuditLogController } from './audit-log.controller';
 import { AuditLogService } from './audit-log.service';
 import { DevicesController } from './devices.controller';
@@ -30,6 +32,7 @@ import { WorkPoliciesService } from './work-policies.service';
     WorkPoliciesController,
     HolidaysController,
     AuditLogController,
+    AgentVersionsController,
   ],
   providers: [
     EmployeesService,
@@ -37,6 +40,7 @@ import { WorkPoliciesService } from './work-policies.service';
     WorkPoliciesService,
     HolidaysService,
     AuditLogService,
+    AgentVersionsService,
   ],
 })
 export class AdminModule {}

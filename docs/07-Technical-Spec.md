@@ -834,6 +834,9 @@ heartbeat-এ ভার্সন মিলে যেত, তাই সার্�
 | POST | `/work-policies/:id/deactivate` | ⭐ *নতুন* — পলিসিও মোছা যায় না, ওর দিকে employees আর পুরোনো মাসের হিসাব তাকিয়ে আছে |
 | CRUD | `/employees` `/work-policies` `/categories` `/devices` `/holidays` | **owner only** |
 | GET | `/audit-log?userId=&action=&targetType=&targetId=&from=&to=&page=&pageSize=` | **owner only** |
+| GET | `/agent-versions` | ⭐ **owner only** (H04) — কোন বিল্ড বেরিয়েছে, কোন ধাপে, কতগুলো PC ইতিমধ্যে ওই ভার্সনে |
+| POST | `/agent-versions` | ⭐ **owner only** — নতুন বিল্ড বিলির জন্য নথিভুক্ত। ⚠️ `sha256` **ঐচ্ছিক** — সার্ভার নিজে ফাইল পড়ে হিসাব করে; দিলে মিলিয়ে দেখে |
+| POST | `/agent-versions/:version/stage` | ⭐ **owner only** — `canary`/`partial`/`all`/**`halted`**। খারাপ বিল্ড থামানোর একমাত্র ব্রেক (rollback নেই, G69) |
 | GET | `/ops/health` | **owner only** (K04) — ডিস্ক, ব্যাকআপের ইতিহাস, চুপ থাকা ডিভাইস। ⚠️ Docker healthcheck এটা **নয়**, সেটা পাবলিক `/health` |
 | POST | `/ops/backup/run` | **owner only** (K02) — এখনই একটা ব্যাকআপ। উত্তরে কোনো ফাইল-পাথ যায় না |
 | POST | `/ops/retention/run` | ⭐ **owner only** (K01) — এখনই ৯০ দিনের পুরোনো ছবি মোছা। রাত ২টার cron তো আছেই; এটা যাচাইয়ের পথ |
