@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 
 import { ActivityModule } from './activity/activity.module';
+import { AdjustmentsModule } from './adjustments/adjustments.module';
 import { AdminModule } from './admin/admin.module';
 import { AgentModule } from './agent/agent.module';
 import { AlertsModule } from './alerts/alerts.module';
@@ -53,6 +54,7 @@ import { UsersModule } from './users/users.module';
     AgentModule,
     ActivityModule,
     AdminModule,
+    AdjustmentsModule,
     DashboardModule,
     PayrollModule,
     ReportsModule,
