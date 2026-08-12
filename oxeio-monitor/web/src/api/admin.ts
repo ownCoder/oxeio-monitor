@@ -424,3 +424,60 @@ export function createPortalAccount(
     { method: 'POST', body: { email, ...(role ? { role } : {}) } },
   );
 }
+
+// ── H04 · এজেন্টের ভার্সন বিলি ──────────────────────────────────────────────
+
+export type RolloutStage = 'canary' | 'partial' | 'all' | 'halted';
+
+/**
+ * ⚠️ লেখাগুলো owner-এর পর্দায় যায়, তাই কারিগরি নাম নয় — "canary" শব্দটা
+ * কী বোঝায় সেটা ধরে নেওয়া যায় না।
+ */
+export const STAGE_LABEL: Record<RolloutStage, string> = {
+  canary: 'A few PCs first',
+  partial: 'About half',
+  all: 'Everyone',
+  halted: 'Stopped',
+};
+
+export interface AgentVersionView {
+  version: string;
+  sha256: string;
+  sizeBytes: number | null;
+  rolloutStage: RolloutStage;
+  isMandatory: boolean;
+  releaseNotes: string | null;
+  releasedAt: string;
+  /** ⚠️ সারি আছে কিন্তু MSI-টা ডিস্কে নেই — এজেন্ট নামাতে গিয়ে ৪০৪ পাবে */
+  fileMissing: boolean;
+  devicesOn: number;
+}
+
+export function listAgentVersions(
+  signal?: AbortSignal,
+): Promise<AgentVersionView[]> {
+  return api<AgentVersionView[]>('/agent-versions', { signal });
+}
+
+export function publishAgentVersion(body: {
+  version: string;
+  msiPath: string;
+  releaseNotes?: string;
+  rolloutStage?: RolloutStage;
+  isMandatory?: boolean;
+}): Promise<AgentVersionView> {
+  // ⚠️ `body` কাঁচা অবজেক্ট — `api()` নিজেই `JSON.stringify` করে।
+  //    এখানে আগেই stringify করলে দুবার এনকোড হয়ে সার্ভারে একটা
+  //    **স্ট্রিং** পৌঁছাত, আর ব্রাউজারে আসত `"…" is not valid JSON`।
+  return api<AgentVersionView>('/agent-versions', { method: 'POST', body });
+}
+
+export function setAgentRollout(
+  version: string,
+  rolloutStage: RolloutStage,
+): Promise<AgentVersionView> {
+  return api<AgentVersionView>(
+    `/agent-versions/${encodeURIComponent(version)}/stage`,
+    { method: 'POST', body: { rolloutStage } },
+  );
+}

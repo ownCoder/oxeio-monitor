@@ -5,6 +5,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Page } from '../../components/Page';
 import { ErrorBox } from '../../components/States';
 import { Tabs } from '../../components/Tabs';
+import { AgentVersionsTab } from './AgentVersionsTab';
 import { AuditTab } from './AuditTab';
 import { CategoriesTab } from './CategoriesTab';
 import { DevicesTab } from './DevicesTab';
@@ -32,6 +33,9 @@ const TABS = [
   { id: 'devices', label: 'Devices' },
   { id: 'categories', label: 'Categories' },
   { id: 'policies', label: 'Policies & holidays' },
+  // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
+  //    সবার শেষে থাকাটা প্রতিষ্ঠিত (বছরে দু-একবার খোলা হয়)
+  { id: 'agent', label: 'Agent updates' },
   { id: 'audit', label: 'Audit log' },
 ] as const;
 
@@ -42,6 +46,7 @@ const SUBTITLE: Record<TabKey, string> = {
   devices: 'Which PCs are sending data, and which have been shut off',
   categories: 'Which apps and sites fall into which category',
   policies: 'Monthly target, screenshot window and days off',
+  agent: 'Which build each PC is offered — and how widely',
   audit: 'Who looked at what, and who changed what',
 };
 
@@ -87,6 +92,7 @@ export function SettingsPage() {
       {active === 'devices' && <DevicesTab />}
       {active === 'categories' && <CategoriesTab />}
       {active === 'policies' && <PoliciesTab />}
+      {active === 'agent' && <AgentVersionsTab />}
       {active === 'audit' && <AuditTab />}
     </Page>
   );

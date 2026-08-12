@@ -64,7 +64,18 @@ export type AuditAction =
   | '2fa_recovery_used'
   | '2fa_failed'
   /** K02 — `POST /ops/backup/run`, হাতে চালানো ব্যাকআপ (রাতের cron অডিট করে না) */
-  | 'backup_run';
+  | 'backup_run'
+  /**
+   * **H04** — এজেন্টের নতুন ভার্সন বিলির জন্য নথিভুক্ত করা।
+   *
+   * ⭐ আলাদা action, `change_setting` নয়: এটা ১৫টা PC-তে **কোন
+   * সফটওয়্যার চলবে** তার সিদ্ধান্ত। খারাপ বিল্ড বেরোলে "কে কখন এটা
+   * ছাড়ল" প্রশ্নটাই প্রথম, আর সেটা থিম বদলানোর সাথে এক ফিল্টারে
+   * পড়লে খুঁজে পাওয়া যেত না।
+   */
+  | 'publish_agent_version'
+  /** ⭐ `halted` দিয়ে থামানোও এখানেই — বিলি শুরু করার মতোই ভারী সিদ্ধান্ত */
+  | 'change_agent_rollout';
 
 export interface AuditEntry {
   userId?: number | null;
