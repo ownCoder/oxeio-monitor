@@ -143,7 +143,7 @@
 | H05 | Enrollment code দিয়ে নিরাপদ রেজিস্ট্রেশন | 🔴 | 2 | একবার ব্যবহার্য, ২৪ঘ expire |
 | H06 | Device revoke — দূর থেকে বন্ধ | 🔴 | 6 | revoke করলে এজেন্ট থেমে যায় |
 | H07 | পারফরম্যান্স সীমা (CPU<১%, RAM<১২০MB) | 🔴 | 2 | ৮ ঘণ্টা চালিয়ে যাচাই |
-| H08 | লোকাল লগ + rotation | 🔴 | 2 | ৭ দিন, ম্যাক্স ৫০ MB |
+| H08 | লোকাল লগ + rotation | ✅ | 2 | ৭ দিন, ম্যাক্স ৫০ MB · `logs\agent.log`, দিন বদলালে `agent-YYYY-MM-DD.log` |
 | H09 | AV exclusion স্ক্রিপ্ট | 🔴 | 7 | এক কমান্ডে Defender exception |
 
 > ⏱ **H01 · H02 · H03 পরিকল্পনায় ছিল Phase 6-এ, কিন্তু Phase 2-তেই তৈরি ও

@@ -243,7 +243,19 @@ internal static partial class Program
         using var power = new PowerMonitor(window.Handle);
 
         _power = power;
-        _host = new AgentHost(settings, Version, ConsoleSyncLog.Instance);
+
+        /*
+         * H08 — ⚠️⚠️ এখানে আগে `ConsoleSyncLog.Instance` ছিল, আর প্রজেক্ট
+         * `WinExe` — **কনসোলই নেই**। অর্থাৎ এজেন্টের প্রতিটা লগ লাইন
+         * শূন্যে যেত: এনরোলমেন্ট ব্যর্থ, টোকেন বাতিল, ৪২২ প্রত্যাখ্যান —
+         * কিছুরই কোনো চিহ্ন থাকত না। অথচ রানবুক সমস্যা হলে `agent.log`
+         * পড়তে বলত, আর ফাইলটা কোনোদিন লেখাই হয়নি।
+         */
+        var paths = OutboxPaths.Default;
+        var log = new FileLog(paths.Logs);
+        log.Startup(Version, settings.ServerUrl, paths.Root);
+
+        _host = new AgentHost(settings, Version, log);
 
         if (!_host.TryStart(window.Handle, out var error))
         {

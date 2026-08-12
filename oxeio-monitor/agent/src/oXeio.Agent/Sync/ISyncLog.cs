@@ -37,30 +37,12 @@ internal sealed class NullSyncLog : ISyncLog
     public void Error(string message, Exception? error = null) { }
 }
 
-/// <summary>
-/// Program.cs এখনো কনসোল ডায়াগনস্টিক — হাতে চালিয়ে দেখার জন্য এটুকুই যথেষ্ট।
-/// </summary>
-internal sealed class ConsoleSyncLog : ISyncLog
-{
-    public static readonly ConsoleSyncLog Instance = new();
-
-    public void Info(string message) => Write("ℹ", message);
-    public void Warn(string message) => Write("⚠", message);
-
-    public void Error(string message, Exception? error = null) =>
-        Write("❌", error is null ? message : $"{message}\n      {error.GetType().Name}: {error.Message}");
-
-    private static void Write(string mark, string message)
-    {
-        // ⚠️ লগ লেখা কখনো কলারকে ফেলতে পারবে না — রিডাইরেক্ট করা stdout বন্ধ
-        //    হয়ে গেলে Console.WriteLine IOException ছোড়ে।
-        try
-        {
-            Console.WriteLine($"  {DateTimeOffset.Now:HH:mm:ss} {mark} sync: {message}");
-        }
-        catch (Exception)
-        {
-            // ইচ্ছাকৃত নীরবতা
-        }
-    }
-}
+/*
+ * ⚠️⚠️ এখানে আগে `ConsoleSyncLog` ছিল — <b>একমাত্র</b> বাস্তবায়ন, আর
+ * `Program.cs` সেটাই এজেন্টে বসাত। কিন্তু প্রজেক্ট `WinExe`, অর্থাৎ
+ * **কনসোলই নেই**; প্রতিটা লাইন শূন্যে যেত। H08-এর আসল রূপটা তাই
+ * `Storage/FileLog.cs` — ডিস্কে লেখে, ৭ দিন / ৫০ MB সীমা মানে।
+ *
+ * ক্লাসটা সরিয়ে দেওয়া হয়েছে রেখে না দিয়ে, কারণ রেখে দিলে একদিন কেউ
+ * আবার ওটাই বসাত আর লগ আবার শূন্যে যেত — কোনো ভুল বার্তা ছাড়াই।
+ */
