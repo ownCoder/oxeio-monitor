@@ -12,6 +12,7 @@ import {
   todayInDhaka,
   weekdayOf,
 } from '../lib/format';
+import { Adjustments } from './employee/Adjustments';
 import { HourlyChart } from './employee/HourlyChart';
 import { DayShots } from './employee/DayShots';
 import { ScoreCard } from './employee/ScoreCard';
@@ -34,10 +35,14 @@ import { TopUsage } from './employee/TopUsage';
  * `<ErrorBox>` তখন "You don't have access" দেখায়)। এই পাতায় owner-only কিছু
  * নেই — বেতন এখানে দেখানোই হয় না, চাওয়াও হয় না।
  *
- * ⚠️ J08 (ঘণ্টা-সংশোধনের তালিকা) এখানে নেই: সার্ভারে
- * `GET /employees/:id/time-adjustments` বলে কোনো রুট নেই। `time_adjustments`
- * টেবিলটা schema-তে আছে ও payroll-এর হিসাবে ব্যবহার হয়, কিন্তু পড়ার কোনো
- * API নেই। বানানো endpoint ধরে UI লিখলে পাতাটা নীরবে খালি দেখাত।
+ * ⭐ **J08 এখন আছে** *(১২ আগস্ট)* — আগে এখানে লেখা ছিল "সার্ভারে
+ * `GET /employees/:id/time-adjustments` বলে কোনো রুট নেই", আর সেটা সত্যি
+ * ছিল: টেবিলটা schema-তে থাকলেও পড়া বা লেখার কোনো API ছিল না (G35)।
+ * রুট তিনটেই এখন তৈরি, তাই তালিকাটা বসানো হলো।
+ *
+ * ⚠️ সংশোধনের অংশটা **তারিখ-নিরপেক্ষ**, পাতার বাকি সব একটা দিনের। ইচ্ছাকৃত:
+ * সংশোধন কম হয়, আর "গত মাসে কিছু দেওয়া হয়েছিল কি" প্রশ্নের উত্তর দিন ধরে
+ * খুঁজতে হলে কেউ খুঁজতই না।
  */
 export function EmployeeDetailPage() {
   const { id } = useParams();
@@ -148,6 +153,10 @@ export function EmployeeDetailPage() {
         <HourlyChart employeeId={employeeId} date={date} nonce={nonce} />
         <ScoreCard employeeId={employeeId} date={date} nonce={nonce} />
         <TopUsage employeeId={employeeId} date={date} nonce={nonce} />
+
+        {/* ⭐ ঘণ্টা-সংশোধন ছবির **আগে**: এটা সংখ্যার ব্যাখ্যা, আর উপরের
+            সংখ্যাগুলো পড়ার পরপরই "ওইদিন এজেন্ট বন্ধ ছিল" প্রশ্নটা ওঠে। */}
+        <Adjustments employeeId={employeeId} nonce={nonce} />
 
         {/* ⭐ ছবিগুলো সবার শেষে, ইচ্ছাকৃতভাবে। সংখ্যাগুলো (কত ঘণ্টা, কোন
             ঘণ্টায়, কোন সাইটে) আগে পড়া উচিত — ছবি আগে থাকলে চোখ ওখানেই
