@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   oXeio এজেন্টের MSI বানায় (H03)।
 
@@ -11,8 +11,22 @@
      .NET রানটাইম দুবার বসত (৩৭৯ MB বনাম ১৯৯ MB)।
 
 .EXAMPLE
-  pwsh installer/build.ps1
-  pwsh installer/build.ps1 -Version 0.2.0
+  powershell -File installeruild.ps1
+  powershell -File installeruild.ps1 -Version 0.3.0
+
+.NOTES
+  ⚠️⚠️ এই ফাইলটা **UTF-8 BOM সহ** সংরক্ষিত। BOM মুছে ফেলবেন না।
+
+  Windows PowerShell 5.1 (স্টক উইন্ডোজে যেটা থাকে) BOM ছাড়া ফাইলকে ANSI
+  ধরে, আর তখন নিচের বাংলা মন্তব্যগুলো ভেঙে গিয়ে স্ক্রিপ্টটা **পার্সই হয়
+  না** — `Unexpected token` ধরনের তিন-চারটে এরর দিয়ে থেমে যায়।
+
+  ⚠️ ফাইলটা প্রথম দিন থেকে BOM ছাড়াই ছিল, আর ধরা পড়েনি কারণ আগের বিল্ডটা
+  `pwsh` (PowerShell 7) দিয়ে হয়েছিল — সে BOM ছাড়াই UTF-8 ধরে নেয়।
+  ⚠️ অর্থাৎ যে মেশিনে PowerShell 7 নেই (যেমন অফিসের সার্ভার PC), সেখানে
+  MSI বানানোই যেত না। `deploy/*.ps1` দুটোতে নিয়মটা আগেই লেখা ছিল
+  ([deploy/README](../../deploy/README.md) § স্ক্রিপ্ট সম্পর্কে দুটো কথা) —
+  শুধু এই ফাইলটাতেই বসানো হয়নি।
 #>
 [CmdletBinding()]
 param(
