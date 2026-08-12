@@ -109,6 +109,12 @@ internal sealed class AgentHost : IAsyncDisposable
     private volatile bool _sessionSuspended;
     private long _activeTodaySec;
 
+    /// <summary>H06 — বাতিল হওয়ার কথা একবারই লগে যায়, প্রতি স্লটে নয়।</summary>
+    private bool _revokeLogged;
+
+    /// <summary>H06 — বাতিলের পর ট্র্যাকিং একবার গুটিয়ে নেওয়া হয়েছে কি না।</summary>
+    private bool _trackingStoppedForRevoke;
+
     /// <summary>শেষ তোলা ছবির থাম্বনেইল — জানালায় দেখানোর জন্য।</summary>
     private string? _latestShotThumb;
     private DateTimeOffset? _latestShotAt;
@@ -301,6 +307,16 @@ internal sealed class AgentHost : IAsyncDisposable
                     ApplyConfig(pending.Config, pending.Version, now);
                 }
 
+                // ⭐ H06 — ডিভাইস বাতিল হলে ট্র্যাকিংও থামে, শুধু আপলোড নয়।
+                //    আগে শুধু আপলোড থামত, তাই ছাঁটাই হওয়া কর্মীর PC-তে
+                //    সেগমেন্ট ও অ্যাপ-ব্যবহার জমতেই থাকত।
+                if (_credentials?.IsRevoked == true)
+                {
+                    StopTrackingForRevoke(now);
+                    Thread.Sleep(Tick);
+                    continue;
+                }
+
                 var gap = _sleep.Observe(
                     new SleepGapDetector.Sample(sample.BiasedMs, sample.UnbiasedMs, now));
 
@@ -350,10 +366,24 @@ internal sealed class AgentHost : IAsyncDisposable
 
     private async Task CaptureSlotAsync(SlotScheduler.Slot slot, CancellationToken ct)
     {
-        // A04 — ACTIVE ছাড়া ছবি নয়। A04b — ০৭:০০–২৩:০০ ছাড়া ছবি নয়,
-        // কিন্তু সময় গোনা তবু চলে।
-        if (_machine!.State != SegmentState.Active) return;
-        if (!_window.Allows(slot.FireAt)) return;
+        // A04 · A04b · H06 — চারটে শর্তই CaptureGate-এ, কারণ guard clause
+        // হিসেবে এখানে ছড়ানো থাকলে একটা অনুপস্থিত শর্তও কোনো টেস্ট ধরত না।
+        var verdict = CaptureGate.Check(
+            _machine!.State, _credentials?.IsRevoked == true, _window, slot.FireAt);
+
+        if (verdict != CaptureGate.Verdict.Allowed)
+        {
+            // ⚠️ revoke হলে একবার জানানো হয় — নীরবে বন্ধ থাকা আর "কাজ
+            //    করছে কিন্তু কিছু পাঠাচ্ছে না", দুটো পর্দায় এক দেখাত।
+            if (verdict == CaptureGate.Verdict.Revoked && !_revokeLogged)
+            {
+                _revokeLogged = true;
+                _log.Warn("Device revoked — no more screenshots will be taken on this PC.");
+            }
+
+            return;
+        }
+
         if (_outbox is null) return;
 
         var results = _capture!.CaptureAll();
@@ -804,6 +834,33 @@ internal sealed class AgentHost : IAsyncDisposable
                        t => _log.Error("Could not queue the segment", t.Exception),
                        TaskContinuationOptions.OnlyOnFaulted);
         }
+    }
+
+    /// <summary>
+    /// H06 — বাতিলের পর ট্র্যাকিং গুটিয়ে নেওয়া। একবারই চলে।
+    ///
+    /// ⚠️ খোলা সেগমেন্টটা বন্ধ করা হয় কিন্তু **কিউতে পাঠানো হয় না** —
+    /// টোকেন ইতিমধ্যে মুছে গেছে (`DeviceCredentials.Revoke`), তাই ওই সারি
+    /// কোনোদিন সার্ভারে যেতে পারত না; শুধু আউটবক্স বড় করত।
+    ///
+    /// ⚠️ অ্যাপ ট্র্যাকিংও থামে — বাতিল ডিভাইসে "কে কোন সাইটে ছিল" জমা
+    /// করে রাখার কোনো ভিত্তি নেই।
+    /// </summary>
+    private void StopTrackingForRevoke(DateTimeOffset now)
+    {
+        if (_trackingStoppedForRevoke) return;
+        _trackingStoppedForRevoke = true;
+
+        _machine?.CloseAll(now);
+
+        if (_apps is not null)
+        {
+            _apps.CloseAll(now);
+            _apps = null;
+        }
+
+        _log.Warn("Device revoked — tracking stopped on this PC.");
+        PublishStatus();
     }
 
     /// <summary>
