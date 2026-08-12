@@ -129,8 +129,8 @@ oxeio-monitor/
 │   ├── installer/                          ✅ WiX → oXeioAgent.msi (৬২ MB)
 │   │   ├── Package.wxs                     ✅ সাইলেন্ট ইনস্টল · রেজিস্ট্রি কনফিগ · টাস্ক
 │   │   └── build.ps1                       ✅ publish → wix build
-│   ├── tests/oXeio.Core.Tests/             ✅ ২৭৪টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ৬৯টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   ├── tests/oXeio.Core.Tests/             ✅ ২৯৫টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ৮৭টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -151,7 +151,7 @@ oxeio-monitor/
 │   │   # prisma/staff.example.json    ✅ নমুনা — ফাইল না থাকলে seed এটা দিয়ে চলে
 │   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
-│   │   ├── alerts/                     ✅ G01–G08 · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
+│   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
 │   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
 │   │   ├── digest/                     ✅ F07 সন্ধ্যা ৬:৩০-এর ডাইজেস্ট
 │   │   ├── ops/                        ✅ K02 এনক্রিপটেড ব্যাকআপ · K03 কপি · K04 হেলথ
@@ -170,15 +170,17 @@ oxeio-monitor/
 │   │   │   ├── payroll.math.ts             #   খাঁটি হিসাব, সব পয়সায়
 │   │   │   ├── payroll.service.ts          #   monthly_salary পড়ে **শুধু এখানেই**
 │   │   │   └── payroll.controller.ts       #   @Roles(owner) ক্লাস-লেভেলে
-│   │   └── adjustments/                    ⏳ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
-│   │       #  একমাত্র সত্যিই বাকি মডিউল: `time_adjustments` টেবিল আছে, পড়েও
-│   │       #  দুই জায়গায় (progress · summary) — **লেখার পথ কোথাও নেই** (G35/B14)
+│   │   ├── adjustments/                    ✅ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
+│   │   │   #  লেখা ও বাতিল দুটোই (G35/B14) · স্টাফ নিজেরটা পড়ে (J08)
+│   │   └── scripts/recover-owner.ts        ✅ ⭐ owner-lockout — ফেরার একমাত্র পথ
+│   │       #  ⚠️ `src/`-এর ভেতরেই, নইলে prod ইমেজে (dist + prod-deps) পৌঁছাত না
+│   │       #  সিদ্ধান্তগুলো `auth/owner-recovery.ts`-এ — CLI শুধু argv ও পর্দা
 │   │   # ⚠️ পরিকল্পনার employees/ devices/ timeline/ monthly/ jobs/ আলাদা মডিউল
 │   │   #    হয়নি; কাজটা উপরের ✅ মডিউলগুলোর ভেতরে — স্টাফ ও ডিভাইস admin/-এ ·
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৫৮৭টি টেস্ট, ২৪টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — ৬৫১টি টেস্ট, ৩০টি ফাইল
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts
@@ -198,6 +200,7 @@ oxeio-monitor/
 │       │                                   ✅ ⭐ টাইপগুলো **সার্ভারের সোর্স পড়ে** লেখা, অনুমান নয়
 │       ├── api/useApi.ts                   ✅ useApi · usePolling (ট্যাব লুকোলে থামে)
 │       ├── lib/format.ts                   ✅ ⚠️ তারিখ সবসময় ঢাকার কর্মদিবস
+│       │                                      ⭐ **ফরম্যাটের একমাত্র জায়গা** — পেজে নয়
 │       ├── auth/AuthContext.tsx            ✅ সেশন · useIdleLogout (I09)
 │       ├── components/Layout.tsx           ✅ কালো টপবার · নেভ · সার্চ · থিম
 │       ├── components/                     ✅ Page · States · Card · ProgressRing ·
@@ -212,7 +215,10 @@ oxeio-monitor/
 │       ├── pages/MonthlyPage.tsx           ✅ E07 হিটম্যাপ
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
-│       └── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
+│       ├── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
+│       └── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
+│   └── test/format.spec.ts                 ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
+│       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
 │
 ├── (রেপো রুটে) docs/                       # ← এই ডকুমেন্টগুলো — oxeio-monitor-এর **বাইরে**
@@ -306,9 +312,9 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | মাসিক হিটম্যাপ | — | `summary/` · `day-close.job` ✅ | `MonthlyPage.tsx` |
 | রিপোর্ট | — | `reports/` ✅ · `payroll/` ✅ | `ReportsPage.tsx` |
 | Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `LiveBoardPage` badge |
-| Retention | — | `summary/retention.job` ⚠️ কল করার পথ নেই (K01) | `settings/` |
+| Retention | — | `summary/retention.job` ✅ রাত ২টার cron + `POST /ops/retention/run` (K01) | `settings/` |
 | স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | role=employee | ⚠️ **ওয়েবে পাতা নেই** — tray-র "My data" ৪০৪-এ নামায় |
-| **ঘণ্টা সংশোধন** (ADR-011e) | — | ⚠️ **লেখার পথ নেই** — `time_adjustments` শুধু পড়া হয় (G35/B14) | ⏳ |
+| **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` ✅ লেখা ও বাতিল দুটোই (G35/B14) | `pages/employee/Adjustments.tsx` ✅ |
 | **কনফিগ পৌঁছানো** (E09/K07) | `ConfigChange` · `AgentHost.ReloadConfigAsync`/`ApplyConfig` ✅ | `agent-config.service` · `agent.controller` (`reload_config`) ✅ | `settings/PoliciesTab.tsx` ✅ |
 
 ⭐ **কনফিগ-লুপে দুটো সিদ্ধান্ত**, দুটোই আলাদা করে লেখার মতো —

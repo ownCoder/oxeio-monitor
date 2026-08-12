@@ -75,6 +75,48 @@ export function unionSec(spans: readonly Span[]): number {
   return Math.round(ms / 1000);
 }
 
+/** একটা ডিভাইসের ওই দিনের সব ACTIVE খণ্ড */
+export interface DeviceSpans {
+  deviceId: number;
+  spans: readonly Span[];
+}
+
+/**
+ * **G32** — একই স্টাফের দুটো ডিভাইস একই ঘড়ির সময়ে কত সেকেন্ড চলেছে।
+ *
+ * ⭐ <b>হিসাবটা বিয়োগ, কিন্তু কোন দুটো সংখ্যার তা সাবধানে বাছা:</b>
+ *
+ * ```
+ * overlap = Σ (প্রতিটা ডিভাইসের নিজের UNION) − (সব ডিভাইস মিলিয়ে UNION)
+ * ```
+ *
+ * ⚠️ `active_sec − worked_sec` **নয়**, যদিও সেটাই হাতের কাছে ছিল আর
+ * `summarizeDay`-এর মন্তব্যেও ওটাকেই "কাঁচামাল" বলা আছে। কারণ
+ * `active_sec` আসে এজেন্টের monotonic ঘড়ি থেকে (`duration_sec`), আর
+ * `worked_sec` মাপা হয় দেয়ালঘড়ির `started_at`–`ended_at` দিয়ে। একটা
+ * মেশিনেও ওই দুটো হুবহু মেলে না — ঘুম থেকে ওঠা, ঘড়ির সংশোধন, ছোট ফাঁক।
+ * ওই ফারাকটাকে overlap ধরলে **একটাই ডিভাইসওয়ালা স্টাফের নামেও** অ্যালার্ট
+ * উঠত, আর সেটাই হতো সবচেয়ে খারাপ ধরনের মিথ্যা: কারো কাজের সততা নিয়ে।
+ *
+ * এখানে দুটো দিকেই একই মাপকাঠি (দেয়ালঘড়ির UNION), তাই একটা ডিভাইসে
+ * ফলটা গাণিতিকভাবেই ঠিক শূন্য।
+ *
+ * ⚠️ প্রতি ডিভাইসের নিজের UNION নেওয়া হয়, কাঁচা যোগফল নয় — একই মেশিনের
+ * দুটো সেগমেন্ট পরস্পরকে ছুঁয়ে থাকলে (রিট্রাই, সেশন পুনরায় খোলা) সেটা
+ * দুই ডিভাইসের overlap বলে গোনা হতো।
+ */
+export function overlapSec(devices: readonly DeviceSpans[]): number {
+  // একটাই ডিভাইস মানে overlap-এর প্রশ্নই নেই — কুয়েরির খরচও বাঁচে
+  if (devices.length < 2) return 0;
+
+  const perDevice = devices.reduce((total, d) => total + unionSec(d.spans), 0);
+  const together = unionSec(devices.flatMap((d) => d.spans));
+
+  // ⚠️ ০-তে আটকানো: ভাসমান হিসাব বা round-এর কারণে -১ জাতীয় মান এলে
+  //    সেটা "ঋণাত্মক overlap" নয়, শূন্য।
+  return Math.max(0, perDevice - together);
+}
+
 // ═══════════════════════════ দৈনিক সারাংশ (K06) ═══════════════════════════
 
 export interface DaySegment extends Span {
@@ -124,8 +166,12 @@ export function summarizeDay(input: DayInput): DayNumbers {
   const active = input.segments.filter((s) => s.state === 'active');
 
   // ⚠️ `active_sec` কাঁচা যোগফল, আর `worked_sec` UNION — দুটো ইচ্ছাকৃতভাবে
-  //    আলাদা। দুই ডিভাইসে একসাথে কাজ করলে active > worked হবে, আর ওই
-  //    ফারাকটাই `device_overlap` অ্যালার্টের কাঁচামাল।
+  //    আলাদা। দুই ডিভাইসে একসাথে কাজ করলে active > worked হবে।
+  //
+  // ⚠️ কিন্তু ওই ফারাকটা `device_overlap`-এর কাঁচামাল **নয়** (এখানে আগে
+  //    তাই লেখা ছিল): `active_sec` আসে এজেন্টের monotonic ঘড়ি থেকে, আর
+  //    `worked_sec` দেয়ালঘড়ি থেকে — একটা মেশিনেও দুটো হুবহু মেলে না।
+  //    G32-র হিসাবটা `overlapSec()`-এ, আর সেখানে দুই দিকেই একই মাপকাঠি।
   const activeSec = sumDuration(active);
 
   // ⚠️ `locked`-ও idle-এ ধরা হয়। schema-তে `locked_sec` বলে কোনো কলাম নেই;

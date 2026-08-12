@@ -445,7 +445,10 @@ const TYPE_LABELS: Readonly<Record<string, string>> = {
   backup_failed: 'Backup failed',
   clock_drift: 'Agent clock has drifted',
   no_activity_today: 'Someone has no work all day',
-  device_overlap: 'Multiple staff on one device',
+  // ⚠️ এখানে আগে লেখা ছিল "Multiple staff on one device" — ঠিক **উল্টো**
+  //    কথা। G32-র ঘটনা একজন স্টাফের দুটো ডিভাইস, একটা ডিভাইসে দুজন নয়।
+  //    টেলিগ্রামে ওই লেবেলটাই যেত, আর যে পড়ত সে ভুল PC-তে খুঁজতে যেত।
+  device_overlap: 'One person on two devices',
 };
 
 /**

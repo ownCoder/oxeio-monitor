@@ -13,7 +13,11 @@ import { useAuth } from '../../auth/AuthContext';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Page';
 import { Empty, ErrorBox, Loading } from '../../components/States';
-import { formatDate, todayInDhaka } from '../../lib/format';
+import {
+  formatDate,
+  formatSignedDuration,
+  todayInDhaka,
+} from '../../lib/format';
 import {
   Chip,
   ConfirmDialog,
@@ -92,7 +96,7 @@ export function Adjustments({
           */}
           {counted.length > 0 && (
             <p className="text-[13px] text-ink-2">
-              <span className="num font-semibold">{signed(totalSec(counted))}</span>{' '}
+              <span className="num font-semibold">{formatSignedDuration(totalSec(counted))}</span>{' '}
               counted in total, from {counted.length}{' '}
               {counted.length === 1 ? 'correction' : 'corrections'}
             </p>
@@ -160,7 +164,7 @@ function Row({
               row.active ? 'text-ink' : 'text-ink-3 line-through'
             }`}
           >
-            {signed(row.deltaSec)}
+            {formatSignedDuration(row.deltaSec)}
           </span>
 
           <span className="num text-[13px] text-ink-2">
@@ -342,7 +346,7 @@ function RevokeDialog({
 
   return (
     <ConfirmDialog
-      title={`Revoke ${signed(row.deltaSec)} on ${formatDate(row.workDate)}?`}
+      title={`Revoke ${formatSignedDuration(row.deltaSec)} on ${formatDate(row.workDate)}?`}
       intro="The correction stops counting from now on. It is not deleted — the record, your reason and the original one all stay."
       confirmLabel="Revoke"
       withReason
@@ -363,13 +367,14 @@ function totalSec(rows: AdjustmentView[]): number {
   return rows.reduce((sum, r) => sum + r.deltaSec, 0);
 }
 
-/** `+2:00` / `−0:30` — ⚠️ চিহ্নটাই আসল তথ্য, তাই কখনো বাদ দেওয়া হয় না। */
-function signed(seconds: number): string {
-  const abs = Math.abs(seconds);
-  const h = Math.floor(abs / 3600);
-  const m = Math.round((abs % 3600) / 60);
-
-  // ⚠️ ইউনিকোড মাইনাস (−), হাইফেন নয় — সংখ্যার পাশে হাইফেন ছোট দেখায়
-  //    আর ঋণাত্মক চিহ্নটা চোখ এড়িয়ে যেতে পারত।
-  return `${seconds < 0 ? '−' : '+'}${h}:${String(m).padStart(2, '0')}`;
-}
+/**
+ * ⚠️ `signed()` এখানেই লেখা ছিল, এখন `lib/format.ts`-এ
+ * (`formatSignedDuration`) — ওই ফাইলের নিজের ডকই বলে *"নিজের পেজে আলাদা
+ * করে ফরম্যাট লিখবেন না"*, আর এটাই ছিল একমাত্র জায়গা যেখানে নিয়মটা ভাঙা
+ * হয়েছিল।
+ *
+ * ⭐ সরানোর সাথে সাথেই একটা সত্যিকারের বাগ বেরোল: এখানকার হিসাবে ৩৫৯৮
+ * সেকেন্ডের সংশোধন পর্দায় `+0:60` দেখাত (মিনিট round করে ৬০ হয়ে যায়,
+ * আর ঘণ্টায় তোলা হতো না)। `formatDuration()` ওই ফাঁদটা আগেই সামলাত —
+ * নকল করে লেখা কোডটাই সামলাত না।
+ */

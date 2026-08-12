@@ -18,5 +18,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  // ⚠️ `test` এখানে, আলাদা কোনো tsconfig-এ নয় — টেস্ট ফাইল typecheck-এর
+  //    বাইরে থাকলে ভাঙা import বা বদলে যাওয়া সিগনেচার শুধু `vitest`
+  //    চালালেই ধরা পড়ত, `npm run typecheck`-এ নয়।
+  "include": ["src", "test"]
 }

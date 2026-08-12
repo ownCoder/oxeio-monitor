@@ -541,6 +541,35 @@ Get-Content "$env:ProgramData\oXeio\logs\agent.log" -Tail 50   # এজেন্
 | `agent-YYYY-MM-DD.log` | আগের দিনগুলো (৭ দিন, সব মিলিয়ে ৫০ MB) |
 | `outbox-drops.log` | কিউ থেকে যা চিরতরে ফেলে দেওয়া হলো |
 
+### ১২.১· ⭐ owner ঢুকতে পারছেন না (পাসওয়ার্ড বা ফোন হারিয়েছে)
+
+⚠️ এই সিস্টেমে **"পাসওয়ার্ড ভুলে গেছি" বলে কোনো ইমেইল-লিংক নেই**, আর সেটা
+ইচ্ছাকৃত — অফিসের ভেতরের সার্ভার, বাইরের কোনো মেইল-নির্ভরতা রাখা হয়নি।
+তাই একমাত্র owner পাসওয়ার্ড বা 2FA-র ফোনটা হারালে ফেরার পথ একটাই:
+সার্ভারের শেল।
+
+```powershell
+docker compose exec api node dist/scripts/recover-owner.js --list
+```
+
+```powershell
+docker compose exec api node dist/scripts/recover-owner.js --confirm
+```
+
+- `--confirm` **ছাড়া কিছুই বদলায় না** — ভুল করে চালানো যায় না
+- একাধিক owner থাকলে `--email owner@office.local` দিয়ে বলতে হয়
+- নতুন পাসওয়ার্ড **বানিয়ে দেওয়া হয়** আর একবারই পর্দায় দেখানো হয়
+- 2FA চালু থাকলে সেটাও সরে যায় — ঢুকে আবার চালু করে নিন
+- প্রথম লগইনেই নতুন পাসওয়ার্ড চাওয়া হবে
+- ⚠️ কাজটা `audit_log`-এ `reset_password · via: cli` হিসেবে লেখা থাকে
+
+⚠️ একটাও owner অ্যাকাউন্ট না থাকলে (ডাটাবেস ফেরানোর পর, বা কেউ ভুল করে
+মুছে ফেললে) নতুন একটা বানানো যায়:
+
+```powershell
+docker compose exec api node dist/scripts/recover-owner.js --confirm --email owner@office.local
+```
+
 ---
 
 ## স্ক্রিপ্ট সম্পর্কে দুটো কথা

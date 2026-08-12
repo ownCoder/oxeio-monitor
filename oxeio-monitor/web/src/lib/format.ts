@@ -279,6 +279,36 @@ export function formatDuration(seconds: number | null | undefined): string {
   return hours === 0 ? `${minutes}m` : `${hours}h ${minutes}m`;
 }
 
+/**
+ * ⭐ ঘণ্টা-সংশোধনের মান — `'+2:00'` / `'−0:30'` (B14 · G35)।
+ *
+ * ⚠️ **চিহ্নটাই আসল তথ্য**, তাই কখনো বাদ দেওয়া হয় না — ধনাত্মকেও `+`।
+ * `2:00` লেখা থাকলে বোঝাই যেত না ঘণ্টা যোগ হলো না কাটা হলো, অথচ
+ * পার্থক্যটা কারো বেতনের।
+ *
+ * ⚠️ ইউনিকোড মাইনাস (`−`, U+2212), হাইফেন নয় — সংখ্যার পাশে হাইফেন ছোট
+ * দেখায় আর ঋণাত্মক চিহ্নটা চোখ এড়িয়ে যেতে পারত।
+ *
+ * ⚠️ এখানে `formatDuration()` ব্যবহার করা হয় **না**, ইচ্ছাকৃতভাবে: ওটা
+ * `7h 32m` লেখে আর এক ঘণ্টার কম হলে ঘণ্টাটা বাদ দেয়। সংশোধনের তালিকায়
+ * সব সারি একই চওড়ায় থাকা দরকার (`+0:30` আর `+2:00` পাশাপাশি), তাই
+ * ঘণ্টাটা সবসময় থাকে।
+ */
+export function formatSignedDuration(seconds: number): string {
+  const abs = Math.abs(seconds);
+  const hours = Math.floor(abs / 3600);
+  let minutes = Math.round((abs % 3600) / 60);
+  let carried = hours;
+
+  // ⚠️ `formatDuration()`-এর মতোই ফাঁদ: ৩৫৯৮ সেকেন্ড → `0:60`
+  if (minutes === 60) {
+    carried += 1;
+    minutes = 0;
+  }
+
+  return `${seconds < 0 ? '−' : '+'}${carried}:${pad(minutes)}`;
+}
+
 /** সেকেন্ড → দশমিক ঘণ্টা, `'7.5'` — চার্টের অক্ষ ও তুলনার জন্য */
 export function formatHours(
   seconds: number | null | undefined,
