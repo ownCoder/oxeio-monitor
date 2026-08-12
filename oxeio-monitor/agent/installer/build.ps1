@@ -36,10 +36,22 @@ param(
     #    heartbeat-এ আরেকটা বলত, ফলে H04 চিরকাল একই আপডেট অফার করত।
     [string]$Version,
 
-    # ⭐ দিলে ঠিকানাটা MSI-র ভেতরেই বসে যায়, আর তখন **ডাবল-ক্লিকেই ইনস্টল
-    #   হয়** — অফিসের ১৫টা PC-তে লম্বা কমান্ড টাইপ করতে হয় না।
-    #   ⚠️ না দিলে আগের মতোই msiexec-এ SERVERURL= লাগবে।
-    [string]$ServerUrl,
+    # ⭐ ঠিকানাটা MSI-র ভেতরেই বসে যায়, আর তখন **ডাবল-ক্লিকেই ইনস্টল হয়** —
+    #   অফিসের ১৫টা PC-তে লম্বা কমান্ড টাইপ করতে হয় না।
+    #
+    # ⚠️⚠️ ডিফল্টটা ইচ্ছাকৃতভাবে **বসানো আছে**, খালি নয়। আগে খালি ছিল আর
+    #   `-ServerUrl` না দিলে চুপচাপ এমন MSI বেরোত যেটা ডাবল-ক্লিকে
+    #   "This MSI was built without a server address" বলে আটকে যেত। ঠিক
+    #   সেটাই ০.৩.২-এ ঘটেছে — বিল্ড সফল, সতর্কবাণী DarkGray-তে এক লাইন,
+    #   আর ভুলটা ধরা পড়েছে মালিকের ইনস্টল করার সময় ([09 § ৩ন]।
+    #
+    #   এই প্রোডাক্টের ঠিকানা একটাই, তাই ডিফল্টই ঠিক আচরণ। ব্যতিক্রম
+    #   চাইলে সেটা এখন **স্পষ্ট করে** চাইতে হয় — `-NoServerUrl`।
+    [string]$ServerUrl = 'https://oxeio.office.local',
+
+    # ⚠️ ঠিকানা ছাড়া MSI — শুধু তখনই, যখন একাধিক অফিসে আলাদা ঠিকানায়
+    #   `msiexec /qn SERVERURL=...` দিয়ে বসানো হবে।
+    [switch]$NoServerUrl,
 
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64'
@@ -101,6 +113,9 @@ $Version আগে থেকেই আছে — ঢেকে দেওয়া
 "@
 }
 
+# ⚠️ -NoServerUrl জেতে — সুইচটার পুরো উদ্দেশ্যই ডিফল্ট ঠিকানাটা ফেলে দেওয়া
+if ($NoServerUrl) { $ServerUrl = '' }
+
 if ($ServerUrl) {
     # ⚠️ আকৃতিটা এখানেই যাচাই — ভুল ঠিকানা MSI-তে বেক হয়ে গেলে সেটা ধরা
     #    পড়ত ১৫টা PC-তে বসানোর পর, "সার্ভারে পৌঁছাচ্ছে না" দিয়ে।
@@ -109,7 +124,10 @@ if ($ServerUrl) {
     }
     Write-Host "   server : $ServerUrl (MSI-তে বেক করা — ডাবল-ক্লিকেই ইনস্টল হবে)" -ForegroundColor DarkGray
 } else {
-    Write-Host "   server : বেক করা হয়নি — msiexec-এ SERVERURL= দিতে হবে" -ForegroundColor DarkGray
+    # ⚠️ DarkGray নয় — এই MSI ডাবল-ক্লিকে **চলবে না**, আর ঠিক এই এক লাইন
+    #    চোখ এড়িয়ে যাওয়াতেই ০.৩.২ ভুলভাবে বেরিয়েছিল।
+    Write-Host "   server : ⚠️ বেক করা হয়নি (-NoServerUrl) — ডাবল-ক্লিকে ইনস্টল হবে না," -ForegroundColor Yellow
+    Write-Host "            msiexec-এ SERVERURL= দিতে হবে" -ForegroundColor Yellow
 }
 
 Write-Host '── ১· publish ────────────────────────────────' -ForegroundColor Cyan
