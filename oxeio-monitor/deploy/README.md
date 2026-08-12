@@ -528,8 +528,18 @@ powershell -ExecutionPolicy Bypass -File deploy\defender-exclusions.ps1
 
 ```powershell
 docker compose logs api --tail 100
-Get-Content "$env:ProgramData\oXeio\agent.log" -Tail 50   # এজেন্টের PC-তে
+Get-Content "$env:ProgramData\oXeio\logs\agent.log" -Tail 50   # এজেন্টের PC-তে
 ```
+
+⚠️ পাথটা `logs\` সাবফোল্ডারে — এখানে আগে `oXeio\agent.log` লেখা ছিল, আর
+সেই ফাইলটা **কোনোদিন লেখাই হতো না** (H08)। এজেন্টের PC-তে ওই ফোল্ডারে
+তিনটে জিনিস পাওয়া যাবে:
+
+| ফাইল | কী |
+|---|---|
+| `agent.log` | ⭐ আজকের সব কিছু — চালু হওয়া, প্রতি স্লটের ক্যাপচার, সিঙ্কের ভুল |
+| `agent-YYYY-MM-DD.log` | আগের দিনগুলো (৭ দিন, সব মিলিয়ে ৫০ MB) |
+| `outbox-drops.log` | কিউ থেকে যা চিরতরে ফেলে দেওয়া হলো |
 
 ---
 

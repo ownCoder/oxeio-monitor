@@ -699,8 +699,10 @@ if (IsBrowser(proc))
 %ProgramData%\oXeio\
   ├─ outbox.db             (SQLite — segments, events, app_usage)
   ├─ queue\screenshots\    (আপলোড না হওয়া স্ক্রিনশট)
+  ├─ logs\agent.log        (H08 — এজেন্টের নিজের লগ, আজকেরটা)
+  ├─ logs\agent-YYYY-MM-DD.log (আগের দিনগুলো — ৭ দিন, সব মিলিয়ে ৫০ MB)
   ├─ logs\outbox-drops.log (যা চিরতরে ফেলে দেওয়া হলো তার একমাত্র সাক্ষী)
-  └─ watchdog.log          (⚠️ watchdog লেখে — এজেন্টের নিজের কোনো লগ ফাইল নেই, H08)
+  └─ watchdog.log          (watchdog লেখে — এজেন্টের প্রসেস বেঁচে আছে কি না)
 ```
 - ⚠️ **`config.json` বলে কিছু নেই** — কনফিগ ডিস্কে জমে না, প্রতিবার চালু হলে ও প্রতিটা বদলে সার্ভার থেকেই আসে (§ ৪.১)
 - সার্ভার ডাউন থাকলে সব লোকালি জমা থাকবে (৭ দিন পর্যন্ত)

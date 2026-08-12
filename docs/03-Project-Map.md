@@ -345,7 +345,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | ~~`SixLabors.ImageSharp`~~ | ❌ **বদলে `SkiaSharp`** (+ `.NativeAssets.Win32`) — ImageSharp v4+ বাণিজ্যিক ব্যবহারে লাইসেন্স চায় (`Capture/WebpEncoder.cs` § ১১)। এনকোড **ও** ডিকোড দুটোই ওকে দিয়ে — GDI+ WebP চেনে না, তাই `Ui/WebpImage.cs`-ও এটাই ব্যবহার করে |
 | `Microsoft.Data.Sqlite` | লোকাল queue |
 | ~~`Polly`~~ | ❌ **লাগেনি** — `Core/Agent/RetryPolicy.cs` খাঁটি ফাংশন হিসেবে backoff দেয়, তাই শিডিউলার ছাড়াই ইউনিট টেস্ট করা যায় |
-| ~~`Serilog`~~ | ❌ **লাগেনি** — কোনো csproj-এ নেই। যা আছে তা হাতে লেখা: watchdog-এর `Platform/RollingLog.cs` (ফাইলে লেখে), এজেন্টের `Sync/ISyncLog.cs` (একমাত্র বাস্তবায়ন `ConsoleSyncLog` — শুধু কনসোল) ও `Storage/DropLog.cs`। ⚠️ ফলে এজেন্টের **সাধারণ কোনো লগ ফাইল নেই** (H08) — ডিস্কে যায় শুধু `DropLog`-এর `outbox-drops.log`, অর্থাৎ আউটবক্স থেকে কী বাদ পড়ল সেটুকু। [09-Build-Log](09-Build-Log.md) § ৩ক |
+| ~~`Serilog`~~ | ❌ **লাগেনি** — কোনো csproj-এ নেই। যা আছে তা হাতে লেখা: watchdog-এর `Platform/RollingLog.cs`, এজেন্টের `Storage/FileLog.cs` (H08 — `logs\agent.log`, ৭ দিন / ৫০ MB, সিদ্ধান্তটা `Core/Agent/LogRetention.cs`-এ) ও `Storage/DropLog.cs`। ⚠️ আগে `ISyncLog`-এর একমাত্র বাস্তবায়ন ছিল `ConsoleSyncLog`, আর প্রজেক্ট `WinExe` — কনসোল না থাকায় **প্রতিটা লাইন শূন্যে যেত**। [09-Build-Log](09-Build-Log.md) § ৩ঝ |
 | `WiX Toolset v4` | MSI ইনস্টলার |
 
 ### Server (Node)

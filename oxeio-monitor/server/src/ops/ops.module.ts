@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { BackupCheck } from '../alerts/backup.check';
 import { AlertsModule } from '../alerts/alerts.module';
 import { TelegramChannel } from '../alerts/telegram.channel';
+import { SummaryModule } from '../summary/summary.module';
 import { BackupJob } from './backup.job';
 import { BackupService } from './backup.service';
 import { BackupStateStore } from './backup.state';
@@ -27,7 +28,10 @@ import { OpsScheduler } from './ops.scheduler';
  * ⚠️ `PrismaModule` `@Global`, তাই আলাদা import লাগে না।
  */
 @Module({
-  imports: [AlertsModule],
+  // ⚠️ `SummaryModule` শুধু `RetentionJob`-এর জন্য (K01-এর হাতে-চালানো
+  //    endpoint)। ওখানে `ScheduleModule.forRoot()` আছে, কিন্তু Nest মডিউল
+  //    singleton — ইমপোর্ট করলে সেটা দ্বিতীয়বার চলে না।
+  imports: [AlertsModule, SummaryModule],
   controllers: [OpsController],
   providers: [
     BackupStateStore,

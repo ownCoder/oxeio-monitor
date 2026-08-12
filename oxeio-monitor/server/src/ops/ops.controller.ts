@@ -3,6 +3,7 @@ import { UserRole } from '@prisma/client';
 
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
+import { RetentionJob, type RetentionResult } from '../summary/retention.job';
 import { BackupJob } from './backup.job';
 import { OpsHealthService, type OpsHealth } from './ops.health.service';
 
@@ -40,6 +41,7 @@ export class OpsController {
   constructor(
     private readonly health: OpsHealthService,
     private readonly backup: BackupJob,
+    private readonly retention: RetentionJob,
   ) {}
 
   @Get('health')
@@ -81,5 +83,30 @@ export class OpsController {
       },
       rotated: result.rotated,
     };
+  }
+
+  /**
+   * **K01** — `POST /api/v1/ops/retention/run`, এখনই ৯০ দিনের পুরোনো
+   * ছবি মোছা।
+   *
+   * ⭐ **থাকার কারণ ব্যাকআপেরটার মতোই:** রাত ২টার cron তো আছে, কিন্তু
+   * যে জব কখনো চোখে দেখা হয়নি সেটা প্রতিশ্রুতি, ব্যবস্থা নয়। আর এই
+   * জবটার বেলায় ব্যাপারটা আরও গুরুতর — নীতিমালায় স্টাফকে লিখিতভাবে
+   * বলা আছে *"৯০ দিন পর ছবি নিজে থেকেই মুছে যাবে"*। ওটা না ঘটলে
+   * প্রতিশ্রুতিভঙ্গ, আর ধরা পড়ত কেবল ডিস্ক ভরে গেলে।
+   *
+   * ⚠️ ৯০ দিনের পুরোনো ছবি না থাকলে কিছুই মোছে না — `marked: 0` ফেরে।
+   * সেটাই স্বাভাবিক, আর তাতেই জানা যায় জবটা চলতে পারে।
+   *
+   * ⚠️ `RunLock` একই সময়ে দুটো রান ঠেকায়; cron-এর সাথে সংঘাত হলে
+   * `skipped: true` ফেরে।
+   */
+  @Post('retention/run')
+  @HttpCode(HttpStatus.OK)
+  async runRetention(
+    @CurrentUser() actor: SessionUser,
+  ): Promise<RetentionResult> {
+    this.logger.warn(`Manual retention sweep triggered — user ${actor.userId}`);
+    return this.retention.runOnce();
   }
 }
