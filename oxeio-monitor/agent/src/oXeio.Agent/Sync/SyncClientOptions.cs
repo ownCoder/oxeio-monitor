@@ -93,6 +93,12 @@ internal sealed record SyncClientOptions
     /// </summary>
     public long MaxUpdateBytes { get; init; } = 256L * 1024 * 1024;
 
+    /// <summary>
+    /// **I01** — সার্ভারের সার্টের SPKI হ্যাশ (base64), কমা দিয়ে ভাগ করা।
+    /// খালি হলে পিনিং বন্ধ, আর তখন Windows-এর নিজের যাচাইটাই একমাত্র ভরসা।
+    /// </summary>
+    public string? ServerPin { get; init; }
+
     /// <summary>স্ট্রিং URL থেকে — কনফিগ ফাইল থেকে পড়ার সহজ পথ।</summary>
     public static SyncClientOptions For(string baseUrl, string agentVersion = "0.0.0") =>
         new() { BaseAddress = new Uri(baseUrl, UriKind.Absolute), AgentVersion = agentVersion };

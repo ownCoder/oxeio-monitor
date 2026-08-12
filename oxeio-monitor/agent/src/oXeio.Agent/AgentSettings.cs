@@ -48,6 +48,25 @@ internal sealed record AgentSettings
     /// <summary>ইনস্টলের সময় দেওয়া একবার-ব্যবহার্য কোড (H05)। enroll হয়ে গেলে অগ্রাহ্য।</summary>
     public string? EnrollmentCode { get; init; }
 
+    /// <summary>
+    /// **I01** — সার্ভারের সার্টের SPKI হ্যাশ (base64), কমা দিয়ে ভাগ করা।
+    ///
+    /// ⭐ অফিসের সার্ভারে স্ব-স্বাক্ষরিত সার্ট, তাই "বিশ্বস্ত CA" বলে
+    /// কিছু নেই — পিনই একমাত্র উপায় যাতে এজেন্ট নিশ্চিত হতে পারে ওপাশে
+    /// আমাদের সার্ভারই আছে (রানবুক § ৬)।
+    ///
+    /// ⚠️ **একাধিক পিন রাখা যায়, আর নবায়নের দিন রাখতেই হবে** — পুরোনো ও
+    /// নতুন দুটোই কিছুক্ষণ বৈধ না থাকলে সার্ট বদলানোর মুহূর্তে ১৫টা
+    /// এজেন্ট একসাথে সংযোগ হারাত (§ ৭.১)।
+    ///
+    /// ⚠️ না দিলে পিনিং **বন্ধ** থাকে — তখন শুধু Windows-এর নিজের যাচাই।
+    /// এটা আজকের ইচ্ছাকৃত ট্রেড-অফ: রানবুক § ৬.৪ সুপারিশ করেছিল পিন
+    /// বাধ্যতামূলক করার, কিন্তু তাতে আজকের পাইলট (যেখানে সার্টই বসানো
+    /// হয়নি) সংযোগই করতে পারত না। প্রোডাকশনে `SERVERPIN` দেওয়া
+    /// চেকলিস্টের অংশ, আর না দিলে এজেন্ট লগে সেটা স্পষ্ট করে বলে।
+    /// </summary>
+    public string? ServerPin { get; init; }
+
     [JsonIgnore]
     public bool IsUsable => Uri.TryCreate(ServerUrl, UriKind.Absolute, out var u)
                             && (u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeHttp);
@@ -141,6 +160,7 @@ internal sealed record AgentSettings
                 StaffPortalUrl = Trimmed(key, "StaffPortalUrl"),
                 PolicyUrl = Trimmed(key, "PolicyUrl"),
                 EnrollmentCode = Trimmed(key, "EnrollmentCode"),
+                ServerPin = Trimmed(key, "ServerPin"),
             };
 
             return settings.IsUsable ? settings : null;

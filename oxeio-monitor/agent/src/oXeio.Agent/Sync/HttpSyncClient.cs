@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Security;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -95,6 +97,9 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             //    ৩xx হয়ে ফেরে আর SyncOutcomeClassifier সেটাকে Transient বলে —
             //    ডেটা থাকে, tray লাল হয়, অ্যাডমিন base URL ঠিক করে।
             AllowAutoRedirect = false,
+
+            // I01 — পিন বসানো থাকলে TLS যাচাইটা আমরাই করি (নিচের ডক দেখুন)
+            SslOptions = BuildSslOptions(CertificatePin.Parse(options.ServerPin), _log),
         };
 
         _http = new HttpClient(new SyncHeadersHandler(ResolveToken, inner), disposeHandler: true)
@@ -137,6 +142,78 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
         //    সাধারণ অ্যাসাইনমেন্টে JIT-এর caching-এ পুরোনো মানটা অনির্দিষ্ট সময়
         //    ধরে থেকে যেতে পারত — অর্থাৎ enroll-এর পরেও ৪০১ চলতেই থাকত।
         Volatile.Write(ref _token, normalized);
+    }
+
+    /// <summary>
+    /// **I01** — সার্ট পিনিং।
+    ///
+    /// ⚠️⚠️ <b>এই কলব্যাক বসানোর মানে .NET-এর নিজের সব যাচাই বন্ধ হয়ে
+    /// যাওয়া</b> — হোস্টনেম মেলানো, চেইন, মেয়াদ, সব। কলব্যাক যা বলবে
+    /// তাই চূড়ান্ত। তাই পিন মিলে গেলেই <c>return true</c> লিখে দেওয়াটা
+    /// সবচেয়ে সহজ ভুল, আর তাতে হোস্টনেম ও মেয়াদ যাচাই নীরবে চলে যেত।
+    ///
+    /// ⭐ সিদ্ধান্তটা তাই এখানে নয়, <see cref="CertificatePin"/>-এ —
+    /// সেখানে <c>sslErrors == None</c> শর্তটাও মেলানো হয়, আর গোটা
+    /// ব্যাপারটা কোনো TLS ছাড়াই ইউনিট টেস্টে ধরা যায়।
+    ///
+    /// ⚠️ পিন না থাকলে <c>null</c> ফেরে — অর্থাৎ কলব্যাকই বসে না, আর
+    /// .NET তার স্বাভাবিক যাচাই চালায়। "পিন নেই মানে যাচাই বাদ" — এই
+    /// ভুল ডিফল্টটা এড়ানোর একমাত্র নিরাপদ উপায় কলব্যাকটা **না বসানো**।
+    /// </summary>
+    private static SslClientAuthenticationOptions? BuildSslOptions(
+        IReadOnlyList<string> pins, ISyncLog log)
+    {
+        if (pins.Count == 0)
+        {
+            // ⚠️ চুপ করে থাকা যাবে না। প্রোডাকশনে পিন দেওয়া চেকলিস্টের
+            //    অংশ, আর না দিলে অ্যাডমিন যেন লগ দেখে জানতে পারেন।
+            log.Warn(
+                "No SERVERPIN configured — the agent trusts whatever certificate Windows accepts. " +
+                "On a self-signed office certificate that is weaker than it sounds (deploy/README § 6).");
+            return null;
+        }
+
+        log.Info($"Certificate pinning is on ({pins.Count} pin(s))");
+
+        return new SslClientAuthenticationOptions
+        {
+            RemoteCertificateValidationCallback = (_, cert, _, sslErrors) =>
+            {
+                var presented = cert is null ? null : SpkiHash(cert);
+                var verdict = CertificatePin.Check(
+                    pins, presented, chainOk: sslErrors == SslPolicyErrors.None);
+
+                if (verdict == CertificatePin.Verdict.Trusted) return true;
+
+                // ⚠️ প্রত্যাখ্যানের কারণটা লগে যায়, কিন্তু **পিনের মান নয়** —
+                //    ওটা গোপন নয় বটে, তবু লগে ভরে রাখার কোনো কারণও নেই।
+                log.Error("TLS: " + CertificatePin.Explain(verdict));
+                return false;
+            },
+        };
+    }
+
+    /// <summary>
+    /// সার্টের <b>public key</b>-র sha256, base64।
+    ///
+    /// ⭐ পুরো সার্টের হ্যাশ নয়, <b>SPKI</b>-র — কারণ নবায়নের সময়
+    /// সাধারণত একই কী রেখে নতুন সার্ট ইস্যু করা হয়। সার্টের হ্যাশ পিন
+    /// করলে প্রতিটা নবায়নে ১৫টা PC-তে নতুন পিন বিলি করতে হতো
+    /// (`make-cert.ps1`-ও এই একই মান ছাপে)।
+    /// </summary>
+    private static string? SpkiHash(X509Certificate certificate)
+    {
+        try
+        {
+            using var cert = new X509Certificate2(certificate);
+            return Convert.ToBase64String(
+                SHA256.HashData(cert.PublicKey.ExportSubjectPublicKeyInfo()));
+        }
+        catch (CryptographicException)
+        {
+            // সার্টটাই পড়া গেল না — মিলবে না ধরে নেওয়াই নিরাপদ
+            return null;
+        }
     }
 
     private string? ResolveToken() => Volatile.Read(ref _token) ?? _tokenSource?.CurrentToken;

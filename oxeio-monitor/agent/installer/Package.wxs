@@ -70,6 +70,17 @@
     <Property Id="PORTALURL" Secure="yes" />
     <Property Id="POLICYURL" Secure="yes" />
 
+    <!--
+      **I01** — সার্ভারের সার্টের SPKI হ্যাশ (base64), কমা দিয়ে ভাগ করা।
+      `deploy/make-cert.ps1` মানটা ছাপে।
+
+      ⚠️ একাধিক পিন দেওয়া যায়, আর নবায়নের দিন দিতেই হবে — পুরোনো ও নতুন
+         দুটোই কিছুক্ষণ বৈধ না থাকলে সার্ট বদলানোর মুহূর্তে ফ্লিট সংযোগ
+         হারাত (deploy/README § ৭.১)।
+      ⚠️ না দিলে পিনিং বন্ধ থাকে, আর এজেন্ট লগে সেটা স্পষ্ট করে বলে।
+    -->
+    <Property Id="SERVERPIN" Secure="yes" />
+
     <!-- সার্ভারের ঠিকানা ছাড়া ইনস্টল করার কোনো মানে নেই — এজেন্ট বসত,
          চলত, আর কিছুই পাঠাত না। শুরুতেই থামিয়ে দেওয়া ভালো। -->
     <!--
@@ -110,6 +121,7 @@
           <RegistryValue Name="EnrollmentCode" Type="string" Value="[ENROLLCODE]" />
           <RegistryValue Name="StaffPortalUrl" Type="string" Value="[PORTALURL]" />
           <RegistryValue Name="PolicyUrl" Type="string" Value="[POLICYURL]" />
+          <RegistryValue Name="ServerPin" Type="string" Value="[SERVERPIN]" />
           <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLFOLDER]" />
         </RegistryKey>
       </Component>

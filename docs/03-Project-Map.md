@@ -61,6 +61,9 @@ oxeio-monitor/
 ├── agent/                                  # ── C# .NET 8 ──
 │   ├── src/
 │   │   ├── oXeio.Core/                     # ⭐ **নিয়ম** — net8.0, শূন্য Win32
+│   │   │   ├── Agent/CertificatePin.cs     ✅ ⭐ I01 — পিন মিলল কি না
+│   │   │   │   #  ⚠️ পিন **আর** চেইন, দুটোই — কলব্যাক বসালে .NET-এর
+│   │   │   │   #     নিজের যাচাই বন্ধ হয়ে যায়
 │   │   │   ├── Time/MonotonicClock.cs      ✅ ঘড়ি বদলালেও অটুট
 │   │   │   ├── Time/DhakaTime.cs           ✅ সার্ভারের dhaka-time.ts-এর প্রতিরূপ
 │   │   │   ├── Tracking/IdleStateMachine.cs ✅ ⭐ সিস্টেমের হৃদয়
