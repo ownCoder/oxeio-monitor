@@ -37,6 +37,16 @@ internal sealed class AgentHost : IAsyncDisposable
 {
     private static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan SyncEvery = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// A05 — কিউয়ের ডিস্ক-বাজেট কত ঘন ঘন প্রয়োগ হবে।
+    ///
+    /// ⚠️ প্রতি সিঙ্ক-চক্রে (৩০ সে.) নয়: জরিপটা পুরো টেবিল স্ক্যান করে,
+    /// আর কিউ বড় হলে সেটা অকারণে ডিস্ক ঘোরাত। ঘণ্টায় একবারই যথেষ্ট —
+    /// দিনে ~১৭০ MB জমে, আর ক্যাপ ২ GiB। ⭐ তবে লেখা ব্যর্থ হলে
+    /// অপেক্ষা করা হয় না (`LastWriteError`)।
+    /// </summary>
+    private static readonly TimeSpan BudgetSweepEvery = TimeSpan.FromHours(1);
     /// <summary>
     /// heartbeat-এর ব্যবধান সার্ভারের কনফিগ থেকে (<c>heartbeatSec</c>), তবে
     /// সীমার ভেতরে।
@@ -105,6 +115,9 @@ internal sealed class AgentHost : IAsyncDisposable
     /// <see cref="TrackLoop"/> <c>Interlocked.Exchange</c> দিয়ে তুলে নেয়।
     /// </summary>
     private PendingConfig? _pendingConfig;
+
+    /// <summary>শেষ কবে বাজেট প্রয়োগ হয়েছে — শুধু সিঙ্ক লুপ ছোঁয়।</summary>
+    private DateTimeOffset _lastBudgetSweep = DateTimeOffset.MinValue;
 
     private volatile bool _sessionSuspended;
     private long _activeTodaySec;
@@ -522,13 +535,85 @@ internal sealed class AgentHost : IAsyncDisposable
 
     private async Task SyncLoopAsync(CancellationToken ct)
     {
+        // A05 — চালু হওয়ার সাথে সাথেই একবার। ⚠️ এটাই সবচেয়ে জরুরি কলটা:
+        //    এজেন্ট বন্ধ থাকা অবস্থায় (বা ক্র্যাশের পর) কিউ যতটা বেড়েছে
+        //    সেটা এখানেই ধরা পড়ে, প্রথম আপলোডের আগে।
+        //    (`_lastBudgetSweep` তখনো MinValue, তাই OutboxSweep একে
+        //     Startup বলে চেনে।)
+        await MaybeEnforceOutboxBudgetAsync(ct);
+
         while (!ct.IsCancellationRequested)
         {
             if (_worker is not null) await _worker.DrainOnceAsync(ct);
+
+            await MaybeEnforceOutboxBudgetAsync(ct);
+
             PublishStatus();
 
             try { await Task.Delay(SyncEvery, ct); }
             catch (OperationCanceledException) { return; }
+        }
+    }
+
+    /// <summary>
+    /// A05 — কিউয়ের ডিস্ক-বাজেট প্রয়োগ।
+    ///
+    /// ⚠️⚠️ <see cref="SqliteOutboxStore.EnforceBudgetAsync"/>-এর ডকে চুক্তিটা
+    /// লেখাই ছিল — <i>"সিঙ্ক ওয়ার্কার শুধু এটাই ডাকবে (স্টার্টআপে একবার,
+    /// তারপর ঘণ্টায় একবার আর <c>LastWriteError</c> দেখা দিলেই সঙ্গে সঙ্গে)"</i>।
+    /// <b>কলারটা কোনোদিন লেখা হয়নি।</b> ফলে ২ GiB-র ক্যাপ, ৭ দিনের বয়সসীমা,
+    /// eviction-এর ক্রম — পুরো ব্যবস্থাটা তৈরি হয়ে অচল পড়ে ছিল, আর একটা
+    /// PC সপ্তাহখানেক অফলাইন থাকলে কিউ বাড়তেই থাকত।
+    ///
+    /// ⭐ <c>LastWriteError</c>-এ সাথে সাথে চালানোটা কেন: ওই সময়েই ডিস্ক
+    /// ভরে গেছে, অর্থাৎ ঠিক তখনই জায়গা খালি করা দরকার। ঘণ্টার অপেক্ষায়
+    /// থাকলে মাঝের সময়টুকুর ডেটা নীরবে হারাত।
+    /// </summary>
+    private async Task MaybeEnforceOutboxBudgetAsync(CancellationToken ct)
+    {
+        if (_outbox is null) return;
+
+        var reason = OutboxSweep.Check(
+            _lastBudgetSweep, _clock.Now, BudgetSweepEvery,
+            hasWriteError: _outbox.LastWriteError is not null);
+
+        if (reason == OutboxSweep.Reason.No) return;
+
+        await EnforceOutboxBudgetAsync(Describe(reason), ct);
+    }
+
+    private static string Describe(OutboxSweep.Reason reason) => reason switch
+    {
+        OutboxSweep.Reason.Startup => "startup",
+        OutboxSweep.Reason.WriteFailed => "the outbox could not write",
+        _ => "hourly",
+    };
+
+    private async Task EnforceOutboxBudgetAsync(string why, CancellationToken ct)
+    {
+        if (_outbox is null) return;
+
+        _lastBudgetSweep = _clock.Now;
+
+        try
+        {
+            var plan = await _outbox.EnforceBudgetAsync(OutboxBudget.Default, _clock.Now, ct);
+
+            // ⚠️ কিছু বাদ পড়লে **সবসময়** লগে যায়। নীরবে ফেলে দিলে একটা
+            //    মেশিন মাসের পর মাস ডেটা হারাত আর রিপোর্টে শুধু "ওর ঘণ্টা
+            //    কম" দেখা যেত — সন্দেহটা পড়ত স্টাফের উপর, এজেন্টের উপর নয়।
+            //    (বিস্তারিত সারি ধরে DropLog-এ যায়।)
+            if (!plan.IsEmpty)
+            {
+                _log.Warn(
+                    $"Outbox trimmed ({why}): {plan.ExpiredRowIds.Count} past the age limit, " +
+                    $"{plan.OverBudgetRowIds.Count} over the disk budget");
+            }
+        }
+        catch (Exception ex)
+        {
+            // ⚠️ ছাঁটাই ব্যর্থ হলে সিঙ্ক থামে না — ট্র্যাকিং তো নয়ই।
+            _log.Error("Could not enforce the outbox budget", ex);
         }
     }
 
