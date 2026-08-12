@@ -44,6 +44,24 @@ internal sealed class FileLog : ISyncLog
     private readonly string _path;
     private readonly UTF8Encoding _utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
+    /// <summary>
+    /// ⚠️⚠️ <b>নতুন ফাইলের শুরুতে UTF-8 BOM বসাতেই হয়।</b>
+    ///
+    /// রানবুক অ্যাডমিনকে বলে <c>Get-Content …gent.log -Tail 50</c> চালাতে,
+    /// আর <b>Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে</b> — তখন
+    /// প্রতিটা <c>·</c> <c>—</c> <c>✅</c> ভেঙে <c>Â·</c> <c>â€”</c>
+    /// <c>âœ…</c> হয়ে দেখায়। ফাইলটা ঠিকই লেখা, শুধু পড়াই যায় না — আর
+    /// যিনি সমস্যা খুঁজতে লগ খুলেছেন তিনি প্রথমেই ভাবেন ফাইলটাই নষ্ট।
+    ///
+    /// ⚠️ Notepad-এও একই — BOM ছাড়া সে ANSI ধরে।
+    ///
+    /// ⭐ ঠিক এই ভুলটাই আজ সকালে <c>installer/build.ps1</c>-এ ধরা পড়েছে,
+    /// উল্টো পিঠ থেকে: BOM না থাকায় PowerShell স্ক্রিপ্টটা <b>পার্সই</b>
+    /// করতে পারেনি। একই দিনে দুবার — তাই নিয়মটা এখানে লিখে রাখা:
+    /// <b>Windows-এ যে টেক্সট ফাইল মানুষ পড়বে, তাতে BOM দাও।</b>
+    /// </summary>
+    private static readonly byte[] Bom = [0xEF, 0xBB, 0xBF];
+
     /// <summary>কোন দিনের লেখা চলছে — বদলালেই ঘোরাতে হবে।</summary>
     private DateOnly _openDay;
 
@@ -99,6 +117,10 @@ internal sealed class FileLog : ISyncLog
                 //    আমাদের কাছে শুধু লেখার জায়গা, সত্যের উৎস নয়।
                 using var stream = new FileStream(
                     _path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite, 4096, FileOptions.None);
+
+                // ⚠️ শুধু **ফাঁকা ফাইলে** — প্রতিবার লিখলে মাঝখানে BOM জমত
+                //    আর লাইনগুলো নষ্ট হতো। দিন বদলে নতুন ফাইল হলে আবার বসে।
+                if (stream.Length == 0) stream.Write(Bom, 0, Bom.Length);
 
                 var bytes = _utf8.GetBytes(line);
                 stream.Write(bytes, 0, bytes.Length);

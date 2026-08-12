@@ -103,4 +103,44 @@ public class FileLogTests : IDisposable
     [Fact]
     public void নাম_থেকে_তারিখটা_ঠিকঠাক_পড়ে() =>
         Assert.Equal(new DateOnly(2026, 8, 12), FileLog.DayFromName("agent-2026-08-12.log"));
+
+    /**
+     * ⚠️⚠️ রানবুক অ্যাডমিনকে `Get-Content …gent.log` চালাতে বলে, আর
+     * **Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে** — তখন প্রতিটা
+     * `·` `—` `✅` ভেঙে `Â·` `â€”` `âœ…` হয়ে দেখায়। ফাইলটা ঠিকই লেখা,
+     * শুধু পড়াই যায় না।
+     *
+     * ⭐ ১২ আগস্ট আসল মেশিনে চালিয়ে ধরা পড়েছে — টেস্টে নয়, চোখে।
+     */
+    [Fact]
+    public void নতুন_ফাইলের_শুরুতে_utf8_bom_বসে()
+    {
+        var log = new FileLog(_dir);
+        log.Info("hello · world — ✅");
+
+        var raw = System.IO.File.ReadAllBytes(Path.Combine(_dir, FileLog.CurrentFileName));
+
+        Assert.Equal(0xEF, raw[0]);
+        Assert.Equal(0xBB, raw[1]);
+        Assert.Equal(0xBF, raw[2]);
+    }
+
+    /** ⚠️ প্রতি লাইনে বসালে মাঝখানে BOM জমত আর লেখাগুলো নষ্ট হতো */
+    [Fact]
+    public void bom_একবারই_বসে()
+    {
+        var log = new FileLog(_dir);
+        log.Info("এক");
+        log.Info("দুই");
+        log.Info("তিন");
+
+        var raw = System.IO.File.ReadAllBytes(Path.Combine(_dir, FileLog.CurrentFileName));
+        var count = 0;
+        for (var i = 0; i + 2 < raw.Length; i++)
+        {
+            if (raw[i] == 0xEF && raw[i + 1] == 0xBB && raw[i + 2] == 0xBF) count++;
+        }
+
+        Assert.Equal(1, count);
+    }
 }
