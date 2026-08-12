@@ -7,6 +7,7 @@ import { AlertDispatcher } from './alerts.dispatcher';
 import { AlertMailer } from './alerts.mailer';
 import { AlertsScheduler } from './alerts.scheduler';
 import { AlertsService } from './alerts.service';
+import { DeviceOverlapCheck } from './device-overlap.check';
 import { DiskCheck } from './disk.check';
 import { NoActivityCheck } from './no-activity.check';
 
@@ -27,6 +28,7 @@ import { NoActivityCheck } from './no-activity.check';
     AlertDispatcher,
     AgentDownCheck,
     AgentTamperCheck,
+    DeviceOverlapCheck,
     DiskCheck,
     NoActivityCheck,
     AlertsScheduler,

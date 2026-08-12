@@ -12,7 +12,7 @@ import { hash, verify } from '@node-rs/argon2';
  *
  * প্যারামিটার OWASP-এর সুপারিশ: m = 19 MiB · t = 2 · p = 1
  */
-const ARGON2_OPTIONS = {
+export const ARGON2_OPTIONS = {
   memoryCost: 19456,
   timeCost: 2,
   parallelism: 1,

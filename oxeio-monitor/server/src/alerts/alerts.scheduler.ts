@@ -7,11 +7,13 @@ import {
   DISK_TICK_MS,
   DISPATCH_TICK_MS,
   NO_ACTIVITY_TICK_MS,
+  OVERLAP_TICK_MS,
   STARTUP_GRACE_MIN,
   TAMPER_TICK_MS,
 } from './alerts.constants';
 import { AlertDispatcher } from './alerts.dispatcher';
 import { isWithinStartupGrace } from './alerts.rules';
+import { DeviceOverlapCheck } from './device-overlap.check';
 import { DiskCheck } from './disk.check';
 import { NoActivityCheck } from './no-activity.check';
 
@@ -40,6 +42,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     private readonly tamper: AgentTamperCheck,
     private readonly disk: DiskCheck,
     private readonly noActivity: NoActivityCheck,
+    private readonly overlap: DeviceOverlapCheck,
     private readonly dispatcher: AlertDispatcher,
   ) {}
 
@@ -70,11 +73,14 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     this.schedule('no-activity', NO_ACTIVITY_TICK_MS, (now) =>
       this.noActivity.runOnce(now),
     );
+    this.schedule('device-overlap', OVERLAP_TICK_MS, (now) =>
+      this.overlap.runOnce(now),
+    );
     this.schedule('dispatch', DISPATCH_TICK_MS, (now) =>
       this.dispatcher.runOnce(now),
     );
 
-    this.logger.log('Alert checks started (G01 · G02 · G03 · G06 · G07)');
+    this.logger.log('Alert checks started (G01 · G02 · G03 · G06 · G07 · G32)');
   }
 
   onModuleDestroy(): void {
@@ -92,6 +98,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       this.tamper.runOnce(now),
       this.disk.runOnce(now),
       this.noActivity.runOnce(now),
+      this.overlap.runOnce(now),
     ]);
     await this.dispatcher.runOnce(now);
     return counts.reduce((a, b) => a + b, 0);
