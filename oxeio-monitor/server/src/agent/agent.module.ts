@@ -27,6 +27,8 @@ import { UpdateService } from './update.service';
     ScreenshotIngestService,
     UpdateService,
   ],
-  exports: [AgentConfigService, ClockDriftService],
+  // ⚠️ `ProgressService` export করা হয় **কর্মীর নিজের পাতার জন্য**
+  //    (`MeModule`) — tray আর ওয়েব যেন একই সংখ্যা দেখায়।
+  exports: [AgentConfigService, ClockDriftService, ProgressService],
 })
 export class AgentModule {}

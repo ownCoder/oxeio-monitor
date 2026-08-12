@@ -8,6 +8,7 @@ import { GalleryPage } from './pages/GalleryPage';
 import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MonthlyPage } from './pages/MonthlyPage';
+import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SecurityPage } from './pages/security/SecurityPage';
@@ -46,10 +47,10 @@ function Router() {
 
   const isOwner = user.role === 'owner';
   /**
-   * ⚠️ সার্ভারের গার্ড পড়ে দেখা: স্টাফের জন্য `/screenshots` **ছাড়া** আর
-   *    কোনো ড্যাশবোর্ড endpoint খোলা নেই (`live`, `employees`, `activity`,
-   *    `reports` — সবগুলোয় ক্লাস-লেভেল `@Roles(owner, manager)`)। তাই
-   *    লগইনের পর তাকে লাইভ বোর্ডে নামালে প্রথম যা দেখত তা একটা ৪০৩ বাক্স।
+   * ⚠️ সার্ভারের গার্ড পড়ে দেখা: স্টাফের জন্য `/screenshots` ও `/me`
+   *    **ছাড়া** আর কোনো ড্যাশবোর্ড endpoint খোলা নেই (`live`, `employees`,
+   *    `activity`, `reports` — সবগুলোয় ক্লাস-লেভেল `@Roles(owner, manager)`)।
+   *    তাই লগইনের পর তাকে লাইভ বোর্ডে নামালে প্রথম যা দেখত তা একটা ৪০৩ বাক্স।
    */
   const isStaff = user.role === 'employee';
 
@@ -59,7 +60,12 @@ function Router() {
         <Route
           index
           element={
-            isStaff ? <Navigate to="/screenshots" replace /> : <LiveBoardPage />
+            /*
+              ⭐ স্টাফ নামে **নিজের পাতায়**, গ্যালারিতে নয়। আগে গ্যালারিই
+              ছিল (তখন আর কিছু ছিল না), কিন্তু লগইনের পর প্রথম যা দেখা
+              দরকার তা নিজের ছবির গ্রিড নয় — নিজের ঘণ্টা।
+            */
+            isStaff ? <Navigate to="/me" replace /> : <LiveBoardPage />
           }
         />
 
@@ -69,6 +75,17 @@ function Router() {
              লাইভ বোর্ডের কার্ড থেকে ক্লিক করে আসার জায়গা।
         */}
         <Route path="staff/:id" element={<EmployeeDetailPage />} />
+
+        {/*
+          ⭐ **J05 · J08** — tray-র "My data" মেনু ঠিক এখানেই নামে
+          (`StaffPortalUrl`)। পাতাটা না থাকায় ওই মেনুটা এতদিন ৪০৪ দেখাত।
+
+          ⚠️ রুটটা **সব ভূমিকার জন্য**, `isStaff &&` দিয়ে ঘেরা নয় — owner
+          বা manager নিজেও একজন কর্মী হতে পারেন (`users.employee_id`
+          বসানো)। যাঁর সেটা নেই, সার্ভার তাঁকে পরিষ্কার ৪০৩ বলে, আর
+          পাতাটা সেটাই দেখায়।
+        */}
+        <Route path="me" element={<MyDataPage />} />
 
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />
