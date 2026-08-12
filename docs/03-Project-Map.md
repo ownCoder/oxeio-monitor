@@ -70,6 +70,10 @@ oxeio-monitor/
 │   │   │   ├── Tracking/IdleMath.cs        ✅ wraparound + ভবিষ্যৎ-টাইমস্ট্যাম্প ক্ল্যাম্প
 │   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
+│   │   │   ├── Agent/TrackingGate.cs       ✅ ⭐ গোনা হবে কি না — সাইন ইন ও revoke
+│   │   │   │   #  ⚠️ চারটে জায়গা এটাই মানে: TrackLoop · CaptureGate ·
+│   │   │   │   #     TodayForm · TrayTooltip। আগে শর্তটা দুবার লেখা ছিল,
+│   │   │   │   #     আর একবার বাদই পড়ে গিয়েছিল (G79)
 │   │   │   ├── Capture/SlotScheduler.cs    ✅ ৫ মিনিট স্লট + র‍্যান্ডম
 │   │   │   ├── Capture/FrameQuality.cs     ✅ ছবি কালো/এক-রঙা কি না
 │   │   │   ├── Capture/PixelCopy.cs        ✅ RowPitch সামলানো + ঘূর্ণন

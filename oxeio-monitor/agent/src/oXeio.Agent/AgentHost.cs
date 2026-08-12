@@ -329,9 +329,21 @@ internal sealed class AgentHost : IAsyncDisposable
                 // ⭐ H06 — ডিভাইস বাতিল হলে ট্র্যাকিংও থামে, শুধু আপলোড নয়।
                 //    আগে শুধু আপলোড থামত, তাই ছাঁটাই হওয়া কর্মীর PC-তে
                 //    সেগমেন্ট ও অ্যাপ-ব্যবহার জমতেই থাকত।
-                if (_credentials?.IsRevoked == true)
+                //
+                // ⚠️⚠️ সাইন ইন না করা থাকলেও একই — গোনা শুরুর আগে জানা
+                //    দরকার ঘণ্টাগুলো **কার**। নইলে ইনস্টল করে রেখে যাওয়া
+                //    মেশিনে অ্যাডমিনের সময়টুকু আউটবক্সে জমত, আর স্টাফ সাইন
+                //    ইন করামাত্র সেটা তার খাতায় গিয়ে বসত (TrackingGate)।
+                var gate = TrackingGate.Check(
+                    _credentials?.IsEnrolled == true,
+                    _credentials?.IsRevoked == true);
+
+                if (gate != TrackingGate.Verdict.Allowed)
                 {
-                    StopTrackingForRevoke(now);
+                    // ⚠️ শুধু revoke-এ খোলা সেগমেন্ট বন্ধ করার দরকার হয়।
+                    //    সাইন ইনের আগে খোলা সেগমেন্ট থাকতেই পারে না।
+                    if (gate == TrackingGate.Verdict.Revoked) StopTrackingForRevoke(now);
+
                     Thread.Sleep(Tick);
                     continue;
                 }
@@ -385,10 +397,14 @@ internal sealed class AgentHost : IAsyncDisposable
 
     private async Task CaptureSlotAsync(SlotScheduler.Slot slot, CancellationToken ct)
     {
-        // A04 · A04b · H06 — চারটে শর্তই CaptureGate-এ, কারণ guard clause
+        // A04 · A04b · H06 — শর্তগুলো সব CaptureGate-এ, কারণ guard clause
         // হিসেবে এখানে ছড়ানো থাকলে একটা অনুপস্থিত শর্তও কোনো টেস্ট ধরত না।
         var verdict = CaptureGate.Check(
-            _machine!.State, _credentials?.IsRevoked == true, _window, slot.FireAt);
+            _machine!.State,
+            _credentials?.IsEnrolled == true,
+            _credentials?.IsRevoked == true,
+            _window,
+            slot.FireAt);
 
         if (verdict != CaptureGate.Verdict.Allowed)
         {
@@ -544,7 +560,20 @@ internal sealed class AgentHost : IAsyncDisposable
         {
             try
             {
-                RecordApps(_apps.Tick(_clock.Now, _machine?.State ?? SegmentState.Idle));
+                // ⚠️⚠️ এই গেটটা **আলাদা করে** লাগে। TrackLoop-এ বসানো গেট
+                //    এই লুপটাকে থামায় না — দুটো আলাদা থ্রেড, আর এই লুপ
+                //    নিজেই নিজের সারি কিউতে ফেলে।
+                //
+                // ⭐ মাপতে গিয়েই ধরা পড়েছে: TrackLoop ও CaptureGate গেট
+                //    করার পরেও ৭ মিনিটে একটা সারি জমেছিল — `oXeio.Agent.exe`,
+                //    ৩০০ সেকেন্ড। অর্থাৎ সাইন-ইন জানালাটা কতক্ষণ খোলা ছিল,
+                //    সেটাই অ্যাপ-ব্যবহার হিসেবে জমা হচ্ছিল।
+                if (TrackingGate.Allows(
+                        _credentials?.IsEnrolled == true,
+                        _credentials?.IsRevoked == true))
+                {
+                    RecordApps(_apps.Tick(_clock.Now, _machine?.State ?? SegmentState.Idle));
+                }
             }
             catch (Exception ex)
             {
@@ -1126,6 +1155,21 @@ internal sealed class AgentHost : IAsyncDisposable
     {
         if (_outbox is null) return;
 
+        // ⚠️ সাইন ইনের আগে ইভেন্টও নয় — নিয়মটা "কিছুই যাবে না", আংশিক নয়।
+        //    এগুলো সবই বিদায়ী ইভেন্ট (agent_stop · logoff · shutdown), তাই
+        //    সাইন ইন না করা মেশিনে একটাই সারি জমত — কিন্তু সেটাও পরে কেউ
+        //    সাইন ইন করলে **তার** নামে চলে যেত।
+        //
+        // ⚠️ revoke হলেও বাদ: টোকেন মুছে গেছে, তাই সারিটা কোনোদিন সার্ভারে
+        //    যেতে পারত না — শুধু আউটবক্স বড় করত (StopTrackingForRevoke-এর
+        //    একই যুক্তি)।
+        if (!TrackingGate.Allows(
+                _credentials?.IsEnrolled == true,
+                _credentials?.IsRevoked == true))
+        {
+            return;
+        }
+
         _outbox.EnqueueAsync(OutboxCodec.Item(record, DateTimeOffset.UtcNow))
                .ContinueWith(
                    t => _log.Error($"Could not queue the event ({record.Type})", t.Exception),
@@ -1235,6 +1279,11 @@ internal sealed class AgentHost : IAsyncDisposable
             Health = _worker?.Health ?? SyncHealth.Ok,
             HealthDetail = _worker?.HealthDetail,
             Paused = false,
+
+            // ⚠️ IsEnrolled, NeedsEnrollment-এর উল্টো নয়। ক্রেডেনশিয়াল ফাইল
+            //    থাকলেও পড়া না গেলে (নষ্ট, বা অন্য মেশিনের DPAPI) দুটোই
+            //    মিথ্যা — তখন "সাইন ইন হয়ে গেছে" বলাটা সরাসরি ভুল হতো।
+            Enrolled = _credentials?.IsEnrolled == true,
         };
     }
 
@@ -1364,7 +1413,14 @@ internal sealed class AgentHost : IAsyncDisposable
         //    SqliteOutboxStore ওই টোকেনটা ইচ্ছাকৃতভাবে উপেক্ষা করে (অর্ধেক লেখা
         //    সারি তৈরি হওয়া ঠেকাতে), তাই ওটা দিলে "ছাদ আছে" ভেবে বসে থাকতাম
         //    অথচ বাস্তবে কিছুই থামাত না।
-        if (_outbox is not null && TryMarkClosing(AgentEventTypes.AgentStop))
+        // ⚠️ এই পথটা `RaiseEvent()`-কে **এড়িয়ে যায়** (সরাসরি EnqueueAsync,
+        //    কারণ এখানে একটা সময়-বাজেট মানতে হয়), তাই গেটটা এখানেও আলাদা
+        //    করে লাগে। ঠিক এভাবেই AppUsageLoop-টা প্রথমে বাদ পড়েছিল।
+        if (_outbox is not null
+            && TrackingGate.Allows(
+                _credentials?.IsEnrolled == true,
+                _credentials?.IsRevoked == true)
+            && TryMarkClosing(AgentEventTypes.AgentStop))
         {
             try
             {

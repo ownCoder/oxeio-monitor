@@ -31,6 +31,12 @@ internal static class TrayTooltip
 
     public const string RevokedLine = "Tracking is stopped on this device";
 
+    /// <summary>
+    /// ⚠️ "not counting" শব্দটা সরাবেন না। শুধু "Not signed in" লিখলে সেটা
+    /// একটা নিরীহ তথ্য শোনায়; আসল খবর হলো <b>এই মুহূর্তে তার ঘণ্টা জমছে না</b>।
+    /// </summary>
+    public const string NotEnrolledLine = "Not signed in — not counting hours";
+
     public static string StateName(SegmentState state) => state switch
     {
         SegmentState.Active => "Working",
@@ -57,13 +63,32 @@ internal static class TrayTooltip
     {
         var lines = new List<string>(3);
 
-        switch (status.Health)
+        // ⚠️⚠️ Health-এর **আগে**। সাইন ইন না করা থাকলে আউটবক্স খালি, তাই
+        //    `SyncHealthPolicy` সুস্থ (`Ok`) বলে — আর তখন টুলটিপে লেখা থাকত
+        //    "Working · 0:00 today"। অর্থাৎ যে কারণে কিছুই হচ্ছে না, সেটাই
+        //    ছিল একমাত্র অদৃশ্য জিনিস।
+        //
+        // ⭐ ক্রমটা এখানে হাতে লেখা হয়নি, `TrackingGate` থেকে আসে। প্রথমে
+        //    হাতে লিখতে গিয়েই ভুলটা হয়েছিল: `!Enrolled` আগে বসানোয় **বাতিল**
+        //    ডিভাইসেও "Not signed in" দেখাত (revoke টোকেন মুছে ফেলে, তাই
+        //    তখন দুটো শর্তই সত্যি)। টেস্টটা ধরেছে — ছাঁদটার পুরো কারণই এটা।
+        switch (TrackingGate.Check(status.Enrolled, status.Health is SyncHealth.Revoked))
         {
-            case SyncHealth.Revoked:
+            case TrackingGate.Verdict.Revoked:
                 lines.Add(RevokedLine);
                 lines.Add("Contact your administrator");
-                break;
+                return lines;
 
+            case TrackingGate.Verdict.NotEnrolled:
+                lines.Add(NotEnrolledLine);
+                lines.Add("Open oXeio from the tray to sign in");
+                return lines;
+
+            default: break;
+        }
+
+        switch (status.Health)
+        {
             case SyncHealth.Failing:
                 // ⚠️ এখানে আজকের ঘণ্টা ইচ্ছাকৃতভাবে বাদ। ৬৩ ঘরে দুটোই আঁটে না,
                 //    আর এই মুহূর্তে জরুরি খবর হলো "ডেটা হারায়নি" — ঘণ্টার হিসাব

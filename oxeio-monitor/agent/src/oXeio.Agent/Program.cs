@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
@@ -192,12 +192,15 @@ internal static partial class Program
     /// যথাক্রমে একটা নতুন লগঅন, আধ ঘণ্টার কাজ, নেট বিচ্ছিন্ন করা আর একটা
     /// পুরো মাস লাগত। ডিজাইন বদলে প্রতিবার সেটা করা যায় না।
     ///
-    /// <c>--preview-today [loading|failing|met]</c>
+    /// <c>--preview-today [loading|failing|met|signin]</c>
+    ///
+    /// ⚠️ <c>signin</c> — G79-এর অবস্থা (সাইন ইন হয়নি)। এটা আসল ডেটায়
+    /// দেখতে হলে একটা তাজা ইনস্টল আর সাইন ইন <b>না</b> করে বসে থাকা লাগত।
     /// </summary>
     private static int PreviewToday(string[] args)
     {
         var which = args
-            .FirstOrDefault(a => a is "loading" or "failing" or "met") ?? "working";
+            .FirstOrDefault(a => a is "loading" or "failing" or "met" or "signin") ?? "working";
 
         using var fonts = new TrayFonts();
 
@@ -223,10 +226,27 @@ internal static partial class Program
         return 0;
     }
 
+    /// <summary>
+    /// ⚠️ প্রতিটা নমুনায় <c>Enrolled</c> স্পষ্ট করে বসানো — কারণ
+    /// <see cref="AgentStatus.Starting"/>-এ সেটা <c>false</c> (চালু হওয়ার
+    /// মুহূর্তে ক্রেডেনশিয়াল পড়াই হয়নি)। না বসালে **সব প্রিভিউ** "Not
+    /// signed in" দেখাত, আর tray-র নকশা দেখার পুরো ব্যবস্থাটাই অকেজো হতো।
+    /// </summary>
     private static AgentStatus SampleStatus(string which) => which switch
     {
+        // ⭐ G79-এর অবস্থাটা — লাল বিন্দু, "Not signed in", আর গোনা বন্ধ।
+        //    নকশাটা দেখার একমাত্র উপায় এটাই, কারণ আসল অবস্থাটা তৈরি করতে
+        //    হলে একটা তাজা ইনস্টল আর সাইন ইন **না** করে বসে থাকা লাগত।
+        "signin" => AgentStatus.Starting with
+        {
+            State = SegmentState.Active,
+            MonthlyKnown = false,
+            Enrolled = false,
+        },
+
         "loading" => AgentStatus.Starting with
         {
+            Enrolled = true,
             State = SegmentState.Active,
             ActiveToday = TimeSpan.FromMinutes(72),
             MonthlyKnown = false,
@@ -234,6 +254,7 @@ internal static partial class Program
 
         "failing" => AgentStatus.Starting with
         {
+            Enrolled = true,
             State = SegmentState.Idle,
             ActiveToday = TimeSpan.FromMinutes(348),
             ActiveThisMonth = TimeSpan.FromMinutes(5780),
@@ -246,6 +267,7 @@ internal static partial class Program
 
         "met" => AgentStatus.Starting with
         {
+            Enrolled = true,
             State = SegmentState.Locked,
             ActiveToday = TimeSpan.FromMinutes(446),
             ActiveThisMonth = TimeSpan.FromMinutes(12675),
@@ -259,6 +281,7 @@ internal static partial class Program
         //    যেখানে ভরাটটা গোল হয়ে শূন্য হয়ে যেতে পারত।
         _ => AgentStatus.Starting with
         {
+            Enrolled = true,
             State = SegmentState.Active,
             ActiveToday = TimeSpan.FromMinutes(7),
             ActiveThisMonth = TimeSpan.FromMinutes(42),

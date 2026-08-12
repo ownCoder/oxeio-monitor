@@ -132,6 +132,37 @@ if ($ServerUrl) {
 
 Write-Host '── ১· publish ────────────────────────────────' -ForegroundColor Cyan
 
+# ⚠️⚠️ চলন্ত এজেন্ট obj\publish-এর DLL-গুলো **লক করে রাখে**, আর তখন নিচের
+#    Remove-Item "Access denied" দিয়ে থামে। বার্তাটা Accessibility.dll নিয়ে,
+#    তাই আসল কারণটা ("তুমি নিজেই ওটা চালাচ্ছ") কোথাও লেখা থাকে না।
+#
+# ⚠️ এটা নিছক অসুবিধা নয় — বিল্ড থেমে গেলেও bin/-এ **আগের** MSI পড়ে থাকে,
+#    আর obj\publish-এ **আগের** exe। ১২ আগস্ট রাতে ঠিক এই ফাঁদে পড়ে দুবার
+#    পুরোনো বাইনারি মেপে "ফিক্স কাজ করছে" ভাবা হয়েছিল।
+# ⚠️ শর্তটা "oXeio চলছে" নয়, "**obj\publish থেকে** চলছে"। ইনস্টল করা এজেন্ট
+#    (Program Files) বা পরীক্ষার আলাদা কপি এই ফোল্ডারের কিছুই লক করে না —
+#    ওগুলোতেও থামালে বিল্ড করতে হলে প্রতিবার নিজের ইনস্টলেশন বন্ধ করতে হতো।
+$locking = @(
+    Get-Process -Name 'oXeio.Agent', 'oXeio.Watchdog' -ErrorAction SilentlyContinue |
+        Where-Object {
+            # ⚠️ Path পড়তে গিয়ে ছুড়তে পারে (অন্য ইউজারের প্রসেস) — তখন
+            #    ধরে নেওয়া হয় এটা আমাদের ফোল্ডারের নয়, নইলে বিল্ড অকারণে আটকাত
+            $p = try { $_.Path } catch { $null }
+            $p -and $p.StartsWith($publishDir, [StringComparison]::OrdinalIgnoreCase)
+        }
+)
+if ($locking) {
+    throw @"
+oXeio চলছে ($(($locking | ForEach-Object { "$($_.Name)#$($_.Id)" }) -join ', ')) —
+publish ফোল্ডারের ফাইল লক করা, তাই বিল্ড করা যাবে না।
+
+    Stop-Process -Name oXeio.Agent, oXeio.Watchdog -Force
+
+⚠️ পরীক্ষার জন্য এজেন্ট চালাতে হলে obj\publish থেকে **নয়** — আগে অন্য
+   ফোল্ডারে কপি করে নিন, নইলে পরের বিল্ডটা চুপচাপ পুরোনো বাইনারি রেখে দেবে।
+"@
+}
+
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
 

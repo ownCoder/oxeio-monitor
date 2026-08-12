@@ -28,6 +28,7 @@ public class MonthlyMilestoneTests
         QueueDepth = 0,
         Health = SyncHealth.Ok,
         Paused = false,
+        Enrolled = true,
     };
 
     [Fact]

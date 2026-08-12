@@ -75,13 +75,27 @@ internal sealed class TodayForm : OwnerDrawnForm
         stack.Gap(6);
 
         // ⭐ অবস্থাটা সংখ্যার পাশেই — জানালার একমাত্র এটাই মিনিটে মিনিটে বদলায়।
+        //
+        // ⚠️⚠️ সাইন ইন না করা থাকলে **"Working" লেখা যাবে না**। আগে ঠিক
+        //    সেটাই হতো: সবুজ বিন্দু আর "Working", অথচ গোনাও হচ্ছিল না,
+        //    সার্ভারেও কিছু যাচ্ছিল না। স্টাফ দেখত সব ঠিক আছে, তাই সাইন ইন
+        //    করার কথাই মাথায় আসত না — আর দিনের শেষে তার ঘণ্টা শূন্য।
         stack.Hero(
             UiText.Duration(status.ActiveToday),
             "hours today",
-            status.Paused ? "Tracking paused" : TrayTooltip.StateName(status.State),
+            HeroState(status),
             StateDot(status));
 
-        stack.Line("Counted so far — idle time already removed", TrayFontRole.Small, Muted);
+        stack.Line(
+            status.Enrolled
+                ? "Counted so far — idle time already removed"
+                : TrackingGate.Explain(TrackingGate.Verdict.NotEnrolled),
+            TrayFontRole.Small,
+            // ⚠️ Brand (লাল), Idle (আম্বার) নয়। আম্বার এই জানালায় ইতিমধ্যেই
+            //    "থেমে আছে/পিছিয়ে আছে" বোঝায় — অস্থায়ী অবস্থা। সাইন ইন না
+            //    করা মানে **কিছুই গোনা হচ্ছে না**, ঠিক revoke-এর মতোই আটকে
+            //    থাকা, আর সেটার রং এখানে বরাবরই লাল।
+            status.Enrolled ? Muted : Theme.Brand);
 
         stack.Rule();
 
@@ -353,15 +367,37 @@ internal sealed class TodayForm : OwnerDrawnForm
         status.Pace
         ?? MonthlyPace.Estimate(status.ActiveThisMonth, status.MonthlyTargetHours, now);
 
-    /// <summary>Live Board-এর ডট-ভাষাই — সবুজ চলছে · আম্বার থেমে · ধূসর লক।</summary>
-    private Color StateDot(AgentStatus status) => status.Paused
-        ? Theme.Ink3
-        : status.State switch
+    /// <summary>
+    /// সংখ্যার পাশের পিলটায় যা লেখা থাকে।
+    ///
+    /// ⚠️ ক্রমটা <see cref="TrackingGate"/>-এর ক্রমেই — সাইন-ইন ও revoke
+    /// আগে, তারপর pause, তারপর চলতি অবস্থা। উল্টো হলে বাতিল ডিভাইসেও
+    /// "Idle" লেখা থাকত, যেন এখুনি আবার শুরু হয়ে যাবে।
+    /// </summary>
+    private static string HeroState(AgentStatus status) =>
+        TrackingGate.Check(status.Enrolled, status.Health is SyncHealth.Revoked) switch
         {
-            SegmentState.Active => Theme.Ok,
-            SegmentState.Idle => Theme.Idle,
-            _ => Theme.Ink3,
+            TrackingGate.Verdict.NotEnrolled => "Not signed in",
+            TrackingGate.Verdict.Revoked => "Stopped",
+            _ => status.Paused ? "Tracking paused" : TrayTooltip.StateName(status.State),
         };
+
+    /// <summary>Live Board-এর ডট-ভাষাই — সবুজ চলছে · আম্বার থেমে · ধূসর লক।</summary>
+    private Color StateDot(AgentStatus status)
+    {
+        // ⚠️ সবুজ বিন্দুটা "সব ঠিকঠাক চলছে"-র প্রতিশ্রুতি। সাইন ইন না করা
+        //    থাকলে সেটা মিথ্যে, তাই রংটাই আগে বদলায় — লেখা পড়ার আগেই।
+        if (!status.Enrolled) return Theme.Brand;
+
+        return status.Paused
+            ? Theme.Ink3
+            : status.State switch
+            {
+                SegmentState.Active => Theme.Ok,
+                SegmentState.Idle => Theme.Idle,
+                _ => Theme.Ink3,
+            };
+    }
 
     private static string HealthName(SyncHealth health) => health switch
     {
