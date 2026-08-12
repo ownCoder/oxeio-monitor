@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DigestModule } from './digest/digest.module';
 import { HealthModule } from './health/health.module';
+import { MeModule } from './me/me.module';
 import { OpsModule } from './ops/ops.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PayrollModule } from './payroll/payroll.module';
@@ -67,6 +68,7 @@ import { UsersModule } from './users/users.module';
     // ⚠️ OpsModule ও DigestModule দুটোরই `@Cron` আছে, কিন্তু explorer আসে
     // উপরের SummaryModule-এর global forRoot() থেকে — তাই এদের **পরে** রাখা।
     // (নির্ভরতাটা DI-তে অদৃশ্য বলে BackupJob bootstrap-এ নিজেই মিলিয়ে দেখে।)
+    MeModule,
     OpsModule,
     DigestModule,
     HealthModule,

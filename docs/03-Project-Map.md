@@ -170,6 +170,10 @@ oxeio-monitor/
 │   │   │   ├── payroll.math.ts             #   খাঁটি হিসাব, সব পয়সায়
 │   │   │   ├── payroll.service.ts          #   monthly_salary পড়ে **শুধু এখানেই**
 │   │   │   └── payroll.controller.ts       #   @Roles(owner) ক্লাস-লেভেলে
+│   │   ├── me/                             ✅ ⭐ **J05** — কর্মীর নিজের ডেটা
+│   │   │   #  ⚠️ পথে কোনো `:id` নেই — আইডি আসে **সেশন থেকে**, তাই ওয়েব
+│   │   │   #     থেকে সহকর্মীর ডেটা চাওয়ার উপায়ই নেই
+│   │   │   #  ⚠️ সংখ্যা `ProgressService` থেকেই — tray আর ওয়েব যেন এক বলে
 │   │   ├── adjustments/                    ✅ ⭐ owner-এর ঘণ্টা সংশোধন (ADR-011e)
 │   │   │   #  লেখা ও বাতিল দুটোই (G35/B14) · স্টাফ নিজেরটা পড়ে (J08)
 │   │   └── scripts/recover-owner.ts        ✅ ⭐ owner-lockout — ফেরার একমাত্র পথ
@@ -180,7 +184,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৬৫১টি টেস্ট, ৩০টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — ৬৬৪টি টেস্ট, ৩১টি ফাইল
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts
@@ -216,7 +220,9 @@ oxeio-monitor/
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
 │       ├── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
-│       └── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
+│       ├── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
+│       └── pages/MyDataPage.tsx            ✅ ⭐ J05 — tray-র "My data" এখানে নামে
+│           #  ⚠️ কোনো বোতাম নেই — একটা বসালেই approval workflow-র প্রথম ধাপ
 │   └── test/format.spec.ts                 ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
@@ -313,7 +319,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | রিপোর্ট | — | `reports/` ✅ · `payroll/` ✅ | `ReportsPage.tsx` |
 | Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `LiveBoardPage` badge |
 | Retention | — | `summary/retention.job` ✅ রাত ২টার cron + `POST /ops/retention/run` (K01) | `settings/` |
-| স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | role=employee | ⚠️ **ওয়েবে পাতা নেই** — tray-র "My data" ৪০৪-এ নামায় |
+| স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | `me/` ✅ — `GET /me` · `GET /me/days` | `MyDataPage.tsx` ✅ tray-র "My data" এখানেই নামে |
 | **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` ✅ লেখা ও বাতিল দুটোই (G35/B14) | `pages/employee/Adjustments.tsx` ✅ |
 | **কনফিগ পৌঁছানো** (E09/K07) | `ConfigChange` · `AgentHost.ReloadConfigAsync`/`ApplyConfig` ✅ | `agent-config.service` · `agent.controller` (`reload_config`) ✅ | `settings/PoliciesTab.tsx` ✅ |
 
