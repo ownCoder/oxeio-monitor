@@ -404,8 +404,18 @@ docker compose restart api
 ## ৮· MSI বিলি
 
 ```powershell
-pwsh agent\installer\build.ps1 -Version 0.1.0
+powershell -File agent\installer\build.ps1
 ```
+
+⚠️ এখানে আগে `pwsh` (PowerShell 7) লেখা ছিল, আর সাথে হাতে বসানো
+`-Version 0.1.0`। দুটোই বদলেছে:
+
+- **`pwsh` স্টক উইন্ডোজে থাকে না** — আলাদা করে ইনস্টল করা লাগে। এখন
+  স্ক্রিপ্টটা Windows PowerShell 5.1-এও চলে (⚠️ তার জন্যই ফাইলটায়
+  UTF-8 BOM লাগে — নিচের § স্ক্রিপ্ট সম্পর্কে দুটো কথা দেখুন)।
+- **`-Version` দেওয়ার দরকার নেই** — সংখ্যাটা `agent/Directory.Build.props`
+  থেকেই আসে। হাতে দিলে MSI এক ভার্সন বসাত আর এজেন্ট heartbeat-এ আরেকটা
+  বলত; স্ক্রিপ্ট এখন সেই অমিলে সতর্ক করে।
 
 প্রতিটা PC-তে, অ্যাডমিন হিসেবে:
 
@@ -574,8 +584,14 @@ docker compose exec api node dist/scripts/recover-owner.js --confirm --email own
 
 ## স্ক্রিপ্ট সম্পর্কে দুটো কথা
 
-- দুটো `.ps1` ফাইলই **UTF-8 BOM সহ** সংরক্ষিত। ⚠️ BOM মুছে ফেলবেন না —
-  Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে, আর তখন ভেতরের বাংলা
-  লেখাগুলো ভেঙে গিয়ে স্ক্রিপ্ট পার্সই হয় না।
+- **তিনটে** `.ps1` ফাইলই (`make-cert` · `defender-exclusions` ·
+  `agent/installer/build`) **UTF-8 BOM সহ** সংরক্ষিত। ⚠️ BOM মুছে ফেলবেন
+  না — Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে, আর তখন ভেতরের
+  বাংলা লেখাগুলো ভেঙে গিয়ে স্ক্রিপ্ট পার্সই হয় না।
+  ⚠️⚠️ `build.ps1`-এ BOM-টা **প্রথম দিন থেকে ছিল না**, আর ধরা পড়েনি কারণ
+  আগের MSI-টা `pwsh` (PowerShell 7) দিয়ে বানানো হয়েছিল — সে BOM ছাড়াই
+  UTF-8 ধরে নেয়। ১২ আগস্ট MSI বানাতে গিয়ে স্ক্রিপ্টটা তিনটে
+  `Unexpected token` দিয়ে থেমে যায়। অর্থাৎ যে মেশিনে PowerShell 7 নেই
+  (যেমন অফিসের সার্ভার PC), সেখানে **MSI বানানোই যেত না**।
 - অথচ `certs\*.pem` লেখা হয় **BOM ছাড়া** — উল্টো নিয়ম। BOM থাকলে Node
   PEM পড়তে পারে না।
