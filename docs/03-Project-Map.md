@@ -258,10 +258,10 @@ Server:
         └──▶ ৪টি গ্লোবাল গার্ড ──▶ [বাকি সব কন্ট্রোলার]
   UsersModule ──▶ AuthModule                          ✅
   AuditModule ◀── Auth, (পরে) Screenshots, Reports    ✅  (গ্লোবাল)
-  QueryModule  ──▶ Prisma (read-only)                 ⏳
-  ReportModule ──▶ Monthly ──▶ monthly_summary        ⏳
-  JobsModule   ──▶ সব মডিউল (cron)                    ⏳
-  AlertModule  ◀── Jobs, Agent (ইভেন্ট-ভিত্তিক)        ⏳
+  DashboardModule ─▶ Prisma (read-only)              ✅
+  ReportsModule ─▶ Summary ──▶ monthly_summary       ✅
+  SummaryModule ─▶ cron (K05/K06) · OpsModule ─▶ cron ✅
+  AlertsModule ◀── জব ও Agent (ইভেন্ট-ভিত্তিক)         ✅
 ```
 
 **নিয়ম:**
@@ -294,21 +294,21 @@ settings (key-value)   ·   agent_versions   ·   alerts
 
 | ফিচার | Agent | Server | Web |
 |---|---|---|---|
-| র‍্যান্ডম স্ক্রিনশট | `SlotScheduler` `ScreenCapturer` | `agent/screenshot-ingest` ✅ → `screenshots/` ⏳ | `Gallery.tsx` |
+| র‍্যান্ডম স্ক্রিনশট | `SlotScheduler` `ScreenCapturer` | `agent/screenshot-ingest` ✅ → `screenshots/` ✅ | `GalleryPage.tsx` |
 | **A07** ছবির সাথে অ্যাপ ও টাইটেল | `AgentHost.CaptureSlotAsync` → `_apps?.Current` ✅ ⭐ Win32-কে **নতুন করে জিজ্ঞেস করা হয় না** — app-usage টিক যা শেষবার পড়েছে সেটাই, নইলে ছবির নাম আর `app_usage`-এর সারি আলাদা হতে পারত। ⚠️ অ্যাপ ট্র্যাকিং বন্ধ থাকলে `_apps`-ই তৈরি হয় না, তাই ঘর দুটো খালি | `screenshot-ingest` ✅ | `GalleryPage` · `DayShots` |
-| Idle/Active টাইম | `IdleMonitor` `SegmentBuilder` | `agent/ingest.service` ✅ | `TimelineBar.tsx` |
+| Idle/Active টাইম | `IdleStateMachine` `SegmentBuilder` | `agent/ingest.service` ✅ | `employee/TimelineBar.tsx` |
 | মধ্যরাতে দিন বদল | `SegmentBuilder` | `agent/util/dhaka-time` ✅ | — |
 | Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
 | অফলাইন কাজ → dedupe | `LocalQueue` `SyncClient` | `agent/util/derive-uuid` ✅ | — |
-| মাসিক ২০৮ঘ টার্গেট + pace | `TrackerEngine` `TrayIcon` | `monthly/` ⏳ | `TargetRing.tsx` |
-| অ্যাপ/সাইট ট্র্যাকিং | `WindowWatcher` `BrowserUrlReader` | `agent/ingest.service` ✅ (ক্যাটাগরি ⏳) | `EmployeeDetail.tsx` |
-| লাইভ স্ট্যাটাস | heartbeat ✅ | `timeline/live` ⏳ | `LiveBoard.tsx` |
-| মাসিক হিটম্যাপ | — | `monthly/` `day-close.job` | `MonthHeatmap.tsx` |
-| রিপোর্ট | — | `reports/` | `Reports.tsx` |
-| Watchdog | `oXeio.Watchdog` | `alerts/` | `LiveBoard` badge |
-| Retention | — | `retention.job` | `Settings.tsx` |
-| স্টাফের নিজস্ব ভিউ | `MyDayWindow` | role=employee | `MyData.tsx` |
-| **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` | `EmployeeDetail.tsx` + `MyData.tsx` |
+| মাসিক ২০৮ঘ টার্গেট + pace | `TrayIcon` · `TodayForm` | `summary/` · `agent/progress.service` ✅ | `components/ProgressRing.tsx` |
+| অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
+| লাইভ স্ট্যাটাস | heartbeat ✅ | `dashboard/live.controller` ✅ | `LiveBoardPage.tsx` |
+| মাসিক হিটম্যাপ | — | `summary/` · `day-close.job` ✅ | `MonthlyPage.tsx` |
+| রিপোর্ট | — | `reports/` ✅ · `payroll/` ✅ | `ReportsPage.tsx` |
+| Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `LiveBoardPage` badge |
+| Retention | — | `summary/retention.job` ⚠️ কল করার পথ নেই (K01) | `settings/` |
+| স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | role=employee | ⚠️ **ওয়েবে পাতা নেই** — tray-র "My data" ৪০৪-এ নামায় |
+| **ঘণ্টা সংশোধন** (ADR-011e) | — | ⚠️ **লেখার পথ নেই** — `time_adjustments` শুধু পড়া হয় (G35/B14) | ⏳ |
 | **কনফিগ পৌঁছানো** (E09/K07) | `ConfigChange` · `AgentHost.ReloadConfigAsync`/`ApplyConfig` ✅ | `agent-config.service` · `agent.controller` (`reload_config`) ✅ | `settings/PoliciesTab.tsx` ✅ |
 
 ⭐ **কনফিগ-লুপে দুটো সিদ্ধান্ত**, দুটোই আলাদা করে লেখার মতো —
