@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
@@ -29,7 +30,50 @@ namespace oXeio.Agent;
 [SupportedOSPlatform("windows")]
 internal static partial class Program
 {
-    private const string Version = "0.1.0";
+    /**
+     * ⭐ ভার্সনটা **assembly থেকে** পড়া হয়, হাতে লেখা নয়।
+     *
+     * ⚠️ আগে এখানে `const string Version = "0.1.0"` ছিল, আর MSI-র ভার্সন
+     * আসত `installer/build.ps1`-এর আলাদা একটা চলক থেকে। দুটোর মধ্যে কোনো
+     * যোগ ছিল না — MSI ০.২.০ বিলি করলেও এজেন্ট heartbeat-এ নিজেকে ০.১.০
+     * বলত। সার্ভার ওই মান দেখেই আপডেট অফারের সিদ্ধান্ত নেয় (G59), তাই
+     * আপডেট হয়ে যাওয়া মেশিনকেও একই আপডেট বারবার অফার করা হতো আর H04-এর
+     * রোলআউট কোনোদিন শেষ হতো না।
+     *
+     * এখন উৎস একটাই: `agent/Directory.Build.props`।
+     */
+    private static readonly string Version = ReadVersion();
+
+    /// <summary>
+    /// ⚠️ `InformationalVersion`-এ SDK প্রায়ই `+<commit>` জুড়ে দেয়
+    /// (SourceLink)। সেটা সার্ভারে পাঠালে ভার্সন-তুলনা ভাঙত, কারণ
+    /// `rollout.ts` SemVer ধরে পড়ে — তাই `+`-এর পরেরটা ছেঁটে ফেলা হয়।
+    ///
+    /// ⚠️ কিছুই না পেলে `"0.0.0"` — খালি স্ট্রিং নয়। খালি পাঠালে
+    /// সার্ভার সেটাকে "ভার্সন বলেনি" ধরে আগেরটা রেখে দিত (G59), আর তখন
+    /// সমস্যাটা আরও গভীরে লুকাত।
+    /// </summary>
+    private static string ReadVersion() =>
+        TrimBuildMetadata(
+            typeof(Program).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion);
+
+    /// <summary>
+    /// ⚠️ এটা অনুমান নয়, মেপে দেখা: এই রিপোতে assembly-র
+    /// <c>ProductVersion</c> আসে <c>0.1.0+ef685e42b940…</c> রূপে। ওই
+    /// পুরোটা সার্ভারে পাঠালে <c>rollout.ts</c>-এর SemVer তুলনা ভাঙত, আর
+    /// আপডেটের সিদ্ধান্ত এলোমেলো হতো।
+    /// </summary>
+    internal static string TrimBuildMetadata(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "0.0.0";
+
+        var plus = raw.IndexOf('+', StringComparison.Ordinal);
+        var trimmed = (plus < 0 ? raw : raw[..plus]).Trim();
+
+        return trimmed.Length == 0 ? "0.0.0" : trimmed;
+    }
 
     [STAThread]
     private static int Main(string[] args)

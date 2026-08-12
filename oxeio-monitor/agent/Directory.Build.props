@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    ⭐⭐ এজেন্টের ভার্সনের **একমাত্র উৎস**।
+
+    ⚠️ আগে ভার্সন ছিল তিন জায়গায়, আর তিনটের মধ্যে কোনো যোগ ছিল না:
+      · Program.cs-এ  `const string Version = "0.1.0"`  ← সার্ভারকে যা বলা হতো
+      · installer/build.ps1-এ  `$Version = '0.1.0'`      ← MSI-তে যা বসত
+      · কোথাও `<Version>` না থাকায় assembly হতো 1.0.0.0
+
+    ⚠️⚠️ ফলটা নীরব কিন্তু গুরুতর: MSI ০.২.০ বানিয়ে ১৫টা PC-তে বিলি করলেও
+    এজেন্ট heartbeat-এ নিজেকে **০.১.০** বলত। সার্ভার সেই স্টেল মান দেখে
+    ঠিক করত আপডেট অফার করবে কি না (G59), তাই আপডেট হয়ে যাওয়া মেশিনকেও
+    **একই আপডেট বারবার** অফার করা হতো — H04-এর ধাপে ধাপে রোলআউট কোনোদিন
+    শেষই হতো না।
+
+    এখন এখানে একবার বদলালেই তিন জায়গায় পৌঁছায়:
+      · assembly-র InformationalVersion  (Program.cs রানটাইমে পড়ে)
+      · MSI-র ProductVersion             (build.ps1 এখান থেকেই পড়ে)
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+
+    <!--
+      ⚠️ AssemblyVersion-এ শুধু তিন অঙ্ক রাখা হয় (SemVer-এর pre-release
+      অংশ ছাড়া) — Windows-এর ভার্সন রিসোর্স `1.2.3-beta` মানে না, আর
+      বসাতে গেলে বিল্ডই ভাঙে।
+    -->
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+
+    <Company>oXeio</Company>
+    <Product>oXeio Monitor</Product>
+  </PropertyGroup>
+
+</Project>
