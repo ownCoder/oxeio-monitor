@@ -131,7 +131,9 @@ oxeio-monitor/
 │   │       ├── WatchdogLoop.cs             ✅ ৩০ সে. চেক, restart storm ঠেকানো (H01)
 │   │       ├── Platform/                   ✅ heartbeat · instance lock · rolling log
 │   │       └── Deployment/                 ✅ Task Scheduler XML (H02)
-│   ├── installer/                          ✅ WiX → oXeioAgent.msi (৬২ MB)
+│   ├── installer/                          ✅ WiX → bin/oXeioAgent-<version>.msi (৬২ MB)
+│   │   #  ⚠️ নামে ভার্সন, আর পুরোনো বিল্ড মোছা হয় না — ১২ আগস্ট একই
+│   │   #     নামে তিনটে বাইনারি বেরিয়ে গিয়েছিল (§ ৩থ)
 │   │   ├── Package.wxs                     ✅ সাইলেন্ট ইনস্টল · রেজিস্ট্রি কনফিগ · টাস্ক
 │   │   └── build.ps1                       ✅ publish → wix build
 │   ├── tests/oXeio.Core.Tests/             ✅ ২৯৫টি ইউনিট টেস্ট (net8.0)

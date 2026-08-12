@@ -51,7 +51,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $agentRoot = Split-Path -Parent $here
 $publishDir = Join-Path $here 'obj\publish'
 $outDir = Join-Path $here 'bin'
-$msi = Join-Path $outDir 'oXeioAgent.msi'
+# ⚠️ ফাইলের নামেই ভার্সন — নিচে $msi বসে ভার্সন ঠিক হওয়ার পর
 
 # ── ভার্সন — একমাত্র উৎস Directory.Build.props ───────────────────────────────
 # ⚠️ হাতে -Version দিলে সেটাই জেতে (হটফিক্স বিল্ডের জন্য), কিন্তু তখন
@@ -74,7 +74,32 @@ MSI বসবে $Version দিয়ে, কিন্তু এজেন্ট
 "@
 }
 
+<#
+  ⭐⭐ ফাইলের নামেই ভার্সন — `oXeioAgent-0.3.0.msi`।
+
+  ⚠️⚠️ আগে নাম ছিল স্থির `oXeioAgent.msi`, আর ১২ আগস্ট ঠিক সেটাই কামড়ে
+  দিয়েছে: একই দিনে **তিনটে আলাদা বাইনারি** বেরিয়ে গেছে একই নামে ও একই
+  ভার্সনে (০৯:৪৮ · ১৫:৫৩ · ১৬:৪৩)। মালিক পুরোনোটা চালিয়ে ভাবছিলেন নতুন
+  ফিচারটা আসেইনি, আর কোনটা কোনটা বলার কোনো উপায় ছিল না।
+
+  ⭐ এখন প্রতিটা বিল্ড `bin/`-এ আলাদা ফাইল হয়ে থাকে, তাই পাশাপাশি রাখা
+  যায় আর ভুল ফাইল বিলি হওয়ার সুযোগ থাকে না।
+#>
+$msi = Join-Path $outDir "oXeioAgent-$Version.msi"
+
 Write-Host "   version: $Version" -ForegroundColor DarkGray
+
+# ⚠️ একই ভার্সন আবার বিল্ড করা মানে দুটো আলাদা বাইনারি এক নামে — ঠিক যে
+#    ভুলটা এই নামকরণটা ঠেকাতে এসেছে। থামানো হয় না (ডেভে বারবার বিল্ড
+#    করতেই হয়), কিন্তু চোখে পড়ার মতো করে বলা হয়।
+if (Test-Path $msi) {
+    Write-Warning @"
+$Version আগে থেকেই আছে — ঢেকে দেওয়া হচ্ছে।
+⚠️ ফাইলটা যদি ইতিমধ্যে কাউকে দিয়ে থাকেন, Directory.Build.props-এ
+   <Version> বাড়িয়ে নিন। এক নম্বরে দুটো বাইনারি = কোনটা কোথায় চলছে
+   সেটা আর জানা যাবে না।
+"@
+}
 
 if ($ServerUrl) {
     # ⚠️ আকৃতিটা এখানেই যাচাই — ভুল ঠিকানা MSI-তে বেক হয়ে গেলে সেটা ধরা
@@ -123,14 +148,26 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 if ($LASTEXITCODE -ne 0) { throw 'wix build ব্যর্থ' }
 
+$msiName = Split-Path $msi -Leaf
 $msiSize = [math]::Round((Get-Item $msi).Length / 1MB, 1)
 Write-Host ''
 Write-Host "✅ $msi · $msiSize MB" -ForegroundColor Green
 Write-Host ''
 if ($ServerUrl) {
     Write-Host 'ইনস্টল — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে সাইন ইন করবে:' -ForegroundColor Yellow
-    Write-Host '  ডাবল-ক্লিক, অথবা:  msiexec /i oXeioAgent.msi /qn'
+    Write-Host "  ডাবল-ক্লিক, অথবা:  msiexec /i $msiName /qn"
 } else {
     Write-Host 'সাইলেন্ট ইনস্টল:' -ForegroundColor Yellow
-    Write-Host '  msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local"'
+    Write-Host "  msiexec /i $msiName /qn SERVERURL=`"https://oxeio.office.local`""
+}
+
+# ⭐ bin/-এ যা যা আছে — কোনটা নতুন, কোনটা পুরোনো, এক নজরে
+$all = Get-ChildItem $outDir -Filter 'oXeioAgent-*.msi' | Sort-Object LastWriteTime -Descending
+if ($all.Count -gt 1) {
+    Write-Host ''
+    Write-Host "bin/-এ $($all.Count)টা বিল্ড:" -ForegroundColor DarkGray
+    foreach ($f in $all) {
+        $mark = if ($f.Name -eq $msiName) { '→' } else { ' ' }
+        Write-Host ("  {0} {1,-28} {2,6:N1} MB  {3}" -f $mark, $f.Name, ($f.Length/1MB), $f.LastWriteTime)
+    }
 }

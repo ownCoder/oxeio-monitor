@@ -4,12 +4,12 @@
 
   সাইলেন্ট ইনস্টল — ১৫টা PC-তে একে একে হাতে ক্লিক করার প্রশ্নই ওঠে না:
 
-    msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local" ^
+    msiexec /i oXeioAgent-0.3.0.msi /qn SERVERURL="https://oxeio.office.local" ^
             ENROLLCODE="OXEIO-XXXXXXXX"
 
   আনইনস্টল:
 
-    msiexec /x oXeioAgent.msi /qn
+    msiexec /x oXeioAgent-0.3.0.msi /qn
 
   ⚠️ আনইনস্টলে %ProgramData%\oXeio **মুছে ফেলা হয় না**। ওখানে এমন ডেটা
      থাকতে পারে যা এখনো সার্ভারে যায়নি — এজেন্ট সরানোর মানে কারো গত
@@ -96,7 +96,7 @@
     -->
     <Launch
         Condition="Installed OR SERVERURL"
-        Message="This MSI was built without a server address. Install it with: msiexec /i oXeioAgent.msi /qn SERVERURL=&quot;https://oxeio.office.local&quot; — or rebuild it with build.ps1 -ServerUrl &quot;https://oxeio.office.local&quot; so it installs on a double-click." />
+        Message="This MSI was built without a server address. Install it with: msiexec /i oXeioAgent-&lt;version&gt;.msi /qn SERVERURL=&quot;https://oxeio.office.local&quot; — or rebuild it with build.ps1 -ServerUrl &quot;https://oxeio.office.local&quot; so it installs on a double-click." />
 
     <!-- Windows 10 1809 (build 17763) — এজেন্টের সর্বনিম্ন লক্ষ্য -->
     <Launch

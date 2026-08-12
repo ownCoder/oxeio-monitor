@@ -430,6 +430,11 @@ PC-তে শুধু **ডাবল-ক্লিক**। ১৫টা মে�
 
 **অ্যাডমিন হিসেবে** MSI-তে ডাবল-ক্লিক। ব্যস।
 
+⚠️ ফাইলের নামে ভার্সন থাকে — `oXeioAgent-0.3.0.msi`। `bin/`-এ পুরোনো
+বিল্ডগুলোও থেকে যায়, তাই **কোনটা বিলি করছেন সেটা নামেই দেখা যায়**।
+১২ আগস্ট একই নামে তিনটে আলাদা বাইনারি বেরিয়ে গিয়েছিল, আর কোনটা কোনটা
+বলার উপায় ছিল না ([09 § ৩থ](../../docs/09-Build-Log.md))।
+
 ⚠️ অ্যাডমিন লাগে কারণ ফাইল যায় `Program Files`-এ, কনফিগ যায় `HKLM`-এ,
 আর একটা লগঅন Scheduled Task বসে।
 
@@ -462,7 +467,7 @@ Settings → Staff → ওই কর্মী → "Portal account"। অস্�
 কোডের পথটা রয়েই গেছে — রাতের বেলা দূর থেকে ১৫টা PC-তে বসাতে হলে:
 
 ```powershell
-msiexec /i oXeioAgent.msi /qn `
+msiexec /i oXeioAgent-0.3.0.msi /qn `
     SERVERURL="https://oxeio.office.local" `
     ENROLLCODE="XXXXXXXXXXXX" `
     PORTALURL="https://oxeio.office.local/me" `
@@ -476,7 +481,7 @@ msiexec /i oXeioAgent.msi /qn `
 যোগ করুন:
 
 ```powershell
-msiexec /i oXeioAgent.msi /qn `
+msiexec /i oXeioAgent-0.3.0.msi /qn `
     SERVERPIN="<make-cert.ps1 যে base64 মানটা ছাপে>"
 ```
 

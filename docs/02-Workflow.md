@@ -184,7 +184,7 @@ tray-তে   →  সবসময় দেখা যায়: "এই মা�
    ⚠️ কোডের পথটা রয়ে গেছে **স্ক্রিপ্টেড রোলআউটের জন্য** — রাতে দূর
    থেকে ১৫টা PC-তে বসাতে হলে, যখন কারো কীবোর্ডে বসার সুযোগ নেই:
 
-   msiexec /i oXeioAgent.msi /qn ^
+   msiexec /i oXeioAgent-0.3.0.msi /qn ^
            SERVERURL="https://oxeio.office.local" ENROLLCODE="OXEIO-XXXXXXXX"
 
    লগঅনের ১৫ সেকেন্ড পর watchdog উঠে এজেন্ট চালু করে। tray আইকন দেখা
