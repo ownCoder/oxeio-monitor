@@ -413,6 +413,36 @@ docker compose restart api
 powershell -File agent\installer\build.ps1
 ```
 
+### ৮.১ক· সই করা *(ঐচ্ছিক নয় — ডায়ালগ এড়াতে দরকার)*
+
+```powershell
+# একবার, সার্ভার-PC-তে — thumbprint ছাপবে
+powershell -ExecutionPolicy Bypass -File deploy\make-code-cert.ps1
+
+# তারপর প্রতিটা বিল্ডে
+powershell -File agent\installer\build.ps1 -SignWith <thumbprint>
+```
+
+⚠️⚠️ **আর প্রতিটা স্টাফ-PC-তে একবার** (অ্যাডমিন হিসেবে), নইলে সই থাকবে
+ঠিকই কিন্তু Windows চিনবে না:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy	rust-publisher.ps1
+```
+
+⚠️ স্ক্রিপ্টটা সার্টটা **দুই** স্টোরে বসায় — Trusted **Root** ও Trusted
+**Publishers**। কেনা সার্টে প্রথমটা লাগে না, কিন্তু self-signed সার্ট
+নিজেই নিজের ইস্যুকারী, তাই Root ছাড়া চেইন ভাঙা থাকে আর ডায়ালগটা আসতেই
+থাকে ([ADR-014](../../docs/05-Options-Decisions.md))।
+
+⚠️⚠️ `deploy\certs\oxeio-code.pfx` **হারালে একই পরিচয়ে আর সই করা যাবে
+না** — ১৫টা PC-তে আবার গিয়ে নতুন `.cer` বসাতে হবে। ব্যাকআপ রাখুন।
+
+⭐ `-SignWith` না দিলে বিল্ড আগের মতোই চলে, শুধু ইনস্টলে "Unknown
+publisher" আসে। বিল্ডের শেষে লেখা থাকে সই হয়েছে কি না।
+
+---
+
 ⭐ **ঠিকানাটা MSI-র ভেতরেই বসে যায়** — তখন প্রতিটা PC-তে শুধু
 **ডাবল-ক্লিক**। ১৫টা মেশিনে লম্বা কমান্ড টাইপ করার দরকার নেই, আর একটা
 টাইপোর জন্য একটা মেশিন নীরবে অচল থাকার ঝুঁকিও নেই।

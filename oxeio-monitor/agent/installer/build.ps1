@@ -53,6 +53,16 @@ param(
     #   `msiexec /qn SERVERURL=...` দিয়ে বসানো হবে।
     [switch]$NoServerUrl,
 
+    # ⭐ ADR-014 — নিজে সই করা সার্টের thumbprint (make-code-cert.ps1 ছাপে)।
+    #   না দিলে বিল্ড আগের মতোই চলে, কোনো ভুল ছাড়া — নইলে ডেভ মেশিনে
+    #   বিল্ড করাই আটকে যেত।
+    [string]$SignWith,
+
+    # ⚠️ টাইমস্ট্যাম্প ছাড়া সই করা। **সাধারণত দেবেন না** — কারণ নিচে।
+    [switch]$NoTimestamp,
+
+    [string]$TimestampUrl = 'http://timestamp.digicert.com',
+
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64'
 )
@@ -163,6 +173,105 @@ publish ফোল্ডারের ফাইল লক করা, তাই ব
 "@
 }
 
+# ══════════════════════════════════════════════════════════════════════════
+#  সই করা (ADR-014)
+#
+#  ⚠️⚠️ সার্টটা **আগে** খুঁজে নেওয়া হয়, publish শুরুর আগেই। thumbprint ভুল
+#     হলে সেটা এখনই জানা দরকার — নইলে ৬২ MB বিল্ড শেষ করে তবে ভুল ধরা পড়ত।
+# ══════════════════════════════════════════════════════════════════════════
+$signCert = $null
+if ($SignWith) {
+    $signCert = Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My -ErrorAction SilentlyContinue |
+        Where-Object { $_.Thumbprint -eq $SignWith.Replace(' ', '') } |
+        Select-Object -First 1
+
+    if (-not $signCert) {
+        throw @"
+এই thumbprint-এর সার্ট পাওয়া যায়নি: $SignWith
+
+⚠️ সার্টটা **এই ইউজারের** স্টোরে থাকতে হয় (প্রাইভেট কী সহ)। যে মেশিনে
+   make-code-cert.ps1 চালানো হয়েছে, সই করাও সেখানেই হবে।
+
+   অন্য মেশিনে সই করতে হলে .pfx ইমপোর্ট করুন:
+       Import-PfxCertificate -FilePath deploy\certs\oxeio-code.pfx ``
+           -CertStoreLocation Cert:\CurrentUser\My
+"@
+    }
+
+    if (-not $signCert.HasPrivateKey) {
+        throw "সার্টটা আছে কিন্তু প্রাইভেট কী নেই — .cer ইমপোর্ট করা হয়েছে, .pfx নয়।"
+    }
+
+    if ($signCert.NotAfter -lt (Get-Date)) {
+        throw "সার্টের মেয়াদ শেষ ($($signCert.NotAfter.ToString('yyyy-MM-dd'))) — নতুন সার্ট বানান।"
+    }
+
+    Write-Host "   সই     : $($signCert.Subject) ($($signCert.NotAfter.ToString('yyyy-MM-dd')) পর্যন্ত)" -ForegroundColor DarkGray
+    if ($NoTimestamp) {
+        Write-Host '   ⚠️ টাইমস্ট্যাম্প ছাড়া — সার্টের মেয়াদ শেষ হলে সইগুলোও অচল হবে' -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host '   সই     : করা হবে না (-SignWith দিলে হবে)' -ForegroundColor DarkGray
+}
+
+<#
+.SYNOPSIS
+    একটা ফাইলে Authenticode সই বসায় আর ফল যাচাই করে।
+#>
+function Invoke-Sign {
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not $signCert) { return }
+
+    $args = @{ FilePath = $Path; Certificate = $signCert; HashAlgorithm = 'SHA256' }
+
+    # ⚠️⚠️ টাইমস্ট্যাম্প **থাকা চাই**। ছাড়া সই করলে সার্টের মেয়াদ শেষ হওয়ার
+    #    দিন আগের সব বিল্ডের সই একসাথে অচল হয়ে যায় — অর্থাৎ ৫ বছর পর
+    #    পুরোনো MSI দিয়ে কোনো মেশিন আর ঠিক করা যেত না। টাইমস্ট্যাম্প থাকলে
+    #    "সই করার সময় সার্টটা বৈধ ছিল" — সেটাই যথেষ্ট, চিরকাল।
+    if (-not $NoTimestamp) { $args.TimestampServer = $TimestampUrl }
+
+    $result = Set-AuthenticodeSignature @args
+    $name = Split-Path $Path -Leaf
+
+    # ⚠️⚠️ **`Status` মানে "এই মেশিন সইটা যাচাই করতে পারল কি না", "সই বসেছে
+    #    কি না" নয়** — আর এই দুটো self-signed সার্টে আলাদা।
+    #
+    #    বিল্ড-মেশিন নিজের সার্টটা Trusted Root-এ না বসালে Windows বলে
+    #    `UnknownError` — "chain terminated in a root certificate which is
+    #    not trusted"। অথচ ফাইলে সই **বসে গেছে**, টাইমস্ট্যাম্পও হয়েছে, আর
+    #    যে PC-গুলোতে trust-publisher.ps1 চলেছে সেখানে সেটা পুরোপুরি বৈধ।
+    #
+    #    ⚠️ প্রথমে এখানে `Status -ne 'Valid'` হলেই throw করা ছিল, আর তাতে
+    #    সার্ট বানানোর পরেই বিল্ড আটকে যেত — সই করা **অসম্ভব** হয়ে যেত,
+    #    অথচ আসল সমস্যা কিছুই ছিল না। (মাপতে গিয়ে ধরা পড়েছে, ১২ আগস্ট।)
+    #
+    #    তাই আসল প্রশ্নটা করা হয়: **আমাদের সার্ট দিয়ে সই বসেছে তো?**
+    $signed = Get-AuthenticodeSignature $Path
+    $mine = $signed.SignerCertificate -and
+            $signed.SignerCertificate.Thumbprint -eq $signCert.Thumbprint
+
+    if (-not $mine) {
+        $hint = if (-not $NoTimestamp) {
+            "`n⚠️ টাইমস্ট্যাম্প সার্ভারে পৌঁছাতে না পারলেও এটা হয় ($TimestampUrl)।" +
+            "`n   অফলাইনে বিল্ড করতে হলে -NoTimestamp, কিন্তু উপরের সতর্কবাণীটা পড়ুন।"
+        } else { '' }
+
+        throw "সই ব্যর্থ ($name): $($result.Status) — $($result.StatusMessage)$hint"
+    }
+
+    # ⚠️ টাইমস্ট্যাম্প চাওয়া হয়েছিল অথচ বসেনি — এটা নীরবে যেতে দেওয়া যাবে না।
+    #    সার্টের মেয়াদ শেষ হলে তখন সব পুরোনো বিল্ডের সই একসাথে অচল হতো।
+    if (-not $NoTimestamp -and -not $signed.TimeStamperCertificate) {
+        throw "সই হয়েছে কিন্তু টাইমস্ট্যাম্প বসেনি ($name) — $TimestampUrl-এ পৌঁছানো যায়নি।"
+    }
+
+    $script:LocalTrustWarning = $script:LocalTrustWarning -or ($signed.Status -ne 'Valid')
+
+    Write-Host "   ✍ $name" -ForegroundColor DarkGray
+}
+
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
 New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
 
@@ -183,6 +292,16 @@ $size = [math]::Round((Get-ChildItem $publishDir -Recurse | Measure-Object Lengt
 $count = (Get-ChildItem $publishDir -Recurse -File).Count
 Write-Host "   $count ফাইল · $size MB"
 
+# ⚠️⚠️ exe-তে সই **wix build-এর আগে**, ইচ্ছাকৃতভাবে। পরে করলে MSI-র ভেতরে
+#    সই-ছাড়া কপিটাই বসে থাকত, আর ইনস্টলের পর ডিস্কে যেত সই-ছাড়া exe —
+#    অথচ MSI-তে সই দেখে মনে হতো সব ঠিক আছে।
+#
+# ⭐ ADR-014: AV মোড়কের চেয়ে ভেতরের oXeio.Agent.exe-কেই বেশি সন্দেহ করে,
+#    তাই দুটো exe-তেই সই দরকার — শুধু MSI-তে নয়।
+foreach ($exe in 'oXeio.Agent.exe', 'oXeio.Watchdog.exe') {
+    Invoke-Sign (Join-Path $publishDir $exe)
+}
+
 Write-Host '── ২· wix build ─────────────────────────────' -ForegroundColor Cyan
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -197,10 +316,38 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
 if ($LASTEXITCODE -ne 0) { throw 'wix build ব্যর্থ' }
 
+# ⚠️ MSI-তে সই **wix build-এর পরে** — মোড়কটা তৈরি হওয়ার পর। এটাই সেই সই
+#    যেটা ডাবল-ক্লিকের UAC ডায়ালগে "Verified publisher" দেখায়।
+Invoke-Sign $msi
+
 $msiName = Split-Path $msi -Leaf
 $msiSize = [math]::Round((Get-Item $msi).Length / 1MB, 1)
 Write-Host ''
 Write-Host "✅ $msi · $msiSize MB" -ForegroundColor Green
+
+# ⭐ সই হয়েছে কি না সেটা **ফাইল থেকে পড়ে** বলা হয়, "আমরা সই করেছি" ধরে
+#    নিয়ে নয়। ঠিক এই ধরনের অনুমানেই ১২ আগস্ট তিনবার ভুল বিল্ড বেরিয়েছিল।
+$sig = Get-AuthenticodeSignature $msi
+if ($sig.SignerCertificate) {
+    $stamped = if ($sig.TimeStamperCertificate) { 'টাইমস্ট্যাম্প সহ' } else { '⚠️ টাইমস্ট্যাম্প ছাড়া' }
+    Write-Host "   ✍ সই: $($sig.SignerCertificate.Subject) · $stamped" -ForegroundColor Green
+
+    # ⚠️ এই মেশিন সইটা যাচাই করতে পারেনি — প্রায় সবসময়ই এর মানে বিল্ড-মেশিনে
+    #    নিজের সার্টটা Trusted Root-এ বসানো নেই। MSI-তে দোষ নেই; স্টাফের
+    #    PC-তে (যেখানে trust-publisher.ps1 চলেছে) এটা বৈধই দেখাবে।
+    if ($script:LocalTrustWarning) {
+        Write-Host ''
+        Write-Host '   ⚠️ এই মেশিন সইটা যাচাই করতে পারছে না — সার্টটা এখানে' -ForegroundColor Yellow
+        Write-Host '      Trusted Root-এ বসানো নেই। MSI ঠিক আছে; যে PC-তে' -ForegroundColor Yellow
+        Write-Host '      trust-publisher.ps1 চলেছে সেখানে বৈধ দেখাবে।' -ForegroundColor Yellow
+        Write-Host '      এখানেও যাচাই করতে চাইলে এই মেশিনেও ওটা একবার চালান।' -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host '   ⚠️ সই করা হয়নি — ইনস্টলে "Unknown publisher" আসবে' -ForegroundColor Yellow
+    Write-Host '      (সই করতে: -SignWith <thumbprint>, দেখুন deploy/make-code-cert.ps1)' -ForegroundColor Yellow
+}
+
 Write-Host ''
 if ($ServerUrl) {
     Write-Host 'ইনস্টল — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে সাইন ইন করবে:' -ForegroundColor Yellow
