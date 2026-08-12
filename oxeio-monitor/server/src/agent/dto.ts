@@ -5,6 +5,7 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
@@ -32,11 +33,18 @@ class WithClientUuid {
 
 // ── enroll ──────────────────────────────────────────────────────────────────
 
-export class EnrollDto {
-  @IsString()
-  @MaxLength(64)
-  enrollmentCode!: string;
-
+/**
+ * মেশিনটা কে, কোথায় — **দুটো enrollment পথেরই** সাধারণ অংশ।
+ *
+ * ⚠️ আলাদা বেস ক্লাসে রাখা হয়েছে যাতে দুটো DTO-তে ঘরগুলো নকল করতে না
+ * হয়। নকল করলে একদিন একটায় `machineGuid`-এর দৈর্ঘ্যসীমা বদলাত আর
+ * অন্যটায় নয়, আর পার্থক্যটা ধরা পড়ত কেবল ওই পথে বসানো মেশিনগুলোয়।
+ *
+ * ⚠️ `@nestjs/mapped-types`-এর `OmitType()` দিয়েও করা যেত, কিন্তু ওটা
+ * এই রিপোর নির্ভরতার তালিকায় নেই — একটা ঘর ভাগ করার জন্য নতুন প্যাকেজ
+ * টানা হয়নি (ঘরের নিয়ম)।
+ */
+class EnrollFactsDto {
   @IsString()
   @MaxLength(200)
   hostname!: string;
@@ -53,6 +61,37 @@ export class EnrollDto {
   @IsOptional() @IsString() @MaxLength(100) osVersion?: string;
   @IsOptional() @IsString() @MaxLength(50) agentVersion?: string;
   @IsOptional() @IsInt() @Min(1) @Max(8) monitors?: number;
+}
+
+/** H05 — একবার ব্যবহার্য কোড দিয়ে (স্ক্রিপ্টেড রোলআউটের পথ) */
+export class EnrollDto extends EnrollFactsDto {
+  @IsString()
+  @MaxLength(64)
+  enrollmentCode!: string;
+}
+
+/**
+ * ⭐ কোডের বদলে **স্টাফের নিজের লগইন** দিয়ে ডিভাইস যোগ করা।
+ *
+ * ⚠️ পাসওয়ার্ডে কোনো `@MinLength` নেই, ইচ্ছাকৃতভাবে। যাচাইটা
+ * `AuthService.login()`-এ, আর সেখানে ভুল পাসওয়ার্ড ও ছোট পাসওয়ার্ড
+ * **একই** উত্তর পায়। এখানে আলাদা করে আটকালে ৪০০ বনাম ৪০১ দেখে বাইরে
+ * থেকে বোঝা যেত কোন অ্যাকাউন্টের পাসওয়ার্ড কত ছোট।
+ */
+export class EnrollLoginDto extends EnrollFactsDto {
+  @IsEmail()
+  @MaxLength(200)
+  email!: string;
+
+  @IsString()
+  @MaxLength(200)
+  password!: string;
+
+  /** I06 — 2FA চালু থাকলে ছ-অঙ্কের কোড। প্রথম দফায় থাকে না। */
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  totp?: string;
 }
 
 // ── heartbeat ───────────────────────────────────────────────────────────────

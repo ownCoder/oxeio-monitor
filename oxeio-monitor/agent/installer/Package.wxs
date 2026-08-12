@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   oXeio এজেন্টের MSI (H03)।
 
@@ -42,7 +42,30 @@
          ⚠️ Secure="yes" না দিলে elevated অংশে মানগুলো পৌঁছাত না — সাইলেন্ট
             ইনস্টলে নীরবে ফাঁকা রেজিস্ট্রি লেখা হতো, আর এজেন্ট "কনফিগার করা
             হয়নি" বলে বসে থাকত। -->
+    <!--
+      ⭐⭐ <b>সার্ভারের ঠিকানাটা বিল্ডের সময়ই MSI-তে বসিয়ে দেওয়া যায়</b>
+      (`build.ps1 -ServerUrl https://oxeio.office.local`)। তখন
+      **ডাবল-ক্লিকেই ইনস্টল হয়** — কমান্ড লাইন লাগে না।
+
+      ⚠️ কেন এটা দরকার হলো: অফিসের ১৫টা PC-তে ইনস্টল করতে গিয়ে প্রতিবার
+      একটা লম্বা `msiexec` কমান্ড টাইপ করা মানে একটা টাইপো = একটা অচল
+      মেশিন, আর ভুলটা ধরা পড়ত সপ্তাহখানেক পরে "ওর ডেটা আসছে না" দিয়ে।
+
+      ⚠️ কমান্ড লাইনে `SERVERURL=` দিলে সেটাই জেতে (Property-র Value শুধু
+      ডিফল্ট) — তাই স্ক্রিপ্টেড রোলআউটের পথটা অক্ষত।
+    -->
+<?if $(var.ServerUrlDefault) = "" ?>
     <Property Id="SERVERURL" Secure="yes" />
+<?else?>
+    <Property Id="SERVERURL" Secure="yes" Value="$(var.ServerUrlDefault)" />
+<?endif?>
+
+    <!--
+      ⚠️ ENROLLCODE-এর কোনো ডিফল্ট **নেই, আর থাকা উচিতও নয়**। কোড
+      একবার-ব্যবহার্য; MSI-তে বেক করলে দ্বিতীয় PC-তে সেটা এমনিতেই অচল
+      হয়ে যেত। কোড ছাড়া ইনস্টল করলে এজেন্ট নিজেই স্টাফকে সাইন-ইন
+      জানালা দেখায় (`SignInForm`) — সেটাই এখন সাধারণ পথ।
+    -->
     <Property Id="ENROLLCODE" Secure="yes" />
     <Property Id="PORTALURL" Secure="yes" />
     <Property Id="POLICYURL" Secure="yes" />
@@ -62,7 +85,7 @@
     -->
     <Launch
         Condition="Installed OR SERVERURL"
-        Message="SERVERURL দিতে হবে। যেমন: msiexec /i oXeioAgent.msi /qn SERVERURL=&quot;https://oxeio.office.local&quot;" />
+        Message="This MSI was built without a server address. Install it with: msiexec /i oXeioAgent.msi /qn SERVERURL=&quot;https://oxeio.office.local&quot; — or rebuild it with build.ps1 -ServerUrl &quot;https://oxeio.office.local&quot; so it installs on a double-click." />
 
     <!-- Windows 10 1809 (build 17763) — এজেন্টের সর্বনিম্ন লক্ষ্য -->
     <Launch

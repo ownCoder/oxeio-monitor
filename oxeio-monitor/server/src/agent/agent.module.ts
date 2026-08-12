@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { ActivityModule } from '../activity/activity.module';
+import { AuthModule } from '../auth/auth.module';
 
 import { AgentConfigService } from './agent-config.service';
 import { AgentController } from './agent.controller';
@@ -14,7 +15,10 @@ import { ScreenshotIngestService } from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
 @Module({
-  imports: [ActivityModule],
+  // ⚠️ `AuthModule` শুধু `AuthService`-এর জন্য — স্টাফের লগইন দিয়ে
+  //    enrollment (`/agent/enroll-login`)। পাসওয়ার্ড যাচাই, 2FA আর
+  //    brute-force throttle সব ওখানেই, নকল করে লেখা হয়নি।
+  imports: [ActivityModule, AuthModule],
   controllers: [AgentController],
   providers: [
     ProgressService,

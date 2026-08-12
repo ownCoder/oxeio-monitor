@@ -114,6 +114,8 @@ oxeio-monitor/
 │   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWorker · SyncWire
 │   │   │   ├── Security/                   ✅ MachineIdentity · DPAPI টোকেন · enrollment
 │   │   │   ├── Ui/                         ✅ TrayIcon · TodayForm · AboutForm (J07)
+│   │   │   │   └── SignInForm.cs           ✅ ⭐ স্টাফ নিজের পাসওয়ার্ড দিয়ে সাইন ইন
+│   │   │   │      #  ⚠️ পাসওয়ার্ড কোথাও জমা হয় না — এখানেই টোকেনে বদলায়
 │   │   │   │   #  TrayTheme  — Midnight রং, web/src/index.css-এর টোকেনের জোড়া।
 │   │   │   │   #    ⚠️ হাতে লেখা ধ্রুবক — CSS এজেন্টের বিল্ডে আসে না
 │   │   │   │   #  WebpImage — WebP → Bitmap। GDI+ WebP **চেনে না**, তাই ডিকোডও
@@ -163,7 +165,10 @@ oxeio-monitor/
 │   │   │   ├── clock-drift.service.ts      #   ⭐ drift সংশোধন + অ্যালার্ট
 │   │   │   ├── ingest.service.ts           #   ⭐ মধ্যরাত-স্প্লিট · dedupe · session
 │   │   │   ├── screenshot-ingest.service.ts
-│   │   │   ├── enrollment.service.ts  agent-config.service.ts  update.service.ts
+│   │   │   ├── enrollment.service.ts  ⭐ দুটো পথ: কোড (H05) ও **স্টাফের লগইন**
+│   │   │   │   #  ⚠️ লগইনের পথে যাচাই `AuthService.login()`-এই — throttle,
+│   │   │   │   #     2FA আর audit তিনটেই বিনামূল্যে আসে
+│   │   │   ├── agent-config.service.ts  update.service.ts
 │   │   │   ├── device-rate-limit.service.ts
 │   │   │   └── util/dhaka-time.ts  util/derive-uuid.ts
 │   │   ├── payroll/                        ✅ ⭐ owner-only — বেতন ও ঘাটতি (ADR-023)

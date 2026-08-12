@@ -32,6 +32,19 @@ internal enum EnrollmentStatus
     IdentityUnusable,
 
     /// <summary>
+    /// ⭐ 2FA চালু — ছ-অঙ্কের কোড ছাড়া এগোনো যাবে না। ব্যর্থতা নয়,
+    /// **দ্বিতীয় ধাপ**: জানালাটা তখন কোডের ঘরটা দেখায়।
+    /// </summary>
+    NeedsTotp,
+
+    /// <summary>
+    /// ⚠️ অ্যাকাউন্টটা কোনো কর্মীর সারিতে বাঁধা নয় (owner/manager), বা
+    /// পরপর ভুল পাসওয়ার্ডে সাময়িক তালা পড়েছে। দুটোতেই আবার চেষ্টা করে
+    /// লাভ নেই — মানুষকে অন্য কিছু করতে হবে, তাই আলাদা status।
+    /// </summary>
+    SignInRejected,
+
+    /// <summary>
     /// সার্ভার টোকেন দিয়েছে কিন্তু ডিস্কে লেখা গেল না।
     /// ⚠️ এটাই সবচেয়ে খারাপ ফল — টোকেন একবারই আসে, তাই সেটা চিরতরে গেল
     /// এবং নতুন enrollment code ছাড়া আর কিছু করার নেই।
@@ -221,6 +234,154 @@ internal sealed class EnrollmentClient
                     ". The agent keeps running and will enrol by itself once the line is back.",
                     HttpStatus: response.StatusCode);
         }
+    }
+
+    /// <summary>
+    /// ⭐⭐ <b>স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে নিজের PC যোগ করে।</b>
+    ///
+    /// ⚠️ পাসওয়ার্ড <see cref="SecretText"/>-এ, তাই ভুল করেও লগে যায় না —
+    /// enrollment code-এর বেলায় যে সাবধানতা, এখানে সেটা আরও জরুরি।
+    ///
+    /// ⚠️ পাসওয়ার্ড <b>কোথাও জমা হয় না</b>। এই কলটাতেই সেটা ডিভাইস
+    /// টোকেনে বদলে যায়, আর ডিস্কে যায় শুধু টোকেনটা (DPAPI দিয়ে)।
+    ///
+    /// ⚠️ <see cref="EnrollmentStatus.SignInRejected"/> আর
+    /// <see cref="EnrollmentStatus.ServerUnreachable"/> আলাদা রাখা হয়েছে
+    /// ইচ্ছাকৃতভাবে: প্রথমটায় মানুষকে **অন্য কিছু** করতে হবে (ঠিক
+    /// অ্যাকাউন্ট, বা কয়েক মিনিট অপেক্ষা), দ্বিতীয়টায় শুধু আবার চাপলেই হয়।
+    /// </summary>
+    public async Task<EnrollmentResult> SignInAsync(
+        string email,
+        SecretText password,
+        string? totp = null,
+        int? monitors = null,
+        CancellationToken ct = default)
+    {
+        if (_credentials.IsRevoked)
+            return new EnrollmentResult(EnrollmentStatus.Revoked, "This device has been revoked.");
+
+        if (_credentials.IsEnrolled)
+        {
+            return new EnrollmentResult(
+                EnrollmentStatus.AlreadyEnrolled,
+                "Already enrolled — " + _credentials.Describe(),
+                _credentials.DeviceId,
+                _credentials.Employee?.EmpCode);
+        }
+
+        // ⭐ সার্ভারে যাওয়ার **আগেই** নিশ্চিত হওয়া যে টোকেনটা রাখা যাবে —
+        //    কারণ টোকেন একবারই আসে (enroll-এর মতোই)।
+        if (!_store.CanPersist(out var storageError))
+        {
+            return new EnrollmentResult(
+                EnrollmentStatus.StorageFailed,
+                $"The token store is not writable — {storageError}");
+        }
+
+        var identity = _credentials.Identity;
+        if (!identity.UsableForEnrollment)
+        {
+            return new EnrollmentResult(
+                EnrollmentStatus.IdentityUnusable,
+                identity.Warning ?? "A stable machineGuid could not be created.");
+        }
+
+        if (string.IsNullOrWhiteSpace(email) || password.IsBlank)
+        {
+            // নেটওয়ার্কে যাওয়ার দরকার নেই — সার্ভার ৪০০ দিত আর throttle-এর
+            // কাউন্টার অকারণে বাড়ত
+            return new EnrollmentResult(
+                EnrollmentStatus.SignInRejected, "Enter your email and password.");
+        }
+
+        var request = new EnrollLoginRequest
+        {
+            Email = email,
+            Password = password.Reveal(),
+            Totp = totp,
+            Hostname = identity.Hostname,
+            WindowsUsername = identity.WindowsUsername,
+            MachineGuid = identity.MachineGuid,
+            OsVersion = identity.OsVersion,
+            AgentVersion = _agentVersion,
+            Monitors = monitors is { } count ? (int?)Math.Clamp(count, 1, 8) : null,
+        };
+
+        // ⚠️ ইমেইলটুকুই লগে যায়, পাসওয়ার্ড নয়
+        _log?.Invoke($"Sign-in attempt: {email} · {identity.Describe()}");
+
+        var response = await _sync.EnrollWithLoginAsync(request, ct).ConfigureAwait(false);
+
+        if (response.Outcome == SyncOutcome.Success)
+        {
+            if (response.Value is { NeedsTotp: true })
+            {
+                return new EnrollmentResult(
+                    EnrollmentStatus.NeedsTotp,
+                    "Enter the 6-digit code from your authenticator app.");
+            }
+
+            if (response.Value is { DeviceToken: not null } body)
+            {
+                return Persist(
+                    new EnrollResponse
+                    {
+                        DeviceId = body.DeviceId ?? 0,
+                        DeviceToken = body.DeviceToken,
+                        Employee = body.Employee!,
+                        ConfigVersion = body.ConfigVersion ?? string.Empty,
+                        Config = body.Config!,
+                    },
+                    identity);
+            }
+
+            return new EnrollmentResult(
+                EnrollmentStatus.ServerUnreachable,
+                "The server said success but the response was empty (proxy?). Try again.",
+                HttpStatus: response.StatusCode);
+        }
+
+        /**
+         * ⚠️⚠️ এখানে <see cref="SyncOutcome"/> দেখে কাজ চলে **না**, স্ট্যাটাস
+         * কোডটাই দেখতে হয় — আর সেটা বাগ নয়, দুটো প্রেক্ষাপটের পার্থক্য।
+         *
+         * `SyncOutcomeClassifier` বানানো হয়েছে **ডেটা সিঙ্কের** জন্য, যেখানে
+         * ৪০১ = "টোকেন হয়তো রিফ্রেশ হচ্ছে, কিউটা ফেলে দিয়ো না" → Transient।
+         * সাইন-ইনে ৪০১-এর মানে ঠিক উল্টো আর একেবারে নিশ্চিত: **পাসওয়ার্ড
+         * ভুল**। ওই শ্রেণিবিভাগ মেনে চললে স্টাফ ভুল পাসওয়ার্ড দিয়ে
+         * "সার্ভারে পৌঁছানো যাচ্ছে না" পড়ত — আর নেটওয়ার্কের লোক ডেকে
+         * আধঘণ্টা নষ্ট করত।
+         *
+         * একই কারণে ৪২৯ এখানে "পরে আবার" নয়, "তালা পড়েছে, অপেক্ষা করুন"।
+         */
+        return response.StatusCode switch
+        {
+            401 => new EnrollmentResult(
+                EnrollmentStatus.SignInRejected,
+                "Email or password is incorrect.",
+                HttpStatus: 401),
+
+            // owner/manager-এর অ্যাকাউন্ট — সার্ভারের বার্তাটাই কাজের
+            403 => new EnrollmentResult(
+                EnrollmentStatus.SignInRejected,
+                response.Detail ?? "This account cannot be used on a staff PC.",
+                HttpStatus: 403),
+
+            429 => new EnrollmentResult(
+                EnrollmentStatus.SignInRejected,
+                "Too many failed attempts. Wait a few minutes and try again.",
+                HttpStatus: 429),
+
+            400 => new EnrollmentResult(
+                EnrollmentStatus.SignInRejected,
+                response.Detail ?? "The server did not accept this sign-in.",
+                HttpStatus: 400),
+
+            _ => new EnrollmentResult(
+                EnrollmentStatus.ServerUnreachable,
+                "Could not reach the server: " + (response.Detail ?? "reason unknown"),
+                HttpStatus: response.StatusCode),
+        };
     }
 
     /// <summary>

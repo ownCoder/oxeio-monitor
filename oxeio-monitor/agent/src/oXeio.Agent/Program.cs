@@ -95,7 +95,92 @@ internal static partial class Program
             return PreviewToday(args);
         }
 
+        if (args.Any(a => a.Equals("--preview-signin", StringComparison.OrdinalIgnoreCase)))
+        {
+            return PreviewSignIn(args);
+        }
+
         return RunAgent();
+    }
+
+    /// <summary>
+    /// সাইন-ইন জানালাটা নকল উত্তর দিয়ে খুলে দেখা — <c>--preview-today</c>-র
+    /// মতোই একটা ডেভ টুল। কোনো সার্ভার লাগে না, কিছুই জমা হয় না।
+    ///
+    /// ⭐ কেন দরকার: জানালার চারটে অবস্থা আছে, আর আসল সার্ভারে সেগুলো
+    /// দেখতে হলে যথাক্রমে একটা ভুল পাসওয়ার্ড, একটা 2FA-ওয়ালা অ্যাকাউন্ট,
+    /// একটা owner অ্যাকাউন্ট আর একটা বন্ধ নেটওয়ার্ক লাগত।
+    ///
+    /// <c>--preview-signin [wrong|totp|forbidden|offline]</c>
+    /// </summary>
+    private static int PreviewSignIn(string[] args)
+    {
+        var which = args.FirstOrDefault(
+            a => a is "wrong" or "totp" or "forbidden" or "offline") ?? "ok";
+
+        var totpAsked = false;
+
+        using var form = new SignInForm(
+            "https://oxeio.office.local",
+            (email, _, totp, _) =>
+            {
+                var result = which switch
+                {
+                    "wrong" => new EnrollmentResult(
+                        EnrollmentStatus.SignInRejected, "Email or password is incorrect."),
+
+                    "forbidden" => new EnrollmentResult(
+                        EnrollmentStatus.SignInRejected,
+                        "This account is not linked to a staff record. Sign in with the staff account for this PC."),
+
+                    "offline" => new EnrollmentResult(
+                        EnrollmentStatus.ServerUnreachable,
+                        "Could not reach the server: connection refused"),
+
+                    // ⚠️ প্রথম দফায় কোড চায়, দ্বিতীয় দফায় মেনে নেয় —
+                    //    দুটো ধাপই দেখা যায়
+                    "totp" when !totpAsked && string.IsNullOrWhiteSpace(totp) => Ask(),
+
+                    _ => new EnrollmentResult(
+                        EnrollmentStatus.Enrolled,
+                        $"Enrolment succeeded — {email}", 1, "OX-001"),
+                };
+
+                return Task.FromResult(result);
+
+                EnrollmentResult Ask()
+                {
+                    totpAsked = true;
+                    return new EnrollmentResult(
+                        EnrollmentStatus.NeedsTotp,
+                        "Enter the 6-digit code from your authenticator app.");
+                }
+            });
+
+        /**
+         * ⚠️ অবস্থা চাওয়া হলে জানালাটা নিজে থেকেই একবার "Sign in" চাপে,
+         * যাতে ভুল-পাসওয়ার্ড বা 2FA-র চেহারাটাও ছবিতে তোলা যায়
+         * (`--preview-today`-তে অবস্থাগুলো ডেটা দিয়ে আসে, এখানে একটা
+         * ক্লিক লাগে)।
+         *
+         * ⚠️ প্রথমে `SendKeys` দিয়ে চেষ্টা করা হয়েছিল — **কাজ করেনি**, আর
+         * নীরবে: কি-স্ট্রোকটা ফোরগ্রাউন্ড জানালায় যায়, আর সেটা আমাদের
+         * জানালা কি না তার কোনো নিশ্চয়তা নেই। বোতামটা `Controls` থেকে
+         * খুঁজে সরাসরি `PerformClick()` করাই একমাত্র নিশ্চিত পথ, আর তাতে
+         * ইনপুট-সিস্টেম জড়ায়ই না।
+         */
+        if (which != "ok")
+        {
+            form.Shown += (_, _) => form.Controls
+                .OfType<Button>()
+                .FirstOrDefault()
+                ?.PerformClick();
+        }
+
+        Application.Run(form);
+
+        Console.WriteLine(form.Result is { } r ? $"result: {r.Status} — {r.Message}" : "closed");
+        return 0;
     }
 
     /// <summary>

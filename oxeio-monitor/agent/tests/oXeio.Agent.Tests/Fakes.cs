@@ -176,6 +176,10 @@ internal sealed class FakeSyncClient : ISyncClient
     public Task<SyncResult<EnrollResponse>> EnrollAsync(EnrollRequest r, CancellationToken ct = default) =>
         throw new NotSupportedException();
 
+    public Task<SyncResult<EnrollLoginResponse>> EnrollWithLoginAsync(
+        EnrollLoginRequest r, CancellationToken ct = default) =>
+        throw new NotSupportedException();
+
     public Task<SyncResult<ConfigResponse>> GetConfigAsync(CancellationToken ct = default) =>
         throw new NotSupportedException();
 

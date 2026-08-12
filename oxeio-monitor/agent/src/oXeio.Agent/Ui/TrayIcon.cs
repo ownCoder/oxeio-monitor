@@ -131,6 +131,16 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         Render(AgentStatus.Starting);
     }
 
+    /// <summary>
+    /// UI থ্রেডে কিছু চালানো — বাইরের কারো এই থ্রেডটা দরকার হলে এই পথেই।
+    ///
+    /// ⚠️ এজেন্টে <see cref="UiDispatcher"/> **একটাই**, আর সেটা এই ক্লাসের
+    /// ভেতরে। দ্বিতীয় একটা বানালে সেটা অন্য থ্রেডে বসত (যে থ্রেডে তৈরি
+    /// হলো), আর তখন "UI থ্রেড" মানে দুটো আলাদা জিনিস হয়ে যেত — WinForms-এ
+    /// ওই ভুলের শাস্তি সাথে সাথে আসে না, সপ্তাহ দুয়েক পর একবার আসে।
+    /// </summary>
+    public void Post(Action action) => _dispatcher.Post(action);
+
     // ── IAgentStatusSink ──────────────────────────────────────────────────
 
     /// <summary>

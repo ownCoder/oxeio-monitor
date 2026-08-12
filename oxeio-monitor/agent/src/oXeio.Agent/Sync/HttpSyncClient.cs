@@ -175,6 +175,41 @@ internal sealed class HttpSyncClient : ISyncClient, IDisposable
             ct);
     }
 
+    /// <summary>
+    /// ⭐ স্টাফের নিজের লগইন দিয়ে enroll।
+    ///
+    /// ⚠️ <c>anonymous: true</c> — এখানে ডিভাইস টোকেন থাকেই না, ওটাই তো
+    /// আনতে যাওয়া হচ্ছে। না দিলে আগের কোনো টোকেন (revoke-এর পরেও) হেডারে
+    /// চলে যেত আর সার্ভার ৪০১ দিত।
+    ///
+    /// ⚠️ ব্যর্থ হলেও <b>রিকোয়েস্ট অবজেক্টটা লগে যায় না</b> — ওতে
+    /// পাসওয়ার্ড আছে।
+    /// </summary>
+    public Task<SyncResult<EnrollLoginResponse>> EnrollWithLoginAsync(
+        EnrollLoginRequest request, CancellationToken ct = default)
+    {
+        if (request is null)
+            return Task.FromResult(SyncResult<EnrollLoginResponse>.Permanent(null, "enroll-login: no request"));
+
+        var message = NewJsonRequest(
+            HttpMethod.Post, "agent/enroll-login", SyncWire.EnrollLogin(request), anonymous: true);
+
+        return ExecuteAsync<EnrollLoginResponse>(
+            message, _options.ControlTimeout, gate: null, what: "enroll-login",
+            onSuccess: (_, body) =>
+            {
+                var value = SyncJson.TryDeserialize<EnrollLoginResponse>(body);
+                if (value is not null) return SyncResult<EnrollLoginResponse>.Ok(value);
+
+                // ⚠️ enroll-এর মতোই সবচেয়ে খারাপ ফল: সার্ভার ডিভাইস বানিয়ে
+                //    ফেলেছে আর টোকেন একবারই পাঠায়। পড়তে না পারা মানে টোকেন গেল।
+                _log.Error("enroll-login: the server returned 2xx but the response could not be read — " +
+                           "the deviceToken is lost, sign in again");
+                return SyncResult<EnrollLoginResponse>.Permanent(200, "enroll-login: could not read the response JSON");
+            },
+            ct);
+    }
+
     public Task<SyncResult<ConfigResponse>> GetConfigAsync(CancellationToken ct = default)
     {
         var message = NewJsonRequest(HttpMethod.Get, "agent/config");
