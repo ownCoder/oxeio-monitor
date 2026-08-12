@@ -737,7 +737,8 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 
 | Method | Endpoint | কাজ |
 |---|---|---|
-| POST | `/agent/enroll` | প্রথমবার ইনস্টলের সময়। `{enrollmentCode, hostname, windowsUsername, machineGuid, osVersion?, agentVersion?, monitors?}` → `{deviceId, deviceToken, employee, configVersion, config}`। `deviceToken` **এই একবারই** যায়, সার্ভারে শুধু sha256 |
+| POST | `/agent/enroll-login` | ⭐ **সাধারণ পথ** — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে নিজের PC যোগ করে। `{email, password, totp?, hostname, windowsUsername, machineGuid, …}` → `{deviceId, deviceToken, employee, configVersion, config}`, অথবা 2FA চালু থাকলে `{status: "needs_totp"}` (দুটোই **২০০**)। ⚠️ যাচাই `AuthService.login()`-এই — throttle · 2FA · audit তিনটেই ওখান থেকে আসে। owner/manager-এর অ্যাকাউন্টে **৪০৩** |
+| POST | `/agent/enroll` | একবার-ব্যবহার্য কোড দিয়ে (**স্ক্রিপ্টেড রোলআউটের পথ**)। `{enrollmentCode, hostname, windowsUsername, machineGuid, osVersion?, agentVersion?, monitors?}` → একই উত্তর। `deviceToken` **এই একবারই** যায়, সার্ভারে শুধু sha256 |
 | GET | `/agent/config` | কনফিগ সিঙ্ক (capture window, interval, idle threshold) → `{version, config}`। `version` = কনফিগের sha256-এর প্রথম ১৬ অক্ষর, আলাদা কাউন্টার নেই |
 | POST | `/agent/heartbeat` | প্রতি ৩০ সেকেন্ডে। `{state, activeSecToday, queueDepth?, configVersion?, agentVersion?}` → `{commands, configVersion, progress}` (↓ দুটোই নিচে) |
 | POST | `/agent/segments` | ব্যাচে activity segments (প্রতি ১ মিনিটে) |
@@ -810,12 +811,15 @@ heartbeat-এ ভার্সন মিলে যেত, তাই সার্�
 | POST | `/auth/change-password` | ⭐ *নতুন* — নিজের পাসওয়ার্ড বদলানো। `must_change_pw = TRUE` হলে লগইনের পর অন্য কিছু করার আগে এটাই করতে হবে |
 | POST | `/users/:id/reset-password` | ⭐ *নতুন* — **owner only**। একবার-দেখানো temp পাসওয়ার্ড ফেরত দেয়, `must_change_pw = TRUE` বসিয়ে দেয়। SMTP লাগে না, তাই Phase 1-এই সম্ভব |
 | POST | `/employees/:id/portal-account` | ⭐ *নতুন* — **owner only**। স্টাফের self-view অ্যাকাউন্ট (`role = employee`) খোলে |
-| POST | `/employees/:id/policy-doc` | ⭐ *নতুন* — সই করা monitoring policy আপলোড → `policy_signed_at`, `policy_doc_path` |
+| POST | `/employees/:id/policy-signed` | ⭐ **owner only** — নীতিমালায় সইয়ের তারিখ বসানো (`DELETE` দিয়ে তুলে নেওয়া)। ⚠️ ভবিষ্যতের তারিখ নেওয়া হয় না; তারিখ না দিলে ঢাকার আজ |
+| POST | `/employees/:id/policy-doc` | ⏳ **এখনো কোডে নেই** — সই করা কাগজের স্ক্যান আপলোড → `policy_doc_path`। তারিখটা উপরের রুট দিয়েই বসে |
 | POST | `/devices/enrollment-code` | ⭐ *নতুন* — **owner only**। `{employeeId}` → `{code, expiresAt, employee}`; কোড একবারই দেখানো হয়, DB-তে শুধু hash। ⚠️ `inactive` কর্মীর নামে কোড দেওয়া যায় না |
 | GET | `/employees/:id/downtime?date=` | ⭐ *নতুন* — ওই দিনে এজেন্ট কতক্ষণ চুপ ছিল → `{max_claimable_sec, gaps: [...]}`; সংশোধন বসানোর আগে এটাই প্রস্তাবিত পরিমাণ দেখায় |
 | POST | `/employees/:id/time-adjustments` | ⭐ *নতুন* — **owner only**। `{work_date, delta_sec, cause, reason}` → `201`। `reason` খালি হলে `422`; `delta_sec > max_claimable_sec` হলে `beyond_evidence = TRUE` বসে |
 | GET | `/employees/:id/time-adjustments?from=&to=` | সংশোধনের তালিকা। **স্টাফ নিজেরটা দেখতে পাবে** (role=employee) |
 | POST | `/time-adjustments/:id/revoke` | ⭐ *নতুন* — **owner only**। ডিলিট নয়, `revoked_at` বসে |
+| GET | `/me` | ⭐ **কর্মীর নিজের ডেটা** (J05) — নাম · আজ · মাস · pace · সইয়ের তারিখ · ছবি কতদিন থাকে। ⚠️⚠️ পথে **কোনো `:id` নেই**, আইডি আসে সেশন থেকে — তাই সহকর্মীর ডেটা চাওয়ার উপায়ই নেই |
+| GET | `/me/days?from=&to=` | ⭐ নিজের দিনে-দিনে ঘণ্টা, ছুটি ও ফাঁকা দিনসহ। সর্বোচ্চ ৯২ দিন |
 | GET | `/live` | এখন কে online/idle/offline — ড্যাশবোর্ডের হোম |
 | GET | `/employees` · `/employees/:id` | স্টাফ লিস্ট ও প্রোফাইল |
 | GET | `/employees/:id/timeline?date=` | ওই দিনের সেকেন্ড-বাই-সেকেন্ড টাইমলাইন |
@@ -830,13 +834,20 @@ heartbeat-এ ভার্সন মিলে যেত, তাই সার্�
 | POST | `/work-policies/:id/deactivate` | ⭐ *নতুন* — পলিসিও মোছা যায় না, ওর দিকে employees আর পুরোনো মাসের হিসাব তাকিয়ে আছে |
 | CRUD | `/employees` `/work-policies` `/categories` `/devices` `/holidays` | **owner only** |
 | GET | `/audit-log?userId=&action=&targetType=&targetId=&from=&to=&page=&pageSize=` | **owner only** |
+| GET | `/ops/health` | **owner only** (K04) — ডিস্ক, ব্যাকআপের ইতিহাস, চুপ থাকা ডিভাইস। ⚠️ Docker healthcheck এটা **নয়**, সেটা পাবলিক `/health` |
+| POST | `/ops/backup/run` | **owner only** (K02) — এখনই একটা ব্যাকআপ। উত্তরে কোনো ফাইল-পাথ যায় না |
+| POST | `/ops/retention/run` | ⭐ **owner only** (K01) — এখনই ৯০ দিনের পুরোনো ছবি মোছা। রাত ২টার cron তো আছেই; এটা যাচাইয়ের পথ |
 
-> ⚠️ **যেগুলো এখনো শুধু ডিজাইন, কোডে নেই:** `GET /employees/:id/downtime` ·
-> `POST|GET /employees/:id/time-adjustments` · `POST /time-adjustments/:id/revoke`
-> (G35-এর পুরো পথটাই) · `POST /employees/:id/policy-doc` (G34 — সই-আপলোডের
-> রুট নেই, তাই `policy_signed_at`/`policy_doc_path` শুধু পড়া হয়, কেউ লেখে না;
-> রোলআউটের শর্ত) আর `/settings`-এর CRUD — তাই উপরের CRUD সারি থেকে
-> `/settings` তুলে দেওয়া হলো। কোডে আজ কী আছে তার হালনাগাদ তালিকা
+> ⚠️ **যেগুলো এখনো শুধু ডিজাইন, কোডে নেই:** `GET /employees/:id/downtime`
+> (সংশোধনের আগে "কতটা দাবি করা যায়" দেখানো) · `POST /employees/:id/policy-doc`
+> (সই করা কাগজের স্ক্যান আপলোড) আর `/settings`-এর CRUD — তাই উপরের CRUD
+> সারি থেকে `/settings` তুলে দেওয়া হলো।
+>
+> ✅ **১২ আগস্ট বন্ধ হয়েছে:** `POST|GET /employees/:id/time-adjustments` ও
+> `POST /time-adjustments/:id/revoke` (G35-এর পুরো পথ) ·
+> `POST /employees/:id/policy-signed` (রোলআউটের শর্ত — তারিখটা এখন বসানো
+> যায়) · `GET /me` ও `/me/days` (J05) · `POST /ops/retention/run` (K01) ·
+> `POST /agent/enroll-login`। কোডে আজ কী আছে তার হালনাগাদ তালিকা
 > [09-Build-Log § ৩ক](09-Build-Log.md)।
 
 ### ৪.৩ Role permission
@@ -912,7 +923,7 @@ D:\oXeio\
 | স্তর | ব্যবস্থা |
 |---|---|
 | Agent ↔ Server | HTTPS (TLS), প্রতি ডিভাইসে আলাদা ২৫৬-বিট token, সার্ভারে শুধু hash জমা |
-| Enrollment | এককালীন enrollment code, ২৪ ঘণ্টায় expire, একবারই ব্যবহারযোগ্য |
+| Enrollment | **দুটো পথ:** ⭐ স্টাফের নিজের ইমেইল-পাসওয়ার্ড (`/agent/enroll-login` — যাচাই লগইনের কোডেই, তাই throttle · 2FA · audit সবই প্রযোজ্য), অথবা এককালীন enrollment code (২৪ ঘণ্টায় expire, একবারই ব্যবহারযোগ্য) |
 | Dashboard | argon2id (m=19 MiB · t=2 · p=1), httpOnly JWT cookie, ৩০ মিনিট idle logout, ঐচ্ছিক TOTP 2FA |
 
 ### ৭.১ Auth — বাস্তবায়নের বিস্তারিত *(Phase 1-এ তৈরি)*
@@ -989,10 +1000,18 @@ oxeio-monitor/
 
 ## ১০. রোলআউটের আগে চেকলিস্ট
 
-- [ ] Monitoring policy লিখে স্টাফদের সই নেওয়া (টেমপ্লেট: `docs/monitoring-policy-template.md`)
+- [ ] Monitoring policy-র ফাঁকা ঘরগুলো পূরণ + **আইনজীবীর চোখ**, তারপর স্টাফদের সই (টেমপ্লেট: `docs/monitoring-policy-template.md` — লেখা আছে, **৩৬টা ফাঁকা ঘর** `__________`)
+- [ ] সই হয়ে গেলে তারিখটা ড্যাশবোর্ডে বসানো (Settings → Staff → policy signed)
 - [ ] সব স্টাফকে জানিয়ে একটা ব্রিফিং মিটিং
-- [ ] সার্ভার PC-তে static IP, UPS, BitLocker, অটো ব্যাকআপ
+- [ ] **প্রতিটা স্টাফের portal account** খোলা — এজেন্ট বসানোর সময় ওই লগইনই লাগবে ([ADR-024](05-Options-Decisions.md))
+- [ ] MSI বানানো **সার্ভারের ঠিকানা বেক করে**: `build.ps1 -ServerUrl "https://…"`
+- [ ] সার্ভার PC-তে static IP, UPS, BitLocker, অটো ব্যাকআপ, **বিদ্যুৎ ফিরলে Docker নিজে ওঠা**
 - [ ] ১৫টা PC-র এন্টিভাইরাসে agent exclusion যোগ
 - [ ] স্টাফ যেন এজেন্ট আনইনস্টল করতে না পারে — non-admin Windows অ্যাকাউন্ট
 - [ ] ৩টা PC-তে ১ সপ্তাহ পাইলট, তারপর পুরো রোলআউট
 - [ ] ১ মাস পর রিভিউ — ১ মিনিট idle threshold ঠিক আছে কি না
+
+> ⚠️ **কোড দিয়ে সারানো যায় না, এমন যা বাকি:** MSI-তে code signing নেই
+> (সার্ট কিনতে হবে, নইলে প্রতিটা PC-তে SmartScreen সতর্কতা) · I01 সার্ট
+> পিনিং কোডে বসানো হয়নি (§ ৬ ধাপগুলো লেখা আছে) · G37 proration ·
+> G39 অফসাইট ব্যাকআপ · টেলিগ্রামে আসল ডেলিভারি (মালিকের bot token লাগবে)।
