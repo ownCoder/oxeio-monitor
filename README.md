@@ -134,17 +134,25 @@ cd oxeio-monitor && npm --prefix web run dev
 cd oxeio-monitor/agent && dotnet run --project src/oXeio.Agent -- --diagnose
 ```
 
-ঠিক থাকলে MSI বানান:
+ঠিক থাকলে MSI বানান — **সার্ভারের ঠিকানা ভেতরে বেক করে**:
 
 ```bash
-cd oxeio-monitor/agent/installer && pwsh -File build.ps1
+cd oxeio-monitor/agent/installer && powershell -File build.ps1 -ServerUrl "https://oxeio.office.local"
 ```
 
-এনরোলমেন্ট কোড ড্যাশবোর্ডে: **Settings → Devices → Enrolment code**।
-⚠️ কোডটা **একবারই** দেখানো হয়, ২৪ ঘণ্টায় মেয়াদ শেষ।
+⭐ তারপর প্রতিটা PC-তে শুধু **ডাবল-ক্লিক** (অ্যাডমিন হিসেবে), আর স্টাফ
+নিজের ইমেইল-পাসওয়ার্ড দিয়ে সাইন ইন করে — কোনো কোড, কোনো কমান্ড নেই
+([ADR-024](docs/05-Options-Decisions.md))।
+
+⚠️ আগে তার **portal account** খোলা থাকতে হবে: Settings → Staff → Portal
+account। ওই লগইন দিয়েই সে পরে নিজের ঘণ্টা দেখবে (`/me`)।
+
+স্ক্রিপ্টেড রোলআউটে (কেউ কীবোর্ডে বসবে না) কোডের পথটা রয়ে গেছে —
+এনরোলমেন্ট কোড: **Settings → Devices → Enrolment code**, একবারই দেখানো
+হয়, ২৪ ঘণ্টায় মেয়াদ শেষ:
 
 ```bash
-msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>:3000" ENROLLCODE="<code>"
+msiexec /i oXeioAgent.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
 ```
 
 ### অফিসের সার্ভারে — ডেভ নয়
