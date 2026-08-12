@@ -193,7 +193,7 @@ tray-তে   →  সবসময় দেখা যায়: "এই মা�
    ⚠️ কোডের পথটা রয়ে গেছে **স্ক্রিপ্টেড রোলআউটের জন্য** — রাতে দূর
    থেকে ১৫টা PC-তে বসাতে হলে, যখন কারো কীবোর্ডে বসার সুযোগ নেই:
 
-   msiexec /i oXeioAgent-0.3.3.msi /qn ^
+   msiexec /i oXeioAgent-0.3.4.msi /qn ^
            SERVERURL="https://oxeio.office.local" ENROLLCODE="OXEIO-XXXXXXXX"
 
    tray আইকন দেখা গেলেই বোঝা যাবে হয়ে গেছে। কেউ কীবোর্ডে না বসলেও

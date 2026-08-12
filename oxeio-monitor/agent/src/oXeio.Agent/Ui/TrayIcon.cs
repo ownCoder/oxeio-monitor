@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 
@@ -44,6 +44,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
     private readonly NotifyIcon _notify;
     private readonly ContextMenuStrip _menu;
+    private readonly ToolStripMenuItem _signInItem;
     private readonly ToolStripMenuItem _todayItem;
     private readonly ToolStripMenuItem _portalItem;
     private readonly ToolStripMenuItem _policyItem;
@@ -76,12 +77,16 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         _fonts = new TrayFonts();
         _balloons = new BalloonThrottle();
 
+        // ⭐ সবার উপরে, আর সাইন ইন না থাকলে **বোল্ড** — এই অবস্থায় জানালার
+        //    আর সব কিছু (ঘণ্টা, ছবি, সিঙ্ক) অর্থহীন, একটাই কাজ বাকি।
+        _signInItem = new ToolStripMenuItem("Sign in…") { Visible = false };
         _todayItem = new ToolStripMenuItem("Today's hours");
         _portalItem = new ToolStripMenuItem("My data");
         _policyItem = new ToolStripMenuItem("View policy");
         _syncItem = new ToolStripMenuItem(SyncNowText);
         _aboutItem = new ToolStripMenuItem("About");
 
+        _signInItem.Click += (_, _) => Guarded(() => _options.RequestSignIn?.Invoke());
         _todayItem.Click += (_, _) => Guarded(ShowToday);
         _portalItem.Click += (_, _) => Guarded(() =>
             OpenExternal(_options.StaffPortalUrl, "No staff portal address is configured"));
@@ -98,6 +103,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
         _menu.Items.AddRange(new ToolStripItem[]
         {
+            _signInItem,
             _todayItem,
             _portalItem,
             _policyItem,
@@ -334,6 +340,10 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
     private void RefreshMenu()
     {
+        // ⚠️ Visible, Enabled নয়। সাইন ইন হয়ে গেলে আইটেমটার আর কোনো মানে
+        //    নেই — ধূসর হয়ে ঝুলে থাকলে স্টাফ ভাবত কিছু একটা ভেঙে আছে।
+        _signInItem.Visible = !_status.Enrolled && _options.RequestSignIn is not null;
+
         _portalItem.Enabled = !string.IsNullOrWhiteSpace(_options.StaffPortalUrl);
         _policyItem.Enabled = !string.IsNullOrWhiteSpace(_options.PolicyUrl);
 

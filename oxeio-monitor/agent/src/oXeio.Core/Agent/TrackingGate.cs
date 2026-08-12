@@ -65,7 +65,13 @@ public static class TrackingGate
     /// </summary>
     public static string Explain(Verdict verdict) => verdict switch
     {
-        Verdict.NotEnrolled => "Sign in to start counting your hours",
+        // ⚠️⚠️ "কী করতে হবে" যথেষ্ট নয় — **কোথায়** করতে হবে সেটাও লাগে।
+        //    আগে শুধু "Sign in to start counting your hours" লেখা ছিল, আর
+        //    জানালায় সাইন ইন করার কোনো বোতামই ছিল না। মালিক ঠিক এটাই
+        //    ধরেছেন: "sign in korar option nei"। একটা নির্দেশ যেটা মানার
+        //    উপায় দেখায় না, সেটা নির্দেশ নয় — সেটা শুধু দোষারোপ।
+        Verdict.NotEnrolled =>
+            "Sign in to start counting your hours — right-click the oXeio tray icon → Sign in",
         Verdict.Revoked => "This device has been switched off — tell the office",
         _ => "Counting your hours",
     };

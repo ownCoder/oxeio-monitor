@@ -60,14 +60,14 @@
 
 `oxeio-monitor/`
 
-- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · **৬৬ endpoint**
-  (৪৭ ড্যাশবোর্ড · ১০ auth · ৯ এজেন্ট) · **৫৯৬ টেস্ট**
+- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · **৭৬ endpoint**
+  (৫৬ ড্যাশবোর্ড · ১০ auth · ১০ এজেন্ট) · **৬৯৩ টেস্ট**
   agent ingest · dashboard · activity (ক্যাটাগরি) · screenshots · reports (Excel/PDF) ·
   admin · alerts · ops (ব্যাকআপ/হেলথ) · summary (nightly jobs) · digest · payroll
-- **`agent/`** C# .NET 8 · **৩৪৩ টেস্ট** (Core ২৭৪ · Agent ৬৯) · `oXeio.Core` (নিয়ম, শূন্য Win32) +
+- **`agent/`** C# .NET 8 · **৪১৮ টেস্ট** (Core ৩২১ · Agent ৯৭) · `oXeio.Core` (নিয়ম, শূন্য Win32) +
   `oXeio.Agent` (DXGI ক্যাপচার · idle/lock/sleep · অ্যাপ ও ডোমেইন · SQLite outbox ·
   tray) + `oXeio.Watchdog`। `--diagnose` দিয়ে যেকোনো PC-তে যাচাই করা যায়।
-- **`web/`** React 19 + Vite + Tailwind v4 · Live Board · Employee Detail ·
+- **`web/`** React 19 + Vite + Tailwind v4 · **৬৪ টেস্ট** · Live Board · Employee Detail ·
   গ্যালারি · Monthly হিটম্যাপ · Reports · Settings · Security
 - **`installer/`** WiX 7 → সাইলেন্ট MSI · **`deploy/`** TLS ও Defender স্ক্রিপ্ট
 
@@ -152,7 +152,7 @@ account। ওই লগইন দিয়েই সে পরে নিজে�
 হয়, ২৪ ঘণ্টায় মেয়াদ শেষ:
 
 ```bash
-msiexec /i oXeioAgent-0.3.0.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
+msiexec /i oXeioAgent-0.3.4.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
 ```
 
 ### অফিসের সার্ভারে — ডেভ নয়

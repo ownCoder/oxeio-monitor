@@ -71,9 +71,9 @@ oxeio-monitor/
 │   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
 │   │   │   ├── Agent/TrackingGate.cs       ✅ ⭐ গোনা হবে কি না — সাইন ইন ও revoke
-│   │   │   │   #  ⚠️ চারটে জায়গা এটাই মানে: TrackLoop · CaptureGate ·
-│   │   │   │   #     TodayForm · TrayTooltip। আগে শর্তটা দুবার লেখা ছিল,
-│   │   │   │   #     আর একবার বাদই পড়ে গিয়েছিল (G79)
+│   │   │   │   #  ⚠️ পাঁচটা জায়গা এটাই মানে: TrackLoop · AppUsageLoop ·
+│   │   │   │   #     CaptureGate · TodayForm · TrayTooltip। আগে শর্তটা
+│   │   │   │   #     দুবার লেখা ছিল, আর একবার বাদই পড়ে গিয়েছিল (G79)
 │   │   │   ├── Capture/SlotScheduler.cs    ✅ ৫ মিনিট স্লট + র‍্যান্ডম
 │   │   │   ├── Capture/FrameQuality.cs     ✅ ছবি কালো/এক-রঙা কি না
 │   │   │   ├── Capture/PixelCopy.cs        ✅ RowPitch সামলানো + ঘূর্ণন
@@ -138,10 +138,11 @@ oxeio-monitor/
 │   ├── installer/                          ✅ WiX → bin/oXeioAgent-<version>.msi (৬২ MB)
 │   │   #  ⚠️ নামে ভার্সন, আর পুরোনো বিল্ড মোছা হয় না — ১২ আগস্ট একই
 │   │   #     নামে তিনটে বাইনারি বেরিয়ে গিয়েছিল (§ ৩থ)
-│   │   ├── Package.wxs                     ✅ সাইলেন্ট ইনস্টল · রেজিস্ট্রি কনফিগ · টাস্ক
-│   │   └── build.ps1                       ✅ publish → wix build
-│   ├── tests/oXeio.Core.Tests/             ✅ ২৯৫টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ৮৭টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   │   ├── Package.wxs                     ✅ ডাবল-ক্লিক ইনস্টল · রেজিস্ট্রি · টাস্ক
+│   │   │   #    ⚠️ StartWatchdog — ইনস্টল শেষে চালুও করে (G78)
+│   │   └── build.ps1                       ✅ publish → wix build · ঠিকানা ডিফল্টেই বেক
+│   ├── tests/oXeio.Core.Tests/             ✅ ৩২১টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ৯৭টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -198,7 +199,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৬৬৪টি টেস্ট, ৩১টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — ৬৯৩টি টেস্ট, ৩৩টি ফাইল
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts

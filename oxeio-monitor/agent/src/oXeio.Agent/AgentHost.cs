@@ -271,6 +271,7 @@ internal sealed class AgentHost : IAsyncDisposable
         StaffPortalUrl = _settings.StaffPortalUrl,
         PolicyUrl = _settings.PolicyUrl,
         RequestSyncNow = () => _ = SyncNowAsync(),
+        RequestSignIn = () => _ = SignInOnDemandAsync(),
         Milestone = _milestone,
         OnError = ex => _log.Error("tray", ex),
     };
@@ -721,10 +722,70 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// ⚠️ ১ = জানালা খোলা আছে। <see cref="EnrollIfNeededAsync"/> (স্টার্টআপ)
+    /// আর tray-র "Sign in…" — দুটো আলাদা পথ, আর দুটোই একই সময়ে ডাকা যায়।
+    /// পাহারা না থাকলে দুটো সাইন-ইন জানালা পাশাপাশি খুলত, দুটোই ১২ ঘণ্টার
+    /// টাইমআউট নিয়ে বসে থাকত।
+    /// </summary>
+    private int _signInOpen;
+
+    /// <summary>
+    /// tray-র "Sign in…" থেকে — জানালাটা <b>আবার</b> খোলা।
+    ///
+    /// ⚠️⚠️ আগে জানালাটা আসত শুধু চালু হওয়ার সময়, একবার। বন্ধ করে দিলে
+    /// ফেরার একমাত্র পথ ছিল লগ-অফ করে আবার লগ-ইন — অথচ পর্দায় বড় করে
+    /// লেখা থাকত <i>"Sign in to start counting your hours"</i>। কাজটা
+    /// বলা হচ্ছিল, করার দরজা ছিল না।
+    /// </summary>
+    private async Task SignInOnDemandAsync()
+    {
+        if (_credentials is null || _sync is null) return;
+
+        // ⚠️ ইতিমধ্যে সাইন ইন হয়ে থাকলে চুপচাপ ফিরে যাওয়া — মেনু আইটেমটা
+        //    তখন লুকানো থাকে, কিন্তু মেনু খোলা অবস্থায় স্টার্টআপের সাইন-ইন
+        //    সফল হলে ক্লিকটা তবু আসতে পারত।
+        if (!_credentials.NeedsEnrollment) return;
+
+        if (Interlocked.CompareExchange(ref _signInOpen, 1, 0) != 0)
+        {
+            _log.Info("The sign-in window is already open");
+            return;
+        }
+
+        try
+        {
+            var enroller = new EnrollmentClient(
+                _sync, new DeviceTokenStore(log: _log.Info), _credentials, _version, _log.Info);
+
+            await SignInAsync(enroller, MonitorEnumerator.Enumerate().Count, _stopping.Token);
+        }
+        catch (Exception ex)
+        {
+            _log.Error("The sign-in window could not be opened", ex);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _signInOpen, 0);
+        }
+    }
+
     private async Task EnrollIfNeededAsync(CancellationToken ct)
     {
         if (_credentials is null || _sync is null) return;
         if (!_credentials.NeedsEnrollment) return;
+
+        // ⚠️ স্টার্টআপের পথটাও একই পাহারার নিচে — নইলে tray থেকে ক্লিক করা
+        //    জানালা আর এই জানালা একসাথে খুলতে পারত।
+        if (Interlocked.CompareExchange(ref _signInOpen, 1, 0) != 0) return;
+
+        try { await EnrollCoreAsync(ct); }
+        finally { Interlocked.Exchange(ref _signInOpen, 0); }
+    }
+
+    private async Task EnrollCoreAsync(CancellationToken ct)
+    {
+        if (_credentials is null || _sync is null) return;
 
         var enroller = new EnrollmentClient(
             _sync,

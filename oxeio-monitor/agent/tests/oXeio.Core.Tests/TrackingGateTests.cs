@@ -69,4 +69,19 @@ public class TrackingGateTests
             "Sign in",
             TrackingGate.Explain(TrackingGate.Verdict.NotEnrolled),
             StringComparison.Ordinal);
+
+    /**
+     * ⭐⭐ <b>"কী করতে হবে" যথেষ্ট নয় — "কোথায়" ছাড়া সেটা শুধু দোষারোপ।</b>
+     *
+     * ০.৩.৪-এ পর্দায় বড় করে লেখা ছিল "Sign in to start counting your
+     * hours", অথচ জানালায় সাইন ইন করার কোনো বোতামই ছিল না আর জানালাটা
+     * আসত শুধু চালু হওয়ার সময়। মালিকের জবাব ছিল এক লাইনের:
+     * <i>"sign in korar option nei"</i>।
+     */
+    [Fact]
+    public void সাইন_ইনের_বার্তা_কোথায়_সেটাও_বলে() =>
+        Assert.Contains(
+            "tray",
+            TrackingGate.Explain(TrackingGate.Verdict.NotEnrolled),
+            StringComparison.OrdinalIgnoreCase);
 }
