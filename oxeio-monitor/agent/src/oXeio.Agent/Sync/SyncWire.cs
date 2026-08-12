@@ -254,6 +254,40 @@ internal static class SyncWire
         Monitors = request.Monitors,
     };
 
+    /// <summary>
+    /// ⚠️ সার্ভারের `EnrollLoginDto`-র ঘরগুলোই — নাম বা আকার বদলালে
+    /// দু-পাশে একসাথে বদলাতে হবে।
+    /// </summary>
+    internal sealed record EnrollLoginDto
+    {
+        public required string Email { get; init; }
+        public required string Password { get; init; }
+        public string? Totp { get; init; }
+        public required string Hostname { get; init; }
+        public required string WindowsUsername { get; init; }
+        public required string MachineGuid { get; init; }
+        public string? OsVersion { get; init; }
+        public string? AgentVersion { get; init; }
+        public int? Monitors { get; init; }
+    }
+
+    internal static EnrollLoginDto EnrollLogin(EnrollLoginRequest request) => new()
+    {
+        // ⚠️ ইমেইলের সামনে-পিছনে ফাঁকা জায়গা কেটে দেওয়া হয়: মানুষ কপি-পেস্ট
+        //    করলে প্রায়ই একটা স্পেস চলে আসে, আর সার্ভারে সেটা "অচেনা ইমেইল"
+        //    হয়ে ৪০১ দিত — স্টাফ তখন পাসওয়ার্ড নিয়ে সন্দেহ করত।
+        Email = request.Email.Trim(),
+        // ⚠️ পাসওয়ার্ড **Trim করা হয় না** — শেষের স্পেসও পাসওয়ার্ডের অংশ
+        Password = request.Password,
+        Totp = string.IsNullOrWhiteSpace(request.Totp) ? null : request.Totp.Trim(),
+        Hostname = request.Hostname,
+        WindowsUsername = request.WindowsUsername,
+        MachineGuid = request.MachineGuid,
+        OsVersion = request.OsVersion,
+        AgentVersion = request.AgentVersion,
+        Monitors = request.Monitors,
+    };
+
     // ── screenshot meta ─────────────────────────────────────────────────────
 
     /// <summary>

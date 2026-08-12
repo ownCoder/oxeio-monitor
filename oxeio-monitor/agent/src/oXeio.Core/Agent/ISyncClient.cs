@@ -35,6 +35,13 @@ public interface ISyncClient
     Task<SyncResult<EnrollResponse>> EnrollAsync(
         EnrollRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// ⭐ স্টাফের নিজের লগইন দিয়ে enroll। ⚠️ ২০০ পেলেও কাজ শেষ নাও হতে
+    /// পারে — <see cref="EnrollLoginResponse.NeedsTotp"/> দেখুন।
+    /// </summary>
+    Task<SyncResult<EnrollLoginResponse>> EnrollWithLoginAsync(
+        EnrollLoginRequest request, CancellationToken ct = default);
+
     Task<SyncResult<ConfigResponse>> GetConfigAsync(CancellationToken ct = default);
 
     Task<SyncResult<HeartbeatResponse>> HeartbeatAsync(

@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Ip,
   Post,
   Query,
   Res,
@@ -30,12 +31,17 @@ import { CurrentDevice, CurrentDrift } from './device.decorator';
 import {
   AppUsageBatchDto,
   EnrollDto,
+  EnrollLoginDto,
   EventBatchDto,
   HeartbeatDto,
   ScreenshotMetaDto,
   SegmentBatchDto,
 } from './dto';
-import { EnrollmentService, type EnrollResult } from './enrollment.service';
+import {
+  EnrollmentService,
+  type EnrollLoginResult,
+  type EnrollResult,
+} from './enrollment.service';
 import { IngestService, type IngestResult } from './ingest.service';
 import { ProgressService, type EmployeeProgress } from './progress.service';
 import {
@@ -76,6 +82,29 @@ export class AgentController {
   @HttpCode(HttpStatus.CREATED)
   enroll(@Body() dto: EnrollDto): Promise<EnrollResult> {
     return this.enrollment.enroll(dto);
+  }
+
+  /**
+   * ⭐⭐ **স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে নিজের PC যোগ করে।**
+   *
+   * ⚠️ এটাই এখন সাধারণ পথ; কোডেরটা (`/enroll`) থাকে স্ক্রিপ্টেড
+   * রোলআউটের জন্য। কেন — `EnrollmentService.enrollWithLogin()` দেখুন।
+   *
+   * ⚠️⚠️ `@Ip()` **দিতেই হবে**, আর সেটা নিছক লগের জন্য নয়:
+   * `AuthService.login()` ওই IP ধরেই brute-force throttle করে। খালি
+   * স্ট্রিং পাঠালে সব চেষ্টা একই বালতিতে পড়ত — অর্থাৎ একটা ভুল
+   * পাসওয়ার্ড দিলে **গোটা অফিসের** enrollment আটকে যেত।
+   *
+   * ⚠️ ২০০ ফেরে, ২০১ নয়। উত্তরটা দু-রকম হতে পারে (ডিভাইস তৈরি হলো, নাকি
+   * 2FA কোড চাই) — "তৈরি হয়েছে" বলাটা তখন অর্ধেক ক্ষেত্রে মিথ্যা হতো।
+   */
+  @Post('enroll-login')
+  @HttpCode(HttpStatus.OK)
+  enrollWithLogin(
+    @Body() dto: EnrollLoginDto,
+    @Ip() ip: string,
+  ): Promise<EnrollLoginResult> {
+    return this.enrollment.enrollWithLogin(dto, ip);
   }
 
   @UseGuards(DeviceAuthGuard)

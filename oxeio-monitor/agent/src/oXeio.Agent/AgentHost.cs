@@ -691,12 +691,6 @@ internal sealed class AgentHost : IAsyncDisposable
         if (_credentials is null || _sync is null) return;
         if (!_credentials.NeedsEnrollment) return;
 
-        if (string.IsNullOrWhiteSpace(_settings.EnrollmentCode))
-        {
-            _log.Warn("No enrolment code — this device has not been added to the server");
-            return;
-        }
-
         var enroller = new EnrollmentClient(
             _sync,
             new DeviceTokenStore(log: _log.Info),
@@ -705,10 +699,106 @@ internal sealed class AgentHost : IAsyncDisposable
             _log.Info);
 
         var monitors = MonitorEnumerator.Enumerate().Count;
-        var result = await enroller.EnrollWithRetryAsync(
-            new SecretText(_settings.EnrollmentCode), monitors, ct: ct);
 
-        _log.Info(result.Ok ? "✅ Device enrolled" : $"Enrolment failed: {result.Message}");
+        /**
+         * ⭐⭐ <b>দুটো পথ, আর ক্রমটাই মূল সিদ্ধান্ত।</b>
+         *
+         * ইনস্টলের সময় কোড দেওয়া থাকলে (স্ক্রিপ্টেড রোলআউট, ১৫টা PC
+         * একসাথে) সেটাই আগে — তখন কারো কীবোর্ডে বসার সুযোগ নেই।
+         *
+         * ⚠️ কোড না থাকলে আগে **শূন্যে চেঁচানো হতো**: "No enrolment code —
+         * this device has not been added to the server"। এজেন্ট চলত,
+         * ট্র্যাক করত, কিন্তু কিছুই পাঠাত না — আর কেউ টেরও পেত না, কারণ
+         * বার্তাটা যেত এমন এক লগে যা তখনো লেখাই হতো না (H08)। এখন সেই
+         * জায়গায় স্টাফকে সরাসরি জিজ্ঞেস করা হয়।
+         */
+        if (!string.IsNullOrWhiteSpace(_settings.EnrollmentCode))
+        {
+            var byCode = await enroller.EnrollWithRetryAsync(
+                new SecretText(_settings.EnrollmentCode), monitors, ct: ct);
+
+            _log.Info(byCode.Ok ? "✅ Device enrolled" : $"Enrolment failed: {byCode.Message}");
+            PublishStatus();
+            return;
+        }
+
+        await SignInAsync(enroller, monitors, ct);
+    }
+
+    /// <summary>
+    /// স্টাফকে জিজ্ঞেস করা — জানালাটা <see cref="SignInForm"/>।
+    ///
+    /// ⚠️ <b>UI থ্রেডে</b> চালাতেই হয়। এই মেথডটা ডাকা হয় স্টার্টআপের
+    /// ব্যাকগ্রাউন্ড টাস্ক থেকে, আর ওখান থেকে সরাসরি <c>ShowDialog()</c>
+    /// করলে WinForms হয় ছুড়ত, নয় জানালাটা এমন এক থ্রেডে বসত যার নিজের
+    /// message loop নেই — অর্থাৎ জানালাটা দেখা যেত কিন্তু কোনো ক্লিকে
+    /// সাড়া দিত না।
+    ///
+    /// ⚠️ জানালা বন্ধ করে দিলে (বা বাতিল হলে) এজেন্ট **চলতেই থাকে** —
+    /// শুধু enroll হয় না। পরের লগঅনে আবার জিজ্ঞেস করা হবে। ইনস্টলের দিন
+    /// কারো তাড়া থাকলে সে কাজ শুরু করতে পারবে, আর সেটাই ঠিক।
+    /// </summary>
+    private async Task SignInAsync(EnrollmentClient enroller, int monitors, CancellationToken ct)
+    {
+        var tray = _tray;
+        if (tray is null)
+        {
+            _log.Error("The sign-in window could not be opened — the tray is not up yet");
+            return;
+        }
+
+        var completion = new TaskCompletionSource<EnrollmentResult?>();
+
+        tray.Post(() =>
+        {
+            try
+            {
+                using var form = new SignInForm(
+                    _settings.ServerUrl,
+                    (email, password, totp, token) =>
+                        enroller.SignInAsync(email, password, totp, monitors, token));
+
+                form.ShowDialog();
+                completion.TrySetResult(form.Result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error("The sign-in window could not be opened", ex);
+                completion.TrySetResult(null);
+            }
+        });
+
+        /**
+         * ⚠️ <b>টাইমআউট আছে, আর সেটা থাকতেই হবে।</b> `Post()` কখনো ছোড়ে না
+         * আর কিছু ফেরতও দেয় না — হ্যান্ডেল ধ্বংস হয়ে গেলে সে চুপচাপ কাজটা
+         * ফেলে দেয়। তখন এই `await` **চিরকাল** ঝুলে থাকত, আর তার সাথে
+         * স্টার্টআপের টাস্কটাও।
+         */
+        EnrollmentResult? result;
+        try
+        {
+            result = await completion.Task
+                .WaitAsync(TimeSpan.FromHours(12), ct)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // জানালাটা সারাদিন খোলা পড়ে ছিল — কেউ বসেনি
+            _log.Warn("The sign-in window was left open all day — this PC is still not enrolled");
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            // এজেন্ট বন্ধ হচ্ছে
+            return;
+        }
+
+        _log.Info(result is null
+            ? "Sign-in was closed without enrolling — this PC is not sending anything yet"
+            : result.Ok
+                ? "✅ Device enrolled by sign-in"
+                : $"Sign-in failed: {result.Message}");
+
         PublishStatus();
     }
 

@@ -23,6 +23,56 @@ public sealed record EnrollRequest
     public int? Monitors { get; init; }
 }
 
+/// <summary>
+/// ⭐ <c>POST /agent/enroll-login</c> — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে
+/// নিজের PC যোগ করে। কোড লাগে না।
+///
+/// ⚠️ <b>এটা একটা <c>record</c>, অর্থাৎ তার জেনারেটেড <c>ToString</c>
+/// পাসওয়ার্ডসহ সব ছাপে।</b> এই অবজেক্টটা <b>কখনো</b> লগে যাবে না —
+/// <c>EnrollmentClient</c>-এ ঠিক এই কারণেই <c>EnrollResponse</c>-ও লগে যায় না।
+/// </summary>
+public sealed record EnrollLoginRequest
+{
+    public required string Email { get; init; }
+
+    /// <summary>⚠️ শুধু তারে যায়, কোথাও জমা হয় না — টোকেনটাই জমা হয়।</summary>
+    public required string Password { get; init; }
+
+    /// <summary>I06 — 2FA চালু থাকলে ছ-অঙ্কের কোড। প্রথম দফায় null।</summary>
+    public string? Totp { get; init; }
+
+    public required string Hostname { get; init; }
+    public required string WindowsUsername { get; init; }
+    public required string MachineGuid { get; init; }
+    public string? OsVersion { get; init; }
+    public string? AgentVersion { get; init; }
+    public int? Monitors { get; init; }
+}
+
+/// <summary>
+/// ⚠️ উত্তরটা <b>দু-রকম</b> হতে পারে, আর দুটোই ২০০:
+/// <list type="bullet">
+/// <item><c>Status = "needs_totp"</c> — 2FA চালু, কোড চাই। বাকি ঘর null।</item>
+/// <item><c>Status = null</c> — সফল, <c>DeviceToken</c> ও বাকি সব আছে।</item>
+/// </list>
+///
+/// ⚠️ তাই ঘরগুলো nullable। <c>required</c> রাখলে "কোড চাই" উত্তরটা
+/// deserialize-এই ব্যর্থ হতো, আর এজেন্ট 2FA-ওয়ালা কোনো অ্যাকাউন্টে
+/// কোনোদিন enroll করতে পারত না।
+/// </summary>
+public sealed record EnrollLoginResponse
+{
+    public string? Status { get; init; }
+    public int? DeviceId { get; init; }
+    public string? DeviceToken { get; init; }
+    public EnrolledEmployee? Employee { get; init; }
+    public string? ConfigVersion { get; init; }
+    public AgentConfig? Config { get; init; }
+
+    /// <summary>2FA-র ছ-অঙ্ক ছাড়া এগোনো যাবে না।</summary>
+    public bool NeedsTotp => string.Equals(Status, "needs_totp", StringComparison.Ordinal);
+}
+
 public sealed record EnrollResponse
 {
     public required int DeviceId { get; init; }

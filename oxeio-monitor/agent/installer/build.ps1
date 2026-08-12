@@ -11,8 +11,8 @@
      .NET রানটাইম দুবার বসত (৩৭৯ MB বনাম ১৯৯ MB)।
 
 .EXAMPLE
-  powershell -File installeruild.ps1
-  powershell -File installeruild.ps1 -Version 0.3.0
+  powershell -File installer\build.ps1
+  powershell -File installer\build.ps1 -Version 0.3.0
 
 .NOTES
   ⚠️⚠️ এই ফাইলটা **UTF-8 BOM সহ** সংরক্ষিত। BOM মুছে ফেলবেন না।
@@ -35,6 +35,12 @@ param(
     #    একই সংখ্যা; দুটো আলাদা হলে MSI এক ভার্সন বসাত আর এজেন্ট
     #    heartbeat-এ আরেকটা বলত, ফলে H04 চিরকাল একই আপডেট অফার করত।
     [string]$Version,
+
+    # ⭐ দিলে ঠিকানাটা MSI-র ভেতরেই বসে যায়, আর তখন **ডাবল-ক্লিকেই ইনস্টল
+    #   হয়** — অফিসের ১৫টা PC-তে লম্বা কমান্ড টাইপ করতে হয় না।
+    #   ⚠️ না দিলে আগের মতোই msiexec-এ SERVERURL= লাগবে।
+    [string]$ServerUrl,
+
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64'
 )
@@ -70,6 +76,17 @@ MSI বসবে $Version দিয়ে, কিন্তু এজেন্ট
 
 Write-Host "   version: $Version" -ForegroundColor DarkGray
 
+if ($ServerUrl) {
+    # ⚠️ আকৃতিটা এখানেই যাচাই — ভুল ঠিকানা MSI-তে বেক হয়ে গেলে সেটা ধরা
+    #    পড়ত ১৫টা PC-তে বসানোর পর, "সার্ভারে পৌঁছাচ্ছে না" দিয়ে।
+    if ($ServerUrl -notmatch '^https?://[^/\s]+/?$') {
+        throw "ServerUrl-টা এরকম হওয়া উচিত: https://oxeio.office.local (পথ বা শেষে স্ল্যাশ ছাড়া) — পাওয়া গেল: $ServerUrl"
+    }
+    Write-Host "   server : $ServerUrl (MSI-তে বেক করা — ডাবল-ক্লিকেই ইনস্টল হবে)" -ForegroundColor DarkGray
+} else {
+    Write-Host "   server : বেক করা হয়নি — msiexec-এ SERVERURL= দিতে হবে" -ForegroundColor DarkGray
+}
+
 Write-Host '── ১· publish ────────────────────────────────' -ForegroundColor Cyan
 
 if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
@@ -101,6 +118,7 @@ New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     -arch x64 `
     -d "PublishDir=$publishDir" `
     -d "Version=$Version" `
+    -d "ServerUrlDefault=$($ServerUrl.TrimEnd('/'))" `
     -o $msi
 
 if ($LASTEXITCODE -ne 0) { throw 'wix build ব্যর্থ' }
@@ -109,5 +127,10 @@ $msiSize = [math]::Round((Get-Item $msi).Length / 1MB, 1)
 Write-Host ''
 Write-Host "✅ $msi · $msiSize MB" -ForegroundColor Green
 Write-Host ''
-Write-Host 'সাইলেন্ট ইনস্টল:' -ForegroundColor Yellow
-Write-Host '  msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local" ENROLLCODE="OXEIO-XXXXXXXX"'
+if ($ServerUrl) {
+    Write-Host 'ইনস্টল — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে সাইন ইন করবে:' -ForegroundColor Yellow
+    Write-Host '  ডাবল-ক্লিক, অথবা:  msiexec /i oXeioAgent.msi /qn'
+} else {
+    Write-Host 'সাইলেন্ট ইনস্টল:' -ForegroundColor Yellow
+    Write-Host '  msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local"'
+}
