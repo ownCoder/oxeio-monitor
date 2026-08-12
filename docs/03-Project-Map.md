@@ -199,7 +199,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৭২৭টি টেস্ট, ৩৫টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — ৭৩২টি টেস্ট, ৩৬টি ফাইল
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       └── setup/harness.ts  setup/global-setup.ts

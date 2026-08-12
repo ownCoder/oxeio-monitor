@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { workDateOf } from '../src/agent/util/dhaka-time';
 import { RetentionJob } from '../src/summary/retention.job';
 import {
   createEmployeeWithCode,
@@ -47,8 +48,20 @@ async function makeShot(opts: {
   /** পাথ ওভাররাইড — `..` ঢুকিয়ে unsafe কেস বানাতে */
   filePath?: string;
 }): Promise<{ id: bigint; filePath: string; thumbPath: string }> {
+  /**
+   * ⚠️⚠️ **`work_date` ঢাকার হিসাবে বসাতে হয়, UTC-তে নয়।**
+   *
+   * জবের কাটঅফ `retentionCutoff()` = `workDateOf(now) − ৯০ দিন`, অর্থাৎ
+   * **ঢাকার** কর্মদিবস ধরে। ফিক্সচারটা আগে `Date.now()` থেকে UTC তারিখ
+   * নিত — আর রাত ১২টা থেকে ভোর ৬টার মধ্যে (ঢাকা UTC+৬) UTC তারিখ একদিন
+   * পিছিয়ে থাকে। ফলে `daysAgo: 90` আসলে ৯১ ঢাকা-দিন আগের সারি বানাত, আর
+   * সীমানার টেস্টটা **প্রতি রাতে ওই ছয় ঘণ্টায় ফেল করত**।
+   *
+   * ⭐ ধরা পড়েছে ঠিক তাই — রাত ১২:৩০-এ চালাতে গিয়ে। দিনের বেলা চালালে
+   * চিরকাল সবুজ থাকত।
+   */
   const when = new Date(Date.now() - opts.daysAgo * 86_400_000);
-  const day = when.toISOString().slice(0, 10);
+  const day = workDateOf(when).toISOString().slice(0, 10);
   const uuid = randomUUID();
 
   const filePath = opts.filePath ?? `${day.replace(/-/g, '/')}/emp-001/${uuid}.webp`;

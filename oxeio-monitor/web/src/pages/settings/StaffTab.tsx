@@ -159,6 +159,42 @@ export function StaffTab() {
      * ⚠️ "নেই" অবস্থাটা **আম্বার**, লাল নয় — এটা সিস্টেমের ব্যর্থতা নয়,
      * একটা বাকি থাকা কাজ।
      */
+    /**
+     * ⭐⭐ **"এই লোকটার এজেন্ট বসানো যাবে?" — এক নজরে।**
+     *
+     * ⚠️ আগে এই প্রশ্নের উত্তর পর্দায় **কোথাও ছিল না**। কার portal
+     * account খোলা হয়েছে সেটা জানার একমাত্র উপায় ছিল ১৫টা সারিতে একে একে
+     * "Portal account" চেপে দেখা। ফলে রোলআউটের দিন কেউ বাদ পড়লে সেটা ধরা
+     * পড়ত **ওই PC-র সামনে দাঁড়িয়ে**, যখন স্টাফ সাইন ইন করতে পারত না।
+     */
+    {
+      key: 'setup',
+      header: 'Setup',
+      render: (emp) => {
+        if (emp.status !== 'active') return <span className="text-ink3">—</span>;
+
+        // ⚠️ ক্রমটা কাজের ক্রম: আগে লগইন, তারপর MSI, তারপর সে সাইন ইন করে
+        if (!emp.hasPortalAccount) {
+          return (
+            <span className="text-brand" title="Create a portal account first — the agent asks for this login">
+              Needs login
+            </span>
+          );
+        }
+        if (!emp.hasDevice) {
+          return (
+            <span className="text-idle" title="Login ready — now install the agent on their PC">
+              Ready to install
+            </span>
+          );
+        }
+        return (
+          <span className="text-ok" title="Signed in from their PC — tracking">
+            Running
+          </span>
+        );
+      },
+    },
     {
       key: 'policySigned',
       header: 'Policy signed',
@@ -213,6 +249,28 @@ export function StaffTab() {
       ),
     },
   ];
+
+  /**
+   * ⭐ রোলআউটের একমাত্র সংখ্যা — কতজনের কাজ বাকি।
+   *
+   * ⚠️ শুধু `active` কর্মী গোনা হয়; যিনি চলে গেছেন তাঁর portal account
+   * না থাকাটা বাকি কাজ নয়।
+   */
+  const activeStaff = rows.filter((e) => e.status === 'active');
+  const needLogin = activeStaff.filter((e) => !e.hasPortalAccount).length;
+  const needAgent = activeStaff.filter(
+    (e) => e.hasPortalAccount && !e.hasDevice,
+  ).length;
+
+  const setupHint =
+    needLogin === 0 && needAgent === 0
+      ? undefined
+      : [
+          needLogin > 0 ? `${needLogin} still need a portal account` : null,
+          needAgent > 0 ? `${needAgent} ready for the agent` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
 
   return (
     <div className="space-y-3">
@@ -277,11 +335,18 @@ export function StaffTab() {
         <Card
           padded={false}
           title={`Staff · ${staff.data?.total ?? rows.length}`}
-          hint={
+          /**
+           * ⭐ **রোলআউটের একমাত্র সংখ্যা।** ১৫টা সারি পড়ার বদলে এক লাইনে
+           * "কতজন বাকি" — আর কী বাকি, সেটাও।
+           *
+           * ⚠️ শুধু কাজ **বাকি থাকলেই** দেখানো হয়। সব শেষ হয়ে গেলে লাইনটা
+           * উধাও — নইলে ওটা স্থায়ী সাজসজ্জা হয়ে যেত আর কেউ পড়ত না।
+           */
+          hint={setupHint ?? (
             canSeeSalary
               ? 'Viewing or changing salary is recorded in the audit log.'
               : undefined
-          }
+          )}
         >
           <Table
             columns={columns}

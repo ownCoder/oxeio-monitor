@@ -39,6 +39,8 @@ export interface EmployeeRow {
   policySignedAt: Date | null;
   policyDocPath: string | null;
   createdAt: Date;
+  /** ⭐ সেটআপের অবস্থা — `EMPLOYEE_SELECT`-এর `_count` থেকে */
+  _count?: { portalUsers: number; devices: number };
 }
 
 /** ম্যানেজার ও owner — দুজনেই এটুকু দেখে */
@@ -57,6 +59,16 @@ export interface EmployeeBaseView {
   policySignedAt: string | null;
   policyDocPath: string | null;
   createdAt: string;
+
+  /**
+   * ⭐ **এজেন্ট বসানোর জন্য তৈরি কি না** — এক নজরে।
+   *
+   * ⚠️ সংখ্যা নয়, `boolean` — কার কটা ডিভাইস সেটা এই পর্দার প্রশ্ন নয়,
+   * প্রশ্নটা "তার সেটআপ শেষ কি না"। সংখ্যা দিলে সেটা আরেকটা পড়ার মতো
+   * জিনিস হয়ে দাঁড়াত, অথচ কাজে লাগত না।
+   */
+  hasPortalAccount: boolean;
+  hasDevice: boolean;
 }
 
 /** ⭐ শুধু owner-এর রেসপন্সে বেতনের ফিল্ডটা **থাকে** */
@@ -96,6 +108,12 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     policySignedAt: row.policySignedAt?.toISOString() ?? null,
     policyDocPath: row.policyDocPath,
     createdAt: row.createdAt.toISOString(),
+
+    // ⚠️ `_count` না এলে `false` — "জানি না"-কে "নেই" ধরা হয়, কারণ এই
+    //    পর্দাটা কাজ **বাকি আছে** দেখানোর জন্য; ভুল করলে বাড়তি কাজ দেখাক,
+    //    কম নয়।
+    hasPortalAccount: (row._count?.portalUsers ?? 0) > 0,
+    hasDevice: (row._count?.devices ?? 0) > 0,
   };
 
   if (!canSeeSalary(role)) {

@@ -37,6 +37,9 @@ export interface EmployeeView {
   /** `YYYY-MM-DD` */
   joinedOn: string | null;
   leftOn: string | null;
+  /** ⭐ এজেন্ট বসানোর জন্য তৈরি কি না — Staff পর্দার "Setup" কলাম */
+  hasPortalAccount: boolean;
+  hasDevice: boolean;
   status: EmployeeStatus;
   policySignedAt: string | null;
   policyDocPath: string | null;
