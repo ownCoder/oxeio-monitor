@@ -292,6 +292,73 @@ export function spreadIntoHourBuckets(
   return buckets;
 }
 
+/** এক ঘণ্টায় গোটা দলের ছবি */
+export interface TeamHour {
+  /** ঢাকার স্থানীয় ঘণ্টা, ০–২৩ */
+  hour: number;
+  /** ওই ঘণ্টায় দলের মোট গোনা সেকেন্ড */
+  activeSec: number;
+  /**
+   * ওই ঘণ্টায় **কতজন** কিছু না কিছু কাজ করেছেন।
+   *
+   * ⭐ দুটো সংখ্যা আলাদা করে রাখা দরকার, কারণ একা `activeSec` প্রশ্নটার
+   * অর্ধেক উত্তর দেয়: ৪ ঘণ্টা মানে চারজন এক ঘণ্টা, নাকি একজন চার ঘণ্টা?
+   * cockpit-এ পার্থক্যটা গুরুত্বপূর্ণ — প্রথমটা স্বাভাবিক সকাল, দ্বিতীয়টা
+   * একজনের একা কাজ করা রাত।
+   */
+  people: number;
+}
+
+interface TeamHourInput extends HourSpreadInput {
+  employeeId: number;
+}
+
+/**
+ * ⭐ E01 — গোটা দলের দিনের ছন্দ, ২৪টা বালতিতে।
+ *
+ * ⚠️ **কর্মীপ্রতি আলাদা করে ছড়ানো হয়, একসাথে নয়** — আর এটাই এখানকার
+ *    একমাত্র সূক্ষ্ম সিদ্ধান্ত। সব সেগমেন্ট এক গাদা করে
+ *    `spreadIntoHourBuckets`-এ দিলে মোট সেকেন্ড ঠিকই আসত, কিন্তু
+ *    **কতজন** সেটা আর বের করা যেত না — বালতিতে ঢোকার পর সেগমেন্টগুলো
+ *    আর কার, তা জানা যায় না।
+ *
+ * ⭐ ছড়ানোর নিয়মটা হুবহু একই ফাংশন (`spreadIntoHourBuckets`) থেকে আসে,
+ *    তাই একজনের `/hourly` চার্ট আর দলের ছন্দ কখনো আলাদা গল্প বলবে না।
+ *    নিয়মটা নকল করলে একদিন একটা বদলাত আর অন্যটা নয়।
+ *
+ * ⚠️ `people` গোনা হয় `> 0` দিয়ে, কোনো সীমা ছাড়া। এক সেকেন্ডও যদি ওই
+ *    ঘণ্টায় পড়ে, মানুষটা "ছিলেন" — সীমা বসালে সেটা হতো একটা নীরব মত,
+ *    আর কেউ জানত না কেন ভোর ৬টার একজন উধাও।
+ */
+export function spreadTeamIntoHourBuckets(
+  segments: readonly TeamHourInput[],
+  workDate: Date,
+): TeamHour[] {
+  const byEmployee = new Map<number, TeamHourInput[]>();
+  for (const seg of segments) {
+    const list = byEmployee.get(seg.employeeId);
+    if (list) list.push(seg);
+    else byEmployee.set(seg.employeeId, [seg]);
+  }
+
+  const activeSec = new Array<number>(HOURS_PER_DAY).fill(0);
+  const people = new Array<number>(HOURS_PER_DAY).fill(0);
+
+  for (const own of byEmployee.values()) {
+    const buckets = spreadIntoHourBuckets(own, workDate);
+    for (let h = 0; h < HOURS_PER_DAY; h++) {
+      activeSec[h] += buckets[h];
+      if (buckets[h] > 0) people[h] += 1;
+    }
+  }
+
+  return activeSec.map((sec, hour) => ({
+    hour,
+    activeSec: sec,
+    people: people[hour],
+  }));
+}
+
 function hourIndexOf(instantMs: number, dayStartMs: number): number | null {
   const hour = Math.floor((instantMs - dayStartMs) / HOUR_MS);
   if (hour < 0 || hour >= HOURS_PER_DAY) return null;

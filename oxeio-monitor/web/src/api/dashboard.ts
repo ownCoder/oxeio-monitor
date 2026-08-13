@@ -115,6 +115,31 @@ export interface Timeline {
   totals: { activeSec: number; idleSec: number; lockedSec: number };
 }
 
+/** E01 — দলের দিনের ছন্দের এক ঘণ্টা (`GET /live/pulse`) */
+export interface TeamHour {
+  /** ঢাকার স্থানীয় ঘণ্টা, ০–২৩ */
+  hour: number;
+  /** ওই ঘণ্টায় দলের মোট গোনা সেকেন্ড */
+  activeSec: number;
+  /**
+   * ওই ঘণ্টায় কতজন কিছু না কিছু কাজ করেছেন।
+   *
+   * ⚠️ চার্টে **আঁকা হয় না** — একই অক্ষে দুটো মাপ বসালে সেটা dual-axis
+   * হয়ে যেত, আর ওটা চার্টের সবচেয়ে চেনা মিথ্যা। সংখ্যাটা hover-এ থাকে,
+   * কারণ "৬ ঘণ্টা" মানে ছ-জন এক ঘণ্টা না একজন ছ-ঘণ্টা — সেটা আলাদা গল্প।
+   */
+  people: number;
+}
+
+export interface TeamPulse {
+  /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
+  date: string;
+  /** ⭐ সবসময় ২৪টা — খালি ঘণ্টাও শূন্য নিয়ে থাকে */
+  hours: TeamHour[];
+  totalActiveSec: number;
+  peakPeople: number;
+}
+
 export interface HourlyBucket {
   /** ঢাকার স্থানীয় ঘণ্টা, ০–২৩ */
   hour: number;
@@ -141,6 +166,17 @@ export interface HourlyChart {
  */
 export function getLiveBoard(signal?: AbortSignal): Promise<LiveBoard> {
   return api<LiveBoard>('/live', { signal });
+}
+
+/**
+ * E01 — `GET /api/v1/live/pulse` · দলের দিনের ছন্দ, ২৪টা ঘণ্টা।
+ *
+ * ⚠️ বোর্ডের সাথে **এক তালে রিফ্রেশ হয় না** (`/live` ৩০ সেকেন্ড, এটা
+ *    ধীরে) — এক ঘণ্টার বালতি ৩০ সেকেন্ডে একবার আনা মানে একই উত্তর
+ *    ১২০ বার আনা।
+ */
+export function getTeamPulse(signal?: AbortSignal): Promise<TeamPulse> {
+  return api<TeamPulse>('/live/pulse', { signal });
 }
 
 /**

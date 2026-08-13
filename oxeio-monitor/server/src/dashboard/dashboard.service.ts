@@ -17,8 +17,10 @@ import {
   parseWorkDate,
   previousWorkDate,
   spreadIntoHourBuckets,
+  spreadTeamIntoHourBuckets,
   type DeviceReport,
   type LiveStatus,
+  type TeamHour,
 } from './dashboard.math';
 
 import {
@@ -118,6 +120,17 @@ export interface HourlyBucket {
   /** ঢাকার স্থানীয় ঘণ্টা, ০–২৩ */
   hour: number;
   activeSec: number;
+}
+
+/** E01 — লাইভ বোর্ডের দিনের-ছন্দ চার্ট (`GET /live/pulse`) */
+export interface TeamPulse {
+  /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
+  date: string;
+  /** ⭐ সবসময় ২৪টা — খালি ঘণ্টাও `activeSec: 0, people: 0` নিয়ে থাকে */
+  hours: TeamHour[];
+  totalActiveSec: number;
+  /** দিনের সর্বোচ্চ একসাথে কতজন — চার্টের y-অক্ষের সীমা */
+  peakPeople: number;
 }
 
 export interface HourlyChart {
@@ -388,6 +401,50 @@ export class DashboardService {
       date: formatWorkDate(workDate),
       buckets: buckets.map((activeSec, hour) => ({ hour, activeSec })),
       totalActiveSec: buckets.reduce((a, b) => a + b, 0),
+    };
+  }
+
+  /**
+   * ⭐ E01 — **দলের দিনের ছন্দ**, লাইভ বোর্ডের চার্টের জন্য।
+   *
+   * ⚠️ এটা ছাড়া বোর্ডে সময়ের কোনো রেখা আঁকা যেত না: `/live` কেবল **এখনকার**
+   *    অবস্থা পাঠায়, আর `/employees/:id/hourly` একজনের। দশজনের ছন্দ পেতে
+   *    ব্রাউজারকে দশটা কল করতে হতো — প্রতি রিফ্রেশে, প্রতিটি খোলা ট্যাব
+   *    থেকে। তাই যোগফলটা সার্ভারেই, **একটি** কোয়েরিতে।
+   *
+   * ⚠️ `/live`-এর সাথে **জোড়া লাগানো হয়নি** ইচ্ছাকৃতভাবে। বোর্ড ৩০ সেকেন্ডে
+   *    রিফ্রেশ হয়, কিন্তু দিনের ছন্দ অত দ্রুত বদলায় না — এক ঘণ্টার বালতি
+   *    ৩০ সেকেন্ডে একবার আনা মানে একই উত্তর ১২০ বার আনা। আলাদা রাখায়
+   *    ওয়েব নিজের তালে (ধীরে) ডাকতে পারে।
+   */
+  async teamPulse(rawDate?: string): Promise<TeamPulse> {
+    const workDate = this.resolveWorkDate(rawDate);
+
+    // ⚠️ `hourly()`-র মতোই শুধু `countsAsWork` — idle বা locked ঢুকলে
+    //    "কোন ঘণ্টায় কত কাজ" প্রশ্নের উত্তর ফুলে যেত।
+    const rows = await this.prisma.activitySegment.findMany({
+      where: { workDate, countsAsWork: true },
+      select: {
+        employeeId: true,
+        startedAt: true,
+        endedAt: true,
+        durationSec: true,
+      },
+      orderBy: { startedAt: 'asc' },
+    });
+
+    const hours = spreadTeamIntoHourBuckets(rows, workDate);
+
+    return {
+      date: formatWorkDate(workDate),
+      hours,
+      totalActiveSec: hours.reduce((a, h) => a + h.activeSec, 0),
+      /**
+       * ⭐ দিনের **সর্বোচ্চ একসাথে** কতজন — চার্টের y-অক্ষ এটার উপরেই
+       * দাঁড়ায়। ক্লায়েন্টে বের করলেও চলত, কিন্তু তখন অক্ষের সীমা আর
+       * ডেটা দুই জায়গা থেকে আসত।
+       */
+      peakPeople: hours.reduce((m, h) => Math.max(m, h.people), 0),
     };
   }
 

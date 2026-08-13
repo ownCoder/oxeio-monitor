@@ -82,6 +82,18 @@ export function todayInDhaka(now: Date = new Date()): string {
   return isoDateOf(new Date(now.getTime() + DHAKA_OFFSET_MS));
 }
 
+/**
+ * ঢাকার **এখনকার ঘণ্টা**, ০–২৩ — দিনের-ছন্দ চার্টে "আমরা এখন কোথায়"।
+ *
+ * ⚠️ `new Date().getHours()` লেখা যেত না — ওটা **ব্রাউজারের** ঘণ্টা।
+ *    মালিক বিদেশ থেকে বোর্ড খুললে চিহ্নটা ভুল কলামের নিচে বসত, আর
+ *    ভুলটা এমন যে ধরা কঠিন: চার্ট ঠিকই দেখাত, শুধু দাগটা সরানো।
+ *    `todayInDhaka`-র মতোই অফসেটটা এখানেও স্পষ্ট।
+ */
+export function dhakaHourNow(now: Date = new Date()): number {
+  return new Date(now.getTime() + DHAKA_OFFSET_MS).getUTCHours();
+}
+
 /** কোনো instant ঢাকার কোন কর্মদিবসে পড়ে — `YYYY-MM-DD` */
 export function workDateOf(instant: Date | string): string {
   const date = typeof instant === 'string' ? new Date(instant) : instant;

@@ -1,14 +1,21 @@
 import { useState, type ReactNode } from 'react';
 
-import { getLiveBoard, type LiveCard } from '../api/dashboard';
+import { getLiveBoard, getTeamPulse, type LiveCard } from '../api/dashboard';
 import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
-import { Stat, StatRow } from '../components/Card';
+import { Card, Stat, StatRow } from '../components/Card';
 import { Button, Page, SectionHead } from '../components/Page';
 import { Caveat, Empty, ErrorBox, Loading } from '../components/States';
 import { StatusLegend } from '../components/StatusDot';
 import { Tabs } from '../components/Tabs';
-import { formatDate, formatDuration, formatTime } from '../lib/format';
+import {
+  dhakaHourNow,
+  formatDate,
+  formatDuration,
+  formatTime,
+} from '../lib/format';
+import { DayPulse } from './live/DayPulse';
+import { StatusStrip, TargetBars } from './live/TeamBars';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
 import { isWorking, splitBoard } from './live/onTheClock';
@@ -45,6 +52,15 @@ const BOARD_REFRESH_MS = 30_000;
  */
 const SHOT_REFRESH_MS = 4 * 60_000;
 
+/**
+ * ⭐ দিনের ছন্দ **২ মিনিটে** — বোর্ডের ৩০ সেকেন্ডে নয়।
+ *
+ * ⚠️ বালতিগুলো এক ঘণ্টার। ৩০ সেকেন্ডে ডাকলে একই উত্তর ঘণ্টায় ১২০ বার
+ *    আসত, আর প্রতিটাই একটা করে গোটা দিনের সেগমেন্ট-কোয়েরি। চার্টটা
+ *    তাতে এক চুলও তাজা হতো না।
+ */
+const PULSE_REFRESH_MS = 2 * 60_000;
+
 export function LiveBoardPage() {
   const { user } = useAuth();
 
@@ -63,6 +79,18 @@ export function LiveBoardPage() {
   const shots = usePolling(
     (signal) => (canViewBoard ? getLatestShots(signal) : Promise.resolve(NO_SHOTS)),
     SHOT_REFRESH_MS,
+    [canViewBoard],
+  );
+
+  /**
+   * ⚠️ `/live/pulse`-ও owner + manager (একই ক্লাস-লেভেল `@Roles`), তাই
+   *    `canViewBoard` না দেখলে স্টাফের ব্রাউজার প্রতি দু-মিনিটে একটা করে
+   *    ৪০৩ কুড়াত — কোনো লাভ ছাড়াই।
+   */
+  const pulse = usePolling(
+    (signal) =>
+      canViewBoard ? getTeamPulse(signal) : Promise.resolve(null),
+    PULSE_REFRESH_MS,
     [canViewBoard],
   );
 
@@ -167,6 +195,65 @@ export function LiveBoardPage() {
             tone={stats.agentDown > 0 ? 'attention' : 'muted'}
           />
         </StatRow>
+
+        {/*
+          ⭐⭐ **cockpit-এর স্তরগুলো, উপর থেকে নিচে একটা প্রশ্নের ক্রমে:**
+            ১· সংখ্যা — "আজ কতটা হয়েছে?"        (উপরের টাইল)
+            ২· ছন্দ  — "দিনটা কেমন গেল?"          (২৪ ঘণ্টার কলাম)
+            ৩· অবস্থা — "এই মুহূর্তে কে কোথায়?"    (স্তরে-ভাগ স্ট্রিপ)
+            ৪· ব্যক্তি — "কে কতদূর?"               (টার্গেট-বার)
+            ৫· মুখ    — "সে আসলে কী করছে?"        (কার্ড ও স্ক্রিনশট)
+
+          ⚠️ ক্রমটা এলোমেলো নয়: প্রতিটা স্তর আগেরটার উত্তর থেকে **জন্ম নেওয়া
+             পরের প্রশ্নটার** উত্তর দেয়। উল্টো সাজালে বোর্ড খুলেই দশটা মুখ
+             দেখা যেত, আর "আজ দিনটা কেমন" জানতে নিচে স্ক্রল করতে হতো।
+        */}
+        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
+          <Card
+            title="Shape of the day"
+            hint="Hours the whole team put in, by hour · Dhaka time"
+            padded={false}
+          >
+            {pulse.data ? (
+              <DayPulse
+                hours={pulse.data.hours}
+                currentHour={dhakaHourNow()}
+              />
+            ) : (
+              /*
+                ⚠️ স্পিনার নয়, **কঙ্কাল** — চার্টের জায়গাটা আগেই দখল করে
+                   রাখে, তাই ডেটা এলে পাতাটা লাফায় না। বোর্ড ৩০ সেকেন্ডে
+                   রিফ্রেশ হয়; প্রতিবার লাফালে পড়াই যেত না।
+              */
+              <div className="px-4 pt-1 pb-3">
+                <div className="mb-2 h-4 w-40 rounded bg-line/70" />
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
+          </Card>
+
+          <Card
+            title="Right now"
+            hint="Every card falls in exactly one of these"
+            padded={false}
+          >
+            <StatusStrip cards={cards} />
+          </Card>
+        </div>
+
+        <div className="mt-3">
+          <Card
+            title="Against today's target"
+            hint={
+              stats.withTarget === 0
+                ? 'No target today — weekly off or holiday'
+                : 'Furthest along first · green means the target is met'
+            }
+            padded={false}
+          >
+            <TargetBars cards={cards} />
+          </Card>
+        </div>
 
         <div className="mt-5">
           <SectionHead
