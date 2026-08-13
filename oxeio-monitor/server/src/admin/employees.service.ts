@@ -59,7 +59,24 @@ const EMPLOYEE_SELECT = {
    * ⭐ `_count` ব্যবহার করা হয়েছে, সারি টেনে নয় — ইউজারের ইমেইল বা
    * ডিভাইসের টোকেন এই রেসপন্সে ঢোকার কোনো কারণ নেই।
    */
-  _count: { select: { portalUsers: true, devices: { where: { status: 'active' } } } },
+  _count: { select: { devices: { where: { status: 'active' } } } },
+
+  /**
+   * ⭐ portal অ্যাকাউন্ট — **id ও ইমেইল**, শুধু "আছে কি নেই" নয়।
+   *
+   * ⚠️ id ছাড়া পর্দা থেকে পাসওয়ার্ড রিসেট বা ইমেইল বদলানো যেত না
+   * (`/users/:id/…` দুটোই id চায়)। ⭐ `resetUserPassword()` ওয়েবের
+   * API-তে লেখাই ছিল, কিন্তু **কেউ ডাকত না** — কারণ ডাকার মতো id-ই
+   * রেসপন্সে আসত না।
+   *
+   * ⚠️ `passwordHash` বা `totpSecret` **নেওয়া হয় না** — whitelist,
+   * `redact.ts`-এর একই যুক্তি।
+   */
+  portalUsers: {
+    select: { id: true, email: true },
+    orderBy: { id: 'asc' },
+    take: 1,
+  },
 } satisfies Prisma.EmployeeSelect;
 
 @Injectable()

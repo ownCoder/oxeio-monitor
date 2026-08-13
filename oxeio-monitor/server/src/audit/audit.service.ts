@@ -14,6 +14,7 @@ export type AuditAction =
   | 'change_password'
   | 'reset_password'
   | 'create_portal_account'
+  | 'change_login_email'
   | 'view_screenshot'
   | 'export_report'
   /** ⭐ বেতন দেখা — সবচেয়ে সংবেদনশীল রিড, তাই আলাদা action ([ADR-023](../../../docs/05-Options-Decisions.md)) */

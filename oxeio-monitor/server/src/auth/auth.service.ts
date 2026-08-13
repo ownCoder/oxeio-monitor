@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -262,6 +263,62 @@ export class AuthService {
     });
 
     return { email: target.email, tempPassword };
+  }
+
+  /**
+   * লগইনের ইমেইল বদলানো — অর্থাৎ স্টাফের "ইউজারনেম"।
+   *
+   * ⚠️⚠️ **কেন এটা দরকার হলো:** portal অ্যাকাউন্ট খোলার সময় ইমেইলটা হাতে
+   * টাইপ করতে হয়, আর ভুল হলে ওই অ্যাকাউন্ট চিরকাল ভুল ঠিকানায় আটকে থাকত —
+   * বদলানোর কোনো পথ ছিল না। ১৫ জনের জন্য একবার করে টাইপ করলে অন্তত একটা
+   * টাইপো হওয়াই স্বাভাবিক।
+   *
+   * ⚠️ পাসওয়ার্ড এখানে ছোঁয়া হয় **না** — সেটা `resetPassword()`। দুটো
+   * আলাদা রাখা ইচ্ছাকৃত: ইমেইলের বানান ঠিক করতে গিয়ে কারো পাসওয়ার্ড
+   * অকারণে বদলে যাওয়া উচিত নয়।
+   */
+  async changeLoginEmail(
+    actorId: number,
+    targetUserId: number,
+    email: string,
+    ip: string,
+  ): Promise<{ id: number; email: string }> {
+    const next = email.trim().toLowerCase();
+    if (!next.includes('@')) {
+      throw new BadRequestException('That does not look like an email address');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    if (target.email === next) return { id: target.id, email: target.email };
+
+    // ⚠️ আগে থেকে দেখা হয়, শুধু unique constraint-এর ভরসায় নয় — নইলে
+    //    পর্দায় যেত Prisma-র P2002, যেটা পড়ে কেউ বুঝত না কী ভুল হয়েছে।
+    const taken = await this.prisma.user.findUnique({ where: { email: next } });
+    if (taken) {
+      throw new ConflictException('Another account already uses that email');
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { email: next },
+    });
+
+    await this.audit.record({
+      userId: actorId,
+      action: 'change_login_email',
+      targetType: 'user',
+      targetId: targetUserId,
+      ipAddress: ip,
+      // ⭐ আগেরটাও লেখা থাকে — কে কার লগইন বদলেছে, সেটা পরে মেলানোর
+      //    একমাত্র উপায় এটাই
+      meta: { from: target.email, to: next },
+    });
+
+    return { id: updated.id, email: updated.email };
   }
 
   /** স্টাফের self-view অ্যাকাউন্ট (J04/J05) — owner খোলে */

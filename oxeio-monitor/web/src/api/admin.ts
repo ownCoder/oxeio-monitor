@@ -40,6 +40,9 @@ export interface EmployeeView {
   /** ⭐ এজেন্ট বসানোর জন্য তৈরি কি না — Staff পর্দার "Setup" কলাম */
   hasPortalAccount: boolean;
   hasDevice: boolean;
+  /** ⭐ portal অ্যাকাউন্টের id ও লগইন ইমেইল — রিসেট ও ইমেইল বদলানোর জন্য */
+  portalUserId: number | null;
+  portalEmail: string | null;
   status: EmployeeStatus;
   policySignedAt: string | null;
   policyDocPath: string | null;
@@ -414,6 +417,17 @@ export function resetUserPassword(
     `/users/${userId}/reset-password`,
     { method: 'POST' },
   );
+}
+
+/** লগইনের ইমেইল বদলানো — স্টাফের "ইউজারনেম" */
+export function changeLoginEmail(
+  userId: number,
+  email: string,
+): Promise<{ id: number; email: string }> {
+  return api<{ id: number; email: string }>(`/users/${userId}/email`, {
+    method: 'PATCH',
+    body: { email },
+  });
 }
 
 /** স্টাফের নিজস্ব ভিউয়ের অ্যাকাউন্ট (J04/J05) — ডিফল্ট role `employee` */

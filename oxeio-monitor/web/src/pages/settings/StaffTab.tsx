@@ -2,7 +2,9 @@ import { useState } from 'react';
 
 import {
   createEmployee,
+  changeLoginEmail,
   createPortalAccount,
+  resetUserPassword,
   deactivateEmployee,
   listEmployees,
   listWorkPolicies,
@@ -213,9 +215,16 @@ export function StaffTab() {
             <>
               <MiniButton
                 onClick={() => setPortalFor(emp)}
-                title="Gives them a login to see their own hours"
+                title={
+                  emp.hasPortalAccount
+                    ? `Login: ${emp.portalEmail ?? ''} — change it or reset the password`
+                    : 'Gives them a login to see their own hours'
+                }
               >
-                Portal account
+                {/* ⭐ অ্যাকাউন্ট থাকলে লেখাটা বদলায় — নইলে "Portal account"
+                    চেপে কী হবে তার কোনো ইঙ্গিতই থাকত না, আর মালিক ভাবতেন
+                    আবার নতুন অ্যাকাউন্ট তৈরি হয়ে যাবে। */}
+                {emp.hasPortalAccount ? 'Login' : 'Portal account'}
               </MiniButton>
               <MiniButton tone="danger" onClick={() => setDeactivating(emp)}>
                 Deactivate
@@ -390,6 +399,13 @@ export function StaffTab() {
           onCreated={(email, password) => {
             setPortalFor(null);
             setTempPassword({ email, password });
+            // ⚠️ রিসেটেও তালিকা রিফ্রেশ — নতুন অ্যাকাউন্ট খোলা হলে
+            //    "Setup" কলামটা সাথে সাথে বদলাতে হবে
+            staff.reload();
+          }}
+          onSaved={() => {
+            setPortalFor(null);
+            staff.reload();
           }}
         />
       )}
@@ -734,48 +750,102 @@ function PortalAccountForm({
   employee,
   onClose,
   onCreated,
+  onSaved,
 }: {
   employee: EmployeeView;
   onClose: () => void;
+  /** নতুন অস্থায়ী পাসওয়ার্ড — খোলা ও রিসেট, দুটোতেই */
   onCreated: (email: string, password: string) => void;
+  /** ইমেইল বদলানোর পর — পাসওয়ার্ড দেখানোর কিছু নেই, শুধু তালিকা রিফ্রেশ */
+  onSaved: () => void;
 }) {
-  const [email, setEmail] = useState(employee.email ?? '');
+  /**
+   * ⭐ একই মোডাল দুটো কাজ করে — অ্যাকাউন্ট **খোলা** আর **ঠিক করা**।
+   *
+   * ⚠️ আলাদা দুটো মোডাল বানালে সারিতে দুটো বোতাম লাগত, আর মালিককে মনে
+   * রাখতে হতো কারটা খোলা হয়েছে কারটা হয়নি — অথচ সেটা সিস্টেম নিজেই জানে।
+   */
+  const existing = employee.hasPortalAccount && employee.portalUserId !== null;
+
+  const [email, setEmail] = useState(
+    existing ? (employee.portalEmail ?? '') : (employee.email ?? ''),
+  );
   const [role, setRole] = useState<Role>('employee');
   const { busy, error, run } = useMutation();
 
   return (
     <Modal
-      title={`${employee.fullName} — portal account`}
-      hint="They will be able to see their own hours and progress"
+      title={`${employee.fullName} — ${existing ? 'login' : 'portal account'}`}
+      hint={
+        existing
+          ? 'Change the sign-in email, or give them a new password'
+          : 'They will be able to see their own hours and progress'
+      }
       onClose={onClose}
       footer={
         <>
           <Button onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button
-            tone="primary"
-            onClick={() =>
-              run(async () => {
-                const result = await createPortalAccount(
-                  employee.id,
-                  email.trim(),
-                  role,
-                );
-                onCreated(result.email, result.tempPassword);
-              })
-            }
-            disabled={busy || email.trim() === ''}
-          >
-            {busy ? 'Creating…' : 'Create account'}
-          </Button>
+          {existing ? (
+            <>
+              {/* ⚠️⚠️ পাসওয়ার্ড রিসেট আর ইমেইল বদলানো **দুটো আলাদা বোতাম**।
+                  এক বোতামে মিলিয়ে দিলে ইমেইলের বানান ঠিক করতে গিয়ে কারো
+                  পাসওয়ার্ড অকারণে বদলে যেত, আর সে পরদিন ঢুকতেই পারত না। */}
+              <Button
+                onClick={() =>
+                  run(async () => {
+                    const result = await resetUserPassword(employee.portalUserId!);
+                    onCreated(result.email, result.tempPassword);
+                  })
+                }
+                disabled={busy}
+              >
+                {busy ? 'Working…' : 'Reset password'}
+              </Button>
+              <Button
+                tone="primary"
+                onClick={() =>
+                  run(async () => {
+                    await changeLoginEmail(employee.portalUserId!, email.trim());
+                    onSaved();
+                  })
+                }
+                disabled={
+                  busy ||
+                  email.trim() === '' ||
+                  email.trim() === (employee.portalEmail ?? '')
+                }
+              >
+                {busy ? 'Saving…' : 'Save email'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              tone="primary"
+              onClick={() =>
+                run(async () => {
+                  const result = await createPortalAccount(
+                    employee.id,
+                    email.trim(),
+                    role,
+                  );
+                  onCreated(result.email, result.tempPassword);
+                })
+              }
+              disabled={busy || email.trim() === ''}
+            >
+              {busy ? 'Creating…' : 'Create account'}
+            </Button>
+          )}
         </>
       }
     >
       <div className="space-y-3.5">
         <Notice>
-          The temporary password is shown <strong>only once</strong> after it
-          is created. They must change it at their first sign-in.
+          {existing
+            ? 'Resetting gives them a new temporary password — shown only once. Changing the email does not touch their password.'
+            : 'The temporary password is shown only once after it is created. They must change it at their first sign-in.'}
         </Notice>
 
         <TextField
@@ -788,6 +858,7 @@ function PortalAccountForm({
           hint="This is the email they will sign in with"
         />
 
+{!existing && (
         <SelectField
           label="Role"
           value={role}
@@ -795,6 +866,7 @@ function PortalAccountForm({
           options={PORTAL_ROLES}
           hint="A staff screen has no buttons — they can only look at their own hours"
         />
+        )}
 
         <ServerError error={error} />
       </div>

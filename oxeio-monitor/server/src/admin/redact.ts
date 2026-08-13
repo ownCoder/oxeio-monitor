@@ -39,8 +39,9 @@ export interface EmployeeRow {
   policySignedAt: Date | null;
   policyDocPath: string | null;
   createdAt: Date;
-  /** ⭐ সেটআপের অবস্থা — `EMPLOYEE_SELECT`-এর `_count` থেকে */
-  _count?: { portalUsers: number; devices: number };
+  /** ⭐ সেটআপের অবস্থা — `EMPLOYEE_SELECT` থেকে */
+  _count?: { devices: number };
+  portalUsers?: { id: number; email: string }[];
 }
 
 /** ম্যানেজার ও owner — দুজনেই এটুকু দেখে */
@@ -69,6 +70,13 @@ export interface EmployeeBaseView {
    */
   hasPortalAccount: boolean;
   hasDevice: boolean;
+
+  /**
+   * ⭐ portal অ্যাকাউন্টের id ও লগইন ইমেইল — পাসওয়ার্ড রিসেট ও ইমেইল
+   * বদলানোর জন্য পর্দার এটাই দরকার। অ্যাকাউন্ট না থাকলে দুটোই `null`।
+   */
+  portalUserId: number | null;
+  portalEmail: string | null;
 }
 
 /** ⭐ শুধু owner-এর রেসপন্সে বেতনের ফিল্ডটা **থাকে** */
@@ -112,8 +120,10 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     // ⚠️ `_count` না এলে `false` — "জানি না"-কে "নেই" ধরা হয়, কারণ এই
     //    পর্দাটা কাজ **বাকি আছে** দেখানোর জন্য; ভুল করলে বাড়তি কাজ দেখাক,
     //    কম নয়।
-    hasPortalAccount: (row._count?.portalUsers ?? 0) > 0,
+    hasPortalAccount: (row.portalUsers?.length ?? 0) > 0,
     hasDevice: (row._count?.devices ?? 0) > 0,
+    portalUserId: row.portalUsers?.[0]?.id ?? null,
+    portalEmail: row.portalUsers?.[0]?.email ?? null,
   };
 
   if (!canSeeSalary(role)) {
