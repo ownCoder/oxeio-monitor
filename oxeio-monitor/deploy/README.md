@@ -63,7 +63,53 @@
 
 ---
 
-## ২· সার্ভার তোলা
+## ২ক· VPS-এ — **এক কমান্ডে** ⭐
+
+```bash
+cd /opt/oxeio && git pull && bash oxeio-monitor/deploy/vps-setup.sh hub.oxeio.com
+```
+
+Docker · ফায়ারওয়াল (২২·৮০·৪৪৩) · গোপন মান তৈরি · DNS যাচাই · মাইগ্রেশন
+ও seed · স্ট্যাক — সব। শেষে owner লগইন **একবার** ছাপে।
+
+⭐ **বারবার চালানো নিরাপদ।** ভুল হলে ঠিক করে আবার একই লাইন; `.env`
+একবার তৈরি হলে আর ছোঁয়া হয় না।
+
+### প্রথমবার — দুটো জিনিস আগে
+
+**১· DNS** — যেখানে ডোমেইনের DNS আছে, সেখানে একটা `A` রেকর্ড
+(`hub` → VPS-এর IP)। ⚠️ nameserver বদলানোর দরকার নেই। ⭐ সাবডোমেইন,
+apex নয় — apex-এ হাত দিলে কোম্পানির মূল সাইট ভেঙে যেত।
+
+ছড়িয়েছে কি না: `nslookup hub.oxeio.com 8.8.8.8`
+⚠️ `8.8.8.8` অংশটা বাদ দেবেন না — ISP-র resolver-এ পুরোনো বা "নাম নেই"
+উত্তর ক্যাশ থাকতে পারে।
+
+**২· রিপো private, তাই deploy key** — বেনামে clone হয় না:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "oxeio-vps" <<< y
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+cat ~/.ssh/id_ed25519.pub
+```
+
+লাইনটা GitHub → রিপো → Settings → **Deploy keys** → Add।
+⚠️ **"Allow write access" টিক দেবেন না** — পড়ার অনুমতিই যথেষ্ট।
+
+তারপর:
+```bash
+git clone git@github.com:ownCoder/oxeio-monitor.git /opt/oxeio
+```
+
+⚠️ **রিপো public করে দেবেন না** — git ইতিহাসে একটা `.env` ব্যাকআপ আছে
+(পুরোনো পাসওয়ার্ড ও টোকেন সহ, [09 § ৩শ](../../docs/09-Build-Log.md))।
+
+⚠️ পাথে `oxeio-monitor/` অংশটা বাদ দেবেন না — রিপোর রুটে স্ক্রিপ্টটা নেই,
+ওটা এক ধাপ ভেতরে।
+
+---
+
+## ২· সার্ভার তোলা *(হাতে, ধাপে ধাপে)*
 
 ```powershell
 cd "C:\...\oXeio Office\oxeio-monitor"
