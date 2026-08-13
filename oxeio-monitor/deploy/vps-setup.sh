@@ -190,12 +190,27 @@ ok "উঠছে — Caddy এখন Let's Encrypt থেকে সার্ট 
 # ── ৮· ফল ────────────────────────────────────────────────────────────────
 printf '\n\033[32m✅ হয়ে গেছে\033[0m\n\n'
 echo "   ড্যাশবোর্ড : https://$PUBLIC_HOST"
+owner_email="$(grep -E '^SEED_OWNER_EMAIL=' .env | cut -d= -f2-)"
 if [ -n "$OWNER_PW" ]; then
-  owner_email="$(grep -E '^SEED_OWNER_EMAIL=' .env | cut -d= -f2-)"
-  printf '\n   \033[33m⚠️  owner লগইন — এটা একবারই দেখানো হচ্ছে:\033[0m\n'
+  printf '
+   [33m⚠️  owner লগইন — এটা একবারই দেখানো হচ্ছে:[0m
+'
   echo "      $owner_email"
   echo "      $OWNER_PW"
   echo "   (প্রথম লগইনেই বদলাতে বলবে — সেটা ঠিক আচরণ)"
+else
+  # ⚠️⚠️ `.env` আগে থেকে থাকলে নতুন পাসওয়ার্ড বানানো হয় না, তাই ছাপারও
+  #    কিছু নেই — আর তখন মালিক একটা **চলন্ত সিস্টেম** পান যাতে ঢোকার
+  #    উপায় জানা নেই। ⭐ ১৩ আগস্ট ঠিক তাই হয়েছে: আগের চেষ্টায় .env তৈরি
+  #    হয়ে গিয়েছিল, পরের চেষ্টা সফল হলো, কিন্তু লগইনটা ছাপল না।
+  #
+  #    পাসওয়ার্ডটা এখানে ছাপা হয় **না** ইচ্ছাকৃতভাবে — লগ, স্ক্রিনশট বা
+  #    টার্মিনালের scrollback-এ থেকে যেত। বদলে কোথায় আছে সেটা বলা হয়।
+  printf '
+   [33mowner লগইন: %s[0m
+' "$owner_email"
+  echo "   পাসওয়ার্ড দেখতে:"
+  echo "      grep '^SEED_OWNER_PASSWORD=' $COMPOSE_DIR/.env"
 fi
 printf '\n   সার্ট এলো কি না দেখতে:  docker compose logs -f web\n'
 printf '   অবস্থা দেখতে        :  docker compose ps\n\n'
