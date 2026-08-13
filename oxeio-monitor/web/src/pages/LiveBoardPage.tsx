@@ -7,9 +7,11 @@ import { Stat, StatRow } from '../components/Card';
 import { Button, Page, SectionHead } from '../components/Page';
 import { Caveat, Empty, ErrorBox, Loading } from '../components/States';
 import { StatusLegend } from '../components/StatusDot';
+import { Tabs } from '../components/Tabs';
 import { formatDate, formatDuration, formatTime } from '../lib/format';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
+import { isWorking, splitBoard } from './live/onTheClock';
 import { ShotLightbox } from './live/ShotLightbox';
 
 /**
@@ -71,8 +73,24 @@ export function LiveBoardPage() {
    */
   const [openFor, setOpenFor] = useState<number | null>(null);
 
+  /**
+   * ⭐ ডিফল্ট **`working`** — বোর্ড খুললে প্রথম যে প্রশ্নটা মাথায় আসে
+   * ("এখন কে কাজ করছে?") তার উত্তর যেন কোনো ক্লিক ছাড়াই সামনে থাকে।
+   *
+   * ⚠️ পছন্দটা মনে রাখা হয় না (localStorage নেই) — ইচ্ছাকৃত। বোর্ডটা
+   * সারাদিন খোলা থাকে আর নিজে নিজে রিফ্রেশ হয়; কেউ একবার অন্য ট্যাবে
+   * গিয়ে ভুলে গেলে পরদিন খুলে দেখতেন "কেউ কাজ করছে না", অথচ আসলে তিনি
+   * অন্য ট্যাবে দাঁড়িয়ে আছেন।
+   */
+  const [who, setWho] = useState<'working' | 'resting'>('working');
+
   const data = board.data;
   const cards = data?.cards ?? [];
+
+  // ⭐ ভাগটা `onTheClock.ts`-এ — উপরের "Working now" টাইলও **একই**
+  //    `isWorking` ব্যবহার করে, তাই দুটো সংখ্যা কখনো আলাদা হতে পারে না।
+  const { working, resting } = splitBoard(cards);
+  const shown = who === 'working' ? working : resting;
   const byEmployee = shots.data?.byEmployee;
 
   const openCard =
@@ -160,9 +178,40 @@ export function LiveBoardPage() {
             }
           />
 
+          {/*
+            ⭐ **কারা এখন কাজ করছেন — সেটাই বোর্ডের আসল প্রশ্ন।** আগে সবাই
+               একসাথে থাকত, তাই ১৫ জনের অফিসে কাজ করা ৩ জনকে খুঁজে বের করতে
+               চোখ বুলাতে হতো। মালিকের কথায়: *"Live Board e ami shudhu
+               working staff dekhte cai."*
+
+            ⚠️⚠️ **লুকিয়ে ফেলা নয়, সরিয়ে রাখা।** যাঁরা কাজ করছেন না তাঁরা
+               পাশের ট্যাবেই, আর সংখ্যাটা ট্যাবের গায়ে লেখা — নইলে "কেউ
+               বাদ পড়ে গেল কি না" প্রশ্নটা মাথায় থেকে যেত।
+
+            ⚠️ 🔴 **agent down কখনো চাপা পড়ে না** — উপরের লাল টাইলটা সবসময়
+               দেখা যায়, আর সংখ্যা শূন্য না হলে ট্যাবের গায়েও আলাদা করে
+               লেখা থাকে। ওটাই একমাত্র অবস্থা যেটা সত্যিই **সমস্যা**,
+               বাকিগুলো শুধু "এখন কাজ করছেন না"।
+          */}
+          <Tabs
+            label="Who is on the board"
+            active={who}
+            onChange={setWho}
+            items={[
+              { id: 'working', label: `Working · ${working.length}` },
+              {
+                id: 'resting',
+                label:
+                  stats.agentDown > 0
+                    ? `Not working · ${resting.length} · ${stats.agentDown} down`
+                    : `Not working · ${resting.length}`,
+              },
+            ]}
+          />
+
           {/* E12 — ফোনে এক কলাম, ট্যাবে দুই, ডেস্কটপে তিন-চার */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {cards.map((card) => (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {shown.map((card) => (
               <PersonCard
                 key={card.employeeId}
                 card={card}
@@ -171,6 +220,18 @@ export function LiveBoardPage() {
               />
             ))}
           </div>
+
+          {/*
+            ⚠️ খালি ট্যাব চুপ করে থাকতে পারে না — ফাঁকা জায়গা দেখলে
+               ব্যবহারকারী ভাবেন পাতাটা ভেঙে গেছে, ডেটা লোড হয়নি।
+          */}
+          {shown.length === 0 && (
+            <p className="py-8 text-center text-sm text-ink-3">
+              {who === 'working'
+                ? 'Nobody is working right now.'
+                : 'Everyone is working right now.'}
+            </p>
+          )}
 
           <StatusLegend />
 
@@ -276,7 +337,9 @@ function summarize(cards: LiveCard[]): BoardStats {
   let metTarget = 0;
 
   for (const card of cards) {
-    if (card.status === 'active') active += 1;
+    // ⚠️ ট্যাবের ভাগের সাথে **একই** শর্ত — দুই জায়গায় দুবার লিখলে
+    //    একদিন একটা বদলাত আর অন্যটা নয়, আর বোর্ড নিজেই নিজেকে কাটত।
+    if (isWorking(card.status)) active += 1;
     if (card.status === 'agent_down') agentDown += 1;
     if (card.todayWorkedSec > 0) workedToday += 1;
     todaySec += card.todayWorkedSec;

@@ -117,12 +117,8 @@ export function StaffTab() {
    */
   const onTurnAgentOn = (emp: EmployeeView) => {
     const ok = window.confirm(
-      `Turn ${emp.fullName}'s agent back on?
-
-`
-        + 'Their PC starts sending hours and screenshots again, using the login it already has.
-
-'
+      `Turn ${emp.fullName}'s agent back on?\n\n`
+        + 'Their PC starts sending hours and screenshots again, using the login it already has.\n\n'
         + '⚠️ Do NOT do this if that PC was lost or stolen — whoever holds it gets back in too. '
         + 'In that case leave it off and sign in fresh on the new machine.',
     );
