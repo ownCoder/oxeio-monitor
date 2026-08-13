@@ -47,7 +47,9 @@ param(
     #
     #   এই প্রোডাক্টের ঠিকানা একটাই, তাই ডিফল্টই ঠিক আচরণ। ব্যতিক্রম
     #   চাইলে সেটা এখন **স্পষ্ট করে** চাইতে হয় — `-NoServerUrl`।
-    [string]$ServerUrl = 'https://oxeio.office.local',
+    #   ⭐ ১৩ আগস্ট: `oxeio.office.local` → `hub.oxeio.com` (ADR-026)।
+    #   এখন এটাই আসল ঠিকানা — VPS, Let's Encrypt-এর সার্ট, পাবলিক DNS।
+    [string]$ServerUrl = 'https://hub.oxeio.com',
 
     # ⚠️ ঠিকানা ছাড়া MSI — শুধু তখনই, যখন একাধিক অফিসে আলাদা ঠিকানায়
     #   `msiexec /qn SERVERURL=...` দিয়ে বসানো হবে।

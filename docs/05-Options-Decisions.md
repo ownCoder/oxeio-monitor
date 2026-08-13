@@ -565,7 +565,16 @@ name and pass diye login korbe. complex kono way ami cai na."*
 
 **সিদ্ধান্ত আপনার** *(১৩ আগস্ট)* — *"VPS server e host korbo"*, আর তার
 সাথেই: *"apatoto office er pc te thak. office er pc te 2-3 din check kore
-VPS e host korbo."*
+VPS e host korbo."* তারপর VPS হাতে পেয়ে: *"ami hub.oxeio.com e er
+monitoring system ta install korte cai"*।
+
+⭐ **ঠিকানা চূড়ান্ত: `hub.oxeio.com`** — `build.ps1`-এর ডিফল্ট এখন এটাই,
+আর MSI ০.৩.৭-এ বেক করা।
+
+⚠️ **সাবডোমেইন, apex নয়।** `oxeio.com` কোম্পানির নিজের সাইট হতে পারে;
+apex-এ A রেকর্ড বদলালে ওটা ভেঙে যেত। ⭐ DNS যেখানেই থাকুক (VPS
+প্রোভাইডারে না হলেও) — **nameserver বদলানোর দরকার নেই**, শুধু একটা
+`A` রেকর্ড: `hub` → VPS-এর IP।
 
 ### ⭐ দুই ধাপে — আর ধাপটা কাল্পনিক নয়
 

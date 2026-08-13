@@ -152,7 +152,7 @@ account। ওই লগইন দিয়েই সে পরে নিজে�
 হয়, ২৪ ঘণ্টায় মেয়াদ শেষ:
 
 ```bash
-msiexec /i oXeioAgent-0.3.5.msi /qn SERVERURL="https://<server>" ENROLLCODE="<code>"
+msiexec /i oXeioAgent-0.3.7.msi /qn SERVERURL="https://hub.oxeio.com" ENROLLCODE="<code>"
 ```
 
 ### অফিসের সার্ভারে — ডেভ নয়
