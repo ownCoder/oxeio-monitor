@@ -13,10 +13,10 @@ import {
   reactivateEmployee,
   turnAgentOn,
   updateEmployee,
+  type AssignableRole,
   type CreateEmployeeBody,
   type EmployeeStatus,
   type EmployeeView,
-  type Role,
   type UpdateEmployeeBody,
 } from '../../api/admin';
 import { useApi } from '../../api/useApi';
@@ -817,7 +817,12 @@ function ReactivateDialog({
 
 // ── পোর্টাল অ্যাকাউন্ট ──────────────────────────────────────────────────────
 
-const PORTAL_ROLES: { value: Role; label: string }[] = [
+/**
+ * ⭐ টাইপটা `AssignableRole`, `Role` নয় — তাই কেউ ভুল করে
+ * `{ value: 'owner' }` যোগ করতে গেলে **কম্পাইলারই থামাবে**। ADR-011d-র
+ * নিয়মটা তখন আর কেবল সার্ভারের DTO-তে নয়, পর্দার কোডেও বাঁধা।
+ */
+const PORTAL_ROLES: { value: AssignableRole; label: string }[] = [
   { value: 'employee', label: 'Staff — their own hours only' },
   { value: 'manager', label: "Manager — everyone's Live Board and reports" },
 ];
@@ -858,7 +863,15 @@ function PortalAccountForm({
    * শুরু করলে কেউ শুধু ইমেইলের বানান ঠিক করতে গিয়ে সেভ চাপলেই একজন
    * ম্যানেজার নীরবে স্টাফ হয়ে যেতেন — আর সেটা কোথাও দেখা যেত না।
    */
-  const [role, setRole] = useState<Role>(
+  /**
+   * ⭐ টাইপটা `Role` নয়, `AssignableRole` — কারণ initializer-ই মানটাকে
+   * দুটোয় নামিয়ে আনে, আর owner-এর ড্রপডাউন দেখানোই হয় না (নিচে)।
+   *
+   * ⚠️ `Role` লেখা থাকায় কম্পাইলার ধরে নিত মানটা `'owner'`ও হতে পারে, আর
+   * `changeUserRole` সেটা নেয় না — **ওয়েব বিল্ড তাতেই ভেঙেছিল** (TS2345)।
+   * সরু টাইপটা এখন নিয়মটাই পাহারা দেয়, রানটাইমের কোনো গার্ড ছাড়াই।
+   */
+  const [role, setRole] = useState<AssignableRole>(
     employee.portalRole === 'manager' ? 'manager' : 'employee',
   );
 
@@ -970,7 +983,7 @@ function PortalAccountForm({
           <SelectField
             label="Role"
             value={role}
-            onChange={(value) => setRole(value as Role)}
+            onChange={(value) => setRole(value as AssignableRole)}
             options={PORTAL_ROLES}
             hint="A staff screen has no buttons — they can only look at their own hours"
           />
