@@ -813,6 +813,7 @@ powershell -ExecutionPolicy Bypass -File deploy\defender-exclusions.ps1
 | সার্ভার ওঠে না, "পড়া যায়নি" | কনটেইনারে `/certs` mount হয়নি, বা পথ ভুল |
 | Live Board-এ মেশিন "অফলাইন" অথচ চালু | ঘড়ির সময় মিলছে না, বা আউটবক্স ড্রেন হচ্ছে |
 | ⭐ **গ্যালারিতে সারি আছে কিন্তু সব ছবি ভাঙা** | storage ফোল্ডারে কনটেইনার লিখতে পারছে না — নিচে § ১২.২ |
+| ⭐ **স্টাফ ঢুকতে পারছেন না, রিসেটও কাজ করছে না** | কর্মী একবার নিষ্ক্রিয় হয়েছিলেন — লগইন ফেরেনি, নিচে § ১২.৩ |
 
 লগ:
 
@@ -860,6 +861,32 @@ chown -R 1000:1000 .data/storage && docker compose restart api
 
 ⚠️ **আগের ভাঙা ছবিগুলো ফিরবে না** — ওগুলো কখনো ডিস্কে লেখাই হয়নি। ঠিক
 হয়েছে কি না বুঝবেন পরের ক্যাপচার স্লটে নতুন ছবি এলে।
+
+### ১২.৩· ⭐⭐ স্টাফ ঢুকতে পারছেন না, যদিও পাসওয়ার্ড রিসেট "সফল" (G84)
+
+উপসর্গ: Staff পর্দায় কর্মী **Active**, "Reset password" নতুন পাসওয়ার্ড
+দেয়, অথচ লগইনে সবসময় *"Email or password is incorrect"*।
+
+⚠️⚠️ কর্মীকে কখনো **নিষ্ক্রিয় করে আবার সক্রিয়** করা হয়েছিল কি না মনে
+করে দেখুন। নিষ্ক্রিয় করা `users.is_active = false` বসাত, কিন্তু আবার
+সক্রিয় করা সেটা ফেরাত না ([09 § ৩ঢ়](../../docs/09-Build-Log.md))।
+
+কে কে এই অবস্থায় আছেন — কর্মী সক্রিয়, অথচ লগইন বন্ধ:
+
+```bash
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select u.email, e.emp_code, e.full_name from users u join employees e on e.id = u.employee_id where u.is_active = false and e.status = '"'"'active'"'"'"'
+```
+
+⚠️ **নতুন কোড পুরোনো সারি সারায় না** — সে কেবল পরের বার থেকে ঠিক রাখে।
+আর UI দিয়েও সারানো যায় না: কর্মী এখন `active`, তাই "Reactivate" ৪০৯
+দেবে। একবার হাতে ঠিক করতে হয়:
+
+```bash
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "update users set is_active = true where employee_id in (select id from employees where status = '"'"'active'"'"') and is_active = false"'
+```
+
+⭐ এরপর আর **Reset password** লাগবে না — পুরোনো পাসওয়ার্ডই কাজ করবে।
+মনে না থাকলে তখন রিসেট করুন।
 
 ### ১২.১· ⭐ owner ঢুকতে পারছেন না (পাসওয়ার্ড বা ফোন হারিয়েছে)
 

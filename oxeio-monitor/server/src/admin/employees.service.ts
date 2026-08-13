@@ -391,11 +391,36 @@ export class EmployeesService {
       throw new ConflictException('This staff member is already active');
     }
 
-    const row = await this.prisma.employee.update({
-      where: { id },
-      data: { status: 'active', leftOn: null },
-      select: EMPLOYEE_SELECT,
-    });
+    /**
+     * ⚠️⚠️ **portal লগইনটাও ফিরিয়ে দিতে হয় — এটাই আগে বাদ পড়েছিল।**
+     *
+     * `deactivate()` কর্মীর `users` সারিতে `is_active = false` বসায়।
+     * এখানে সেটা ফেরানো হতো না, ফলে যা ঘটত:
+     *
+     *   ১· Staff পর্দায় কর্মী **Active** দেখাত
+     *   ২· "Reset password" চাপলে **সফল** হতো, নতুন পাসওয়ার্ডও দেখাত
+     *   ৩· কিন্তু লগইনে সবসময় *"Email or password is incorrect"*
+     *
+     * ⚠️ কারণ `login()` পাসওয়ার্ডের সাথে `user.isActive`-ও মেলায়, আর
+     *    ব্যর্থতার বার্তা ইচ্ছাকৃতভাবে একই রাখা হয় (user enumeration
+     *    ঠেকাতে)। ফলে **কারণটা জানার কোনো উপায়ই ছিল না** — মালিক বারবার
+     *    রিসেট করতেন আর প্রতিবার একই বার্তা পেতেন।
+     *
+     * ⭐ ডিভাইস ইচ্ছাকৃতভাবে ফেরে না (উপরের মন্তব্য), কিন্তু লগইন আর
+     *    ডিভাইস এক জিনিস নয়: লগইন ছাড়া কর্মী **এজেন্টে সাইন ইনই করতে
+     *    পারেন না**, অর্থাৎ ফিরে আসার পথটাই বন্ধ থাকে।
+     */
+    const [row, portal] = await this.prisma.$transaction([
+      this.prisma.employee.update({
+        where: { id },
+        data: { status: 'active', leftOn: null },
+        select: EMPLOYEE_SELECT,
+      }),
+      this.prisma.user.updateMany({
+        where: { employeeId: id, isActive: false },
+        data: { isActive: true },
+      }),
+    ]);
 
     await this.audit.record({
       userId: actor.userId,
@@ -403,7 +428,13 @@ export class EmployeesService {
       targetType: ADMIN_TARGET.employee,
       targetId: id,
       ipAddress: ip,
-      meta: { op: 'reactivate', empCode: before.empCode },
+      // ⚠️ কতগুলো লগইন ফিরল সেটাও লেখা — deactivate-এ `portalDisabled`
+      //    লেখা হয়, তাই জোড়াটা audit-এ মিলিয়ে দেখা যায়
+      meta: {
+        op: 'reactivate',
+        empCode: before.empCode,
+        portalRestored: portal.count,
+      },
     });
 
     return toEmployeeView(row, actor.role);

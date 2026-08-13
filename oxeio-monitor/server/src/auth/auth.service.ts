@@ -242,6 +242,30 @@ export class AuthService {
     });
     if (!target) throw new NotFoundException('User not found');
 
+    /**
+     * ⚠️⚠️ **নিষ্ক্রিয় অ্যাকাউন্টে রিসেট আটকানো হয়, আর কারণটা বলা হয়।**
+     *
+     * আগে এটা চুপচাপ সফল হতো — নতুন পাসওয়ার্ড পর্দায় দেখাত, অথচ
+     * `login()` পাসওয়ার্ডের সাথে `isActive`-ও মেলায়, তাই ওই পাসওয়ার্ড
+     * **কোনোদিন কাজ করত না**। আর লগইনের বার্তা ইচ্ছাকৃতভাবে সবসময় একই
+     * (*"Email or password is incorrect"* — user enumeration ঠেকাতে),
+     * তাই মালিকের কাছে ব্যাপারটা দাঁড়াত: রিসেট কাজ করছে, লগইন করছে না,
+     * আর কেন — জানার কোনো উপায় নেই।
+     *
+     * ⭐ এখানে বার্তাটা লুকানোর কিছু নেই: এই রুটে ঢুকতেই owner হতে হয়,
+     * অর্থাৎ তিনি এমনিতেই সব অ্যাকাউন্ট দেখতে পান।
+     *
+     * ⚠️ নিজে থেকে সক্রিয় করে দেওয়া হয় **না**। পাসওয়ার্ড রিসেট করতে গিয়ে
+     * কেউ যেন ছেড়ে-যাওয়া কর্মীর অ্যাকাউন্ট অজান্তে খুলে না ফেলে —
+     * সক্রিয় করাটা আলাদা, সচেতন কাজ (Staff → Reactivate)।
+     */
+    if (!target.isActive) {
+      throw new ConflictException(
+        'This login is disabled because the staff member is inactive. '
+          + 'Reactivate them on the Staff screen first — then reset the password.',
+      );
+    }
+
     const tempPassword = this.passwords.generateTempPassword();
 
     await this.prisma.user.update({
