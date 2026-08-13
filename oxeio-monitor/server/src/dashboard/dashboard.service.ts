@@ -173,11 +173,11 @@ export interface TrendMonth {
   trackedFrom: string | null;
 }
 
-/** E01 — এই মাসে সবচেয়ে বেশি ঘণ্টা যাঁদের */
+/** E01 — **আজীবন** সবচেয়ে বেশি ঘণ্টা যাঁদের */
 export interface TrendLeader {
   employeeId: number;
   fullName: string;
-  /** worked + সংশোধন — মাসের কার্ডের সাথে **একই** সংখ্যা */
+  /** ⭐ **সব মাস মিলিয়ে** worked + সংশোধন — চলতি মাসের নয় */
   creditedSec: number;
 }
 
@@ -186,15 +186,18 @@ export interface TeamTrend {
   days: TrendDay[];
   month: TrendMonth;
   /**
-   * ⭐ সবচেয়ে বেশি ঘণ্টা, উপরে থেকে — সর্বোচ্চ পাঁচজন।
+   * ⭐ **আজীবন** সবচেয়ে বেশি ঘণ্টা, উপরে থেকে — সর্বোচ্চ পাঁচজন।
    *
-   * ⚠️ মাপটা **মোট ঘণ্টা**, মালিকের বাছা। ফলে যাঁর কর্মদিবস বেশি তিনিই
-   *    উপরে ওঠেন — মাঝপথে যোগ দেওয়া কেউ চাইলেও পারবেন না। সেটা জেনেই
-   *    বাছা হয়েছে; কার্ডে প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা থাকে,
-   *    তাই ক্রমটা কীসের উপর দাঁড়ানো সেটা পর্দাতেই দেখা যায়।
+   * ⚠️ মাপটা **সব মাস মিলিয়ে মোট ঘণ্টা**, মালিকের বাছা। ফলে যিনি আগে যোগ
+   *    দিয়েছেন তিনি **স্থায়ীভাবে** উপরে থাকেন — নতুন কেউ যত ভালোই করুন,
+   *    ধরতে পারবেন না। মাসিক হিসাবে অন্তত প্রতি মাসে ক্রমটা নতুন করে শুরু
+   *    হতো; আজীবনে হয় না। সেটা জেনেই বাছা হয়েছে।
    *
-   * ⚠️ শুধু **সক্রিয়** কর্মী — ছেড়ে যাওয়া কারো নাম মাসের অর্ধেক ডেটা
-   *    নিয়ে তালিকার মাথায় বসে থাকলে সেটা বিভ্রান্তিকর হতো।
+   * ⭐ তাই কার্ডে প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা থাকে — ক্রমটা
+   *    কীসের উপর দাঁড়ানো, সেটা পর্দাতেই দেখা যায়।
+   *
+   * ⚠️ শুধু **সক্রিয়** কর্মী — ছেড়ে যাওয়া কারো নাম বছরের জমা ঘণ্টা নিয়ে
+   *    তালিকার মাথায় বসে থাকলে সেটা বিভ্রান্তিকর হতো।
    */
   leaders: TrendLeader[];
 }
@@ -617,21 +620,34 @@ export class DashboardService {
      *    ছেড়ে যাওয়া কর্মীর সারিও থাকে, তাই `status: 'active'` দিয়ে ছাঁকা
      *    হয়। জোড়াটা কোডে করা হয় বলে কর্মীসংখ্যা যাই হোক কোয়েরি একটাই।
      */
-    const active = await this.prisma.employee.findMany({
-      where: { status: 'active' },
-      select: { id: true, fullName: true },
-    });
+    /**
+     * ⚠️ **সব মাস মিলিয়ে**, `yearMonth` ছাঁকা ছাড়া — উপরের `monthRows`
+     *    চলতি মাসের, ওটা দিয়ে আজীবনের ক্রম বানানো যেত না।
+     *
+     * ⭐ যোগফলটা ডাটাবেসে (`groupBy`), কোডে নয় — কর্মী ও মাস দুটোই বাড়ে,
+     *    তাই সব সারি টেনে এনে যোগ করাটা সময়ের সাথে ভারী হতো।
+     */
+    const [active, lifetime] = await Promise.all([
+      this.prisma.employee.findMany({
+        where: { status: 'active' },
+        select: { id: true, fullName: true },
+      }),
+      this.prisma.monthlySummary.groupBy({
+        by: ['employeeId'],
+        _sum: { creditedSec: true },
+      }),
+    ]);
     const nameOf = new Map(active.map((e) => [e.id, e.fullName]));
 
-    const leaders: TrendLeader[] = monthRows
-      .filter((m) => nameOf.has(m.employeeId) && m.creditedSec > 0)
+    const leaders: TrendLeader[] = lifetime
+      .map((row) => ({
+        employeeId: row.employeeId,
+        fullName: nameOf.get(row.employeeId) ?? '',
+        creditedSec: row._sum.creditedSec ?? 0,
+      }))
+      .filter((l) => nameOf.has(l.employeeId) && l.creditedSec > 0)
       .sort((a, b) => b.creditedSec - a.creditedSec)
-      .slice(0, 5)
-      .map((m) => ({
-        employeeId: m.employeeId,
-        fullName: nameOf.get(m.employeeId) ?? '',
-        creditedSec: m.creditedSec,
-      }));
+      .slice(0, 5);
 
     return {
       days,

@@ -192,10 +192,11 @@ export function MonthCard({ month }: { month: TeamTrend['month'] }) {
 }
 
 /**
- * ⭐ **Top performers** — এই মাসে সবচেয়ে বেশি ঘণ্টা যাঁদের।
+ * ⭐ **Top performers** — **আজীবন** সবচেয়ে বেশি ঘণ্টা যাঁদের।
  *
- * ⚠️ মাপটা **মোট ঘণ্টা**, মালিকের বাছা। ফলে যাঁর কর্মদিবস বেশি তিনিই
- *    উপরে ওঠেন — মাঝপথে যোগ দেওয়া কেউ চাইলেও পারবেন না।
+ * ⚠️ মাপটা **সব মাস মিলিয়ে মোট ঘণ্টা**, মালিকের বাছা। ফলে যিনি আগে যোগ
+ *    দিয়েছেন তিনি **স্থায়ীভাবে** উপরে থাকেন — নতুন কেউ যত ভালোই করুন,
+ *    ধরতে পারবেন না। মাসিকে অন্তত প্রতি মাসে ক্রম নতুন করে শুরু হতো।
  *
  * ⭐ তাই প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা থাকে, আর বারগুলো শীর্ষ
  *    জনের সাপেক্ষে আঁকা। সবাই কাছাকাছি থাকলে বারগুলোও প্রায় সমান হয় —
@@ -209,7 +210,7 @@ export function TopPerformers({ leaders }: { leaders: TeamTrend['leaders'] }) {
   if (leaders.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-sm text-ink-3">
-        Nobody has counted hours this month yet.
+        No hours counted yet — the list fills in as people work.
       </p>
     );
   }

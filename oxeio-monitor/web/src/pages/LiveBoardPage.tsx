@@ -307,7 +307,7 @@ export function LiveBoardPage() {
 
           <Card
             title="Top performers"
-            hint="Most hours counted this month"
+            hint="Most hours counted, all time"
             padded={false}
           >
             {trend.data ? (
