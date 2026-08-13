@@ -513,9 +513,31 @@ export class DashboardService {
     });
     const trackedFromMs = earliest?.workDate.getTime() ?? null;
 
+    /**
+     * ⚠️⚠️ **সক্রিয় কর্মীদের তালিকা আগে**, আর সেটা এখানে জরুরি — শুধু
+     *    নাম দেখানোর জন্য নয়।
+     *
+     *    কাউকে নিষ্ক্রিয় করলে তাঁর `monthly_summary` ও `daily_summary`
+     *    সারি **থেকেই যায়** (ইতিহাস মোছা হয় না, ইচ্ছাকৃত)। ছাঁকা না দিলে
+     *    দলের টার্গেটে ছেড়ে-যাওয়া মানুষের ভাগ যোগ হয়েই থাকত — আর তাতে
+     *    "কত পিছিয়ে" সংখ্যাটা চিরকাল ফুলে থাকত।
+     *
+     *    ⭐ ১৪ আগস্ট ঠিক এটাই ঘটেছিল: seed-এর তিনটে নমুনা সারি নিষ্ক্রিয়
+     *    করার পরেও টার্গেট ২২৭২ ঘণ্টাই দেখাচ্ছিল, অর্থাৎ তিনজন অস্তিত্বহীন
+     *    মানুষের লক্ষ্য দল বয়ে বেড়াত।
+     *
+     * ⚠️ Live Board-এর কার্ডও কেবল সক্রিয় কর্মী দেখায়, তাই এই ছাঁকনিটা
+     *    পর্দার বাকি অংশের সাথে **মিল রাখে** — নইলে একই পাতায় দুই রকম "দল"।
+     */
+    const active = await this.prisma.employee.findMany({
+      where: { status: 'active' },
+      select: { id: true, fullName: true },
+    });
+    const nameOf = new Map(active.map((e) => [e.id, e.fullName]));
+
     // ⚠️ কর্মীপ্রতি সারি, গোষ্ঠীবদ্ধ নয় — `day_type` ও দৈনিক টার্গেট
     //    দুটোই কর্মীভেদে আলাদা, তাই যোগফলটা কোডে করা হয়।
-    const [rows, monthRows] = await Promise.all([
+    const [rowsAll, monthRowsAll] = await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { workDate: { gte: first, lte: today } },
         select: {
@@ -535,6 +557,9 @@ export class DashboardService {
         },
       }),
     ]);
+
+    const rows = rowsAll.filter((r) => nameOf.has(r.employeeId));
+    const monthRows = monthRowsAll.filter((m) => nameOf.has(m.employeeId));
 
     /**
      * ⭐ কর্মীপ্রতি **এক কর্মদিবসের** টার্গেট = মাসিক ÷ তার কর্মদিবস।
@@ -601,7 +626,11 @@ export class DashboardService {
      *    কেবল ভালোর দিকেই যায় — কখনো ভুয়া আতঙ্ক তৈরি করে না।
      */
     const monthRowsDaily = await this.prisma.dailySummary.findMany({
-      where: { workDate: { gte: from, lt: today } },
+      where: {
+        workDate: { gte: from, lt: today },
+        // ⚠️ এখানেও একই ছাঁকনি — নইলে প্রত্যাশায় ছেড়ে-যাওয়া মানুষের দিন যোগ হতো
+        employeeId: { in: active.map((e) => e.id) },
+      },
       select: { employeeId: true, dayType: true },
     });
 
@@ -616,28 +645,16 @@ export class DashboardService {
     const creditedSec = monthRows.reduce((a, m) => a + m.creditedSec, 0);
 
     /**
-     * ⚠️ নাম আনতে **আলাদা একটা কোয়েরি**, আর সেটা সচেতন: `monthly_summary`-তে
-     *    ছেড়ে যাওয়া কর্মীর সারিও থাকে, তাই `status: 'active'` দিয়ে ছাঁকা
-     *    হয়। জোড়াটা কোডে করা হয় বলে কর্মীসংখ্যা যাই হোক কোয়েরি একটাই।
-     */
-    /**
      * ⚠️ **সব মাস মিলিয়ে**, `yearMonth` ছাঁকা ছাড়া — উপরের `monthRows`
      *    চলতি মাসের, ওটা দিয়ে আজীবনের ক্রম বানানো যেত না।
      *
      * ⭐ যোগফলটা ডাটাবেসে (`groupBy`), কোডে নয় — কর্মী ও মাস দুটোই বাড়ে,
      *    তাই সব সারি টেনে এনে যোগ করাটা সময়ের সাথে ভারী হতো।
      */
-    const [active, lifetime] = await Promise.all([
-      this.prisma.employee.findMany({
-        where: { status: 'active' },
-        select: { id: true, fullName: true },
-      }),
-      this.prisma.monthlySummary.groupBy({
-        by: ['employeeId'],
-        _sum: { creditedSec: true },
-      }),
-    ]);
-    const nameOf = new Map(active.map((e) => [e.id, e.fullName]));
+    const lifetime = await this.prisma.monthlySummary.groupBy({
+      by: ['employeeId'],
+      _sum: { creditedSec: true },
+    });
 
     const leaders: TrendLeader[] = lifetime
       .map((row) => ({
