@@ -106,6 +106,23 @@ if (-not $PSCmdlet.ShouldProcess("CN=$Subject", 'কোড-সাইনিং �
     return
 }
 
+# ⚠️⚠️ পাসওয়ার্ডটা **সার্ট বানানোর আগে** চাওয়া হয়, পরে নয়।
+#
+#    আগে উল্টো ছিল: সার্ট তৈরি → তারপর প্রম্পট। কেউ ওখানে Ctrl+C চাপলে
+#    (বা প্রম্পট ব্যর্থ হলে) স্টোরে একটা **অনাথ সার্ট** পড়ে থাকত, অথচ
+#    .cer/.pfx কিছুই লেখা হতো না। ⚠️ আর উপরের পাহারাটা **ফাইল** দেখে,
+#    সার্ট নয় — তাই আবার চালালে চুপচাপ দ্বিতীয় একটা সার্ট বানাত, আর
+#    কোনটা দিয়ে সই করা হয়েছে সেটা বলার উপায় থাকত না।
+#
+#    এখন থামলে কিছুই তৈরি হয় না।
+Write-Host '   ⚠️ .pfx ব্যাকআপের জন্য একটা পাসওয়ার্ড দিন (মনে রাখুন —' -ForegroundColor Yellow
+Write-Host '      এটা ছাড়া ব্যাকআপ থেকে সার্ট ফেরানো যাবে না):' -ForegroundColor Yellow
+$pfxPassword = Read-Host '   পাসওয়ার্ড' -AsSecureString
+
+if ($pfxPassword.Length -eq 0) {
+    throw 'পাসওয়ার্ড খালি — .pfx ব্যাকআপ ছাড়া সার্ট বানানো হয়নি।'
+}
+
 if (-not (Test-Path $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
 
 Write-Host '── কাজ চলছে ─────────────────────────────────' -ForegroundColor Cyan
@@ -117,6 +134,8 @@ Write-Host '── কাজ চলছে ────────────�
 #
 # ⚠️ -KeyExportPolicy Exportable না দিলে .pfx বানানো যেত না, অর্থাৎ
 #    ব্যাকআপও নেওয়া যেত না — আর মেশিন বদলালে পরিচয়টাই হারিয়ে যেত।
+# ⚠️ এখান থেকে নিচে ব্যর্থ হলে সার্টটা স্টোর থেকে তুলে নেওয়া হয় — অর্ধেক
+#    হওয়া অবস্থা রেখে যাওয়ার চেয়ে কিছুই না রাখা পরিষ্কার।
 $cert = New-SelfSignedCertificate `
     -Type CodeSigningCert `
     -Subject "CN=$Subject" `
@@ -136,11 +155,6 @@ Write-Host "   $cerPath"
 # ⚠️ pfx-এ প্রাইভেট কী আছে, তাই পাসওয়ার্ড ছাড়া লেখা যাবে না।
 #    পাসওয়ার্ডটা টাইপ করতে হয় — কমান্ড লাইনে দেওয়া হয় না ইচ্ছাকৃতভাবে,
 #    নইলে সেটা PowerShell-এর হিস্ট্রি ফাইলে থেকে যেত।
-Write-Host ''
-Write-Host '   ⚠️ .pfx ব্যাকআপের জন্য একটা পাসওয়ার্ড দিন (মনে রাখুন —' -ForegroundColor Yellow
-Write-Host '      এটা ছাড়া ব্যাকআপ থেকে সার্ট ফেরানো যাবে না):' -ForegroundColor Yellow
-$pfxPassword = Read-Host '   পাসওয়ার্ড' -AsSecureString
-
 Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pfxPassword -Force | Out-Null
 Write-Host "   $pfxPath  ⚠️ গোপন"
 
