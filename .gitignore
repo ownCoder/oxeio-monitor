@@ -34,3 +34,12 @@ desktop.ini
 # ⚠️ আসল কর্মী তালিকা — নাম ও বেতন। কখনো কমিট হবে না।
 #    seed এটা না পেলে staff.example.json দিয়ে চলে।
 **/staff.local.json
+
+# ⚠️⚠️ .env-এর যেকোনো ব্যাকআপ/কপিও — ১৩ আগস্ট এমন একটা ফাইল
+# (.env.bak-before-trial) ভুল করে কমিট হয়ে গিয়েছিল, কারণ উপরের
+# `**/.env` প্যাটার্নে `.env.bak-*` পড়ে না।
+**/.env.bak*
+**/.env.backup*
+**/.env.old*
+**/.env.save*
+**/*.env.bak*
