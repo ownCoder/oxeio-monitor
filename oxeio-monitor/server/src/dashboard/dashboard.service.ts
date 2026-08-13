@@ -173,10 +173,30 @@ export interface TrendMonth {
   trackedFrom: string | null;
 }
 
+/** E01 — এই মাসে সবচেয়ে বেশি ঘণ্টা যাঁদের */
+export interface TrendLeader {
+  employeeId: number;
+  fullName: string;
+  /** worked + সংশোধন — মাসের কার্ডের সাথে **একই** সংখ্যা */
+  creditedSec: number;
+}
+
 export interface TeamTrend {
   /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
   days: TrendDay[];
   month: TrendMonth;
+  /**
+   * ⭐ সবচেয়ে বেশি ঘণ্টা, উপরে থেকে — সর্বোচ্চ পাঁচজন।
+   *
+   * ⚠️ মাপটা **মোট ঘণ্টা**, মালিকের বাছা। ফলে যাঁর কর্মদিবস বেশি তিনিই
+   *    উপরে ওঠেন — মাঝপথে যোগ দেওয়া কেউ চাইলেও পারবেন না। সেটা জেনেই
+   *    বাছা হয়েছে; কার্ডে প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা থাকে,
+   *    তাই ক্রমটা কীসের উপর দাঁড়ানো সেটা পর্দাতেই দেখা যায়।
+   *
+   * ⚠️ শুধু **সক্রিয়** কর্মী — ছেড়ে যাওয়া কারো নাম মাসের অর্ধেক ডেটা
+   *    নিয়ে তালিকার মাথায় বসে থাকলে সেটা বিভ্রান্তিকর হতো।
+   */
+  leaders: TrendLeader[];
 }
 
 /** E01 — লাইভ বোর্ডের দিনের-ছন্দ চার্ট (`GET /live/pulse`) */
@@ -592,8 +612,30 @@ export class DashboardService {
 
     const creditedSec = monthRows.reduce((a, m) => a + m.creditedSec, 0);
 
+    /**
+     * ⚠️ নাম আনতে **আলাদা একটা কোয়েরি**, আর সেটা সচেতন: `monthly_summary`-তে
+     *    ছেড়ে যাওয়া কর্মীর সারিও থাকে, তাই `status: 'active'` দিয়ে ছাঁকা
+     *    হয়। জোড়াটা কোডে করা হয় বলে কর্মীসংখ্যা যাই হোক কোয়েরি একটাই।
+     */
+    const active = await this.prisma.employee.findMany({
+      where: { status: 'active' },
+      select: { id: true, fullName: true },
+    });
+    const nameOf = new Map(active.map((e) => [e.id, e.fullName]));
+
+    const leaders: TrendLeader[] = monthRows
+      .filter((m) => nameOf.has(m.employeeId) && m.creditedSec > 0)
+      .sort((a, b) => b.creditedSec - a.creditedSec)
+      .slice(0, 5)
+      .map((m) => ({
+        employeeId: m.employeeId,
+        fullName: nameOf.get(m.employeeId) ?? '',
+        creditedSec: m.creditedSec,
+      }));
+
     return {
       days,
+      leaders,
       month: {
         yearMonth: monthKey,
         creditedSec,

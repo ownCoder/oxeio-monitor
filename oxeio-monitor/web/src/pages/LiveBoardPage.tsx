@@ -21,7 +21,7 @@ import {
 } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
 import { StatusStrip, TargetBars } from './live/TeamBars';
-import { MonthCard, WeekBars } from './live/WeekAndMonth';
+import { MonthCard, TopPerformers, WeekBars } from './live/WeekAndMonth';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
 import { isWorking, splitBoard } from './live/onTheClock';
@@ -292,7 +292,7 @@ export function LiveBoardPage() {
           </Card>
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
           <Card
             title="Against today's target"
             hint={
@@ -303,6 +303,20 @@ export function LiveBoardPage() {
             padded={false}
           >
             <TargetBars cards={cards} />
+          </Card>
+
+          <Card
+            title="Top performers"
+            hint="Most hours counted this month"
+            padded={false}
+          >
+            {trend.data ? (
+              <TopPerformers leaders={trend.data.leaders} />
+            ) : (
+              <div className="px-4 py-8">
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
           </Card>
         </div>
 

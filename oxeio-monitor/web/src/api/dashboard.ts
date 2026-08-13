@@ -144,10 +144,25 @@ export interface TrendMonth {
   trackedFrom: string | null;
 }
 
+/** E01 — এই মাসে সবচেয়ে বেশি ঘণ্টা যাঁদের */
+export interface TrendLeader {
+  employeeId: number;
+  fullName: string;
+  creditedSec: number;
+}
+
 export interface TeamTrend {
   /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
   days: TrendDay[];
   month: TrendMonth;
+  /**
+   * ⭐ সর্বোচ্চ পাঁচজন, বেশি ঘণ্টা উপরে।
+   *
+   * ⚠️ মাপটা **মোট ঘণ্টা** — তাই যাঁর কর্মদিবস বেশি তিনিই উপরে ওঠেন।
+   *    কার্ডে প্রতিটা নামের পাশে আসল ঘণ্টাটা লেখা থাকে, যাতে ক্রমটা
+   *    কীসের উপর দাঁড়ানো সেটা পর্দাতেই দেখা যায়।
+   */
+  leaders: TrendLeader[];
 }
 
 /** E01 — দলের দিনের ছন্দের এক ঘণ্টা (`GET /live/pulse`) */

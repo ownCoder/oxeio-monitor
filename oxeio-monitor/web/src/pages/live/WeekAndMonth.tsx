@@ -192,6 +192,59 @@ export function MonthCard({ month }: { month: TeamTrend['month'] }) {
 }
 
 /**
+ * ⭐ **Top performers** — এই মাসে সবচেয়ে বেশি ঘণ্টা যাঁদের।
+ *
+ * ⚠️ মাপটা **মোট ঘণ্টা**, মালিকের বাছা। ফলে যাঁর কর্মদিবস বেশি তিনিই
+ *    উপরে ওঠেন — মাঝপথে যোগ দেওয়া কেউ চাইলেও পারবেন না।
+ *
+ * ⭐ তাই প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা থাকে, আর বারগুলো শীর্ষ
+ *    জনের সাপেক্ষে আঁকা। সবাই কাছাকাছি থাকলে বারগুলোও প্রায় সমান হয় —
+ *    অর্থাৎ "ক্রমটা অর্থবহ কি না" প্রশ্নের উত্তর সংখ্যাগুলোই দিয়ে দেয়,
+ *    আলাদা কোনো সতর্কবার্তা ছাড়াই।
+ *
+ * ⚠️ বার সবুজ নয়, নিরপেক্ষ `ink` — এটা টার্গেট ছোঁয়ার হিসাব নয়, নিছক
+ *    তুলনা। সবুজ রাখলে "লক্ষ্য পূরণ" বলে ভুল হতো (ProgressBar-এর নিয়ম)।
+ */
+export function TopPerformers({ leaders }: { leaders: TeamTrend['leaders'] }) {
+  if (leaders.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-sm text-ink-3">
+        Nobody has counted hours this month yet.
+      </p>
+    );
+  }
+
+  const top = leaders[0].creditedSec;
+
+  return (
+    <ul className="divide-y divide-line">
+      {leaders.map((p, i) => (
+        <li
+          key={p.employeeId}
+          className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5"
+        >
+          <span className="num text-[11px] text-ink-3">{i + 1}</span>
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium">{p.fullName}</div>
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-line">
+              <div
+                className="h-full rounded-full bg-ink transition-[width] duration-700"
+                style={{
+                  width: `${top > 0 ? (p.creditedSec / top) * 100 : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+          <span className="num text-[13px] font-semibold">
+            {formatDuration(p.creditedSec)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
  * সবচেয়ে সাধারণ দৈনিক টার্গেট — রেখাটা এটার উপরেই বসে।
  *
  * ⚠️ গড় নেওয়া হয় না: ছুটির দিনের শূন্য টার্গেট গড়টাকে নিচে টেনে নামাত,
