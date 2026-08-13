@@ -565,8 +565,20 @@ export class DashboardService {
         ? new Date(trackedFromMs)
         : monthStart;
 
+    /**
+     * ⚠️⚠️ **আজকের দিনটা বাদ** (`lt: today`, `lte` নয়) — আর এটা না করলে
+     *    ভুলটা রোজ সকালে ফিরে আসত।
+     *
+     *    আজকের পুরো কর্মদিবসটা প্রত্যাশায় ধরলে ভোর ৬টায় দল দেখাত "১১৪
+     *    ঘণ্টা পিছিয়ে", আর সন্ধ্যা নাগাদ সংখ্যাটা নিজে থেকেই ঠিক হয়ে যেত।
+     *    অর্থাৎ একই দল দিনে দুবার দুই রকম রায় পেত, কেবল ঘড়ির কাঁটার কারণে।
+     *
+     * ⭐ তাই pace-এর মানে দাঁড়াল: **গতকাল পর্যন্ত হিসাব করলে কে কোথায়।**
+     *    আজকের কাজ credited-এ যোগ হতেই থাকে, তাই দিন যত গড়ায় সংখ্যাটা
+     *    কেবল ভালোর দিকেই যায় — কখনো ভুয়া আতঙ্ক তৈরি করে না।
+     */
     const monthRowsDaily = await this.prisma.dailySummary.findMany({
-      where: { workDate: { gte: from, lte: today } },
+      where: { workDate: { gte: from, lt: today } },
       select: { employeeId: true, dayType: true },
     });
 

@@ -1,5 +1,6 @@
 import type { TeamTrend } from '../../api/dashboard';
 import { formatDateShort, formatDuration, pctOf, weekdayOf } from '../../lib/format';
+import { targetText } from './TodayRing';
 
 /**
  * E01 — বোর্ডের দুটো পেছন-ফিরে-দেখা কার্ড: **শেষ সাত দিন**, আর **চলতি মাস**।
@@ -140,8 +141,13 @@ export function MonthCard({ month }: { month: TeamTrend['month'] }) {
         <span className="num text-2xl leading-none font-semibold">
           {formatDuration(month.creditedSec)}
         </span>
+        {/*
+          ⚠️ `targetText`, সোজা `formatDuration` নয় — ২২৭২ ঘণ্টা পুরো
+             ঘণ্টায় পড়ে, তাই ওটা লিখত `2272h 0m`। ওই শূন্য মিনিটটা
+             প্রতিদিন চোখে লাগত অথচ কিছুই বলত না (TodayRing-এর নোট)।
+        */}
         <span className="text-xs text-ink-3">
-          of <span className="num">{formatDuration(month.targetSec)}</span>
+          of <span className="num">{targetText(month.targetSec)}</span>
         </span>
       </div>
 
@@ -172,9 +178,13 @@ export function MonthCard({ month }: { month: TeamTrend['month'] }) {
 
       {month.trackedFrom && (
         <p className="mt-2 text-[11px] leading-relaxed text-ink-3">
-          Pace counts from{' '}
-          <span className="num">{formatDateShort(month.trackedFrom)}</span>, the
-          day tracking started — the days before it are not held against anyone.
+          {/*
+            ⚠️ তারিখটায় `.num` নয় — tabular figures ওকে `13  Aug`-এর মতো
+               ঢিলে দেখাত। সমান-প্রস্থ অঙ্ক কেবল কলামে সাজানো সংখ্যার জন্য।
+          */}
+          Pace counts whole days from {formatDateShort(month.trackedFrom)}, when
+          tracking started — the days before it, and today, are not counted
+          against anyone.
         </p>
       )}
     </div>
