@@ -14,6 +14,8 @@ import { join } from 'node:path';
 import { hash } from '@node-rs/argon2';
 import { MatchType, PrismaClient, Productivity, UserRole } from '@prisma/client';
 
+import { parseStaff, type StaffRow } from './parse-staff';
+
 const prisma = new PrismaClient();
 
 // ── 1 · work policy ─────────────────────────────────────────────────────────
@@ -226,8 +228,6 @@ async function seedHolidays(): Promise<number> {
 // ⚠️ বেতন **শুধু owner** দেখতে পায় ([ADR-023](../../docs/05-Options-Decisions.md))।
 //    ঘাটতির টাকা বের করতে লাগে। ম্যানেজারের রিপোর্টেও এই কলাম যায় না।
 
-type Staff = [code: string, name: string, designation: string, salary: number];
-
 /**
  * ⭐ **আসল কর্মী তালিকা রিপোতে থাকে না** — `prisma/staff.local.json`-এ,
  * আর সেটা gitignore করা।
@@ -242,7 +242,7 @@ type Staff = [code: string, name: string, designation: string, salary: number];
  * — অর্থাৎ নতুন কেউ রিপো ক্লোন করলে প্রকল্পটা চলে, কিন্তু কারো বেতন
  * জানা যায় না।
  */
-function loadStaff(): Staff[] {
+function loadStaff(): StaffRow[] {
   const local = join(__dirname, 'staff.local.json');
   const example = join(__dirname, 'staff.example.json');
   const file = existsSync(local) ? local : example;
@@ -254,10 +254,15 @@ function loadStaff(): Staff[] {
     );
   }
 
-  return JSON.parse(readFileSync(file, 'utf8')) as Staff[];
+  /**
+   * ⚠️ `as Staff[]` **ছিল একটা মিথ্যে** — JSON-এ যা-ই থাকুক TypeScript
+   *    মেনে নিত। এখন সত্যিই যাচাই হয়, আর ভুল থাকলে কোন সারি ও কোন ঘর
+   *    সেটা বার্তাতেই বলা থাকে।
+   */
+  return parseStaff(JSON.parse(readFileSync(file, 'utf8')));
 }
 
-const STAFF: Staff[] = loadStaff();
+const STAFF: StaffRow[] = loadStaff();
 
 /** designation থেকে বিভাগ — রিপোর্টে দল ধরে ভাগ করার জন্য (D09, E07)। */
 function departmentOf(designation: string): string {
@@ -268,13 +273,17 @@ function departmentOf(designation: string): string {
 }
 
 async function seedEmployees(policyId: number): Promise<number> {
-  for (const [empCode, fullName, designation, monthlySalary] of STAFF) {
+  for (const { empCode, joinedOn, ...rest } of STAFF) {
     const common = {
-      fullName,
-      designation,
-      department: departmentOf(designation),
+      ...rest,
+      department: departmentOf(rest.designation),
       policyId,
-      monthlySalary,
+      /**
+       * ⚠️⚠️ তারিখ **না দিলে ঘরটা ছোঁয়া হয় না** (`undefined`), `null`
+       * বসানো হয় না। কেউ ড্যাশবোর্ডে হাতে তারিখ বসিয়ে থাকলে seed আবার
+       * চালালে সেটা মুছে যেত — আর তার সাথে G37-এর proration-ও, নীরবে।
+       */
+      ...(joinedOn ? { joinedOn } : {}),
     };
 
     await prisma.employee.upsert({

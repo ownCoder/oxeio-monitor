@@ -161,6 +161,7 @@ oxeio-monitor/
 │   │   # scripts/sample-data.cjs      ⚙️ শুধু ডেমোর জন্য — manifest ধরে --undo করে
 │   │   # prisma/staff.local.json      🔒 আসল নাম ও বেতন — gitignore, কখনো কমিট নয় (G70)
 │   │   # prisma/staff.example.json    ✅ নমুনা — ফাইল না থাকলে seed এটা দিয়ে চলে
+│   │   # prisma/parse-staff.ts        ✅ ⭐ তালিকা যাচাই — ভুল বেতন/তারিখ ঢোকার আগেই থামায় (১৮ টেস্ট)
 │   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
