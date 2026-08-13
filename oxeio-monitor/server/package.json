@@ -19,6 +19,7 @@
     "prisma:deploy": "dotenv -e ../.env -- prisma migrate deploy",
     "prisma:studio": "dotenv -e ../.env -- prisma studio",
     "seed": "dotenv -e ../.env -- tsx prisma/seed.ts",
+    "check:staff": "tsx prisma/check-staff.ts",
     "recover:owner": "dotenv -e ../.env -- tsx src/scripts/recover-owner.ts"
   },
   "prisma": {
