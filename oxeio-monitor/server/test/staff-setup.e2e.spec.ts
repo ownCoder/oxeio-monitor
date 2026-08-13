@@ -6,6 +6,8 @@ import {
   enrollDevice,
   hashPassword,
   loginReady,
+  MANAGER_EMAIL,
+  MANAGER_PASSWORD,
   OWNER_EMAIL,
   OWNER_PASSWORD,
   resetDatabase,
@@ -47,6 +49,72 @@ const rowFor = async (empCode: string) => {
     (r) => r.empCode === empCode,
   ) as { hasPortalAccount: boolean; hasDevice: boolean };
 };
+
+describe('GET /employees/next-code', () => {
+  const next = async (): Promise<string> => {
+    const res = await owner.http.get('/api/v1/employees/next-code').expect(200);
+    return (res.body as { code: string }).code;
+  };
+
+  /**
+   * ⚠️⚠️ **এই টেস্টটাই সবচেয়ে জরুরি** — রুটের ক্রম।
+   *
+   * Nest রুট মেলায় উপর থেকে নিচে, তাই `@Get('next-code')` যদি
+   * `@Get(':id')`-এর **নিচে** বসত, তবে `next-code` অংশটা `:id` হিসেবে
+   * ধরা পড়ত আর `ParseIntPipe` ৪০০ দিত — বার্তা হতো "Validation failed
+   * (numeric string is expected)", যেটা পড়ে আসল কারণ বোঝা কঠিন।
+   */
+  it('রুটটা :id-এর ফাঁদে পড়ে না', async () => {
+    const code = await next();
+    expect(code).toMatch(/^[A-Za-z_]+-\d+$/);
+  });
+
+  it('কেউ না থাকলে OX-001', async () => {
+    expect(await next()).toBe('OX-001');
+  });
+
+  it('সবচেয়ে বড় কোডের পরেরটা দেয়', async () => {
+    await createEmployeeWithCode(h.prisma, 'OX-01');
+    await createEmployeeWithCode(h.prisma, 'OX-07');
+
+    expect(await next()).toBe('OX-08');
+  });
+
+  /**
+   * ⚠️⚠️ inactive কর্মীর কোডও গোনা হয়। না গুনলে ছাঁটাই হওয়া কারো কোড
+   * আবার পরামর্শ হতো, আর সেভ করতে গিয়ে ৪০৯ — অথচ পর্দায় (active
+   * ফিল্টারে) ওই কোডের কাউকে দেখা যেত না, তাই কারণটা বোঝাই যেত না।
+   */
+  it('inactive কর্মীর কোডও গোনা হয়', async () => {
+    const { employeeId } = await createEmployeeWithCode(h.prisma, 'OX-09');
+    await h.prisma.employee.update({
+      where: { id: employeeId },
+      data: { status: 'inactive' },
+    });
+
+    expect(await next()).toBe('OX-10');
+  });
+
+  /** ⭐ পরামর্শটা সত্যিই ব্যবহারযোগ্য — এটাই আসল দাবি */
+  it('পরামর্শ দেওয়া কোড দিয়ে সত্যিই কর্মী যোগ করা যায়', async () => {
+    await createEmployeeWithCode(h.prisma, 'OX-01');
+
+    const code = await next();
+    const res = await owner.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ empCode: code, fullName: 'Notun Kormi' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.empCode).toBe(code);
+  });
+
+  /** ⚠️ ম্যানেজারও কর্মী যোগ করার পর্দা দেখেন, তাই তাঁরও লাগে */
+  it('ম্যানেজারও পায়', async () => {
+    const manager = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
+    await manager.http.get('/api/v1/employees/next-code').expect(200);
+  });
+});
 
 describe('GET /employees — সেটআপের অবস্থা', () => {
   it('সদ্য যোগ করা কর্মীর দুটোই false', async () => {

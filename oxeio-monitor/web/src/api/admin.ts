@@ -419,6 +419,16 @@ export function resetUserPassword(
   );
 }
 
+/**
+ * পরের কর্মী-কোডের পরামর্শ — নতুন কর্মীর ফর্ম খোলার সময়।
+ *
+ * ⚠️ এটা **পরামর্শ**, নিশ্চয়তা নয় — ঘরটা সম্পাদনযোগ্যই থাকে, আর দুজন
+ * একসাথে যোগ করলে দ্বিতীয়জন সার্ভার থেকে ৪০৯ পাবে।
+ */
+export function nextEmployeeCode(signal?: AbortSignal): Promise<{ code: string }> {
+  return api<{ code: string }>('/employees/next-code', { signal });
+}
+
 /** লগইনের ইমেইল বদলানো — স্টাফের "ইউজারনেম" */
 export function changeLoginEmail(
   userId: number,

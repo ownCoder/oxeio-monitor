@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   createEmployee,
   changeLoginEmail,
   createPortalAccount,
+  nextEmployeeCode,
   resetUserPassword,
   deactivateEmployee,
   listEmployees,
@@ -512,6 +513,34 @@ function EmployeeForm({
   const [form, setForm] = useState<StaffForm>(initial);
   const { busy, error, run } = useMutation();
 
+  /**
+   * ⭐ নতুন কর্মীর ফর্ম খুললে কোডটা আগে থেকেই বসে যায় (`OX-13`)।
+   *
+   * ⚠️ **সম্পাদনার সময় নয়** — ওখানে কোডটা কর্মীর নিজের, আর ওটা বদলে
+   * দেওয়ার কোনো কারণ নেই।
+   *
+   * ⚠️ ব্যর্থ হলে চুপ করে থাকা হয় ইচ্ছাকৃতভাবে: এটা নিছক সুবিধা, আর
+   * এর জন্য পুরো ফর্মে একটা লাল বার্তা দেখানো অর্থহীন — মালিক তখন
+   * নিজেই কোডটা টাইপ করে নিতে পারেন।
+   *
+   * ⚠️ যা টাইপ করা হয়ে গেছে তার উপরে বসে না (`prev.empCode === ''`) —
+   * ধীর সংযোগে উত্তর আসতে দেরি হলে হাতে লেখা কোড মুছে যেত।
+   */
+  useEffect(() => {
+    if (employee) return;
+
+    const ac = new AbortController();
+    nextEmployeeCode(ac.signal)
+      .then(({ code }) =>
+        setForm((prev) => (prev.empCode === '' ? { ...prev, empCode: code } : prev)),
+      )
+      .catch(() => {
+        /* পরামর্শ না এলে ঘরটা খালিই থাকুক */
+      });
+
+    return () => ac.abort();
+  }, [employee]);
+
   const set = (key: keyof StaffForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -583,7 +612,11 @@ function EmployeeForm({
             mono
             maxLength={32}
             autoFocus={!employee}
-            hint="Letters, digits, hyphen and underscore only — for example OX-001"
+            hint={
+              employee
+                ? 'Letters, digits, hyphen and underscore only'
+                : 'Suggested from the highest code so far — change it if you like'
+            }
           />
           <TextField
             label="Full name"

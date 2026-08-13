@@ -36,6 +36,19 @@ export class EmployeesReadController {
     return this.employees.list(actor, query, ip);
   }
 
+  /**
+   * `GET /api/v1/employees/next-code` — নতুন কর্মীর ফর্মের পরামর্শ।
+   *
+   * ⚠️⚠️ এই রুটটা `@Get(':id')`-এর **আগে** থাকতেই হবে। Nest রুট মেলায়
+   * উপর থেকে নিচে, তাই নিচে বসালে `next-code` অংশটা `:id` হিসেবে ধরা
+   * পড়ত আর `ParseIntPipe` ৪০০ দিত — বার্তাটা হতো "Validation failed
+   * (numeric string is expected)", যেটা পড়ে আসল কারণ বোঝা কঠিন।
+   */
+  @Get('next-code')
+  nextCode(): Promise<{ code: string }> {
+    return this.employees.nextCode();
+  }
+
   /** `GET /api/v1/employees/:id` */
   @Get(':id')
   get(

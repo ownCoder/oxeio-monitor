@@ -11,6 +11,7 @@ import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { nextEmployeeCode } from './next-code';
 import { ADMIN_TARGET } from './admin-audit';
 import { parseCalendarDate } from './calendar-date';
 import type {
@@ -89,6 +90,26 @@ export class EmployeesService {
   ) {}
 
   // ── পড়া (owner + manager) ─────────────────────────────────────────────────
+
+  /**
+   * পরের কর্মী-কোডের **পরামর্শ** — নতুন কর্মীর ফর্মে আগে থেকে বসানোর জন্য।
+   *
+   * ⚠️⚠️ `where` ইচ্ছাকৃতভাবে **নেই** — active ও inactive, দুটোই লাগে।
+   * শুধু active নিলে ছাঁটাই হওয়া কারো কোড আবার পরামর্শ হতো, আর সেভ করতে
+   * গিয়ে ৪০৯; অথচ পর্দায় (active ফিল্টারে) ওই কোডের কাউকে দেখা যেত না,
+   * তাই কারণটা বোঝাই যেত না।
+   *
+   * ⭐ শুধু `empCode` তোলা হয় — নাম বা বেতন এই কলে ঢোকার কোনো কারণ নেই,
+   * আর ম্যানেজারও এটা ডাকে।
+   */
+  async nextCode(): Promise<{ code: string }> {
+    const rows = await this.prisma.employee.findMany({
+      select: { empCode: true },
+    });
+
+    return { code: nextEmployeeCode(rows.map((r) => r.empCode)) };
+  }
+
 
   async list(
     actor: SessionUser,
