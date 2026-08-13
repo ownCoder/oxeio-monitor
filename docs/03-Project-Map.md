@@ -71,6 +71,7 @@ oxeio-monitor/
 │   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
 │   │   │   ├── Agent/TrackingGate.cs       ✅ ⭐ গোনা হবে কি না — সাইন ইন ও revoke
+│   │   │   ├── Agent/SignOutGate.cs        ✅ ⭐ সাইন আউট করা যাবে কি না, আর কী হারাবে (১২ টেস্ট)
 │   │   │   │   #  ⚠️ পাঁচটা জায়গা এটাই মানে: TrackLoop · AppUsageLoop ·
 │   │   │   │   #     CaptureGate · TodayForm · TrayTooltip। আগে শর্তটা
 │   │   │   │   #     দুবার লেখা ছিল, আর একবার বাদই পড়ে গিয়েছিল (G79)

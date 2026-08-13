@@ -195,6 +195,38 @@ internal sealed class DeviceCredentials : IDeviceCredentials, IDeviceTokenSource
     }
 
     /// <summary>
+    /// স্টাফ নিজে সাইন আউট করলে।
+    ///
+    /// ⚠️⚠️ <b><see cref="Revoke"/>-এর সাথে একমাত্র কিন্তু নির্ণায়ক তফাত:
+    /// <c>_revoked</c> ছোঁয়া হয় না।</b> ফলে <see cref="NeedsEnrollment"/>
+    /// আবার সত্যি হয় আর সাইন-ইন জানালা ফিরে আসে। revoke ডাকলে মেশিনটা
+    /// "অফিস বন্ধ করে দিয়েছে" অবস্থায় আটকে যেত, অথচ অফিস কিছুই করেনি।
+    ///
+    /// ⚠️ <c>Identity.UsableForEnrollment</c> মিথ্যা হলে
+    /// <see cref="NeedsEnrollment"/> তবুও মিথ্যা থাকবে — সেটা ঠিক আছে,
+    /// কারণ ওই মেশিনে প্রথমবারও সাইন ইন করা যেত না।
+    /// </summary>
+    public void SignOut(string reason)
+    {
+        lock (_gate)
+        {
+            // ⚠️ ইতিমধ্যে সাইন আউট (বা কখনো সাইন ইনই হয়নি) — তখন কিছু
+            //    করার নেই। তবু TryDelete ডাকা হয় না, নইলে প্রতিবার মেনু
+            //    চাপায় ডিস্কে অকারণ লেখালেখি হতো।
+            if (_record is null) return;
+
+            _record = null;
+            _status = CredentialLoadStatus.NotEnrolled;
+            _detail = "Signed out: " + reason;
+        }
+
+        _store.TryDelete("sign out — " + reason);
+        _log?.Invoke($"👋 Signed out: {reason}. Tracking stops until someone signs in.");
+
+        RaiseChanged();
+    }
+
+    /// <summary>
     /// ⚠️ হ্যান্ডলারের এক্সসেপশন গিলে ফেলা হয়। সিঙ্ক মডিউলের একটা ভাঙা
     /// সাবস্ক্রাইবার যেন enroll বা revoke-এর পথ আটকে না দেয় — revoke আটকে গেলে
     /// বাতিল ডিভাইস ট্র্যাকিং চালিয়েই যেত।

@@ -272,6 +272,7 @@ internal sealed class AgentHost : IAsyncDisposable
         PolicyUrl = _settings.PolicyUrl,
         RequestSyncNow = () => _ = SyncNowAsync(),
         RequestSignIn = () => _ = SignInOnDemandAsync(),
+        RequestSignOut = () => _ = SignOutOnDemandAsync(),
         Milestone = _milestone,
         OnError = ex => _log.Error("tray", ex),
     };
@@ -738,6 +739,150 @@ internal sealed class AgentHost : IAsyncDisposable
     /// লেখা থাকত <i>"Sign in to start counting your hours"</i>। কাজটা
     /// বলা হচ্ছিল, করার দরজা ছিল না।
     /// </summary>
+    /// <summary>
+    /// ⚠️ ১ = নিশ্চিতকরণের জানালা খোলা। মেনু বারবার চাপলে একাধিক জানালা
+    /// খুলত, আর প্রতিটাই আলাদা করে কিউ সাফ করার চেষ্টা করত।
+    /// </summary>
+    private int _signOutOpen;
+
+    /// <summary>
+    /// tray-র "Sign out" থেকে — টোকেন মুছে মেশিনটাকে "কেউ সাইন ইন করেনি"
+    /// অবস্থায় ফিরিয়ে দেওয়া।
+    ///
+    /// ⚠️⚠️ <b>ক্রমটাই এখানকার আসল সিদ্ধান্ত: আগে সাইন আউট, তারপর কিউ সাফ।</b>
+    /// উল্টো করলে দুটোর মাঝের মুহূর্তে ট্র্যাকিং লুপ তখনো চালু (স্টাফ তখনো
+    /// enrolled), তাই একটা নতুন সারি ঢুকে পড়তে পারত — আর সেটা সাইন আউটের
+    /// পরেও কিউতে থেকে যেত। পরের জন সাইন ইন করলে ওটা <b>তার</b> টোকেনে
+    /// চলে যেত। সাইন আউট আগে করলে <see cref="TrackingGate"/> সাথে সাথেই
+    /// নতুন সারি ঢোকা বন্ধ করে দেয়।
+    ///
+    /// ⚠️ তবু নিখুঁত নয়: ঠিক ওই মুহূর্তে <b>ধার নেওয়া</b> (leased) সারি
+    /// থাকলে সেটা এই ঝাড়ুতে পড়ে না (<c>EvictAsync</c> ইচ্ছাকৃতভাবে leased
+    /// সারি ছোঁয় না)। জানালাটা ছোট, কিন্তু আছে — তাই সাফ করার পর গভীরতা
+    /// আবার মেপে অবশিষ্ট থাকলে লগে <b>জোরে</b> লেখা হয়, নীরবে নয়।
+    /// </summary>
+    private async Task SignOutOnDemandAsync()
+    {
+        if (_credentials is null || _outbox is null) return;
+
+        var tray = _tray;
+        if (tray is null) return;
+
+        if (Interlocked.CompareExchange(ref _signOutOpen, 1, 0) != 0)
+        {
+            _log.Info("The sign-out confirmation is already open");
+            return;
+        }
+
+        try
+        {
+            var depth = await _outbox.GetDepthAsync(_stopping.Token);
+
+            // ⚠️ tray মেনু আঁকার সময়ও একই নিয়ম চলে, কিন্তু সেটা স্ট্যাটাসের
+            //    (একটু পুরোনো) সংখ্যা দিয়ে। ক্লিকের পর আসল সংখ্যা নিয়ে
+            //    **আবার** যাচাই — নইলে মেনু খোলা অবস্থায় revoke এসে গেলে
+            //    বাতিল ডিভাইসেও সাইন আউট চলত।
+            var verdict = SignOutGate.Check(
+                _credentials.IsEnrolled, _credentials.IsRevoked, depth.Total);
+
+            if (!SignOutGate.Allows(verdict))
+            {
+                _log.Info($"Sign out is not available right now ({verdict})");
+                return;
+            }
+
+            if (!await ConfirmSignOutAsync(tray, SignOutGate.Confirm(verdict, depth.Total)))
+            {
+                _log.Info("Sign out cancelled by the user");
+                return;
+            }
+
+            _credentials.SignOut("staff chose Sign out from the tray menu");
+
+            var discarded = await DiscardOutboxAsync();
+            if (discarded > 0)
+                _log.Info($"Discarded {discarded} unsent item(s) so they cannot be counted for the next person");
+
+            var left = await _outbox.GetDepthAsync(_stopping.Token);
+            if (left.Total > 0)
+            {
+                // ⚠️ এটা নীরবে গিলে ফেলা যায় না — অবশিষ্ট সারি মানে পরের
+                //    জনের খাতায় ভুল ঘণ্টা বসার সম্ভাবনা।
+                _log.Error(
+                    $"⚠ {left.Total} item(s) were still leased and could not be discarded at sign-out. "
+                    + "They may upload under the next person who signs in on this PC.");
+            }
+
+            tray.UpdateOptions(BuildTrayOptions());
+            PublishStatus();
+        }
+        catch (OperationCanceledException)
+        {
+            // এজেন্ট বন্ধ হচ্ছে — সাইন আউট অসম্পূর্ণ থাকলেও ক্ষতি নেই,
+            // কারণ টোকেন মোছাই হয়নি।
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Sign out failed", ex);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _signOutOpen, 0);
+        }
+    }
+
+    /// <summary>
+    /// ⚠️ UI থ্রেডে দেখাতেই হবে — <see cref="TrayIcon.Post"/> দিয়ে, ঠিক
+    /// সাইন-ইন জানালার মতো। ব্যাকগ্রাউন্ড থ্রেড থেকে MessageBox তুললে সেটা
+    /// tray-র মেসেজ লুপের বাইরে বসত আর অন্য জানালার পেছনে হারিয়ে যেতে পারত।
+    ///
+    /// ⭐ ডিফল্ট বোতাম <b>No</b> — এই জানালার "হ্যাঁ" তথ্য মুছে ফেলে, তাই
+    /// এন্টার চেপে দেওয়া ভুলটা সস্তা হওয়া উচিত নয়।
+    /// </summary>
+    private static Task<bool> ConfirmSignOutAsync(TrayIcon tray, string message)
+    {
+        var completion = new TaskCompletionSource<bool>();
+
+        tray.Post(() =>
+        {
+            try
+            {
+                var answer = MessageBox.Show(
+                    message,
+                    "oXeio — sign out",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                completion.TrySetResult(answer == DialogResult.Yes);
+            }
+            catch (Exception)
+            {
+                // ⚠️ জিজ্ঞাসাই করা গেল না — তখন "না" ধরা হয়। উল্টোটা ধরলে
+                //    একটা UI গোলযোগ চুপচাপ কারো তথ্য মুছে দিত।
+                completion.TrySetResult(false);
+            }
+        });
+
+        return completion.Task;
+    }
+
+    /// <summary>
+    /// কিউয়ের সব <b>অ-ধার-নেওয়া</b> সারি ফেলে দেয়। ফাইলসহ — <c>EvictAsync</c>
+    /// .webp-গুলোও মুছে দেয় আর drop-log-এ কারণ লিখে রাখে, তাই পরে
+    /// "কী হারাল" প্রশ্নের উত্তর থাকে।
+    /// </summary>
+    private async Task<int> DiscardOutboxAsync()
+    {
+        if (_outbox is null) return 0;
+
+        var entries = await _outbox.SurveyAsync(_stopping.Token);
+        var rowIds = entries.Where(e => !e.Leased).Select(e => e.RowId).ToList();
+        if (rowIds.Count == 0) return 0;
+
+        return await _outbox.EvictAsync(rowIds, "sign out", _stopping.Token);
+    }
+
     private async Task SignInOnDemandAsync()
     {
         if (_credentials is null || _sync is null) return;

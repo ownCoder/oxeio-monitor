@@ -97,7 +97,7 @@
       ঠিকানা** বদলেছে: `oxeio.office.local` → `hub.oxeio.com` (VPS)।
       ⚠️ ০.৩.৬ মালিকের হাতে গেছে, আর সেটায় পুরোনো ঠিকানা।
     -->
-    <Version>0.3.7</Version>
+    <Version>0.3.8</Version>
 
     <!--
       ⚠️ AssemblyVersion-এ শুধু তিন অঙ্ক রাখা হয় (SemVer-এর pre-release

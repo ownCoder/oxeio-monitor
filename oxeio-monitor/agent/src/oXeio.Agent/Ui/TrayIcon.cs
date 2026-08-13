@@ -45,6 +45,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
     private readonly NotifyIcon _notify;
     private readonly ContextMenuStrip _menu;
     private readonly ToolStripMenuItem _signInItem;
+    private readonly ToolStripMenuItem _signOutItem;
     private readonly ToolStripMenuItem _todayItem;
     private readonly ToolStripMenuItem _portalItem;
     private readonly ToolStripMenuItem _policyItem;
@@ -80,6 +81,11 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         // ⭐ সবার উপরে, আর সাইন ইন না থাকলে **বোল্ড** — এই অবস্থায় জানালার
         //    আর সব কিছু (ঘণ্টা, ছবি, সিঙ্ক) অর্থহীন, একটাই কাজ বাকি।
         _signInItem = new ToolStripMenuItem("Sign in…") { Visible = false };
+
+        // ⚠️ নামের শেষে "…" নেই, ইচ্ছাকৃতভাবে। "…" মানে "আরেকটা জানালা
+        //    আসবে, তখনো ভাবার সময় আছে" — কিন্তু এখানে জানালাটা শুধু
+        //    নিশ্চিত করার, নতুন কোনো কাজ নয়।
+        _signOutItem = new ToolStripMenuItem("Sign out") { Visible = false };
         _todayItem = new ToolStripMenuItem("Today's hours");
         _portalItem = new ToolStripMenuItem("My data");
         _policyItem = new ToolStripMenuItem("View policy");
@@ -87,6 +93,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         _aboutItem = new ToolStripMenuItem("About");
 
         _signInItem.Click += (_, _) => Guarded(() => _options.RequestSignIn?.Invoke());
+        _signOutItem.Click += (_, _) => Guarded(() => _options.RequestSignOut?.Invoke());
         _todayItem.Click += (_, _) => Guarded(ShowToday);
         _portalItem.Click += (_, _) => Guarded(() =>
             OpenExternal(_options.StaffPortalUrl, "No staff portal address is configured"));
@@ -110,10 +117,23 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
             new ToolStripSeparator(),
             _syncItem,
             _aboutItem,
+            new ToolStripSeparator(),
+            _signOutItem,
         });
 
         // ⚠️ এখানে কোনো "প্রস্থান" আইটেম যোগ করবেন না। যোগ করলে স্টাফ নিজের
         //    ট্র্যাকিং বন্ধ করে দিতে পারত, আর তখন ২০৮ ঘণ্টার হিসাবের কোনো মানে থাকত না।
+        //
+        // ⚠️⚠️ **"Sign out" ওই নিষেধের ব্যতিক্রম নয় — এটা অন্য জিনিস**, আর
+        //    তফাতটা তিনটে জায়গায়:
+        //      ১· "প্রস্থান" **নীরবে** থামায় — অফিস দেখে মেশিনটা চুপ, আর
+        //         সেটা PC বন্ধ থাকার সাথে আলাদা করা যায় না।
+        //      ২· সাইন আউট টোকেন মুছে দেয়, তাই ওই ব্যক্তির নামে আর একটাও
+        //         সারি যেতে পারে না — অর্থাৎ হিসাব **অস্পষ্ট নয়, শেষ**।
+        //      ৩· শেয়ার করা PC-তে এটাই একমাত্র সৎ পথ। না থাকলে পরের জনের
+        //         ঘণ্টা আগের জনের খাতায় যেত — যা এড়াতে চাই ঠিক সেটাই।
+        //    ⭐ তাই আইটেমটা **সবার নিচে, আলাদা রেখার পরে** — রোজকার কাজের
+        //       পাশে নয়, যাতে ভুল করে চাপা না পড়ে।
 
         _menu.Opening += (_, _) => Guarded(RefreshMenu);
 
@@ -343,6 +363,20 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         // ⚠️ Visible, Enabled নয়। সাইন ইন হয়ে গেলে আইটেমটার আর কোনো মানে
         //    নেই — ধূসর হয়ে ঝুলে থাকলে স্টাফ ভাবত কিছু একটা ভেঙে আছে।
         _signInItem.Visible = !_status.Enrolled && _options.RequestSignIn is not null;
+
+        /*
+         * ⚠️ সিদ্ধান্তটা এখানে লেখা হয় না, <see cref="SignOutGate"/> থেকে আসে —
+         *    আর সেটাই <c>AgentHost</c> ক্লিকের পর আবার যাচাই করে। দুই জায়গায়
+         *    দুই রকম শর্ত লিখলে আইটেমটা দেখা যেত অথচ চাপলে কিছুই হতো না।
+         *
+         * ⭐ tray-কে আউটবক্স পড়তে হয় না — <c>QueueDepth</c> স্ট্যাটাসেই আছে।
+         */
+        _signOutItem.Visible =
+            _options.RequestSignOut is not null
+            && SignOutGate.Allows(
+                _status.Enrolled,
+                _status.Health == SyncHealth.Revoked,
+                _status.QueueDepth);
 
         _portalItem.Enabled = !string.IsNullOrWhiteSpace(_options.StaffPortalUrl);
         _policyItem.Enabled = !string.IsNullOrWhiteSpace(_options.PolicyUrl);
