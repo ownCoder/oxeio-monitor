@@ -115,6 +115,41 @@ export interface Timeline {
   totals: { activeSec: number; idleSec: number; lockedSec: number };
 }
 
+/** E01 — সাত দিনের চার্টের একটা দিন (`GET /live/trend`) */
+export interface TrendDay {
+  /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
+  date: string;
+  workedSec: number;
+  /**
+   * ⭐⭐ ওই দিন আমরা আদৌ দেখছিলাম কি না।
+   *
+   * ⚠️ `false` মানে "কেউ কাজ করেনি" **নয়** — মানে ট্র্যাকিংই শুরু হয়নি।
+   * চার্টে তাই ওই দিনগুলো ভরাট বার নয়, **ডটেড রূপরেখা**।
+   */
+  tracked: boolean;
+  /** কতজনের সত্যিই টার্গেট ছিল — শূন্য মানে সবারই ছুটি */
+  expectedStaff: number;
+  targetSec: number;
+}
+
+/** E01 — চলতি মাসের কার্ড (`GET /live/trend`) */
+export interface TrendMonth {
+  yearMonth: string;
+  creditedSec: number;
+  targetSec: number;
+  /** ⚠️ **ট্র্যাকিং শুরুর দিন থেকে** প্রত্যাশিত, মাসের ১ তারিখ থেকে নয় */
+  expectedSec: number;
+  /** credited − expected · ধনাত্মক = এগিয়ে */
+  paceSec: number;
+  trackedFrom: string | null;
+}
+
+export interface TeamTrend {
+  /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
+  days: TrendDay[];
+  month: TrendMonth;
+}
+
 /** E01 — দলের দিনের ছন্দের এক ঘণ্টা (`GET /live/pulse`) */
 export interface TeamHour {
   /** ঢাকার স্থানীয় ঘণ্টা, ০–২৩ */
@@ -177,6 +212,16 @@ export function getLiveBoard(signal?: AbortSignal): Promise<LiveBoard> {
  */
 export function getTeamPulse(signal?: AbortSignal): Promise<TeamPulse> {
   return api<TeamPulse>('/live/pulse', { signal });
+}
+
+/**
+ * E01 — `GET /api/v1/live/trend` · সাত দিন ও চলতি মাস।
+ *
+ * ⚠️ `pulse`-এর মতোই ধীরে ডাকা হয় — দিনের যোগফল ও মাসের rollup দুটোই
+ *    ১৫ মিনিটের জবে তৈরি হয় (K06), তাই ৩০ সেকেন্ডে ডাকা নিরর্থক।
+ */
+export function getTeamTrend(signal?: AbortSignal): Promise<TeamTrend> {
+  return api<TeamTrend>('/live/trend', { signal });
 }
 
 /**

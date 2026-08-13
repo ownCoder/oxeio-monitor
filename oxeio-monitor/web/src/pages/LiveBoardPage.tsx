@@ -1,6 +1,11 @@
 import { useState, type ReactNode } from 'react';
 
-import { getLiveBoard, getTeamPulse, type LiveCard } from '../api/dashboard';
+import {
+  getLiveBoard,
+  getTeamPulse,
+  getTeamTrend,
+  type LiveCard,
+} from '../api/dashboard';
 import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Card, Stat, StatRow } from '../components/Card';
@@ -16,6 +21,7 @@ import {
 } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
 import { StatusStrip, TargetBars } from './live/TeamBars';
+import { MonthCard, WeekBars } from './live/WeekAndMonth';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
 import { isWorking, splitBoard } from './live/onTheClock';
@@ -90,6 +96,17 @@ export function LiveBoardPage() {
   const pulse = usePolling(
     (signal) =>
       canViewBoard ? getTeamPulse(signal) : Promise.resolve(null),
+    PULSE_REFRESH_MS,
+    [canViewBoard],
+  );
+
+  /**
+   * ⭐ সাত দিন ও মাস — একই তালে (`pulse`-এর মতো ধীরে)। দুটোই ১৫ মিনিটের
+   *    rollup জব থেকে আসে, তাই দ্রুত ডাকার কোনো লাভ নেই।
+   */
+  const trend = usePolling(
+    (signal) =>
+      canViewBoard ? getTeamTrend(signal) : Promise.resolve(null),
     PULSE_REFRESH_MS,
     [canViewBoard],
   );
@@ -241,6 +258,40 @@ export function LiveBoardPage() {
           </Card>
         </div>
 
+        {/*
+          ⭐ পেছন-ফিরে-দেখা স্তরটা — "আজ" শেষ হওয়ার পর মাথায় আসা পরের দুটো
+             প্রশ্ন: **"এই সপ্তাহটা কেমন যাচ্ছে?"** আর **"মাসটা?"**
+        */}
+        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
+          <Card
+            title="Last 7 days"
+            hint="Counted hours per day · dashed = before tracking started"
+            padded={false}
+          >
+            {trend.data ? (
+              <WeekBars days={trend.data.days} />
+            ) : (
+              <div className="px-4 pt-1 pb-3">
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
+          </Card>
+
+          <Card
+            title="This month"
+            hint="Counted against the team target"
+            padded={false}
+          >
+            {trend.data ? (
+              <MonthCard month={trend.data.month} />
+            ) : (
+              <div className="px-4 pt-1 pb-3">
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
+          </Card>
+        </div>
+
         <div className="mt-3">
           <Card
             title="Against today's target"
@@ -376,6 +427,7 @@ export function LiveBoardPage() {
               board.reload();
               shots.reload();
               pulse.reload();
+              trend.reload();
             }}
             title="Now, without waiting 30 seconds"
           >

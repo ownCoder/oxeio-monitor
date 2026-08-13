@@ -6,6 +6,7 @@ import {
   DashboardService,
   type LiveBoard,
   type TeamPulse,
+  type TeamTrend,
 } from './dashboard.service';
 
 /**
@@ -39,5 +40,16 @@ export class LiveController {
   @Get('pulse')
   pulse(@Query('date') date?: string): Promise<TeamPulse> {
     return this.dashboard.teamPulse(date);
+  }
+
+  /**
+   * ⭐ E01 — `GET /api/v1/live/trend` · সাত দিন ও চলতি মাস।
+   *
+   * ⚠️ `date` ঘর নেই, ইচ্ছাকৃতভাবে: এটা সবসময় **আজ পর্যন্ত** শেষ সাত দিন।
+   *    অতীতের কোনো সপ্তাহ দেখার জায়গা রিপোর্ট পাতা, লাইভ বোর্ড নয়।
+   */
+  @Get('trend')
+  trend(): Promise<TeamTrend> {
+    return this.dashboard.teamTrend();
   }
 }

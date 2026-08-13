@@ -122,6 +122,63 @@ export interface HourlyBucket {
   activeSec: number;
 }
 
+/** E01 — সাত দিনের চার্টের একটা দিন (`GET /live/trend`) */
+export interface TrendDay {
+  /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
+  date: string;
+  /** ওই দিনে দলের মোট গোনা সেকেন্ড */
+  workedSec: number;
+  /**
+   * ⭐⭐ **ওই দিন আমরা আদৌ দেখছিলাম কি না।**
+   *
+   * ⚠️ এটাই এই চার্টের সবচেয়ে জরুরি ঘরটা। `false` মানে "কেউ কাজ করেনি"
+   * **নয়** — মানে ট্র্যাকিংই শুরু হয়নি। দুটোকে এক দেখালে সিস্টেম চালুর
+   * আগের দিনগুলো নীরবে "শূন্য কাজ" বলে দাবি করত, আর প্রথম সপ্তাহে গোটা
+   * দলকে অকারণে ব্যর্থ দেখাত।
+   *
+   * ⭐ এটা এই অ্যাপেরই পুরোনো নিয়মের আরেক রূপ: `offline` (কর্মী চলে
+   * গেছেন) আর `agent_down` (এজেন্ট মরে গেছে) কখনো এক রঙে দেখানো হয় না।
+   * "জানি না"-কে "নেই" বলে ফেলা এখানেও একইভাবে নিষিদ্ধ।
+   */
+  tracked: boolean;
+  /** ওই দিনে কতজনের সত্যিই টার্গেট ছিল — শূন্য মানে সবারই ছুটি */
+  expectedStaff: number;
+  /** ওই দিনে দলের মোট প্রত্যাশিত সেকেন্ড — চার্টের টার্গেট-রেখা */
+  targetSec: number;
+}
+
+/** E01 — চলতি মাসের কার্ড (`GET /live/trend`) */
+export interface TrendMonth {
+  /** `2026-08` */
+  yearMonth: string;
+  /** worked + owner-এর সংশোধন — টার্গেটের সাথে এটাই মেলানো হয় */
+  creditedSec: number;
+  targetSec: number;
+  /**
+   * ⚠️ **ট্র্যাকিং শুরুর দিন থেকে** প্রত্যাশিত, মাসের ১ তারিখ থেকে নয়।
+   *
+   * ⚠️⚠️ কাঁচা `monthly_summary.expected_sec` বসালে আগস্টের কার্ডে লেখা
+   * থাকত *"দল ১০৪২ ঘণ্টা পিছিয়ে"* — সংখ্যাটা সত্য, গল্পটা মিথ্যা। ওই
+   * ঘাটতির পুরোটাই ১–১২ আগস্ট, যখন মনিটরিং ছিলই না। প্রথম মাসেই গোটা
+   * দলকে অন্যায়ভাবে ব্যর্থ দেখানো হতো, আর কেউ ওই সংখ্যা দিয়েই জবাবদিহি
+   * চাইতে পারত।
+   */
+  expectedSec: number;
+  /** credited − expected · ধনাত্মক = এগিয়ে */
+  paceSec: number;
+  /**
+   * ⭐ কবে থেকে দেখা শুরু — কার্ডে এটা **লেখা থাকে**, নইলে উপরের
+   * সমন্বয়টা একটা অদৃশ্য অনুমান হয়ে যেত।
+   */
+  trackedFrom: string | null;
+}
+
+export interface TeamTrend {
+  /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
+  days: TrendDay[];
+  month: TrendMonth;
+}
+
 /** E01 — লাইভ বোর্ডের দিনের-ছন্দ চার্ট (`GET /live/pulse`) */
 export interface TeamPulse {
   /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
@@ -401,6 +458,140 @@ export class DashboardService {
       date: formatWorkDate(workDate),
       buckets: buckets.map((activeSec, hour) => ({ hour, activeSec })),
       totalActiveSec: buckets.reduce((a, b) => a + b, 0),
+    };
+  }
+
+  /**
+   * ⭐ E01 — **সাত দিন ও চলতি মাস** (`GET /live/trend`)।
+   *
+   * ⭐ উৎস `daily_summary` ও `monthly_summary`, কাঁচা সেগমেন্ট নয় — আর
+   *    সেটা ইচ্ছাকৃত। ওই দুটোই বেতনের ভিত্তি (`worked_sec` হলো ACTIVE-এর
+   *    **UNION**, দুই PC-র সময় দুবার গোনা হয় না), আর `summary-refresh`
+   *    জব ওদের **প্রতি ১৫ মিনিটে** তাজা রাখে (K06)।
+   *
+   * ⚠️ ফলে আজকের কলামটা উপরের "Hours today" টাইলের চেয়ে একটু কম হতে
+   *    পারে — টাইলটা লাইভ **যোগফল**, ওতে overlap দুবার গোনা হয় (বোর্ডের
+   *    নিচের caveat-এ সেটা লেখাই আছে)। দুটো চার্ট একই ভিত্তিতে রাখা
+   *    হয়েছে, কারণ পাশাপাশি বসা দুটো চার্ট আলাদা ভিত্তিতে চললে
+   *    "কোনটা সত্যি?" প্রশ্নের কোনো উত্তর থাকত না।
+   */
+  async teamTrend(): Promise<TeamTrend> {
+    const today = this.resolveWorkDate();
+    const first = new Date(today.getTime() - 6 * 86_400_000);
+    const monthKey = formatWorkDate(today).slice(0, 7);
+
+    /**
+     * ⭐ **কবে থেকে দেখা শুরু** — সবচেয়ে পুরোনো `daily_summary` সারি।
+     * ⚠️ এর আগের দিনগুলোতে শূন্য দেখানো যাবে না; ওগুলো "জানি না"।
+     */
+    const earliest = await this.prisma.dailySummary.findFirst({
+      orderBy: { workDate: 'asc' },
+      select: { workDate: true },
+    });
+    const trackedFromMs = earliest?.workDate.getTime() ?? null;
+
+    // ⚠️ কর্মীপ্রতি সারি, গোষ্ঠীবদ্ধ নয় — `day_type` ও দৈনিক টার্গেট
+    //    দুটোই কর্মীভেদে আলাদা, তাই যোগফলটা কোডে করা হয়।
+    const [rows, monthRows] = await Promise.all([
+      this.prisma.dailySummary.findMany({
+        where: { workDate: { gte: first, lte: today } },
+        select: {
+          employeeId: true,
+          workDate: true,
+          workedSec: true,
+          dayType: true,
+        },
+      }),
+      this.prisma.monthlySummary.findMany({
+        where: { yearMonth: monthKey },
+        select: {
+          employeeId: true,
+          creditedSec: true,
+          targetSec: true,
+          expectedWorkdays: true,
+        },
+      }),
+    ]);
+
+    /**
+     * ⭐ কর্মীপ্রতি **এক কর্মদিবসের** টার্গেট = মাসিক ÷ তার কর্মদিবস।
+     * ⚠️ ৮ ঘণ্টা ধ্রুবক নয় (`LiveCard.dailyTargetSec`-এর নোট) — মাসভেদে
+     *    ও কর্মীভেদে আলাদা, তাই হিসাব করেই নিতে হয়।
+     */
+    const dailyTargetOf = new Map<number, number>();
+    for (const m of monthRows) {
+      dailyTargetOf.set(
+        m.employeeId,
+        m.expectedWorkdays > 0 ? m.targetSec / m.expectedWorkdays : 0,
+      );
+    }
+
+    const days: TrendDay[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(first.getTime() + i * 86_400_000);
+      const ms = date.getTime();
+      const own = rows.filter((r) => r.workDate.getTime() === ms);
+
+      let workedSec = 0;
+      let expectedStaff = 0;
+      let targetSec = 0;
+      for (const r of own) {
+        workedSec += r.workedSec;
+        if (r.dayType !== 'holiday') {
+          expectedStaff += 1;
+          targetSec += dailyTargetOf.get(r.employeeId) ?? 0;
+        }
+      }
+
+      days.push({
+        date: formatWorkDate(date),
+        workedSec,
+        // ⚠️ সারি থাকা নয়, **তারিখটা ট্র্যাকিং শুরুর পরে কি না** — সেটাই
+        //    মাপকাঠি। নইলে ভবিষ্যতের কোনো ফাঁকা দিনও "দেখা হয়নি" হয়ে যেত।
+        tracked: trackedFromMs !== null && ms >= trackedFromMs,
+        expectedStaff,
+        targetSec: Math.round(targetSec),
+      });
+    }
+
+    /**
+     * ⚠️⚠️ `expected` **এখানে আবার হিসাব করা হয়**, `monthly_summary`-র
+     *    কলামটা নেওয়া হয় না — কারণ ওটা মাসের ১ তারিখ থেকে গোনে।
+     *    ট্র্যাকিং শুরুর আগের দিনগুলো বাদ দিলে তবেই সংখ্যাটা সৎ।
+     */
+    const monthStart = new Date(`${monthKey}-01T00:00:00.000Z`);
+    const from =
+      trackedFromMs !== null && trackedFromMs > monthStart.getTime()
+        ? new Date(trackedFromMs)
+        : monthStart;
+
+    const monthRowsDaily = await this.prisma.dailySummary.findMany({
+      where: { workDate: { gte: from, lte: today } },
+      select: { employeeId: true, dayType: true },
+    });
+
+    let expectedSec = 0;
+    for (const r of monthRowsDaily) {
+      if (r.dayType !== 'holiday') {
+        expectedSec += dailyTargetOf.get(r.employeeId) ?? 0;
+      }
+    }
+    expectedSec = Math.round(expectedSec);
+
+    const creditedSec = monthRows.reduce((a, m) => a + m.creditedSec, 0);
+
+    return {
+      days,
+      month: {
+        yearMonth: monthKey,
+        creditedSec,
+        targetSec: monthRows.reduce((a, m) => a + m.targetSec, 0),
+        expectedSec,
+        paceSec: creditedSec - expectedSec,
+        trackedFrom: trackedFromMs
+          ? formatWorkDate(new Date(trackedFromMs))
+          : null,
+      },
     };
   }
 
