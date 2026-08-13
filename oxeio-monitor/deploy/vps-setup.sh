@@ -54,10 +54,46 @@ fi
 
 # ── ৩· কোড ───────────────────────────────────────────────────────────────
 say "৩· কোড"
+
+# ⚠️⚠️ `GIT_TERMINAL_PROMPT=0` — এটা না থাকলে **স্ক্রিপ্টটা ঝুলে যায়**।
+#
+#    রিপো private, তাই HTTPS দিয়ে clone করতে গেলে git চুপচাপ
+#    `Username for 'https://github.com':` লিখে বসে থাকে — আর স্ক্রিপ্টের
+#    ভেতরে সেটা দেখতে অদ্ভুত লাগে, মনে হয় কিছু একটা আটকে গেছে।
+#    ⭐ ১৩ আগস্ট ঠিক এটাই ঘটেছে মালিকের প্রথম চেষ্টায়।
+#
+#    এখন ঝোলার বদলে সাথে সাথেই ব্যর্থ হয়, আর নিচে কী করতে হবে লেখা থাকে।
+export GIT_TERMINAL_PROMPT=0
+
+clone_help() {
+  cat <<EOF
+
+রিপোটা **private**, তাই বেনামে clone করা যায় না। deploy key বসান —
+শুধু-পড়ার অনুমতি, শুধু এই রিপোর জন্য:
+
+  ১· চাবি বানান ও দেখুন:
+       ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "oxeio-vps" <<< y
+       ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+       cat ~/.ssh/id_ed25519.pub
+
+  ২· GitHub → রিপো → Settings → Deploy keys → Add deploy key
+     (⚠️ "Allow write access" টিক দেবেন না)
+
+  ৩· তারপর SSH ঠিকানা দিয়ে আবার:
+       OXEIO_REPO=git@github.com:ownCoder/oxeio-monitor.git \
+         bash $DIR/deploy/vps-setup.sh $PUBLIC_HOST
+EOF
+}
+
 if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" pull --ff-only && ok "হালনাগাদ"
+  git -C "$DIR" pull --ff-only || die "pull ব্যর্থ — নেট বা অনুমতি দেখুন"
+  ok "হালনাগাদ"
 else
-  git clone --depth 1 "$REPO" "$DIR" && ok "ক্লোন হলো → $DIR"
+  if ! git clone --depth 1 "$REPO" "$DIR" 2>&1; then
+    clone_help
+    die "clone করা গেল না ($REPO)"
+  fi
+  ok "ক্লোন হলো → $DIR"
 fi
 cd "$DIR"
 
