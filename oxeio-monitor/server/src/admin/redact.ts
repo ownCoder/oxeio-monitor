@@ -41,7 +41,7 @@ export interface EmployeeRow {
   createdAt: Date;
   /** ⭐ সেটআপের অবস্থা — `EMPLOYEE_SELECT` থেকে */
   _count?: { devices: number };
-  portalUsers?: { id: number; email: string }[];
+  portalUsers?: { id: number; email: string; role: UserRole }[];
 }
 
 /** ম্যানেজার ও owner — দুজনেই এটুকু দেখে */
@@ -77,6 +77,14 @@ export interface EmployeeBaseView {
    */
   portalUserId: number | null;
   portalEmail: string | null;
+
+  /**
+   * ⭐ ভূমিকা — পর্দার ড্রপডাউন **বর্তমান** মান দেখিয়ে খোলার জন্য।
+   *
+   * ⚠️ না পাঠালে ড্রপডাউন সবসময় "Staff" দেখাত, আর কেউ শুধু ইমেইল বদলাতে
+   * গিয়ে সেভ চাপলে একজন ম্যানেজার নীরবে স্টাফ হয়ে যেতেন।
+   */
+  portalRole: 'owner' | 'manager' | 'employee' | null;
 }
 
 /** ⭐ শুধু owner-এর রেসপন্সে বেতনের ফিল্ডটা **থাকে** */
@@ -124,6 +132,7 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     hasDevice: (row._count?.devices ?? 0) > 0,
     portalUserId: row.portalUsers?.[0]?.id ?? null,
     portalEmail: row.portalUsers?.[0]?.email ?? null,
+    portalRole: row.portalUsers?.[0]?.role ?? null,
   };
 
   if (!canSeeSalary(role)) {

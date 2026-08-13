@@ -74,7 +74,9 @@ const EMPLOYEE_SELECT = {
    * `redact.ts`-এর একই যুক্তি।
    */
   portalUsers: {
-    select: { id: true, email: true },
+    // ⚠️ `role`-ও লাগে — পর্দায় ড্রপডাউনটা **বর্তমান** ভূমিকা দেখিয়ে
+    //    খুলতে হয়, নইলে না বদলেও "সেভ" চাপলে ভুল ভূমিকা বসে যেত।
+    select: { id: true, email: true, role: true },
     orderBy: { id: 'asc' },
     take: 1,
   },

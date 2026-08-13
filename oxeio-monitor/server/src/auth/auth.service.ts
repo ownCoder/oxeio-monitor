@@ -290,6 +290,70 @@ export class AuthService {
   }
 
   /**
+   * স্টাফ ↔ ম্যানেজার — portal অ্যাকাউন্টের ভূমিকা বদলানো।
+   *
+   * ⚠️⚠️ **কেন এটা দরকার হলো:** ভূমিকা বসত কেবল অ্যাকাউন্ট **খোলার
+   * সময়**, আর বদলানোর কোনো পথ ছিল না। কাউকে ম্যানেজার করতে হলে তাঁর
+   * অ্যাকাউন্ট মুছে নতুন করে খুলতে হতো — অর্থাৎ নতুন পাসওয়ার্ড, আর
+   * তাঁর সব `user_id`-নির্ভর ইতিহাস (audit log) ছিঁড়ে যেত।
+   *
+   * ⚠️ `owner` এখান থেকে **দেওয়াও যায় না, কাড়াও যায় না**:
+   *
+   *   · দেওয়া যায় না — owner মানে বেতন, audit log আর সেটিংসের চাবি।
+   *     সেটা একটা ড্রপডাউনের এক ক্লিকে হাতবদল হওয়ার জিনিস নয় (ADR-011d,
+   *     আর ওয়েবের `PORTAL_ROLES`-এও owner নেই)।
+   *   · কাড়া যায় না — এই রুটে ঢুকতে owner হতে হয়, তাই নিজেকে বা শেষ
+   *     owner-কে নামিয়ে দিলে **কেউ আর ঢুকতেই পারত না**, আর ফেরার পথ
+   *     হতো সার্ভারে `recover-owner` স্ক্রিপ্ট।
+   *
+   * ⭐ ভূমিকা বদলালে চলতি সেশনেও খাটে — `JwtAuthGuard` টোকেন নতুন করে
+   * দেওয়ার সময় ডাটাবেস থেকেই ভূমিকা পড়ে (৫ মিনিটের ভেতরে)।
+   */
+  async changeRole(
+    actorId: number,
+    targetUserId: number,
+    role: 'employee' | 'manager',
+    ip: string,
+  ): Promise<{ id: number; email: string; role: UserRole }> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, email: true, role: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    if (target.role === UserRole.owner) {
+      throw new ConflictException(
+        'Owner accounts cannot be changed here. Owners are managed on the server.',
+      );
+    }
+
+    // ⚠️ একই ভূমিকা হলে চুপচাপ ফেরা — audit log-এ "বদল" লেখা হবে না,
+    //    নইলে ইতিহাসে এমন ঘটনা জমত যেখানে আসলে কিছুই বদলায়নি।
+    if (target.role === role) {
+      return { id: target.id, email: target.email, role: target.role };
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role },
+      select: { id: true, email: true, role: true },
+    });
+
+    await this.audit.record({
+      userId: actorId,
+      action: 'change_setting',
+      targetType: 'user',
+      targetId: targetUserId,
+      ipAddress: ip,
+      // ⚠️ আগেরটাও লেখা — "কে কখন ম্যানেজার হলো" প্রশ্নের উত্তর
+      //    দিতে হলে শুধু নতুন মানটা যথেষ্ট নয়
+      meta: { op: 'change_role', from: target.role, to: role },
+    });
+
+    return updated;
+  }
+
+  /**
    * লগইনের ইমেইল বদলানো — অর্থাৎ স্টাফের "ইউজারনেম"।
    *
    * ⚠️⚠️ **কেন এটা দরকার হলো:** portal অ্যাকাউন্ট খোলার সময় ইমেইলটা হাতে

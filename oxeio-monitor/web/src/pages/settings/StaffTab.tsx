@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   createEmployee,
   changeLoginEmail,
+  changeUserRole,
   createPortalAccount,
   nextEmployeeCode,
   resetUserPassword,
@@ -803,7 +804,25 @@ function PortalAccountForm({
   const [email, setEmail] = useState(
     existing ? (employee.portalEmail ?? '') : (employee.email ?? ''),
   );
-  const [role, setRole] = useState<Role>('employee');
+  /**
+   * ⚠️⚠️ ড্রপডাউনটা **বর্তমান** ভূমিকা দেখিয়ে খোলে। `'employee'` ধরে
+   * শুরু করলে কেউ শুধু ইমেইলের বানান ঠিক করতে গিয়ে সেভ চাপলেই একজন
+   * ম্যানেজার নীরবে স্টাফ হয়ে যেতেন — আর সেটা কোথাও দেখা যেত না।
+   */
+  const [role, setRole] = useState<Role>(
+    employee.portalRole === 'manager' ? 'manager' : 'employee',
+  );
+
+  /**
+   * ⚠️ owner-এর অ্যাকাউন্ট এখান থেকে ছোঁয়া যায় না। ভূমিকার ঘরটাই দেখানো
+   * হয় না, কারণ একটা নিষ্ক্রিয় ড্রপডাউন দেখলে মনে হতো কিছু একটা ভেঙে
+   * আছে — অথচ এটা ইচ্ছাকৃত (ADR-011d)। সার্ভারও আলাদা করে আটকায়।
+   */
+  const ownerAccount = employee.portalRole === 'owner';
+
+  const emailChanged = email.trim() !== (employee.portalEmail ?? '');
+  const roleChanged = !ownerAccount && role !== employee.portalRole;
+  const hasChanges = emailChanged || roleChanged;
   const { busy, error, run } = useMutation();
 
   return (
@@ -811,7 +830,7 @@ function PortalAccountForm({
       title={`${employee.fullName} — ${existing ? 'login' : 'portal account'}`}
       hint={
         existing
-          ? 'Change the sign-in email, or give them a new password'
+          ? 'Change the sign-in email or role, or give them a new password'
           : 'They will be able to see their own hours and progress'
       }
       onClose={onClose}
@@ -840,17 +859,24 @@ function PortalAccountForm({
                 tone="primary"
                 onClick={() =>
                   run(async () => {
-                    await changeLoginEmail(employee.portalUserId!, email.trim());
+                    /**
+                     * ⚠️ ইমেইল ও ভূমিকা — যেটা সত্যিই বদলেছে **শুধু সেটাই**
+                     * পাঠানো হয়। দুটোই সবসময় পাঠালে audit log-এ এমন
+                     * "বদল" জমত যেখানে আসলে কিছুই বদলায়নি, আর পরে
+                     * "কে কখন ম্যানেজার হলো" খুঁজে বের করা কঠিন হতো।
+                     */
+                    if (emailChanged) {
+                      await changeLoginEmail(employee.portalUserId!, email.trim());
+                    }
+                    if (roleChanged) {
+                      await changeUserRole(employee.portalUserId!, role);
+                    }
                     onSaved();
                   })
                 }
-                disabled={
-                  busy ||
-                  email.trim() === '' ||
-                  email.trim() === (employee.portalEmail ?? '')
-                }
+                disabled={busy || email.trim() === '' || !hasChanges}
               >
-                {busy ? 'Saving…' : 'Save email'}
+                {busy ? 'Saving…' : 'Save changes'}
               </Button>
             </>
           ) : (
@@ -877,7 +903,7 @@ function PortalAccountForm({
       <div className="space-y-3.5">
         <Notice>
           {existing
-            ? 'Resetting gives them a new temporary password — shown only once. Changing the email does not touch their password.'
+            ? 'Change the email or the role, then Save. Resetting gives them a new temporary password — shown only once, and it does not change anything else.'
             : 'The temporary password is shown only once after it is created. They must change it at their first sign-in.'}
         </Notice>
 
@@ -891,14 +917,14 @@ function PortalAccountForm({
           hint="This is the email they will sign in with"
         />
 
-{!existing && (
-        <SelectField
-          label="Role"
-          value={role}
-          onChange={(value) => setRole(value as Role)}
-          options={PORTAL_ROLES}
-          hint="A staff screen has no buttons — they can only look at their own hours"
-        />
+        {!ownerAccount && (
+          <SelectField
+            label="Role"
+            value={role}
+            onChange={(value) => setRole(value as Role)}
+            options={PORTAL_ROLES}
+            hint="A staff screen has no buttons — they can only look at their own hours"
+          />
         )}
 
         <ServerError error={error} />

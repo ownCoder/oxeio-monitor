@@ -43,6 +43,12 @@ export interface EmployeeView {
   /** ⭐ portal অ্যাকাউন্টের id ও লগইন ইমেইল — রিসেট ও ইমেইল বদলানোর জন্য */
   portalUserId: number | null;
   portalEmail: string | null;
+  /**
+   * ⚠️ ড্রপডাউনটা **বর্তমান** ভূমিকা দেখিয়ে খুলতে হয়। null ধরে "Staff"
+   * দেখালে কেউ শুধু ইমেইল বদলাতে গিয়ে সেভ চাপলে একজন ম্যানেজার নীরবে
+   * স্টাফ হয়ে যেতেন।
+   */
+  portalRole: 'owner' | 'manager' | 'employee' | null;
   status: EmployeeStatus;
   policySignedAt: string | null;
   policyDocPath: string | null;
@@ -438,6 +444,22 @@ export function changeLoginEmail(
     method: 'PATCH',
     body: { email },
   });
+}
+
+/**
+ * স্টাফ ↔ ম্যানেজার।
+ *
+ * ⚠️ `owner` পাঠানো যায় না — সার্ভার ৪০০ দেবে। owner মানে বেতন, audit log
+ * আর সেটিংসের চাবি; সেটা ড্রপডাউনের এক ক্লিকে হাতবদলের জিনিস নয়।
+ */
+export function changeUserRole(
+  userId: number,
+  role: 'employee' | 'manager',
+): Promise<{ id: number; email: string; role: string }> {
+  return api<{ id: number; email: string; role: string }>(
+    `/users/${userId}/role`,
+    { method: 'PATCH', body: { role } },
+  );
 }
 
 /** স্টাফের নিজস্ব ভিউয়ের অ্যাকাউন্ট (J04/J05) — ডিফল্ট role `employee` */

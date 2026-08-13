@@ -9,12 +9,22 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { IsEmail } from 'class-validator';
+import { IsEmail, IsIn } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 import { AuthService } from '../auth/auth.service';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
+
+/**
+ * ⚠️⚠️ `owner` ইচ্ছাকৃতভাবে **তালিকার বাইরে** — `@IsIn` তাই দ্বিতীয় জাল
+ * নয়, **প্রথম** জাল। সার্ভিসও আলাদা করে আটকায়, কিন্তু এখানেই আটকালে
+ * অনুরোধটা কোনো ব্যবসায়িক কোড ছোঁয়ারই সুযোগ পায় না।
+ */
+class ChangeRoleDto {
+  @IsIn(['employee', 'manager'])
+  role!: 'employee' | 'manager';
+}
 
 class ChangeEmailDto {
   /** ⚠️ `class-validator` দিয়েই যাচাই — সার্ভিসের চেকটা দ্বিতীয় জাল */
@@ -56,5 +66,23 @@ export class UsersController {
     @Ip() ip: string,
   ): Promise<{ id: number; email: string }> {
     return this.auth.changeLoginEmail(actor.userId, id, dto.email, ip);
+  }
+
+  /**
+   * স্টাফ ↔ ম্যানেজার।
+   *
+   * ⚠️ ভূমিকা আগে বসত কেবল অ্যাকাউন্ট খোলার সময়। বদলাতে হলে অ্যাকাউন্ট
+   * মুছে নতুন করে খুলতে হতো — নতুন পাসওয়ার্ড, আর audit log-এ তাঁর
+   * পুরোনো ইতিহাস ছিঁড়ে যেত।
+   */
+  @Roles(UserRole.owner)
+  @Patch(':id/role')
+  changeRole(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ChangeRoleDto,
+    @Ip() ip: string,
+  ): Promise<{ id: number; email: string; role: UserRole }> {
+    return this.auth.changeRole(actor.userId, id, dto.role, ip);
   }
 }
