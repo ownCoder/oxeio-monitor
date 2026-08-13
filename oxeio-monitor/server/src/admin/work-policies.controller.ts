@@ -72,4 +72,18 @@ export class WorkPoliciesController {
   ): Promise<WorkPolicyView> {
     return this.policies.deactivate(actor, id, ip);
   }
+
+  /**
+   * ⭐ G85 — `deactivate`-এর জোড়া। এটা না থাকায় নিষ্ক্রিয় করা পলিসি
+   * চিরতরে নিষ্ক্রিয় থাকত, আর ফেরার একমাত্র পথ ছিল SQL।
+   */
+  @Post(':id/reactivate')
+  @HttpCode(HttpStatus.OK)
+  reactivate(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
+  ): Promise<WorkPolicyView> {
+    return this.policies.reactivate(actor, id, ip);
+  }
 }

@@ -226,6 +226,60 @@ export class WorkPoliciesService {
     return toView(row, 0);
   }
 
+  /**
+   * ⭐⭐ **G85 — বন্ধ করার কোডের সাথে খোলার কোডও।**
+   *
+   * এতদিন `deactivate()` ছিল, `reactivate()` ছিল না। ফলে একবার নিষ্ক্রিয়
+   * করা পলিসি **চিরতরে** নিষ্ক্রিয় থাকত, আর ফেরার একমাত্র পথ ছিল
+   * সার্ভারে বসে SQL।
+   *
+   * ⚠️ ক্ষতিটা কর্মীর লগইনের মতো তীব্র নয় (G84) — পলিসি নিষ্ক্রিয় করতে
+   * গেলে আগে সব কর্মীকে সরাতে হয়, তাই কেউ আটকে যান না। কিন্তু ভুল করে
+   * চাপলে ফেরার পথ নেই, আর সেটা পর্দায় কোথাও লেখা থাকে না।
+   *
+   * ⭐ ধরা পড়েছে G84 সারানোর পর নিয়মটা লিখে রেখে **একই চোখে বাকি কোড
+   * দেখতে গিয়ে** — মাঠে ধরা পড়ার অপেক্ষা না করে।
+   */
+  async reactivate(
+    actor: SessionUser,
+    id: number,
+    ip: string,
+  ): Promise<WorkPolicyView> {
+    const before = await this.prisma.workPolicy.findUnique({
+      where: { id },
+      include: { _count: { select: { employees: true } } },
+    });
+    if (!before) throw new NotFoundException('Work policy not found');
+    if (before.isActive) {
+      throw new ConflictException('This policy is already active');
+    }
+
+    const row = await this.prisma.workPolicy.update({
+      where: { id },
+      data: { isActive: true },
+    });
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'change_setting',
+      targetType: ADMIN_TARGET.workPolicy,
+      targetId: id,
+      ipAddress: ip,
+      meta: { op: 'reactivate', name: row.name },
+    });
+
+    /**
+     * ⚠️ কর্মী-সংখ্যা এখানে `before`-এর গোনা থেকেই আসে, শূন্য ধরে নয়।
+     *
+     * `deactivate()`-এ `toView(row, 0)` লেখা **ঠিক**, কারণ সে শূন্য না
+     * হলে চলতেই দেয় না। কিন্তু এখানে শূন্য ধরে নেওয়া হতো একটা অনুমান —
+     * নিষ্ক্রিয় পলিসিতে কর্মী থাকা সম্ভব (কেউ SQL দিয়ে বসিয়ে দিলে, বা
+     * ভবিষ্যতে নিয়ম বদলালে), আর তখন পর্দা "0 staff" দেখাত অথচ বাস্তবে
+     * তাঁরা আছেন।
+     */
+    return toView(row, before._count.employees);
+  }
+
   private assertWindow(from: string, to: string): void {
     const problem = captureWindowProblem(from, to);
     if (problem) throw new BadRequestException(problem);

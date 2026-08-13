@@ -1,10 +1,11 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import {
   BadRequestException,
   Injectable,
   Logger,
+  OnModuleInit,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -34,7 +35,7 @@ export interface ScreenshotResult {
 }
 
 @Injectable()
-export class ScreenshotIngestService {
+export class ScreenshotIngestService implements OnModuleInit {
   private readonly logger = new Logger(ScreenshotIngestService.name);
   private readonly root: string;
 
@@ -46,6 +47,45 @@ export class ScreenshotIngestService {
     this.root = resolve(
       storageRoot(config),
     );
+  }
+
+  /**
+   * ⭐⭐ **G81 — চালুর সময়ই storage-এ লেখা যায় কি না দেখা।**
+   *
+   * ১৩ আগস্ট VPS-এ গ্যালারিতে *"10 this day"* দেখাত, অথচ দশটাই ভাঙা
+   * আইকন। কারণ: হোস্টের `.data/storage` ফোল্ডারটা **root**-এর, আর
+   * কনটেইনার চলে `node` (uid 1000) হয়ে। ⚠️ Dockerfile-এর
+   * `chown -R node:node` ওখানে কাজেই আসে না — bind mount ইমেজের
+   * ফোল্ডারটা **মালিকানাসহ** ঢেকে দেয়।
+   *
+   * ⚠️⚠️ কিন্তু আসল অপরাধটা ছিল **নীরবতা**। permission denied একটা
+   * জোরালো ভুল, অথচ সার্ভার দিব্যি উঠে বসে থাকত আর প্রতিটা ছবি নীরবে
+   * হারাত। storage-এ লেখা না গেলে এই পণ্যের **মূল কাজটাই অচল** — তখন
+   * চালু থাকাটাই বিভ্রান্তি।
+   *
+   * তাই `SignedUrlService` দুর্বল সিক্রেটে যেমন থামে, ঠিক তেমন।
+   *
+   * ⭐ **probe লেখা হয় root-এর ভেতরে, শুধু `access()` নয়** — `access(W_OK)`
+   * ফোল্ডারের বিট দেখে, কিন্তু read-only mount, ভরা ডিস্ক বা SELinux
+   * লেবেলে সে **সফল বলেও** পরে লেখা আটকে যেতে পারে। সত্যিকারের লেখাই
+   * একমাত্র সত্যিকারের প্রমাণ।
+   */
+  async onModuleInit(): Promise<void> {
+    const probe = join(this.root, '.write-probe');
+    try {
+      await mkdir(this.root, { recursive: true });
+      await writeFile(probe, 'ok');
+      await rm(probe, { force: true });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Screenshot storage is not writable: ${this.root} (${reason}). ` +
+          'Screenshots would be silently lost. On Docker this is almost always ' +
+          'the bind-mounted folder being owned by root while the container runs ' +
+          'as uid 1000 — fix with: chown -R 1000:1000 .data/storage',
+      );
+    }
+    this.logger.log(`Screenshot storage is writable: ${this.root}`);
   }
 
   /**
@@ -147,7 +187,14 @@ export class ScreenshotIngestService {
       ) {
         // client_uuid অথবা (device, slot, monitor) — দুটোর যেকোনোটায় ডুপ্লিকেট।
         // এজেন্ট আপলোড রিট্রাই করেছে, ভুল কিছু নয়।
-        return { accepted: 0, duplicate: true, path: relPath, thumbPath: null };
+        return this.resolveDuplicate(
+          device,
+          meta,
+          slotStart,
+          relPath,
+          file,
+          thumb,
+        );
       }
       throw err;
     }
@@ -178,6 +225,109 @@ export class ScreenshotIngestService {
    *
    * @returns বসানো `thumb_path`, নয়তো `null` (গ্যালারি ফুল ছবিতে ফেরত যাবে)
    */
+  /**
+   * ⭐⭐ **G81 — "সারি আছে" আর "ফাইল আছে" এক কথা নয়।**
+   *
+   * সারি ও ফাইল দুই জায়গায় লেখা হয়, DB আগে ডিস্ক পরে। ডিস্কে লেখা
+   * ব্যর্থ হলে সারিটা থেকে যায়, আর তখন যা ঘটত:
+   *
+   * ```
+   * লেখা ব্যর্থ  →  এজেন্ট রিট্রাই  →  DB বলে "সারি তো আছে" (P2002)
+   *              →  সার্ভার { accepted: 0, duplicate: true } ফেরত দেয়
+   *              →  এজেন্ট আউটবক্স থেকে ছবিটা মুছে ফেলে
+   * ```
+   *
+   * ⚠️⚠️ **duplicate পথটা সফলতা ধরে নিত** — যুক্তিসঙ্গত, কারণ ওটা লেখা
+   * হয়েছিল "এজেন্ট একই ছবি দুবার পাঠিয়েছে" ভেবে। ফল: ছবিটা চিরতরে
+   * হারাত, এজেন্ট নিশ্চিন্ত, সার্ভার নিশ্চিন্ত, আর মালিক দেখতেন ভাঙা
+   * আইকন — যার সাথে আসল কারণের কোনো মিল নেই।
+   *
+   * ⭐ এখন ফাইলটা সত্যিই আছে কি না **দেখা হয়**, আর না থাকলে
+   * **সারিয়ে দেওয়া হয়** — শুধু "ব্যর্থ" বললে এজেন্ট ছবিটা ধরে রাখত
+   * বটে, কিন্তু প্রতিবার একই দেয়ালে ধাক্কা খেত। রিট্রাইটাকে মেরামতে
+   * বদলে দেওয়াই আসল সমাধান।
+   */
+  private async resolveDuplicate(
+    device: Device,
+    meta: ScreenshotMetaDto,
+    slotStart: Date,
+    relPath: string,
+    file: Express.Multer.File,
+    thumb: Express.Multer.File | undefined,
+  ): Promise<ScreenshotResult> {
+    /**
+     * ⚠️ দুটো UNIQUE-এর **যেকোনোটায়** আটকাতে পারে, তাই দুটোই খোঁজা হয়:
+     * `client_uuid`, আর `(device, slot, monitor)`।
+     */
+    const existing = await this.prisma.screenshot.findFirst({
+      where: {
+        OR: [
+          { clientUuid: meta.clientUuid },
+          {
+            deviceId: device.id,
+            slotStart,
+            monitorIndex: meta.monitorIndex,
+          },
+        ],
+      },
+      select: { id: true, filePath: true, thumbPath: true },
+    });
+
+    // ⚠️ সারিটা এর মধ্যে মুছে গেছে (retention জব, বা কেউ হাতে) — বিরল,
+    //    কিন্তু তখন মেরামতের কিছু নেই। আগের আচরণেই ফিরি।
+    if (!existing) {
+      return { accepted: 0, duplicate: true, path: relPath, thumbPath: null };
+    }
+
+    /**
+     * ⭐ **`existing.filePath`, `relPath` নয়** — দুটো আলাদা হতে পারে।
+     * রিট্রাইয়ে `captured_at`-এর সেকেন্ড এক না হলে ফাইলের নামও বদলায়
+     * (`hhmmss_m0.webp`)। নতুন পথে লিখলে সারিটা এক ফাইলের দিকে দেখাত আর
+     * বাইট পড়ে থাকত অন্য ফাইলে — অর্থাৎ ঠিক যে অমিলটা সারাতে বসেছি,
+     * সেটাই আবার তৈরি হতো।
+     */
+    const absPath = join(this.root, existing.filePath);
+    try {
+      await access(absPath);
+      // ফাইল আছে — সত্যিকারের ডুপ্লিকেট, এজেন্ট নিশ্চিন্তে মুছে ফেলুক
+      return {
+        accepted: 0,
+        duplicate: true,
+        path: existing.filePath,
+        thumbPath: existing.thumbPath,
+      };
+    } catch {
+      // ফাইল নেই — সারিটা এতিম। নিচে মেরামত।
+    }
+
+    this.logger.warn(
+      `Screenshot row ${existing.id} had no file on disk (${existing.filePath}) — healing from agent retry`,
+    );
+
+    await mkdir(dirname(absPath), { recursive: true });
+    await writeFile(absPath, file.buffer);
+
+    const thumbPath = await this.storeThumb(
+      existing.id,
+      existing.filePath,
+      file.size,
+      thumb,
+    );
+
+    /**
+     * ⭐ `accepted: 1` — এজেন্টের দিক থেকে এটা সত্যিই গ্রহণ করা হয়েছে,
+     * এইবারই প্রথম। `duplicate: false`-ও তাই: সারিটা পুরোনো হলেও
+     * **বাইটগুলো নতুন**, আর এজেন্টের সিদ্ধান্ত (কিউ থেকে মোছা) নির্ভর
+     * করে বাইট পৌঁছেছে কি না তার উপর — সারি ছিল কি না তার উপর নয়।
+     */
+    return {
+      accepted: 1,
+      duplicate: false,
+      path: existing.filePath,
+      thumbPath,
+    };
+  }
+
   private async storeThumb(
     screenshotId: bigint,
     relPath: string,

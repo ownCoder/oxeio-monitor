@@ -1,5 +1,8 @@
 import { SignJWT } from 'jose';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+// ⚠️ vitest-এর `expect` এখানে লাগে না — এই ফাইলের সব যাচাই supertest-এর
+// চেইন করা `.expect(200)` দিয়ে, যেটা আলাদা জিনিস। import করে রাখায় lint
+// লাল ছিল (`no-unused-vars`), আর CI-ও।
+import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 
 import {
   createEmployeeWithCode,
