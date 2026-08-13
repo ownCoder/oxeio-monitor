@@ -11,6 +11,7 @@ import {
   resetDatabase,
   type Harness,
 } from './setup/harness';
+import { resolveThrottle } from '../src/auth/login-throttle.config';
 
 let h: Harness;
 
@@ -272,11 +273,23 @@ describe('logout', () => {
 });
 
 describe('ব্রুট-ফোর্স (I11)', () => {
-  it('৫ বার ভুলের পর 429', async () => {
+  /**
+   * ⚠️⚠️ সংখ্যাটা আর হার্ডকোড করা হয় না — এটা এখন `.env`-এর সেটিং
+   * (`LOGIN_MAX_FAILS`)। আগে টেস্টে "৫" বসানো ছিল, তাই ডিফল্ট নরম করার
+   * সাথে সাথেই টেস্ট ভেঙেছে — অথচ আচরণটা ঠিকই ছিল। টেস্ট যেন **নিয়ম**
+   * পাহারা দেয়, একটা নির্দিষ্ট সংখ্যা নয়।
+   */
+  const { maxFails, enabled } = resolveThrottle({
+    maxFails: process.env.LOGIN_MAX_FAILS,
+    lockMinutes: process.env.LOGIN_LOCK_MINUTES,
+  });
+
+  it.skipIf(!enabled)('সীমা ছাড়ালে 429', async () => {
     const email = `attacker-${Date.now()}@test.local`;
     const codes: number[] = [];
 
-    for (let i = 0; i < 6; i++) {
+    // সীমা পর্যন্ত সবগুলোই 401, তার পরেরটা 429
+    for (let i = 0; i <= maxFails; i++) {
       const res = await h
         .http()
         .post('/api/v1/auth/login')
@@ -284,12 +297,13 @@ describe('ব্রুট-ফোর্স (I11)', () => {
       codes.push(res.status);
     }
 
-    expect(codes).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(codes.slice(0, maxFails)).toEqual(Array(maxFails).fill(401));
+    expect(codes[maxFails]).toBe(429);
   });
 
   it('আক্রমণের পরেও আসল অ্যাকাউন্ট খোলা থাকে', async () => {
     const email = `attacker2-${Date.now()}@test.local`;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i <= maxFails; i++) {
       await h.http().post('/api/v1/auth/login').send({ email, password: 'x' });
     }
 

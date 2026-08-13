@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
 
+import { buildTempPassword, TEMP_PASSWORD_CHARS } from './temp-password';
+
 /**
  * argon2id — I04।
  *
@@ -36,8 +38,14 @@ export class PasswordService {
   /**
    * owner যখন কারো পাসওয়ার্ড রিসেট করে (G33) — একবারই দেখানো হয়,
    * কোথাও plaintext-এ জমা থাকে না।
+   *
+   * ⚠️⚠️ আগে ছিল `randomBytes(12).toString('base64url')` — গোপনীয়তায়
+   * নিখুঁত, ব্যবহারে ভাঙা। `l/I/1` আর `O/0` পাশাপাশি থাকায় স্টাফ এজেন্টের
+   * জানালায় টাইপ করতে গিয়ে বারবার ভুল করতেন, আর ৫ বার ভুলেই ১৫ মিনিটের
+   * লকআউট — ফলে মনে হতো **রিসেটটাই কাজ করছে না**
+   * ([temp-password.ts](./temp-password.ts))।
    */
   generateTempPassword(): string {
-    return randomBytes(12).toString('base64url').slice(0, 14);
+    return buildTempPassword(randomBytes(TEMP_PASSWORD_CHARS));
   }
 }

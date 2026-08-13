@@ -35,6 +35,12 @@ services:
       TZ: Asia/Dhaka # GMT+6 (UTC+06:00), no DST
       DATABASE_URL: postgresql://${POSTGRES_USER:-oxeio}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oxeio}?schema=public
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      # ⚠️ চলক দুটো এখানে **স্পষ্ট করে** পাস করতে হয়। compose হোস্টের
+      #    পরিবেশ কনটেইনারে নিজে থেকে নেয় না, তাই লাইন দুটো না থাকলে
+      #    `.env`-এ যা-ই লেখা হোক সার্ভার ডিফল্টই ব্যবহার করত — আর
+      #    "সেটিং কাজ করছে না" বোঝার কোনো উপায় থাকত না।
+      LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
+      LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-2}
       PORT: 3000
       STORAGE_ROOT: /data/storage
       # ⚠️ ড্যাশবোর্ড `web` সার্ভিস দিয়ে চললে এটা কার্যত অব্যবহৃত — Caddy

@@ -152,6 +152,8 @@ oxeio-monitor/
 │   │   ├── health/                         ✅ GET /health (@Public)
 │   │   ├── audit/                          ✅ audit_log-এ লেখা
 │   │   ├── auth/                           ✅ ⭐ ৪টি গ্লোবাল গার্ড
+│   │   │   # temp-password.ts               ✅ ⭐ দ্ব্যর্থহীন অস্থায়ী পাসওয়ার্ড — টাইপ করা যায় (G83)
+│   │   │   # login-throttle.config.ts       ✅ তালার মাপ .env থেকে · =0 দিলে বন্ধ (G83)
 │   │   │   ├── auth.controller.ts          #   login · logout · me · change-password
 │   │   │   ├── token.service.ts            #   jose · httpOnly cookie · sliding
 │   │   │   ├── password.service.ts         #   argon2id

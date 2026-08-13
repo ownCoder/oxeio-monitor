@@ -24,9 +24,18 @@ export const SESSION_REFRESH_AFTER_MIN = 5;
  */
 export const IDLE_WARN_BEFORE_SEC = 60;
 
-/** I11 — ব্রুট-ফোর্স */
-export const MAX_LOGIN_FAILS = 5;
-export const LOGIN_LOCK_MIN = 15;
+/**
+ * I11 — ব্রুট-ফোর্স।
+ *
+ * ⚠️⚠️ **মানগুলো এখান থেকে সরে গেছে** — `login-throttle.config.ts`-এ, আর
+ * `.env` দিয়ে বদলানো যায় (`LOGIN_MAX_FAILS`, `LOGIN_LOCK_MINUTES`)।
+ * এখানে ছিল ৫ বার / ১৫ মিনিট, আর ১৫ জনের অফিসে সেটা সুরক্ষা নয়, বাধা
+ * হয়ে দাঁড়িয়েছিল: পাসওয়ার্ড রিসেটের পর স্টাফ কয়েকবার ভুল টাইপ করলেই
+ * "Try again in 13 minutes" — আর মনে হতো রিসেটটাই কাজ করেনি।
+ *
+ * ⚠️ কোনো ধ্রুবক এখানে ফিরিয়ে আনবেন না — দুই জায়গায় দুই মাপ থাকলে কোনটা
+ * আসলে খাটছে সেটা আর বলা যেত না।
+ */
 
 /** পাসওয়ার্ডের সর্বনিম্ন দৈর্ঘ্য */
 export const MIN_PASSWORD_LENGTH = 10;

@@ -1,6 +1,7 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import { LOGIN_LOCK_MIN, MAX_LOGIN_FAILS } from './auth.constants';
+import { resolveThrottle, type ThrottleLimits } from './login-throttle.config';
 
 interface Attempt {
   fails: number;
@@ -17,8 +18,32 @@ interface Attempt {
  */
 @Injectable()
 export class LoginThrottleService {
+  private readonly logger = new Logger(LoginThrottleService.name);
   private readonly attempts = new Map<string, Attempt>();
-  private readonly lockMs = LOGIN_LOCK_MIN * 60 * 1000;
+  private readonly limits: ThrottleLimits;
+
+  constructor(config: ConfigService) {
+    this.limits = resolveThrottle({
+      maxFails: config.get<string>('LOGIN_MAX_FAILS'),
+      lockMinutes: config.get<string>('LOGIN_LOCK_MINUTES'),
+    });
+
+    /**
+     * ⚠️⚠️ বন্ধ থাকলে সেটা **চালুর সময়ই একবার** লেখা হয়। নইলে ছয় মাস পরে
+     * কেউ "ব্রুট-ফোর্স সুরক্ষা আছে তো?" জিজ্ঞাসা করলে উত্তরটা খুঁজতে
+     * `.env` পড়তে হতো — আর সবাই ধরে নিত আছে, কারণ কোডে তো আছে।
+     */
+    if (!this.limits.enabled) {
+      this.logger.warn(
+        'Login lockout is OFF (LOGIN_LOCK_MINUTES=0) — wrong passwords can be tried without limit',
+      );
+    }
+  }
+
+  /** ⚠️ prune-এর জানালা লক না থাকলেও দরকার, তাই আলাদা করে একটা ভিত্তি */
+  private get pruneMs(): number {
+    return this.limits.lockMs > 0 ? this.limits.lockMs : 5 * 60 * 1000;
+  }
 
   /** ইমেইল + IP — একটাই ইমেইল বহু IP থেকে, বা একটাই IP বহু ইমেইলে, দুটোই ধরা পড়ে */
   private key(email: string, ip: string): string {
@@ -27,6 +52,8 @@ export class LoginThrottleService {
 
   /** লক থাকলে 429 ছুড়বে */
   assertNotLocked(email: string, ip: string): void {
+    if (!this.limits.enabled) return;
+
     this.prune();
     const a = this.attempts.get(this.key(email, ip));
     if (!a || a.lockedUntil <= Date.now()) return;
@@ -50,9 +77,9 @@ export class LoginThrottleService {
 
     a.fails += 1;
     a.lastSeen = now;
-    if (a.fails >= MAX_LOGIN_FAILS) {
-      a.lockedUntil = now + this.lockMs;
-      a.fails = 0; // লক শেষ হলে আবার নতুন করে ৫ বার
+    if (this.limits.enabled && a.fails >= this.limits.maxFails) {
+      a.lockedUntil = now + this.limits.lockMs;
+      a.fails = 0; // লক শেষ হলে আবার নতুন করে গোনা শুরু
     }
     this.attempts.set(k, a);
   }
@@ -63,7 +90,7 @@ export class LoginThrottleService {
 
   /** পুরোনো এন্ট্রি জমতে দিই না — মেমরি লিক ঠেকাতে */
   private prune(): void {
-    const cutoff = Date.now() - this.lockMs * 2;
+    const cutoff = Date.now() - this.pruneMs * 2;
     for (const [k, a] of this.attempts) {
       if (a.lastSeen < cutoff && a.lockedUntil < Date.now()) {
         this.attempts.delete(k);

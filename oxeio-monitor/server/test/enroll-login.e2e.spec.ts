@@ -13,6 +13,13 @@ import {
   resetDatabase,
   type Harness,
 } from './setup/harness';
+import { resolveThrottle } from '../src/auth/login-throttle.config';
+
+/** ⚠️ চলমান কনফিগ থেকেই — টেস্টে সংখ্যা হার্ডকোড করলে সেটিং বদলালেই ভাঙত */
+const THROTTLE = resolveThrottle({
+  maxFails: process.env.LOGIN_MAX_FAILS,
+  lockMinutes: process.env.LOGIN_LOCK_MINUTES,
+});
 
 /**
  * ⭐⭐ **স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে নিজের PC যোগ করে।**
@@ -241,7 +248,7 @@ describe('POST /agent/enroll-login — রক্ষাকবচ', () => {
    * পাসওয়ার্ড অনুমান করার সবচেয়ে সহজ দরজা এটাই হতে পারত। যাচাইটা
    * `AuthService.login()`-এ হওয়ায় লগইনের throttle-টাও আপনাআপনি প্রযোজ্য।
    */
-  it('বারবার ভুল দিলে অ্যাকাউন্ট তালাবন্ধ হয়', async () => {
+  it.skipIf(!THROTTLE.enabled)('বারবার ভুল দিলে অ্যাকাউন্ট তালাবন্ধ হয়', async () => {
     /**
      * ⚠️ এই টেস্টের জন্য **আলাদা ও অনন্য** একটা ইমেইল। throttle-এর
      * কাউন্টার ইন-মেমরিতে (`email|ip`), আর `resetDatabase()` সেটা মোছে না
@@ -262,13 +269,21 @@ describe('POST /agent/enroll-login — রক্ষাকবচ', () => {
       },
     });
 
+    /**
+     * ⚠️⚠️ সংখ্যাটা আর হার্ডকোড নয় — এটা এখন `.env`-এর সেটিং। আগে "৫"
+     * বসানো ছিল, তাই ডিফল্ট নরম করার সাথে সাথেই টেস্ট ভেঙেছে, অথচ
+     * আচরণ ঠিকই ছিল। টেস্ট নিয়ম পাহারা দিক, একটা সংখ্যা নয়।
+     */
     const codes: number[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i <= THROTTLE.maxFails; i++) {
       const res = await enrollLogin({ ...facts(), email, password: `guess-${i}` });
       codes.push(res.status);
     }
 
-    expect(codes).toEqual([401, 401, 401, 401, 401, 429]);
+    expect(codes.slice(0, THROTTLE.maxFails)).toEqual(
+      Array(THROTTLE.maxFails).fill(401),
+    );
+    expect(codes[THROTTLE.maxFails]).toBe(429);
 
     // ⚠️ তালা পড়ার পর **ঠিক পাসওয়ার্ডও** আটকায় — নইলে তালাটার মানেই থাকত না
     const right = await enrollLogin({ ...facts(), email, password });
