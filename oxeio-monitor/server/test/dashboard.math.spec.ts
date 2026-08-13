@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  agentPresence,
   AGENT_DOWN_AFTER_SEC,
   decideLiveStatus,
   formatWorkDate,
@@ -29,6 +30,9 @@ const secondsAgo = (sec: number): Date => new Date(NOW.getTime() - sec * 1000);
 /** heartbeat-এ সদ্য `active` বলা একটা সুস্থ ডিভাইস; over দিয়ে যা খুশি বদলাও */
 function device(over: Partial<DeviceReport> = {}): DeviceReport {
   return {
+    // ⚠️ ডিফল্ট `active` — বেশিরভাগ টেস্টের প্রশ্ন heartbeat নিয়ে, ডিভাইস
+    //    বন্ধ কি না তা নিয়ে নয়। বাতিল ডিভাইসের টেস্টগুলো নিজেরাই বলে দেয়।
+    status: 'active',
     lastSeenAt: secondsAgo(5),
     lastState: 'active',
     lastStateAt: secondsAgo(5),
@@ -425,3 +429,51 @@ describe('তারিখ — parse ও format', () => {
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
 }
+
+/**
+ * ⭐ এজেন্টের **উপস্থিতি** — রঙ নয়, ব্যাখ্যা।
+ *
+ * ⚠️⚠️ এই টেস্টগুলো লেখা হয়েছে একটা স্ববিরোধী কার্ড থেকে: উপরে ১৬:৫০-এর
+ * স্ক্রিনশট, নিচে *"Never checked in"*। কারণ কর্মী একবার নিষ্ক্রিয়
+ * হওয়ায় তাঁর ডিভাইস revoke হয়ে গিয়েছিল, আর কোয়েরি বাতিল ডিভাইস
+ * ছেঁকে ফেলত — ফলে "কখনো বসেনি" আর "বন্ধ করে দেওয়া" এক দেখাত।
+ */
+describe('agentPresence', () => {
+  it('ডিভাইসই না থাকলে never_installed', () => {
+    expect(agentPresence([])).toBe('never_installed');
+  });
+
+  it('সচল ডিভাইস থাকলে installed', () => {
+    expect(agentPresence([device()])).toBe('installed');
+  });
+
+  /** ⭐⭐ এই ফাইলের নতুন মূল টেস্ট */
+  it('সব ডিভাইস বাতিল হলে switched_off', () => {
+    expect(agentPresence([device({ status: 'revoked' })])).toBe('switched_off');
+  });
+
+  /** ⚠️ একটাও সচল থাকলে সেটাই যথেষ্ট — ডেস্কটপ বন্ধ, ল্যাপটপ চালু */
+  it('মিশ্র হলে installed', () => {
+    expect(agentPresence([device({ status: 'revoked' }), device()])).toBe('installed');
+  });
+});
+
+describe('বাতিল ডিভাইস হিসাবের বাইরে', () => {
+  /**
+   * ⚠️⚠️ বাতিল ডিভাইসের পুরোনো heartbeat গোনা হলে বন্ধ করে দেওয়া মেশিন
+   * কর্মীকে **সবুজ** দেখাত, অথচ ওটা আর কোনোদিন সাড়া দেবে না।
+   */
+  it('বাতিল ডিভাইসের সাড়া গোনা হয় না', () => {
+    expect(latestHeartbeat([device({ status: 'revoked' })])).toBeNull();
+  });
+
+  it('সব ডিভাইস বাতিল হলে কার্ড offline, agent_down নয়', () => {
+    expect(statusOf([device({ status: 'revoked' })])).toBe('offline');
+  });
+
+  it('বাতিলের পাশে সচল থাকলে সচলটাই গোনা হয়', () => {
+    expect(
+      statusOf([device({ status: 'revoked', lastSeenAt: secondsAgo(99_999) }), device()]),
+    ).toBe('active');
+  });
+});

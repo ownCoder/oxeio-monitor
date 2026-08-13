@@ -8,7 +8,6 @@ import { Tabs } from '../../components/Tabs';
 import { AgentVersionsTab } from './AgentVersionsTab';
 import { AuditTab } from './AuditTab';
 import { CategoriesTab } from './CategoriesTab';
-import { DevicesTab } from './DevicesTab';
 import { PoliciesTab } from './PoliciesTab';
 import { StaffTab } from './StaffTab';
 
@@ -30,7 +29,6 @@ import { StaffTab } from './StaffTab';
 
 const TABS = [
   { id: 'staff', label: 'Staff' },
-  { id: 'devices', label: 'Devices' },
   { id: 'categories', label: 'Categories' },
   { id: 'policies', label: 'Policies & holidays' },
   // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
@@ -42,8 +40,15 @@ const TABS = [
 type TabKey = (typeof TABS)[number]['id'];
 
 const SUBTITLE: Record<TabKey, string> = {
+  // ⚠️⚠️ **"Devices" ট্যাবটা ইচ্ছাকৃতভাবে তুলে দেওয়া হয়েছে।** মালিকের
+  //    কথায়: *"ami Devices ei option tai chai na, eta full system take
+  //    complex banacche."* — আর তিনি ঠিক ছিলেন: একই প্রশ্নের ("Belal-এর
+  //    PC ঠিক আছে তো?") উত্তর দুই পর্দায় খুঁজতে হতো।
+  //
+  // ⭐ ওই পর্দার একমাত্র সত্যিকারের দরকারি কাজটা — বন্ধ এজেন্ট ফেরানো —
+  //    এখন Staff সারিতেই, "Turn agent on" হিসেবে। আর লুকিয়ে ফেলা নয়,
+  //    **মানুষ ধরে সাজানো**: মালিক ডিভাইস নম্বর নিয়ে ভাবেন না।
   staff: 'Add, edit and deactivate people — nothing is ever deleted',
-  devices: 'Which PCs are sending data, and which have been shut off',
   categories: 'Which apps and sites fall into which category',
   policies: 'Monthly target, screenshot window and days off',
   agent: 'Which build each PC is offered — and how widely',
@@ -89,7 +94,6 @@ export function SettingsPage() {
       </div>
 
       {active === 'staff' && <StaffTab />}
-      {active === 'devices' && <DevicesTab />}
       {active === 'categories' && <CategoriesTab />}
       {active === 'policies' && <PoliciesTab />}
       {active === 'agent' && <AgentVersionsTab />}

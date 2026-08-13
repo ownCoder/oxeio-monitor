@@ -40,7 +40,7 @@ export interface EmployeeRow {
   policyDocPath: string | null;
   createdAt: Date;
   /** ⭐ সেটআপের অবস্থা — `EMPLOYEE_SELECT` থেকে */
-  _count?: { devices: number };
+  devices?: { status: 'active' | 'revoked' }[];
   portalUsers?: { id: number; email: string; role: UserRole }[];
 }
 
@@ -70,6 +70,8 @@ export interface EmployeeBaseView {
    */
   hasPortalAccount: boolean;
   hasDevice: boolean;
+  /** ⭐ ডিভাইস আছে, কিন্তু সবগুলোই বন্ধ — সারিতে "Turn agent on" দেখানোর ভিত্তি */
+  agentSwitchedOff: boolean;
 
   /**
    * ⭐ portal অ্যাকাউন্টের id ও লগইন ইমেইল — পাসওয়ার্ড রিসেট ও ইমেইল
@@ -129,7 +131,20 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     //    পর্দাটা কাজ **বাকি আছে** দেখানোর জন্য; ভুল করলে বাড়তি কাজ দেখাক,
     //    কম নয়।
     hasPortalAccount: (row.portalUsers?.length ?? 0) > 0,
-    hasDevice: (row._count?.devices ?? 0) > 0,
+    hasDevice: (row.devices ?? []).some((d) => d.status === 'active'),
+
+    /**
+     * ⭐ এজেন্ট বসানো ছিল, কিন্তু এখন বন্ধ।
+     *
+     * ⚠️⚠️ কর্মী নিষ্ক্রিয় করলে তাঁর সব ডিভাইস revoke হয়, আর আবার সক্রিয়
+     * করলে সেগুলো **ফেরে না** (ইচ্ছাকৃত — পুরোনো টোকেন আপনাআপনি জেগে
+     * ওঠা উচিত নয়)। ফলে বোর্ডে তিনি চিরকাল "Offline", অথচ এজেন্ট তাঁর
+     * PC-তে দিব্যি চলছে। এই ঘরটাই পর্দাকে "Turn agent on" বোতামটা
+     * দেখানোর সুযোগ দেয়।
+     */
+    agentSwitchedOff:
+      !(row.devices ?? []).some((d) => d.status === 'active') &&
+      (row.devices ?? []).some((d) => d.status === 'revoked'),
     portalUserId: row.portalUsers?.[0]?.id ?? null,
     portalEmail: row.portalUsers?.[0]?.email ?? null,
     portalRole: row.portalUsers?.[0]?.role ?? null,

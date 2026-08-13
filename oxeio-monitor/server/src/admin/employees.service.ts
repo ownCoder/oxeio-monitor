@@ -60,7 +60,18 @@ const EMPLOYEE_SELECT = {
    * ⭐ `_count` ব্যবহার করা হয়েছে, সারি টেনে নয় — ইউজারের ইমেইল বা
    * ডিভাইসের টোকেন এই রেসপন্সে ঢোকার কোনো কারণ নেই।
    */
-  _count: { select: { devices: { where: { status: 'active' } } } },
+  /**
+   * ⚠️⚠️ `_count` ছিল, কিন্তু ওটা দিয়ে **দুই রকম গোনা যায় না** — Prisma
+   * একই রিলেশনের ছাঁকা-গোনা একবারই দেয়। অথচ দরকার দুটোই: সচল ডিভাইস
+   * আছে কি না, আর বাতিল ডিভাইস আছে কি না। নইলে "কখনো এজেন্ট বসেনি" আর
+   * "এজেন্ট বন্ধ করে দেওয়া" আলাদা করা যেত না — অথচ প্রথমটায় PC-তে গিয়ে
+   * বসাতে হয়, দ্বিতীয়টায় সারিতেই একটা বোতাম।
+   *
+   * ⭐ তাই সারি টানা হয়, কিন্তু **শুধু `status`** — hostname, token,
+   * machineGuid কিছুই আসে না। `_count`-এর মূল প্রতিশ্রুতিটা (whitelist)
+   * অক্ষুণ্ন, শুধু আকারটা বদলেছে।
+   */
+  devices: { select: { status: true } },
 
   /**
    * ⭐ portal অ্যাকাউন্ট — **id ও ইমেইল**, শুধু "আছে কি নেই" নয়।
@@ -440,6 +451,70 @@ export class EmployeesService {
     });
 
     return toEmployeeView(row, actor.role);
+  }
+
+  /**
+   * ⭐ **এই কর্মীর এজেন্ট আবার চালু করা** — বন্ধ হয়ে যাওয়া ডিভাইসগুলো ফেরানো।
+   *
+   * ⚠️⚠️ **কেন কর্মী ধরে, ডিভাইস ধরে নয়:** মালিক "ডিভাইস #৬১" নিয়ে ভাবেন
+   * না, ভাবেন "Belal-এর PC" নিয়ে। আলাদা একটা Devices পর্দা রাখলে একই
+   * প্রশ্নের উত্তর দুই জায়গায় খুঁজতে হতো, আর মালিকের ভাষায় বললে সেটা
+   * "পুরো সিস্টেমটাকে জটিল করে দিচ্ছিল"।
+   *
+   * ⚠️ এটা দরকার হয় কারণ `deactivate()` কর্মীর সব ডিভাইস revoke করে, আর
+   * `reactivate()` সেগুলো **ইচ্ছাকৃতভাবে ফেরায় না** — ফিরে আসা কর্মীর
+   * পুরোনো টোকেন আপনাআপনি জেগে ওঠা উচিত নয়। ফলে বোর্ডে তিনি চিরকাল
+   * "Offline" থাকতেন, অথচ এজেন্ট তাঁর PC-তে দিব্যি চলছে।
+   *
+   * ⚠️⚠️ **হারিয়ে যাওয়া ল্যাপটপে এটা চালাবেন না** — revoke `token_hash`
+   * মোছে না, শুধু দরজা বন্ধ করে। ফেরালে **পুরোনো টোকেনটাই আবার জেগে
+   * ওঠে**, অর্থাৎ যে ল্যাপটপটা ধরে আছে সে-ও ফিরে আসে। ওই ক্ষেত্রে
+   * কর্মীকে নিষ্ক্রিয় রাখুন, আর নতুন মেশিনে নতুন করে সাইন ইন করান।
+   */
+  async turnAgentOn(
+    actor: SessionUser,
+    id: number,
+    ip: string,
+  ): Promise<{ restored: number }> {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id },
+      select: { id: true, empCode: true, status: true },
+    });
+    if (!employee) throw new NotFoundException('Staff member not found');
+
+    /**
+     * ⚠️ নিষ্ক্রিয় কর্মীর ডিভাইস ফেরানো যায় না — নইলে ছাঁটাই হওয়া কারো
+     *    মেশিন আবার ঘণ্টা পাঠাতে শুরু করত, অথচ Staff পর্দায় তিনি
+     *    "Inactive"। আগে তাঁকে ফেরান, তারপর এজেন্ট।
+     */
+    if (employee.status !== 'active') {
+      throw new ConflictException(
+        'This staff member is inactive — reactivate them first, then turn the agent on',
+      );
+    }
+
+    const { count } = await this.prisma.device.updateMany({
+      where: { employeeId: id, status: 'revoked' },
+      data: { status: 'active' },
+    });
+
+    // ⚠️ কিছুই বদলায়নি — audit-এ ঘটনা লেখা হয় না, নইলে ইতিহাসে এমন সারি
+    //    জমত যেখানে আসলে কিছু ঘটেনি।
+    if (count === 0) return { restored: 0 };
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'change_setting',
+      targetType: ADMIN_TARGET.employee,
+      targetId: id,
+      ipAddress: ip,
+      meta: { op: 'turn_agent_on', empCode: employee.empCode, restored: count },
+    });
+
+    this.logger.warn(
+      `employee ${employee.empCode}: ${count} device(s) turned back on by user ${actor.userId}`,
+    );
+    return { restored: count };
   }
 
   // ── ভেতরের সাহায্যকারী ────────────────────────────────────────────────────

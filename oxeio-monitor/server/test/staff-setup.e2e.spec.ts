@@ -47,7 +47,7 @@ const rowFor = async (empCode: string) => {
   const res = await owner.http.get('/api/v1/employees?status=all').expect(200);
   return (res.body.rows as Record<string, unknown>[]).find(
     (r) => r.empCode === empCode,
-  ) as { hasPortalAccount: boolean; hasDevice: boolean };
+  ) as { hasPortalAccount: boolean; hasDevice: boolean; agentSwitchedOff: boolean };
 };
 
 describe('GET /employees/next-code', () => {
@@ -168,6 +168,59 @@ describe('GET /employees — সেটআপের অবস্থা', () => {
     });
 
     expect((await rowFor('SU-REVOKED')).hasDevice).toBe(false);
+  });
+
+  /**
+   * ⭐⭐ **"কখনো বসেনি" আর "বন্ধ করে দেওয়া" — দুটো আলাদা অবস্থা।**
+   *
+   * ⚠️ দুটোতেই `hasDevice` মিথ্যা, কিন্তু করণীয় সম্পূর্ণ ভিন্ন: একটায়
+   * PC-তে গিয়ে MSI বসাতে হয়, অন্যটায় সারিতেই এক ক্লিক। আলাদা না করলে
+   * মালিক বন্ধ হয়ে যাওয়া এজেন্টের জন্য আবার ইনস্টল করতে যেতেন।
+   */
+  it('বাতিল ডিভাইস থাকলে agentSwitchedOff সত্যি', async () => {
+    const { code } = await createEmployeeWithCode(h.prisma, 'SU-OFF');
+    const device = await enrollDevice(h, code);
+
+    await h.prisma.device.update({
+      where: { id: device.deviceId },
+      data: { status: 'revoked' },
+    });
+
+    const row = await rowFor('SU-OFF');
+    expect(row.hasDevice).toBe(false);
+    expect(row.agentSwitchedOff).toBe(true);
+  });
+
+  it('কখনো ডিভাইস না থাকলে agentSwitchedOff মিথ্যা', async () => {
+    await createEmployeeWithCode(h.prisma, 'SU-NEVER');
+
+    expect((await rowFor('SU-NEVER')).agentSwitchedOff).toBe(false);
+  });
+
+  /**
+   * ⚠️ একটাও সচল থাকলে "বন্ধ" নয় — ডেস্কটপ বাতিল, ল্যাপটপ চালু।
+   *
+   * ⚠️ দ্বিতীয় ডিভাইসটা সরাসরি বসানো হয়, `enrollDevice` দিয়ে নয় —
+   *    enrollment কোড **একবার-ব্যবহার্য**, দ্বিতীয়বার ৪০১ দেয়।
+   */
+  it('সচল ডিভাইস থাকলে agentSwitchedOff মিথ্যা', async () => {
+    const { code, employeeId } = await createEmployeeWithCode(h.prisma, 'SU-MIX');
+    await enrollDevice(h, code);
+
+    await h.prisma.device.create({
+      data: {
+        hostname: 'OLD-DESKTOP',
+        windowsUsername: 'someone',
+        employeeId,
+        machineGuid: `mix-${Date.now()}`,
+        tokenHash: 'not-a-real-token',
+        status: 'revoked',
+      },
+    });
+
+    const row = await rowFor('SU-MIX');
+    expect(row.hasDevice).toBe(true);
+    expect(row.agentSwitchedOff).toBe(false);
   });
 
   /**

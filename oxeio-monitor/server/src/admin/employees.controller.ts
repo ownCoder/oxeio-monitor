@@ -93,6 +93,22 @@ export class EmployeesController {
   }
 
   /**
+   * ⭐ `POST /api/v1/employees/:id/agent/turn-on` — বন্ধ হয়ে যাওয়া এজেন্ট ফেরানো।
+   *
+   * ⚠️ কর্মী ধরে, ডিভাইস ধরে নয় — মালিক "ডিভাইস #৬১" নিয়ে ভাবেন না,
+   * ভাবেন "Belal-এর PC" নিয়ে।
+   */
+  @Post(':id/agent/turn-on')
+  @HttpCode(HttpStatus.OK)
+  turnAgentOn(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
+  ): Promise<{ restored: number }> {
+    return this.employees.turnAgentOn(actor, id, ip);
+  }
+
+  /**
    * ⭐ `POST /api/v1/employees/:id/policy-signed` — সই করা মনিটরিং পলিসি।
    *
    * বডি ঐচ্ছিক: `{ "signedOn": "2026-08-03" }`। না দিলে আজকের ঢাকার তারিখ।

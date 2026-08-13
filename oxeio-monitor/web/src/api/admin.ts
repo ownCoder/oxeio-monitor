@@ -49,6 +49,15 @@ export interface EmployeeView {
    * স্টাফ হয়ে যেতেন।
    */
   portalRole: 'owner' | 'manager' | 'employee' | null;
+
+  /**
+   * ⭐ এজেন্ট বসানো ছিল, কিন্তু এখন বন্ধ — সারিতে "Turn agent on" দেখানোর ভিত্তি।
+   *
+   * ⚠️ `hasDevice === false` দুটো সম্পূর্ণ আলাদা অবস্থায় সত্যি হয়:
+   * কখনো বসানো হয়নি, আর বসানো ছিল কিন্তু বন্ধ করে দেওয়া। প্রথমটায়
+   * PC-তে যেতে হয়, দ্বিতীয়টায় সারিতেই এক ক্লিক।
+   */
+  agentSwitchedOff: boolean;
   status: EmployeeStatus;
   policySignedAt: string | null;
   policyDocPath: string | null;
@@ -452,6 +461,18 @@ export function changeLoginEmail(
  * ⚠️ `owner` পাঠানো যায় না — সার্ভার ৪০০ দেবে। owner মানে বেতন, audit log
  * আর সেটিংসের চাবি; সেটা ড্রপডাউনের এক ক্লিকে হাতবদলের জিনিস নয়।
  */
+/**
+ * বন্ধ হয়ে যাওয়া এজেন্ট আবার চালু — **কর্মী ধরে, ডিভাইস ধরে নয়**।
+ *
+ * ⚠️ মালিক "ডিভাইস #৬১" নিয়ে ভাবেন না, ভাবেন "Belal-এর PC" নিয়ে। তাই
+ * আলাদা Devices পর্দা তুলে দিয়ে কাজটা Staff সারিতে আনা হয়েছে।
+ */
+export function turnAgentOn(employeeId: number): Promise<{ restored: number }> {
+  return api<{ restored: number }>(`/employees/${employeeId}/agent/turn-on`, {
+    method: 'POST',
+  });
+}
+
 export function changeUserRole(
   userId: number,
   role: 'employee' | 'manager',

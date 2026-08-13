@@ -10,7 +10,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   decideLiveStatus,
   formatWorkDate,
+  agentPresence,
   latestHeartbeat,
+  type AgentPresence,
   monthStartOf,
   parseWorkDate,
   previousWorkDate,
@@ -74,8 +76,16 @@ export interface LiveCard {
   /** মাসের হিসাব — এখন গৌণ, কিন্তু বেতনের ভিত্তি এটাই */
   monthWorkedSec: number;
   monthTargetSec: number;
-  /** শেষ heartbeat — কোনো ডিভাইস কখনো সাড়া না দিলে null */
+  /** শেষ heartbeat — কোনো **সচল** ডিভাইস সাড়া না দিলে null */
   lastHeartbeatAt: Date | null;
+
+  /**
+   * ⭐ `lastHeartbeatAt === null` কেন — সেটার ব্যাখ্যা।
+   *
+   * ⚠️ এটা ছাড়া পর্দা "কখনো সাড়া দেয়নি" লিখত, অথচ কারণটা হতে পারত
+   * "ডিভাইসটা বন্ধ করে দেওয়া হয়েছে" — দুটোর করণীয় সম্পূর্ণ আলাদা।
+   */
+  agentPresence: AgentPresence;
 }
 
 export interface LiveBoard {
@@ -212,9 +222,19 @@ export class DashboardService {
       //    জোড়া লেগে যেত, আর কার্ড চিরকাল সবুজ দেখাত। ১৫ জনের ২০-৩০টা
       //    সারি — এটা এখনো একটাই কোয়েরি, N+1 নয়।
       this.prisma.device.findMany({
-        where: { employeeId: { in: ids }, status: 'active' },
+        /**
+         * ⚠️⚠️ আগে এখানে `status: 'active'` ছাঁকা ছিল। ফলে বন্ধ করে দেওয়া
+         * ডিভাইস তালিকা থেকেই উধাও হয়ে যেত, আর কার্ড "কখনো এজেন্ট বসেনি"
+         * থেকে আলাদা করা যেত না — একই কার্ডে ১৬:৫০-এর স্ক্রিনশট আর পাশে
+         * *"Never checked in"*।
+         *
+         * ⭐ ছাঁকাটা এখন `dashboard.math.ts`-এ, যেখানে সিদ্ধান্তটা নেওয়া হয়
+         * আর টেস্টে বাঁধা যায়।
+         */
+        where: { employeeId: { in: ids } },
         select: {
           employeeId: true,
+          status: true,
           lastSeenAt: true,
           lastState: true,
           lastStateAt: true,
@@ -301,6 +321,7 @@ export class DashboardService {
         monthWorkedSec: monthSec.get(e.id) ?? 0,
         monthTargetSec: Math.round(targetHours * HOUR),
         lastHeartbeatAt: latestHeartbeat(own),
+        agentPresence: agentPresence(own),
       };
     });
 

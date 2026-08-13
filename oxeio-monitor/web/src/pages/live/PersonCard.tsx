@@ -147,16 +147,38 @@ export function PersonCard({
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <StatusChip status={card.status} />
-        {/* ⚠️ heartbeat কখনো না এলে "সাড়া কখনো নয়" পড়তে অদ্ভুত লাগে —
-            আর ওটা আলাদা ঘটনাও: এজেন্ট বসানোই হয়নি। */}
-        <span className="text-[11px] text-ink-3">
-          {card.lastHeartbeatAt === null
-            ? 'Never checked in'
-            : `Seen ${formatAgo(card.lastHeartbeatAt)}`}
-        </span>
+        {/* ⚠️⚠️ heartbeat না থাকার **তিনটে আলাদা কারণ**, আর মালিকের
+            করণীয়ও তিন রকম। আগে তিনটেই "Never checked in" পড়ত — তাই
+            একই কার্ডে ১৬:৫০-এর স্ক্রিনশট আর "কখনো সাড়া দেয়নি" পাশাপাশি
+            বসত, যা নিজেই নিজেকে মিথ্যা প্রমাণ করত। */}
+        <span className="text-[11px] text-ink-3">{heartbeatLabel(card)}</span>
       </div>
     </article>
   );
+}
+
+/**
+ * ⭐ স্ট্যাটাস চিপের পাশের ছোট লেখাটা — **কী করতে হবে** বলার শেষ সুযোগ।
+ *
+ * ⚠️ "Agent switched off" ইচ্ছাকৃতভাবে আলাদা: কর্মী নিষ্ক্রিয় করলে তাঁর
+ * সব ডিভাইস revoke হয়, আর আবার সক্রিয় করলে সেগুলো **ফেরে না** (ইচ্ছাকৃত —
+ * ফিরে আসা কর্মীর পুরোনো টোকেন আপনাআপনি জেগে ওঠা উচিত নয়)। ফলে এজেন্ট
+ * চলতে থাকলেও বোর্ডে সে অদৃশ্য। ওই অবস্থায় করণীয় Settings → Devices →
+ * Staff →
+ * ওই সারির "Turn agent on", আর সেটা "কখনো বসেনি" থেকে সম্পূর্ণ আলাদা কাজ।
+ */
+function heartbeatLabel(card: LiveCard): string {
+  if (card.lastHeartbeatAt !== null) return `Seen ${formatAgo(card.lastHeartbeatAt)}`;
+
+  switch (card.agentPresence) {
+    case 'switched_off':
+      return 'Agent switched off — Settings → Staff';
+    case 'never_installed':
+      return 'No agent yet';
+    default:
+      // সচল ডিভাইস আছে, অথচ একবারও সাড়া দেয়নি — বসানো হয়েছে, চালু হয়নি
+      return 'Never checked in';
+  }
 }
 
 /**

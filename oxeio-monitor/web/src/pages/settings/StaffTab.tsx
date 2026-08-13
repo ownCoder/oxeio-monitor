@@ -11,6 +11,7 @@ import {
   listEmployees,
   listWorkPolicies,
   reactivateEmployee,
+  turnAgentOn,
   updateEmployee,
   type CreateEmployeeBody,
   type EmployeeStatus,
@@ -107,6 +108,31 @@ export function StaffTab() {
 
   const rows = staff.data?.rows ?? [];
 
+  /**
+   * ⭐ বন্ধ হয়ে যাওয়া এজেন্ট আবার চালু — **নিশ্চিতকরণসহ**।
+   *
+   * ⚠️⚠️ revoke `token_hash` মোছে না, শুধু দরজা বন্ধ করে। ফেরালে **পুরোনো
+   * টোকেনটাই আবার জেগে ওঠে** — তাই হারিয়ে যাওয়া ল্যাপটপে এটা করা যাবে না,
+   * যে ধরে আছে সে-ও ফিরে আসবে। এক ক্লিকে হয়ে যাওয়ার মতো কাজ নয়।
+   */
+  const onTurnAgentOn = (emp: EmployeeView) => {
+    const ok = window.confirm(
+      `Turn ${emp.fullName}'s agent back on?
+
+`
+        + 'Their PC starts sending hours and screenshots again, using the login it already has.
+
+'
+        + '⚠️ Do NOT do this if that PC was lost or stolen — whoever holds it gets back in too. '
+        + 'In that case leave it off and sign in fresh on the new machine.',
+    );
+    if (!ok) return;
+
+    void turnAgentOn(emp.id)
+      .then(() => staff.reload())
+      .catch((e: unknown) => window.alert((e as Error).message));
+  };
+
   const columns: Column<EmployeeView>[] = [
     {
       key: 'name',
@@ -182,6 +208,27 @@ export function StaffTab() {
             </span>
           );
         }
+        /**
+         * ⚠️⚠️ **এটা "Ready to install"-এর আগে দেখতে হবে।** দুটো অবস্থাতেই
+         * `hasDevice` মিথ্যা, কিন্তু করণীয় সম্পূর্ণ আলাদা: একটায় PC-তে
+         * গিয়ে MSI বসাতে হয়, অন্যটায় সারিতেই এক ক্লিক। উল্টো ক্রমে লিখলে
+         * মালিক বন্ধ হয়ে যাওয়া এজেন্টের জন্য আবার ইনস্টল করতে যেতেন।
+         *
+         * ⭐ এটা ঘটে কারণ কর্মী নিষ্ক্রিয় করলে তাঁর ডিভাইস revoke হয়, আর
+         * আবার সক্রিয় করলে সেটা ফেরে না — ইচ্ছাকৃত, কিন্তু নীরব।
+         */
+        if (emp.agentSwitchedOff) {
+          return (
+            <button
+              type="button"
+              className="text-brand underline underline-offset-2"
+              title="Their agent was switched off (this happens when someone is made inactive). Turn it back on — no need to reinstall."
+              onClick={() => onTurnAgentOn(emp)}
+            >
+              Turn agent on
+            </button>
+          );
+        }
         if (!emp.hasDevice) {
           return (
             <span className="text-idle" title="Login ready — now install the agent on their PC">
@@ -251,15 +298,21 @@ export function StaffTab() {
   const activeStaff = rows.filter((e) => e.status === 'active');
   const needLogin = activeStaff.filter((e) => !e.hasPortalAccount).length;
   const needAgent = activeStaff.filter(
-    (e) => e.hasPortalAccount && !e.hasDevice,
+    (e) => e.hasPortalAccount && !e.hasDevice && !e.agentSwitchedOff,
   ).length;
 
+  // ⚠️ আলাদা করে গোনা — "বসাতে হবে" আর "চালু করতে হবে" এক নয়, আর
+  //    দ্বিতীয়টা এক ক্লিকের কাজ। একসাথে গুনলে মালিক ভাবতেন সবগুলোতেই
+  //    PC-তে যেতে হবে।
+  const switchedOff = activeStaff.filter((e) => e.agentSwitchedOff).length;
+
   const setupHint =
-    needLogin === 0 && needAgent === 0
+    needLogin === 0 && needAgent === 0 && switchedOff === 0
       ? undefined
       : [
           needLogin > 0 ? `${needLogin} still need a portal account` : null,
           needAgent > 0 ? `${needAgent} ready for the agent` : null,
+          switchedOff > 0 ? `${switchedOff} agent switched off` : null,
         ]
           .filter(Boolean)
           .join(' · ');

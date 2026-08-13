@@ -37,10 +37,35 @@ export type LiveStatus = 'active' | 'idle' | 'offline' | 'agent_down';
  *    · `lastStateAt` — **কখন** বলেছিল, অর্থাৎ কথাটা এখনো বিশ্বাসযোগ্য কি না
  */
 export interface DeviceReport {
+  /**
+   * ⚠️ revoked ডিভাইসও এখন তালিকায় **আসে** — আগে কোয়েরিতেই ছাঁকা হতো।
+   * ছেঁকে ফেললে "কখনো বসেনি" আর "বন্ধ করে দেওয়া" আলাদা করা যেত না।
+   */
+  status: 'active' | 'revoked';
   lastSeenAt: Date | null;
   lastState: SegmentState | null;
   lastStateAt: Date | null;
 }
+
+/**
+ * ⭐ এজেন্টের **উপস্থিতি** — রঙ নয়, ব্যাখ্যা।
+ *
+ * ⚠️⚠️ তিনটেই বোর্ডে ধূসর "Offline" দেখায়, কিন্তু মালিকের করণীয় তিন রকম।
+ * আগে তফাতটা ছিলই না, আর ফল ছিল একটা **স্ববিরোধী কার্ড**: উপরে ১৬:৫০-এর
+ * স্ক্রিনশট, নিচে *"Never checked in"* — একই কার্ডে দুটো পরস্পরবিরোধী কথা।
+ */
+export type AgentPresence =
+  /** কখনো এজেন্ট বসানোই হয়নি — নতুন কর্মী, PC এখনো দেওয়া হয়নি */
+  | 'never_installed'
+  /**
+   * ডিভাইস আছে, কিন্তু সবগুলোই বন্ধ করে দেওয়া (H06)।
+   *
+   * ⚠️ কর্মী **নিষ্ক্রিয় করলেও** এটা ঘটে — `deactivate()` তাঁর সব ডিভাইস
+   * revoke করে, আর `reactivate()` ইচ্ছাকৃতভাবে সেগুলো ফেরায় না।
+   */
+  | 'switched_off'
+  /** অন্তত একটা সচল ডিভাইস আছে */
+  | 'installed';
 
 export interface LiveStatusInput {
   /**
@@ -70,12 +95,30 @@ export interface LiveStatusInput {
  * দেখাত — 🔴 কোনোদিন উঠত না, আর ঠিক যে অবস্থাটা ধরার জন্য এই ফিচার,
  * সেটাই অদৃশ্য থাকত।
  */
-export function decideLiveStatus(input: LiveStatusInput): LiveStatus {
-  const { devices, fallbackState, now } = input;
+/**
+ * ⚠️ শুধু গোনার জন্য নয় — এই এক লাইনটাই ঠিক করে কার্ডে কী **লেখা** হবে।
+ */
+export function agentPresence(devices: readonly DeviceReport[]): AgentPresence {
+  if (devices.length === 0) return 'never_installed';
+  if (devices.some((d) => d.status === 'active')) return 'installed';
 
-  // ⚠️ ডিভাইসই নেই মানে এজেন্ট "পড়ে গেছে" নয় — নতুন কর্মী, PC এখনো দেওয়া
-  //    হয়নি। এটাকে agent_down দেখালে প্রথম দিন থেকেই ভুয়া লাল অ্যালার্ম
-  //    জ্বলত এবং লাল রঙের মানেই হারিয়ে যেত।
+  return 'switched_off';
+}
+
+export function decideLiveStatus(input: LiveStatusInput): LiveStatus {
+  const { fallbackState, now } = input;
+
+  /**
+   * ⚠️⚠️ বাতিল ডিভাইস এখানে **গোনা হয় না** — আগে কোয়েরিই ওগুলো বাদ দিত,
+   * এখন বাদ দেওয়াটা এখানে, স্পষ্ট করে। না ছাঁকলে বহু মাস আগে বন্ধ করা
+   * একটা মেশিনের পুরোনো `lastSeenAt` কর্মীকে "সবুজ" দেখাত।
+   */
+  const devices = input.devices.filter((d) => d.status === 'active');
+
+  // ⚠️ সচল ডিভাইস নেই মানে এজেন্ট "পড়ে গেছে" নয় — হয় নতুন কর্মী (PC
+  //    এখনো দেওয়া হয়নি), নয় ডিভাইসটা বন্ধ করে দেওয়া হয়েছে। দুটোর
+  //    কোনোটাই লাল অ্যালার্মের মতো জরুরি নয়, আর ভুয়া লাল জ্বললে লাল
+  //    রঙের মানেই হারিয়ে যেত। তফাতটা `agentPresence` লেখায় বলে।
   if (devices.length === 0) return 'offline';
 
   const lastSeenAt = latestHeartbeat(devices);
@@ -112,6 +155,10 @@ export function decideLiveStatus(input: LiveStatusInput): LiveStatus {
 export function latestHeartbeat(devices: readonly DeviceReport[]): Date | null {
   let latest: Date | null = null;
   for (const d of devices) {
+    // ⚠️ বাতিল ডিভাইসের পুরোনো heartbeat গোনা হয় না — নইলে বন্ধ করে
+    //    দেওয়া মেশিনের সাত দিন আগের সাড়া "Seen 7 days ago" হয়ে দেখাত,
+    //    অথচ ওটা আর কোনোদিন সাড়া দেবে না।
+    if (d.status !== 'active') continue;
     if (d.lastSeenAt === null) continue;
     if (latest === null || d.lastSeenAt.getTime() > latest.getTime()) {
       latest = d.lastSeenAt;

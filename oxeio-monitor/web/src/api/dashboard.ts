@@ -74,6 +74,15 @@ export interface LiveCard {
    * ⚠️ সার্ভারে টাইপটা `Date`, কিন্তু JSON-এ এটা **স্ট্রিং** হয়ে আসে।
    */
   lastHeartbeatAt: string | null;
+
+  /**
+   * ⭐ `lastHeartbeatAt === null` **কেন** — সেটার ব্যাখ্যা।
+   *
+   * ⚠️ এটা ছাড়া কার্ড "Never checked in" লিখত, অথচ কারণটা হতে পারত
+   * "ডিভাইসটা বন্ধ করে দেওয়া হয়েছে"। ফল ছিল একটা স্ববিরোধী কার্ড:
+   * উপরে ১৬:৫০-এর স্ক্রিনশট, নিচে "কখনো সাড়া দেয়নি"।
+   */
+  agentPresence: 'never_installed' | 'switched_off' | 'installed';
 }
 
 export interface LiveBoard {
