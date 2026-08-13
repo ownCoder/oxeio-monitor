@@ -108,14 +108,37 @@ export function PersonCell({
   fullName,
   empCode,
   note,
+  accent,
+  accentTitle,
 }: {
   fullName: string;
   empCode?: string;
   note?: ReactNode;
+  /**
+   * নামটা **মোটা ও সবুজ** করে দেখায় — তালিকায় চোখ বুলিয়েই আলাদা করা যায়।
+   *
+   * ⭐ ঐচ্ছিক, তাই `PersonCell`-এর বাকি পাঁচটা ব্যবহার (রিপোর্ট, হিটম্যাপ)
+   *    অপরিবর্তিত থাকে।
+   *
+   * ⚠️ **রঙই একমাত্র সংকেত নয়, মোটা হরফও** — বর্ণান্ধ কারো কাছে সবুজ আর
+   *    সাধারণ লেখা এক দেখাতে পারে, কিন্তু ওজনের তফাত সবাই দেখেন।
+   */
+  accent?: boolean;
+  /** hover করলে কেন আলাদা, সেটা বলে — নইলে রঙটা অব্যাখ্যাত থেকে যায় */
+  accentTitle?: string;
 }) {
   return (
     <div className="min-w-0">
-      <div className="truncate font-medium text-ink">{fullName}</div>
+      <div
+        className={
+          accent
+            ? 'truncate font-bold text-ok'
+            : 'truncate font-medium text-ink'
+        }
+        title={accent ? accentTitle : undefined}
+      >
+        {fullName}
+      </div>
       {(empCode || note) && (
         <div className="num truncate text-[11px] text-ink-3">
           {empCode}

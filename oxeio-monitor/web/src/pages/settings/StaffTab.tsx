@@ -133,11 +133,21 @@ export function StaffTab() {
     {
       key: 'name',
       header: 'Name',
+      /**
+       * ⭐ ম্যানেজারের নাম **মোটা ও সবুজ** — ১৫ জনের তালিকায় কে কী ভূমিকায়
+       *    আছেন সেটা জানতে আর প্রতিটা সারির `Login` জানালা খুলতে হয় না।
+       *
+       * ⚠️ owner-ও এখানে পড়ে না, ইচ্ছাকৃতভাবে। owner সাধারণত কর্মীর
+       *    তালিকায় থাকেনই না, আর থাকলেও তাঁকে "চিনিয়ে দেওয়ার" দরকার নেই —
+       *    যিনি দেখছেন তিনি নিজেই owner।
+       */
       render: (emp) => (
         <PersonCell
           fullName={emp.fullName}
           empCode={emp.empCode}
           note={emp.designation ?? undefined}
+          accent={emp.portalRole === 'manager'}
+          accentTitle="Manager — sees everyone's Live Board and reports"
         />
       ),
     },
