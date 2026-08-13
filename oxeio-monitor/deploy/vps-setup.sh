@@ -3,7 +3,10 @@
 # oXeio — VPS প্রথমবার দাঁড় করানো (ADR-026)
 #
 # চালানো (VPS-এ root হিসেবে):
-#     bash deploy/vps-setup.sh hub.oxeio.com
+#     bash /opt/oxeio/oxeio-monitor/deploy/vps-setup.sh hub.oxeio.com
+#
+# ⚠️ পাথে `oxeio-monitor/` অংশটা বাদ দেবেন না — রিপোর রুটে এই
+#    স্ক্রিপ্টটা নেই, ওটা এক ধাপ ভেতরে।
 #
 # ⭐ যা করে: Docker · ফায়ারওয়াল · গোপন মান তৈরি · DNS যাচাই · স্ট্যাক তোলা।
 # ⭐ **বারবার চালানো নিরাপদ** — যা আগে হয়ে গেছে তাতে হাত দেয় না, আর
@@ -81,7 +84,7 @@ clone_help() {
 
   ৩· তারপর SSH ঠিকানা দিয়ে আবার:
        OXEIO_REPO=git@github.com:ownCoder/oxeio-monitor.git \
-         bash $DIR/deploy/vps-setup.sh $PUBLIC_HOST
+         bash $DIR/oxeio-monitor/deploy/vps-setup.sh $PUBLIC_HOST
 EOF
 }
 
@@ -95,7 +98,20 @@ else
   fi
   ok "ক্লোন হলো → $DIR"
 fi
-cd "$DIR"
+
+# ⚠️⚠️ compose ফাইলগুলো রিপোর **রুটে নয়**, `oxeio-monitor/`-এর ভেতরে।
+#
+#    ⭐ ১৩ আগস্ট এখানেই আটকেছিল: clone সফল হয়েছে, কিন্তু স্ক্রিপ্ট রুটে
+#    `cd` করে `docker compose` ডেকেছে — আর ওখানে docker-compose.yml নেই।
+#    (আর চালানোর কমান্ডেও পাথটা ভুল দেওয়া হয়েছিল।)
+#
+#    দুটো বিন্যাসেই চলে, তাই রিপোর গঠন বদলালেও ভাঙবে না।
+COMPOSE_DIR="$DIR/oxeio-monitor"
+[ -f "$COMPOSE_DIR/docker-compose.yml" ] || COMPOSE_DIR="$DIR"
+[ -f "$COMPOSE_DIR/docker-compose.yml" ]   || die "docker-compose.yml পাওয়া গেল না ($DIR-এর ভেতরে খোঁজা হয়েছে)"
+
+cd "$COMPOSE_DIR"
+ok "compose ফোল্ডার → $COMPOSE_DIR"
 
 # ── ৪· DNS — **তোলার আগেই** ──────────────────────────────────────────────
 #
