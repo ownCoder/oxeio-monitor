@@ -265,7 +265,10 @@ oxeio-monitor/
 ├── deploy/
 │   ├── README.md                           # রোলআউট নির্দেশিকা — সার্ট · TLS · ফায়ারওয়াল · পিনিং
 │   ├── make-cert.ps1                       # self-signed সার্ট + পিন (certs/)
-│   └── defender-exclusions.ps1             # AV exception স্ক্রিপ্ট
+│   ├── defender-exclusions.ps1             # AV exception স্ক্রিপ্ট
+│   ├── vps-setup.sh                        ✅ VPS প্রথমবার দাঁড় করানো (ADR-026)
+│   └── vps-update.sh                       ✅ ⭐ পরের প্রতিটা হালনাগাদ — pull · migration · রিবিল্ড · স্বাস্থ্য
+│                                              ⚠️ seed চালায় না — ওটা কর্মীর নাম/বেতন/তারিখ চাপা দিত
 └── (রেপো রুটে) .github/workflows/ci.yml   ✅ server · web · docker — তিনটি job
 ```
 
