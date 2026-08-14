@@ -13,6 +13,12 @@ the **hundred small decisions** about what a monitoring tool should refuse to do
 > English. That's deliberate: the comments explain *why* a line exists, and they
 > were written to be read by the people who maintain this.
 
+![The oXeio Live Board — team status, the shape of the day, pace against target, and what needs attention](docs/media/live-board.png)
+
+<sub>The Live Board, running on demo data. Names are fictional; the numbers are
+what the real dashboard computes. A day the server wasn't watching is the dashed
+bar in *Last 7 days* — not a zero.</sub>
+
 ---
 
 ## What it refuses to do
