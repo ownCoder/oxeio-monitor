@@ -267,6 +267,14 @@ oxeio-monitor/
 │       ├── api/useApi.ts                   ✅ useApi · usePolling (ট্যাব লুকোলে থামে)
 │       ├── lib/format.ts                   ✅ ⚠️ তারিখ সবসময় ঢাকার কর্মদিবস
 │       │                                      ⭐ **ফরম্যাটের একমাত্র জায়গা** — পেজে নয়
+│       ├── pages/live/TopApps.tsx          ✅ ⭐ "Where today went" — দলের অ্যাপ-সময়।
+│       │                                      ⚠️ **এক হিউ, স্বচ্ছতার ধাপে** — অবস্থার
+│       │                                      রং (ok/idle/attention) পরিচয় বোঝাতে
+│       │                                      ব্যবহার করলে অ্যালার্টের লাল আর চার্টের
+│       │                                      লাল এক হয়ে যেত
+│       ├── pages/live/OpenAlerts.tsx       ✅ না-দেখা অ্যালার্ট, **owner-only**।
+│       │                                      ⚠️ খালি অবস্থা সবুজ নয়, নিরপেক্ষ —
+│       │                                      "কিছু নেই" আর "সব ভালো" এক নয়
 │       ├── pwa-sw.ts                       ✅ ⭐⭐ সার্ভিস ওয়ার্কার। **কোনো API উত্তর
 │       │                                      ক্যাশ করে না** — `/api` `fetch`-এ সবার আগে
 │       │                                      বাদ, আর রানটাইমে কোথাও `cache.put` নেই
@@ -276,7 +284,11 @@ oxeio-monitor/
 │       ├── auth/AuthContext.tsx            ✅ সেশন · useIdleLogout (I09)
 │       │                                   ⚠️ `offline` — "সার্ভারে পৌঁছাইনি" আর "সেশন
 │       │                                      শেষ" আলাদা; নইলে ফোনে নেট গেলেই লগইন পর্দা
-│       ├── components/Layout.tsx           ✅ কালো টপবার · নেভ · সার্চ · থিম
+│       ├── components/Layout.tsx           ✅ কালো টপবার · নেভ · থিম
+│       │                                   ⭐ `lg`-এর উপরে **সাইডবার**, নিচে আড়াআড়ি
+│       │                                      সারি। ⚠️ ফোনে সাইডবার নয় — হয় কনটেন্টের
+│       │                                      ২০০px যেত, নয় একটা drawer লাগত
+│       │                                   ⚠️ গ্লোবাল সার্চ সরানো (G127)
 │       ├── components/                     ✅ Page · States · Card · ProgressRing ·
 │       │                                      StatusDot · DatePicker · Table · Duration ·
 │       │                                      EmployeePicker · ThemeToggle · GlobalSearch
