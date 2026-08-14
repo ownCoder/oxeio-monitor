@@ -26,6 +26,7 @@ export class LoginThrottleService {
     this.limits = resolveThrottle({
       maxFails: config.get<string>('LOGIN_MAX_FAILS'),
       lockMinutes: config.get<string>('LOGIN_LOCK_MINUTES'),
+      ipMaxFails: config.get<string>('LOGIN_IP_MAX_FAILS'),
     });
 
     /**
@@ -45,9 +46,25 @@ export class LoginThrottleService {
     return this.limits.lockMs > 0 ? this.limits.lockMs : 5 * 60 * 1000;
   }
 
-  /** ইমেইল + IP — একটাই ইমেইল বহু IP থেকে, বা একটাই IP বহু ইমেইলে, দুটোই ধরা পড়ে */
-  private key(email: string, ip: string): string {
+  /**
+   * ⭐⭐ **দুটো চাবি, দুটো আলাদা আক্রমণের জন্য** (G116)।
+   *
+   * ⚠️⚠️ এখানে আগে লেখা ছিল *"একটাই ইমেইল বহু IP থেকে, বা একটাই IP বহু
+   *    ইমেইলে, দুটোই ধরা পড়ে"* — আর সেটা **মিথ্যা ছিল**। চাবি ছিল
+   *    `email|ip`, অর্থাৎ দুটো ক্ষেত্রেই প্রতিটা চেষ্টা **আলাদা চাবিতে**
+   *    পড়ত আর কোনো কাউন্টারই সীমা ছুঁত না। এক IP থেকে হাজার ইমেইল
+   *    চেষ্টা করলে তালা কখনো পড়ত না।
+   *
+   *  · `email|ip` — একজনের পাসওয়ার্ড বারবার অনুমান (সীমা `maxFails`)
+   *  · `ip` একা   — এক IP থেকে বহু ইমেইল (সীমা `ipMaxFails`, অনেক উঁচু)
+   */
+  private pairKey(email: string, ip: string): string {
     return `${email.toLowerCase()}|${ip}`;
+  }
+
+  /** ⚠️ উপসর্গটা জরুরি — নইলে `ip` চাবিটা কোনো `email|ip`-এর সাথে মিলে যেতে পারত */
+  private ipKey(ip: string): string {
+    return `ip:${ip}`;
   }
 
   /** লক থাকলে 429 ছুড়বে */
@@ -55,10 +72,20 @@ export class LoginThrottleService {
     if (!this.limits.enabled) return;
 
     this.prune();
-    const a = this.attempts.get(this.key(email, ip));
-    if (!a || a.lockedUntil <= Date.now()) return;
+    const now = Date.now();
 
-    const seconds = Math.ceil((a.lockedUntil - Date.now()) / 1000);
+    /**
+     * ⚠️ দুটোর মধ্যে **যেটার লক বেশি সময় বাকি** সেটাই দেখানো হয় — নইলে
+     *    জোড়া-লক শেষ হয়ে গেলে ব্যবহারকারী "এখন চেষ্টা করুন" ভেবে আবার
+     *    চেষ্টা করতেন, অথচ IP-লক তখনো চলছে, আর বার্তাটা মিথ্যা হতো।
+     */
+    const until = Math.max(
+      this.attempts.get(this.pairKey(email, ip))?.lockedUntil ?? 0,
+      this.attempts.get(this.ipKey(ip))?.lockedUntil ?? 0,
+    );
+    if (until <= now) return;
+
+    const seconds = Math.ceil((until - now) / 1000);
     const minutes = Math.ceil(seconds / 60);
     throw new HttpException(
       {
@@ -71,21 +98,34 @@ export class LoginThrottleService {
   }
 
   recordFailure(email: string, ip: string): void {
-    const k = this.key(email, ip);
+    this.bump(this.pairKey(email, ip), this.limits.maxFails);
+    this.bump(this.ipKey(ip), this.limits.ipMaxFails);
+  }
+
+  /** একটা চাবির গোনা এক বাড়ায়, আর সীমা ছুঁলে তালা বসায় */
+  private bump(key: string, max: number): void {
     const now = Date.now();
-    const a = this.attempts.get(k) ?? { fails: 0, lockedUntil: 0, lastSeen: now };
+    const a = this.attempts.get(key) ?? { fails: 0, lockedUntil: 0, lastSeen: now };
 
     a.fails += 1;
     a.lastSeen = now;
-    if (this.limits.enabled && a.fails >= this.limits.maxFails) {
+    if (this.limits.enabled && a.fails >= max) {
       a.lockedUntil = now + this.limits.lockMs;
       a.fails = 0; // লক শেষ হলে আবার নতুন করে গোনা শুরু
     }
-    this.attempts.set(k, a);
+    this.attempts.set(key, a);
   }
 
+  /**
+   * ⚠️⚠️ সফল লগইনে **কেবল জোড়া-চাবিটা** মোছা হয়, IP-র কাউন্টার নয়।
+   *    নইলে আক্রমণকারী হাজার চেষ্টার মাঝে একটাও সফল হলে তার গোটা
+   *    গোনাই শূন্য হয়ে যেত — অর্থাৎ যে মুহূর্তে সে সফল হতে শুরু করেছে,
+   *    ঠিক তখনই তালাটা খুলে যেত।
+   * ⭐ অফিসের ভাগ করা IP-তে এতে ক্ষতি নেই: সীমাটা পাঁচ গুণ উঁচু, আর
+   *    `prune()` পুরোনো গোনা এমনিতেই সরিয়ে দেয়।
+   */
   recordSuccess(email: string, ip: string): void {
-    this.attempts.delete(this.key(email, ip));
+    this.attempts.delete(this.pairKey(email, ip));
   }
 
   /** পুরোনো এন্ট্রি জমতে দিই না — মেমরি লিক ঠেকাতে */

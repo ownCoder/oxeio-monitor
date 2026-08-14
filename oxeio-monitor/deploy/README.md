@@ -1250,9 +1250,9 @@ Last login: Thu Aug 13 07:59:53 2026 from 103.61.240.151
 পথটা:
 
 ```
-<hosting-panel>  →  Services → Manage Product
+<হোস্টিং প্যানেল>  →  Services → Manage Product
                           →  Actions → Enduser Panel      (Virtualizor)
-<virtualizor-panel>:4083  →  Settings → VNC → Launch VNC
+<Virtualizor প্যানেল>:4083  →  Settings → VNC → Launch VNC
 ```
 
 ⭐ **VNC পোর্ট নয়, HTTPS-এর ভেতরে** — তাই ISP ২২ আটকে রাখলেও কনসোল খোলে।

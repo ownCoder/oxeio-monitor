@@ -46,6 +46,8 @@ services:
       #    "সেটিং কাজ করছে না" বোঝার কোনো উপায় থাকত না।
       LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
       LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-2}
+      # ⚠️ G116 — IP-প্রতি সীমা। জোড়া-কাউন্টার এক IP থেকে বহু ইমেইল ধরত না
+      LOGIN_IP_MAX_FAILS: ${LOGIN_IP_MAX_FAILS:-50}
       PORT: 3000
       STORAGE_ROOT: /data/storage
       # ⚠️ ড্যাশবোর্ড `web` সার্ভিস দিয়ে চললে এটা কার্যত অব্যবহৃত — Caddy
