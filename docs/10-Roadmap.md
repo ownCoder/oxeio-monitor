@@ -25,7 +25,7 @@ hassel free vabe use kora jay."* তাই ধাপ ১-এ কেবল সে
 
 | # | ফিচার | ধারণা কোথা থেকে | আকার | অবস্থা |
 |---|---|---|---|:---:|
-| R1 | **মাস বন্ধ করা (payroll lock)** | Time Doctor-এর payroll close | মাঝারি | ⏳ |
+| R1 | **মাস বন্ধ করা (payroll lock)** | Time Doctor-এর payroll close | মাঝারি | ✅ |
 | R2 | **ছুটির খাতা (leave calendar)** | সব পণ্যে আছে; আমাদের O3 | মাঝারি+ | ⏳ |
 | R3 | **সাপ্তাহিক রিপোর্ট টেলিগ্রামে** | Hubstaff scheduled reports | ছোট+ | ✅ |
 | R4 | **বাইরের uptime নজরদারি** | SaaS status pages | ⭐ কোড নেই | ⏳ |
