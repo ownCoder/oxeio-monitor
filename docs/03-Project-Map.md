@@ -248,6 +248,18 @@ oxeio-monitor/
 │   │                                          CORS-এর প্রশ্নই ওঠে না (cookie SameSite=Strict)
 │   ├── .dockerignore                       ✅ ⚠️ হোস্টের (Windows) node_modules ইমেজে গেলে
 │   │                                          alpine-এ ভুল প্ল্যাটফর্মের esbuild নিয়ে ভাঙত
+│   ├── vite.config.ts                      ✅ ⭐ R12 — ভেতরে হাতে লেখা rollup প্লাগইন যা
+│   │                                          `sw.js` বানায়। ⚠️ **বিল্ড-গার্ড:** precache
+│   │                                          তালিকায় `/api` ঢুকলে বিল্ড থেমে যায়
+│   ├── public/                             ✅ ⭐ R12 — manifest + ছ-টা আইকন
+│   │   ├── manifest.webmanifest            ✅ standalone · scope / · theme #000000
+│   │   │                                      ⚠️ Content-Type Caddyfile-এ হাতে বসানো —
+│   │   │                                      Go-র builtin তালিকায় `.webmanifest` নেই
+│   │   ├── favicon.svg · favicon.ico       ✅ ⚠️ ico আসল মাল্টি-সাইজ ICONDIR (১৬/৩২/৪৮),
+│   │   │                                      PNG-কে নাম বদলে নয়
+│   │   └── icons/                          ✅ 192 · 512 · maskable-512 · apple-touch-180
+│   │                                          ⚠️ শেষ দুটোয় **alpha চ্যানেলই নেই** — iOS
+│   │                                          স্বচ্ছ অংশ কালো করে, আর Android mask করে
 │   └── src/
 │       ├── api/client.ts                   ✅ cookie · CSRF হেডার · গ্লোবাল 401
 │       ├── api/{dashboard,activity,screenshots,reports,admin,alerts}.ts
@@ -255,7 +267,15 @@ oxeio-monitor/
 │       ├── api/useApi.ts                   ✅ useApi · usePolling (ট্যাব লুকোলে থামে)
 │       ├── lib/format.ts                   ✅ ⚠️ তারিখ সবসময় ঢাকার কর্মদিবস
 │       │                                      ⭐ **ফরম্যাটের একমাত্র জায়গা** — পেজে নয়
+│       ├── pwa-sw.ts                       ✅ ⭐⭐ সার্ভিস ওয়ার্কার। **কোনো API উত্তর
+│       │                                      ক্যাশ করে না** — `/api` `fetch`-এ সবার আগে
+│       │                                      বাদ, আর রানটাইমে কোথাও `cache.put` নেই
+│       │                                      (ক্যাশ `install`-এ একবার লেখা, পরে read-only)
+│       ├── pwa.ts                          ✅ রেজিস্ট্রেশন · skipWaiting · ঘণ্টায় একবার
+│       │                                      আপডেট-খোঁজা (ট্যাব দৃশ্যমান হলে)
 │       ├── auth/AuthContext.tsx            ✅ সেশন · useIdleLogout (I09)
+│       │                                   ⚠️ `offline` — "সার্ভারে পৌঁছাইনি" আর "সেশন
+│       │                                      শেষ" আলাদা; নইলে ফোনে নেট গেলেই লগইন পর্দা
 │       ├── components/Layout.tsx           ✅ কালো টপবার · নেভ · সার্চ · থিম
 │       ├── components/                     ✅ Page · States · Card · ProgressRing ·
 │       │                                      StatusDot · DatePicker · Table · Duration ·
