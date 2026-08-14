@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { hash } from '@node-rs/argon2';
 import { MatchType, PrismaClient, Productivity, UserRole } from '@prisma/client';
 
-import { parseStaff, type StaffRow } from './parse-staff';
+import { parseStaff, shouldSeedSampleStaff, type StaffRow } from './parse-staff';
 
 const prisma = new PrismaClient();
 
@@ -247,7 +247,9 @@ function loadStaff(): StaffRow[] {
   const example = join(__dirname, 'staff.example.json');
   const file = existsSync(local) ? local : example;
 
-  if (file === example) {
+  usingExample = file === example;
+
+  if (usingExample) {
     console.warn(
       '⚠  staff.local.json নেই — staff.example.json দিয়ে seed হচ্ছে। ' +
         'আসল তালিকা বসাতে staff.local.json বানান।',
@@ -262,6 +264,17 @@ function loadStaff(): StaffRow[] {
   return parseStaff(JSON.parse(readFileSync(file, 'utf8')));
 }
 
+/**
+ * ⚠️⚠️ নমুনা তালিকা দিয়ে চলছি কি না — আর এই একটা bool-ই ১৪ আগস্টের
+ *    আসল বাগটা ঠেকায়।
+ *
+ *    `staff.local.json` **gitignore করা**, তাই VPS-এ ওটা কোনোদিন থাকে না।
+ *    ফলে সেখানে প্রতিবার seed চললেই `staff.example.json`-এর তিনজন নমুনা
+ *    কর্মী (Example One/Two/Three, বেতন ০) তৈরি হতো — আর ওরা ঠিক এভাবেই
+ *    প্রোডাকশনে ঢুকেছিল, দলের টার্গেটে ৬২৪ ঘণ্টা যোগ করে।
+ */
+let usingExample = false;
+
 const STAFF: StaffRow[] = loadStaff();
 
 /** designation থেকে বিভাগ — রিপোর্টে দল ধরে ভাগ করার জন্য (D09, E07)। */
@@ -273,6 +286,29 @@ function departmentOf(designation: string): string {
 }
 
 async function seedEmployees(policyId: number): Promise<number> {
+  /**
+   * ⭐⭐ **আসল কর্মী থাকলে নমুনা কর্মী আর বসানো হয় না।**
+   *
+   * ⚠️ নিয়মটা সরু করে লেখা: শুধু **নমুনা** তালিকার বেলায়, আর শুধু
+   *    ডাটাবেসে ইতিমধ্যে কেউ থাকলে। `staff.local.json` থাকলে seed আগের
+   *    মতোই সব বসায় — আসল তালিকা হালনাগাদ করার পথটা বন্ধ হয় না।
+   *
+   * ⭐ যুক্তিটা সহজ: চালু সিস্টেমে নমুনা মানুষ যোগ করার কোনো কারণ নেই।
+   *    ওরা কেবল দলের টার্গেট ফোলায়, বোর্ডে ভিড় করে, আর "পিছিয়ে" সংখ্যাটা
+   *    মিথ্যা বানায় — অথচ কারো এক মিনিটও কাজ নেই।
+   *
+   * ⚠️ নতুন ইনস্টলে (ডাটাবেস খালি) নমুনাগুলো আগের মতোই বসে, নইলে কেউ
+   *    রিপো ক্লোন করে প্রকল্পটা চালিয়েই দেখতে পারত না।
+   */
+  const already = await prisma.employee.count();
+  if (!shouldSeedSampleStaff(usingExample, already)) {
+    console.warn(
+      `⚠  ${already} জন কর্মী ইতিমধ্যেই আছেন — নমুনা তালিকা বসানো হলো না। ` +
+        'আসল তালিকা বসাতে prisma/staff.local.json বানান।',
+    );
+    return 0;
+  }
+
   for (const { empCode, joinedOn, ...rest } of STAFF) {
     const common = {
       ...rest,

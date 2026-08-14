@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseStaff } from '../prisma/parse-staff';
+import { parseStaff, shouldSeedSampleStaff } from '../prisma/parse-staff';
 
 /**
  * `staff.local.json` যাচাই।
@@ -138,5 +138,41 @@ describe('parseStaff — ভুল ধরা', () => {
   it('বার্তায় কোন সারি ও কোন কর্মী সেটা বলা থাকে', () => {
     const rows = [[...ROW], ['OX-02', 'Karim', 'Intern', 'oops']];
     expect(() => parseStaff(rows)).toThrow(/সারি 2 \(OX-02\)/);
+  });
+});
+
+/**
+ * **নমুনা কর্মী আর প্রোডাকশনে ঢুকবে না।**
+ *
+ * ⚠️⚠️ এই টেস্টগুলো একটা মাঠের বাগ থেকে লেখা। `staff.local.json`
+ * gitignore করা, তাই VPS-এ ওটা কোনোদিন থাকে না — ফলে সেখানে প্রতিবার
+ * seed চললেই `staff.example.json`-এর তিনজন নমুনা কর্মী তৈরি হতো।
+ *
+ * ⭐ ক্ষতিটা "তালিকায় তিনটে বাড়তি নাম" নয়: ওরা দলের মাসিক টার্গেটে
+ * **৬২৪ ঘণ্টা** যোগ করত, আর Live Board-এর "কত পিছিয়ে" সংখ্যাটা ততটাই
+ * মিথ্যা হয়ে যেত — অথচ ওদের এক মিনিটও কাজ নেই।
+ */
+describe('shouldSeedSampleStaff', () => {
+  it('আসল তালিকা হলে সবসময় বসে — হালনাগাদের পথ বন্ধ হয় না', () => {
+    expect(shouldSeedSampleStaff(false, 0)).toBe(true);
+    expect(shouldSeedSampleStaff(false, 12)).toBe(true);
+  });
+
+  it('খালি ডাটাবেসে নমুনা বসে — নইলে ক্লোন করে চালিয়ে দেখা যেত না', () => {
+    expect(shouldSeedSampleStaff(true, 0)).toBe(true);
+  });
+
+  /** ⭐⭐ মূল টেস্ট — এটাই সংশোধনের আগে ব্যর্থ হতো */
+  it('কর্মী থাকলে নমুনা আর বসে না', () => {
+    expect(shouldSeedSampleStaff(true, 1)).toBe(false);
+    expect(shouldSeedSampleStaff(true, 7)).toBe(false);
+  });
+
+  /**
+   * ⚠️ "খালি" মানে **শূন্য**, "সক্রিয় শূন্য" নয় — সবাইকে নিষ্ক্রিয় করে
+   * দেওয়া একটা চালু সিস্টেমেও নমুনা মানুষ ফিরে আসা উচিত নয়।
+   */
+  it('সবাই নিষ্ক্রিয় হলেও নমুনা ফিরে আসে না', () => {
+    expect(shouldSeedSampleStaff(true, 3)).toBe(false);
   });
 });
