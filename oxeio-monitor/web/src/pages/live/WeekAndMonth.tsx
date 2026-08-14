@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import type { TeamTrend } from '../../api/dashboard';
 import { formatDateShort, formatDuration, pctOf, weekdayOf } from '../../lib/format';
 import { targetText } from './TodayRing';
@@ -31,18 +33,91 @@ export function WeekBars({ days }: { days: TeamTrend['days'] }) {
     0,
   );
 
+  /**
+   * ⚠️⚠️ বেছে নেওয়া দিনটা — **ফোনে এটাই একমাত্র উপায়**।
+   *
+   * আগে প্রতিটা বারের মান ছিল কেবল `title` টুলটিপে, আর বারগুলো ছিল `<div>`।
+   * ⚠️ ছোঁয়ার পর্দায় টুলটিপ **কখনো ওঠে না**, আর `<div>`-এ ট্যাপেরও কিছু নেই —
+   *    ফলে ফোনে কার্ডটা ছিল সাতটা **নামহীন বার**: আকৃতি বোঝা যেত, সংখ্যা নয়।
+   * ⭐ নকশাটা নতুন নয় — `DayPulse`-এ ঠিক এই জিনিসটাই আছে (স্থির readout
+   *    লাইন + পুরো কলামজোড়া hit-target), তাই এখানে সেটাই আনা হলো।
+   */
+  const [pick, setPick] = useState<string | null>(null);
+  const shown = days.find((d) => d.date === pick) ?? null;
+
+  // ⚠️ যোগফলে **কেবল দেখা দিনগুলো** — না-দেখা দিনকে ০ ধরে যোগ করলে
+  //    সংখ্যাটা "এই সপ্তাহে এতটুকুই হয়েছে" বলে মিথ্যা দাবি করত।
+  const seen = days.filter((d) => d.tracked);
+  const seenSec = seen.reduce((s, d) => s + d.workedSec, 0);
+
   return (
     <div className="px-4 pt-1 pb-3">
+      {/*
+        ⭐ একটা মান সরাসরি, বাকিগুলো ছুঁয়ে — `DayPulse`-এর একই নিয়ম। প্রতিটা
+           বারের গায়ে সংখ্যা বসালে সাতটা লেখা একটার উপর আরেকটা উঠে যেত।
+      */}
+      <div className="mb-2 flex items-end justify-between gap-3">
+        <p className="text-xs text-ink-3">
+          {shown ? (
+            <span className="text-ink-2">
+              <span className="num font-semibold text-ink">
+                {formatDateShort(shown.date)}
+              </span>{' '}
+              ·{' '}
+              {shown.tracked ? (
+                <>
+                  <span className="num">{formatDuration(shown.workedSec)}</span>
+                  {shown.expectedStaff === 0 && ' · day off'}
+                </>
+              ) : (
+                'not tracked yet'
+              )}
+            </span>
+          ) : (
+            <>
+              Counted{' '}
+              <span className="num font-semibold text-ink">
+                {formatDuration(seenSec)}
+              </span>
+              {/* ⚠️ কটা দিন গোনা হলো সেটা বলা হয় **কেবল** যখন সাতটার কম —
+                  নইলে প্রতিদিন একটা অপ্রয়োজনীয় সংখ্যা চোখে পড়ত। */}
+              {seen.length < days.length && (
+                <span className="text-ink-3">
+                  {' '}
+                  · <span className="num">{seen.length}</span> of{' '}
+                  <span className="num">{days.length}</span> days tracked
+                </span>
+              )}
+            </>
+          )}
+        </p>
+      </div>
+
       <div className="relative">
-        <div className="flex h-24 items-end gap-[3px]">
+        <div
+          className="flex h-24 items-end gap-[3px]"
+          onMouseLeave={() => setPick(null)}
+        >
           {days.map((d) => {
             const h = peak > 0 ? (d.workedSec / peak) * 100 : 0;
             const off = d.expectedStaff === 0;
 
             return (
-              <div
+              <button
                 key={d.date}
-                className="flex h-full flex-1 items-end"
+                type="button"
+                /*
+                 * ⚠️ hit-target পুরো কলামের উচ্চতা জুড়ে, শুধু বারটুকু নয় —
+                 *    ২% উঁচু বারে আঙুল তাক করা যেত না।
+                 * ⚠️ `onClick`-টা ফোনের জন্য বাধ্যতামূলক: Safari (iOS ও macOS)
+                 *    **বোতামে ট্যাপ করলে ফোকাস দেয় না**, তাই `onFocus`-এ
+                 *    ভরসা করলে ওখানে কিছুই হতো না।
+                 */
+                className="flex h-full flex-1 cursor-default items-end focus:outline-none"
+                onMouseEnter={() => setPick(d.date)}
+                onFocus={() => setPick(d.date)}
+                onBlur={() => setPick(null)}
+                onClick={() => setPick(d.date)}
                 title={
                   d.tracked
                     ? `${formatDateShort(d.date)} — ${formatDuration(d.workedSec)}${
@@ -53,7 +128,7 @@ export function WeekBars({ days }: { days: TeamTrend['days'] }) {
               >
                 {d.tracked ? (
                   <span
-                    className="w-full rounded-t-[4px] transition-[height] duration-500"
+                    className="w-full rounded-t-[4px] transition-[height,opacity] duration-500"
                     style={{
                       // ⚠️ শূন্যেও ২px — নইলে "কাজ হয়নি" আর "দিনটাই নেই"
                       //    দেখতে এক হতো।
@@ -61,6 +136,10 @@ export function WeekBars({ days }: { days: TeamTrend['days'] }) {
                       backgroundColor: off
                         ? 'var(--color-line)'
                         : 'var(--color-ok)',
+                      // ⭐ বাছাই হলে বাকিগুলো ম্লান — উপরের সংখ্যাটা **কোন**
+                      //    বারের, সেটা তখন চোখেই দেখা যায়। ট্যাপে ওই যোগসূত্রটা
+                      //    না থাকলে সংখ্যাটা কোথা থেকে এলো বোঝা যেত না।
+                      opacity: pick === null || pick === d.date ? 1 : 0.45,
                     }}
                   />
                 ) : (
@@ -70,10 +149,13 @@ export function WeekBars({ days }: { days: TeamTrend['days'] }) {
                   */
                   <span
                     className="w-full rounded-t-[4px] border border-dashed border-line"
-                    style={{ height: '70%' }}
+                    style={{
+                      height: '70%',
+                      opacity: pick === null || pick === d.date ? 1 : 0.45,
+                    }}
                   />
                 )}
-              </div>
+              </button>
             );
           })}
         </div>

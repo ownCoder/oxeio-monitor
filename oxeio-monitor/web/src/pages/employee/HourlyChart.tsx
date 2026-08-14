@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { getHourly, type HourlyChart as HourlyData } from '../../api/dashboard';
 import { useApi } from '../../api/useApi';
 import { Card } from '../../components/Card';
@@ -82,16 +84,56 @@ function Body({ data }: { data: HourlyData }) {
   const overFull = peak > FULL_HOUR_SEC;
   const refY = BASE - (FULL_HOUR_SEC / ceiling) * BODY;
 
+  /**
+   * ⚠️⚠️ বেছে নেওয়া ঘণ্টা — **ফোনে এটাই একমাত্র উপায়**।
+   *
+   * আগে প্রতি ঘণ্টার মান ছিল কেবল SVG-র `<title>`-এ, অর্থাৎ হোভার-টুলটিপে।
+   * ⚠️ ছোঁয়ার পর্দায় ওটা **কখনো ওঠে না**, তাই ফোনে চার্টটা ছিল ২৪টা নামহীন
+   *    বার। ⭐ `DayPulse` ও "Last 7 days"-এ একই সমস্যা একইভাবে সারানো:
+   *    স্থির readout লাইন + পুরো কলামজোড়া hit-target।
+   * ⚠️ `<title>` **রাখা হয়েছে** — ডেস্কটপে টুলটিপ আর স্ক্রিন-রিডারে নাম,
+   *    দুটোই ওটা থেকেই আসে।
+   */
+  const [pick, setPick] = useState<number | null>(null);
+  const shown = pick === null ? null : data.buckets.find((b) => b.hour === pick);
+
   return (
     <>
       <Card padded={false}>
+        {/*
+          ⭐ readout লাইনটা স্ক্রল-ফ্রেমের **বাইরে** — ভেতরে রাখলে চার্ট ডানে
+             সরানোর সাথে সংখ্যাটাও সরে যেত, অথচ ওটাই তখন পড়ার জিনিস।
+        */}
+        <p className="px-4 pt-3 text-xs text-ink-3">
+          {shown ? (
+            <span className="text-ink-2">
+              <span className="num font-semibold text-ink">
+                {pad2(shown.hour)}:00–{pad2(shown.hour + 1)}:00
+              </span>{' '}
+              · <span className="num">{formatDuration(shown.activeSec)}</span>
+            </span>
+          ) : (
+            <>
+              Counted{' '}
+              <span className="num font-semibold text-ink">
+                {formatDuration(data.totalActiveSec)}
+              </span>{' '}
+              in total
+            </>
+          )}
+        </p>
+
         {/* ⚠️ চওড়া চার্ট **নিজের ফ্রেমে** স্ক্রল করে, পুরো পাতা নয় (E12) */}
-        <div className="overflow-x-auto p-4">
+        <div className="overflow-x-auto px-4 pt-2 pb-4">
           <svg
             viewBox={`0 0 ${W} ${H}`}
             className="block w-full min-w-[620px]"
             role="img"
             aria-label={`Work by hour — ${formatDuration(data.totalActiveSec)} in total`}
+            // ⚠️ মাউস চার্ট ছাড়লে readout ডিফল্টে ফেরে। ফোনে এই ইভেন্টটা
+            //    আসে না, তাই সেখানে শেষ ট্যাপ করা ঘণ্টাটাই দেখা যেতে থাকে —
+            //    সেটাই কাম্য, নইলে আঙুল তোলামাত্র সংখ্যাটা মিলিয়ে যেত।
+            onMouseLeave={() => setPick(null)}
           >
             {/* এক ঘণ্টার রেফারেন্স রেখা — বারগুলো কীসের তুলনায় লম্বা */}
             <line
@@ -132,6 +174,26 @@ function Body({ data }: { data: HourlyData }) {
                     height={barH}
                     rx={2}
                     className={b.activeSec > 0 ? 'fill-ink' : 'fill-line'}
+                    // ⭐ বাছাই হলে বাকিগুলো ম্লান — উপরের সংখ্যাটা কোন ঘণ্টার,
+                    //    সেটা তখন চোখেই দেখা যায়।
+                    opacity={pick === null || pick === b.hour ? 1 : 0.4}
+                  />
+                  {/*
+                    ⚠️⚠️ **স্বচ্ছ hit-target, পুরো কলামের উচ্চতা জুড়ে।** আসল
+                       বারটা ২px উঁচুও হতে পারে (যে ঘণ্টায় প্রায় কাজ হয়নি) —
+                       ওটুকুতে আঙুল তাক করা অসম্ভব। এই আয়তক্ষেত্রটা অদৃশ্য,
+                       কিন্তু ছোঁয়ার জন্য ৩০px চওড়া ও পুরো লম্বা।
+                    ⚠️ `<title>` আগের `<g>`-তেই থাকে, তাই টুলটিপও অটুট।
+                  */}
+                  <rect
+                    x={PAD_X + b.hour * COL}
+                    y={PAD_TOP}
+                    width={COL}
+                    height={BODY}
+                    fill="transparent"
+                    style={{ cursor: 'default' }}
+                    onMouseEnter={() => setPick(b.hour)}
+                    onClick={() => setPick(b.hour)}
                   />
                   <text
                     x={x + w / 2}
