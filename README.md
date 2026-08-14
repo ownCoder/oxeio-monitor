@@ -95,8 +95,8 @@ Running in production for one company. Honest state of things:
 | | |
 |---|---|
 | **Tests** | Server **869** (no DB) + 222 e2e · Web **73** · Agent **303 facts / 128 cases** |
-| **Proven in the field** | Agent capture and enrollment, screenshots, daily digest email, Telegram alerts, backups, auto-update, login rate limiting |
-| **Built but never run for real** | Weekly Telegram summary · holiday seeding on the VPS · `vps-harden.sh` · PWA install on a real phone |
+| **Proven in the field** | Agent capture and enrollment, screenshots, daily digest email, Telegram alerts, backups, auto-update, login rate limiting, fail2ban |
+| **Built but never run for real** | Weekly Telegram summary · holiday seeding on the VPS · PWA install on a real phone |
 | **Known gaps** | 17 open, all written down with reproduction and cost — [`docs/08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) |
 
 That third row is the one worth reading. This project keeps a standing list of
