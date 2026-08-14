@@ -52,6 +52,7 @@
 | 07 | [Technical Spec](docs/07-Technical-Spec.md) | DB স্কিমা, API কনট্রাক্ট, এজেন্ট state machine, সার্ভার সেটআপ |
 | 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো — **G1–G80** |
 | 09 | [Build Log](docs/09-Build-Log.md) | ⭐ **এখন পর্যন্ত কী হয়েছে, কী আটকে আছে, পরের ধাপ** |
+| 10 | [Roadmap](docs/10-Roadmap.md) | সামনে কী, কোন ক্রমে — রিসার্চ-ভিত্তিক ফিচার তালিকা, আর যা ইচ্ছা করেই করব না |
 | 🎨 | [UI Mockup](docs/mockup/dashboard-mockup.html) | ৭টি স্ক্রিনের ক্লিকযোগ্য ডিজাইন মকআপ |
 | 🎨 | [Tray Mockup](docs/mockup/tray-today-mockup.html) | এজেন্টের "Today's hours" জানালার রি-ডিজাইন — আগে/পরে, চারটে স্টেট, দুই থিম |
 
