@@ -147,7 +147,7 @@ export function Layout() {
            এখানে আজ বার নেই, কিন্তু ফাঁদটা হুবহু এক — একই সারিতে একটা লিঙ্ক
            যোগ হলেই ফিরে আসত।
       */}
-      <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line bg-surface px-2">
+      <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line bg-surface px-2 lg:hidden">
         {nav.map((item) => (
           <NavLink
             key={item.to}
@@ -168,17 +168,62 @@ export function Layout() {
         ))}
       </nav>
 
-      <main className="flex-1 px-4 py-5">
+      <div className="flex min-h-0 flex-1">
         {/*
-          ⭐ ভেতরে, বাইরে নয় — কোনো পেজ render-এ ছুড়ে ফেললেও হেডার ও নেভ
-             টিকে থাকে, তাই ব্যবহারকারী অন্য ট্যাবে সরে যেতে পারে। বাইরে
-             বসালে পুরো পর্দা একটা এরর বাক্স হয়ে যেত আর বেরোনোর কোনো পথ
-             থাকত না। `resetKey` রুট — পাতা বদলালেই নিজে থেকে সেরে ওঠে।
+          ⭐⭐ **সাইডবার — শুধু `lg`-এর উপরে।**
+
+          ⚠️ উপরের আড়াআড়ি সারিটা মুছে ফেলা হয়নি, `lg:hidden` করা হয়েছে —
+             ফোনে ওটাই থাকে। কারণ সরু পর্দায় সাইডবার মানে হয় সবসময় খোলা
+             (তখন কনটেন্টের জন্য ২০০px কমে যেত), নয় একটা drawer (নতুন
+             অবস্থা, নতুন বোতাম, নতুন ফাঁদ)। দুটোর কোনোটাই ফোনে ভালো নয়,
+             আর ওখানে আড়াআড়ি সারিটা ইতিমধ্যেই কাজ করে ও ছোঁয়ার মাপ ঠিক
+             (G124)। এক জিনিস দু-জায়গায় দু-রকম হওয়াই এখানে সঠিক উত্তর।
+
+          ⚠️ `min-h-0` না দিলে flex সন্তান নিজের কনটেন্টের চেয়ে ছোট হতে
+             পারত না, আর লম্বা টেবিলে সাইডবারটা পর্দার সাথে না থেকে
+             পাতার সাথে লম্বা হয়ে যেত।
         */}
-        <ErrorBoundary resetKey={pathname}>
-          <Outlet />
-        </ErrorBoundary>
-      </main>
+        <nav
+          aria-label="Sections"
+          className="hidden w-44 shrink-0 border-r border-line bg-surface p-2 lg:block"
+        >
+          {nav.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `mb-0.5 block rounded-md px-2.5 py-2 text-[13px] transition ${
+                  isActive
+                    ? 'bg-ok/10 font-semibold text-ok-ink'
+                    : 'text-ink-2 hover:bg-paper hover:text-ink'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        {/*
+          ⚠️ `min-w-0` — flex সন্তানের ডিফল্ট `min-width: auto`, অর্থাৎ সে
+             নিজের সবচেয়ে চওড়া কনটেন্টের চেয়ে ছোট হতে চায় না। এটা না দিলে
+             একটা চওড়া টেবিল পুরো লেআউটটাকে ঠেলে বড় করে দিত আর গোটা পাতা
+             আড়াআড়ি স্ক্রল করত — ঠিক যেটা টেবিলের নিজের ফ্রেমে স্ক্রল
+             করানোর পুরো উদ্দেশ্য ছিল ঠেকানো।
+        */}
+        <main className="min-w-0 flex-1 px-4 py-5">
+          {/*
+            ⭐ ভেতরে, বাইরে নয় — কোনো পেজ render-এ ছুড়ে ফেললেও হেডার ও নেভ
+               টিকে থাকে, তাই ব্যবহারকারী অন্য ট্যাবে সরে যেতে পারে। বাইরে
+               বসালে পুরো পর্দা একটা এরর বাক্স হয়ে যেত আর বেরোনোর কোনো পথ
+               থাকত না। `resetKey` রুট — পাতা বদলালেই নিজে থেকে সেরে ওঠে।
+          */}
+          <ErrorBoundary resetKey={pathname}>
+            <Outlet />
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
   );
 }

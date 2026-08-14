@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
+import { getTopUsage } from '../api/activity';
+import { listAlerts } from '../api/alerts';
 import {
   getLiveBoard,
   getTeamPulse,
@@ -20,6 +22,8 @@ import {
   formatTime,
 } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
+import { OpenAlerts } from './live/OpenAlerts';
+import { TopApps } from './live/TopApps';
 import { StatusStrip, TargetBars } from './live/TeamBars';
 import { MonthCard, TopPerformers, WeekBars } from './live/WeekAndMonth';
 import { PersonCard } from './live/PersonCard';
@@ -79,6 +83,9 @@ export function LiveBoardPage() {
    *    ছবি দেখল" বলে একটা করে মিথ্যা অডিট সারি লেখা হতো।
    */
   const canViewBoard = user?.role === 'owner' || user?.role === 'manager';
+  // ⚠️ অ্যালার্টে হোস্টনেম ও কর্মীর নাম একসাথে থাকে (§ ৪.৩) — owner-only,
+  //    `Layout.tsx`-এর NAV-এ হুবহু একই নিয়ম।
+  const isOwner = user?.role === 'owner';
 
   const board = usePolling(getLiveBoard, BOARD_REFRESH_MS, []);
 
@@ -109,6 +116,38 @@ export function LiveBoardPage() {
       canViewBoard ? getTeamTrend(signal) : Promise.resolve(null),
     PULSE_REFRESH_MS,
     [canViewBoard],
+  );
+
+  /**
+   * ⭐ **আজ দলটা কোন অ্যাপে সময় দিয়েছে** — `from` ও `to` দুটোই আজ, আর
+   *    `employeeId` **ইচ্ছাকৃতভাবে নেই**: ওটা না দিলে সার্ভার গোটা দলের
+   *    হিসাব দেয় (D08)।
+   *
+   * ⚠️ `limit: 6` — পর্দায় বসে পাঁচটা, ষষ্ঠটা আনা হয় শুধু "everything else"
+   *    সংখ্যাটা যাতে বেশি না দেখায়। ⚠️ ওই সংখ্যাটা `totalSec` থেকে বাদ
+   *    দিয়ে বেরোয়, তালিকা থেকে নয় — নইলে "টপ ৫-ই সব" বলে মিথ্যা হতো।
+   */
+  const apps = usePolling(
+    (signal) =>
+      canViewBoard
+        ? getTopUsage({ limit: 6 }, signal)
+        : Promise.resolve(null),
+    PULSE_REFRESH_MS,
+    [canViewBoard],
+  );
+
+  /**
+   * ⚠️ অ্যালার্ট **owner-only** — ম্যানেজারকে ব্যাজও দেখানো হয় না
+   *    (`Layout.tsx`-এর NAV-এ একই নিয়ম)। এখানে না দেখলে ম্যানেজারের
+   *    ব্রাউজার প্রতিবার একটা ৪০৩ কুড়াত।
+   * ⚠️ `limit: 3` — বাক্সে তিনটেই বসে; মোট সংখ্যাটা আসে `openCount` থেকে,
+   *    সারি গুনে নয়।
+   */
+  const alerts = usePolling(
+    (signal) =>
+      isOwner ? listAlerts({ limit: 3 }, signal) : Promise.resolve(null),
+    PULSE_REFRESH_MS,
+    [isOwner],
   );
 
   /**
@@ -204,6 +243,35 @@ export function LiveBoardPage() {
                 : formatDuration(stats.todaySec / stats.workedToday)
             }
             tone={stats.workedToday === 0 ? 'muted' : 'counted'}
+          />
+          {/*
+            ⭐⭐ **মাসের pace — গোটা অ্যাপের কেন্দ্রীয় সংখ্যাটা।** এতদিন এটা
+               কেবল নিচের কার্ডে ছিল, অথচ "আমরা কি পিছিয়ে আছি" প্রশ্নটাই
+               বোর্ড খোলার সবচেয়ে সাধারণ কারণ — তাই উপরের সারিতেই।
+
+            ⚠️ রংটা **হলুদ, লাল নয়** (`behind`)। পিছিয়ে থাকা খারাপ, কিন্তু
+               "এখনই হাত দিন" নয় — লাল ওই একটাই টাইলের জন্য রাখা (নিচে)।
+            ⚠️ `trackedFrom` না থাকলে জানালাটাই খালি, অর্থাৎ **সংখ্যা নেই** —
+               তখন `০` নয়, `—`, নইলে "ঠিক আছে" বলে মিথ্যা দাবি হতো।
+          */}
+          <Stat
+            label={
+              trend.data?.month.paceSec != null && trend.data.month.paceSec < 0
+                ? 'Behind pace'
+                : 'Ahead of pace'
+            }
+            value={
+              trend.data?.month.trackedFrom == null
+                ? '—'
+                : formatDuration(Math.abs(trend.data.month.paceSec))
+            }
+            tone={
+              trend.data?.month.trackedFrom == null
+                ? 'muted'
+                : trend.data.month.paceSec < 0
+                  ? 'behind'
+                  : 'counted'
+            }
           />
           {/* ⚠️ পর্দায় একটাই লাল টাইল — নইলে লাল রঙের মানেই হারিয়ে যায় */}
           <Stat
@@ -332,6 +400,47 @@ export function LiveBoardPage() {
               </div>
             )}
           </Card>
+        </div>
+
+        {/*
+          ⭐ **অভ্যাস ও মনোযোগের স্তর** — "কে কতদূর" জানার পর মাথায় আসা পরের
+             দুটো প্রশ্ন: **"সময়টা কোথায় গেল?"** আর **"কিছু কি আটকে আছে?"**
+
+          ⚠️ অ্যালার্টের কার্ডটা owner ছাড়া বসেই না, তাই ম্যানেজারের পর্দায়
+             গ্রিডটা এক কলামে নামে — খালি একটা বাক্স রেখে দেওয়ার চেয়ে ভালো।
+        */}
+        <div
+          className={`mt-3 grid gap-3 ${isOwner ? 'lg:grid-cols-[3fr_2fr]' : ''}`}
+        >
+          <Card
+            title="Where today went"
+            hint="Whole team · counted app time only"
+            padded={false}
+          >
+            {apps.data ? (
+              <TopApps usage={apps.data.apps} />
+            ) : (
+              <div className="px-4 py-8">
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
+          </Card>
+
+          {isOwner && (
+            <Card
+              title="Needs attention"
+              hint="Not acknowledged yet"
+              padded={false}
+            >
+              {alerts.data ? (
+                <OpenAlerts page={alerts.data} />
+              ) : (
+                <div className="px-4 py-8">
+                  <div className="h-24 rounded bg-line/40" />
+                </div>
+              )}
+            </Card>
+          )}
         </div>
 
         {/* ⚠️ `order-first` কেবল `lg`-এর নিচে — উপরের নোট দেখুন */}

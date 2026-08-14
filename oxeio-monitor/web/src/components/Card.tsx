@@ -64,14 +64,23 @@ export function Stat({
   value: ReactNode;
   /** `/15` বা `%` — ছোট করে পাশে বসে */
   unit?: ReactNode;
-  tone?: 'counted' | 'muted' | 'attention';
+  /**
+   * ⚠️⚠️ `attention` (লাল) **পর্দায় একটাই** — নইলে লাল রঙের মানেই হারিয়ে
+   *    যায়। যা "ভালো নয় কিন্তু জরুরিও নয়" (যেমন pace পিছিয়ে থাকা), তার
+   *    জন্য `behind` — হলুদ, ঠিক যেভাবে বোর্ডের বাকি জায়গায় `idle` মানে
+   *    "চলছে, কিন্তু গোনা হচ্ছে না"। দুটোকে এক রঙে দেখালে মালিক আর আলাদা
+   *    করতে পারতেন না কোনটায় এখনই হাত দিতে হবে।
+   */
+  tone?: 'counted' | 'muted' | 'attention' | 'behind';
 }) {
   const color =
     tone === 'attention'
       ? 'text-brand-ink'
-      : tone === 'muted'
-        ? 'text-ink-3'
-        : 'text-ink';
+      : tone === 'behind'
+        ? 'text-idle-ink'
+        : tone === 'muted'
+          ? 'text-ink-3'
+          : 'text-ink';
 
   return (
     <div className="bg-surface px-3.5 py-2.5">
