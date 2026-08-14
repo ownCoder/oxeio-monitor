@@ -51,16 +51,34 @@ export function Table<T>({
   const align = (a?: Column<T>['align']): string =>
     a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left';
 
+  /**
+   * ⭐⭐ **প্রথম কলাম আটকানো (G124)।**
+   *
+   * ⚠️ টেবিলটা `overflow-x-auto`-তে নিজের ফ্রেমে স্ক্রল করে — সেটা ভালো,
+   *    পুরো পাতা টানে না। কিন্তু Attendance রিপোর্টের ৯ কলামে ডানে সরালে
+   *    **কার সারি দেখছি সেটাই হারিয়ে যেত**, আর ফোনে প্রায় সবসময়ই সরাতে হয়।
+   * ⭐ নিয়মটা নতুন নয় — `HeatGrid` আগে থেকেই এটা করে; এখানে অনুপস্থিত
+   *    থাকাটাই ছিল অসম্পূর্ণ জোড়া।
+   *
+   * ⚠️ পটভূমি `bg-inherit`, কোনো নির্দিষ্ট রং নয়। `bg-surface` হার্ডকোড
+   *    করলে ক্লিকযোগ্য সারির `hover:bg-paper` প্রথম ঘরে পৌঁছাত না — সারিটা
+   *    আধখানা রং বদলাত, যা দেখতে ভাঙা লাগত। রংটা `<tr>`-এ বসিয়ে ঘরটাকে
+   *    উত্তরাধিকারে নিতে দেওয়াই একমাত্র পথ যাতে দুটো অবস্থাই ঠিক থাকে।
+   */
+  const stickyCol = 'sticky left-0 z-10 border-r border-line';
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-max border-collapse text-[13px]">
         <thead>
           <tr className="border-b border-line">
-            {columns.map((col) => (
+            {columns.map((col, i) => (
               <th
                 key={col.key}
                 scope="col"
-                className={`px-3 py-2 font-medium text-ink-3 whitespace-nowrap ${align(col.align)} ${col.className ?? ''}`}
+                className={`px-3 py-2 font-medium text-ink-3 whitespace-nowrap ${align(col.align)} ${
+                  i === 0 ? `${stickyCol} bg-surface` : ''
+                } ${col.className ?? ''}`}
               >
                 {col.header}
               </th>
@@ -73,14 +91,19 @@ export function Table<T>({
             <tr
               key={rowKey(row, index)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`border-b border-line/70 last:border-0 ${
+              // ⚠️ `bg-surface` এখানে **বাধ্যতামূলক** — উপরের নোট দেখুন;
+              //    `<tr>`-এ রং না থাকলে sticky ঘরটা স্বচ্ছ হয়ে যেত আর
+              //    স্ক্রল করার সময় নিচের লেখা তার ভেতর দিয়ে দেখা যেত।
+              className={`border-b border-line/70 bg-surface last:border-0 ${
                 onRowClick ? 'cursor-pointer hover:bg-paper' : ''
               } ${rowMuted?.(row) ? 'text-ink-3' : ''}`}
             >
-              {columns.map((col) => (
+              {columns.map((col, i) => (
                 <td
                   key={col.key}
-                  className={`px-3 py-2 ${align(col.align)} ${col.className ?? ''}`}
+                  className={`px-3 py-2 ${align(col.align)} ${
+                    i === 0 ? `${stickyCol} bg-inherit` : ''
+                  } ${col.className ?? ''}`}
                 >
                   {col.render(row, index)}
                 </td>

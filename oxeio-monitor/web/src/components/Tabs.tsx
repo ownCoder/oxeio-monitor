@@ -61,7 +61,9 @@ export function Tabs<T extends string>({
             type="button"
             aria-current={selected ? 'page' : undefined}
             onClick={() => onChange(item.id)}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-[13px] whitespace-nowrap transition focus:outline-none focus:ring-2 focus:ring-brand/30 ${
+            // ⚠️ `tap` — ফোনে ৪৪px (`index.css`)। ট্যাব ছিল ~৩৮px, আর
+            //    সারিটা আড়াআড়ি স্ক্রল করে বলে আঙুল এমনিতেই নড়ে থাকে।
+            className={`tap -mb-px border-b-2 px-3 py-2.5 text-[13px] whitespace-nowrap transition focus:outline-none focus:ring-2 focus:ring-brand/30 ${
               selected
                 ? 'border-brand font-semibold text-brand-ink'
                 : 'border-transparent text-ink-2 hover:text-ink'

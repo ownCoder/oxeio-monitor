@@ -451,7 +451,12 @@ export function MiniButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded-md border bg-surface px-2 py-1 text-[12px] whitespace-nowrap transition focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50 ${style}`}
+      /*
+       * ⚠️ `tap` এখানে সবচেয়ে জরুরি — এই বোতামগুলো ছিল সবচেয়ে ছোট (~২৮px)
+       *    আর `RowActions`-এ পাশাপাশি বসে, অর্থাৎ ভুল বোতামে চাপ পড়ার
+       *    সম্ভাবনাও সবচেয়ে বেশি। সেটিংসে ভুল চাপ মানে ভুল কাজ হয়ে যাওয়া।
+       */
+      className={`tap rounded-md border bg-surface px-2 py-1 text-[12px] whitespace-nowrap transition focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50 ${style}`}
     >
       {children}
     </button>

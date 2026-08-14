@@ -131,7 +131,9 @@ export function Layout() {
           <button
             type="button"
             onClick={() => void signOut()}
-            className="rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-white/85 transition hover:border-brand hover:text-white"
+            // ⚠️ `tap` — ফোনে ৪৪px (`index.css`)। ছিল ~২৯px, আর টপবারের
+            //    ডান কোণায় থিম-টগলের গা ঘেঁষে — ভুল চাপে লগআউট হয়ে যেত।
+            className="tap rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-white/85 transition hover:border-brand hover:text-white"
           >
             Sign out
           </button>
@@ -152,8 +154,10 @@ export function Layout() {
             key={item.to}
             to={item.to}
             end={item.end}
+            // ⚠️ `tap` — ফোনে ৪৪px (`index.css`)। এটাই অ্যাপের প্রধান
+            //    নেভিগেশন, অর্থাৎ ফোনে সবচেয়ে বেশি ছোঁয়া জিনিস।
             className={({ isActive }) =>
-              `whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition ${
+              `tap whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] transition ${
                 isActive
                   ? 'border-brand font-semibold text-brand-ink'
                   : 'border-transparent text-ink-2 hover:text-ink'

@@ -103,7 +103,8 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded-md border px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50 ${style}`}
+      // ⚠️ `tap` — ফোনে ৪৪px ছোঁয়ার লক্ষ্য (`index.css`-এ কারণ)
+      className={`tap rounded-md border px-3 py-1.5 text-[13px] font-medium transition focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-50 ${style}`}
     >
       {children}
     </button>

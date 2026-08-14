@@ -162,7 +162,13 @@ function ArrowButton({
       disabled={disabled}
       aria-label={label}
       title={label}
-      className="rounded-md border border-line bg-surface px-2 py-1.5 text-[11px] text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-40"
+      /*
+       * ⚠️ `tap` — তারিখের ◀▶ ফোনে সবচেয়ে বেশি ব্যবহৃত বোতামগুলোর একটা
+       *    (আগের দিন দেখা), অথচ ছিল ~৩০px। `min-w-11`-ও দেওয়া হলো: এদের
+       *    ভেতরে একটাই সরু অক্ষর, তাই শুধু উচ্চতা বাড়ালে লক্ষ্যটা লম্বা
+       *    কিন্তু সরু হয়ে থাকত।
+       */
+      className="tap min-w-11 rounded-md border border-line bg-surface px-2 py-1.5 text-[11px] text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-0"
     >
       {children}
     </button>
