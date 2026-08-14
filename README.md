@@ -161,5 +161,11 @@ for you.
 
 ---
 
-*No licence is attached yet, which means default copyright applies and you may
-read the code but not reuse it. If you want to use any of this, open an issue.*
+## Licence
+
+[MIT](LICENSE) — use it, change it, ship it, sell it.
+
+One thing MIT does **not** cover: the licence releases the copyright, not your
+obligations to the people you monitor. Consent, disclosure and data-protection
+law follow the deployment, not the code. See
+[Legal and ethical use](#legal-and-ethical-use) above.
