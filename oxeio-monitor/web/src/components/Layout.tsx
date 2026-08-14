@@ -4,7 +4,6 @@ import type { Role } from '../api/auth';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark, Wordmark } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
-import { GlobalSearch } from './GlobalSearch';
 import { ThemeToggle } from './ThemeToggle';
 
 interface NavItem {
@@ -104,9 +103,12 @@ export function Layout() {
         ⚠️ এর উপরের লেখা তাই `text-white`, `text-on-ink` নয় — ফিল্ডটা
            কখনো হালকা হয় না, তাই উল্টে যাওয়ার কিছু নেই।
 
-        ⚠️ E12 — `flex-wrap`: ফোনে সার্চ বাক্সটা নিজের একটা সারিতে নেমে
-           যায়। একই সারিতে লোগো, নাম, সার্চ আর দুটো বোতাম রাখলে ৩৭৫px-এ
-           সবকটাই চেপে গিয়ে অপঠ্য হতো।
+        ⚠️ E12 — `flex-wrap` **রাখা হয়েছে**: ফোনে নাম-ভূমিকার ব্লক আর
+           দুটো বোতাম দরকার হলে নিজের সারিতে নামে। লম্বা নামে ৩৭৫px-এ
+           সবকিছু এক সারিতে চেপে গিয়ে অপঠ্য হতো।
+           ⭐ এখানে একসময় গ্লোবাল সার্চের বাক্সও ছিল (E14) — মালিকের
+           পছন্দ হয়নি বলে সরানো হয়েছে; কম্পোনেন্টটা `GlobalSearch.tsx`-এ
+           আছে, কোথাও বসানো নেই ([G127](../../../docs/08-Gap-Analysis.md))।
       */}
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-chrome px-4 py-2.5 text-white">
         <div className="flex items-center gap-2.5">
@@ -116,9 +118,6 @@ export function Layout() {
             <div className="text-[11px] text-white/55">Workforce Monitor</div>
           </div>
         </div>
-
-        {/* ⚠️ role = employee হলে এটা নিজেই `null` — তার খোঁজার মতো কেউ নেই */}
-        <GlobalSearch />
 
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">
