@@ -113,7 +113,21 @@ export function ShotLightbox({
               src={shot.fullUrl}
               alt={`Latest screenshot of ${card.fullName}`}
               onError={() => setBroken(true)}
-              className="mx-auto block h-auto w-full"
+              /**
+               * ⚠️⚠️ আগে ছিল `h-auto w-full` — **কোনো সীমাই ছিল না**।
+               *    `w-full` ছবিটাকে সবসময় পাত্রের পুরো প্রস্থে টেনে দিত,
+               *    আর উচ্চতা সেই অনুপাতে যত খুশি বাড়ত। চওড়া পর্দায়
+               *    ১৯২০×১০৮০ ছবি পাত্র ছাপিয়ে যেত, আর দেখতে হতো স্ক্রল করে।
+               *
+               * ⭐ Gallery-র লাইটবক্সে নিয়মটা আলাদা ছিল — **দুটো লাইটবক্স
+               *    দুই নিয়মে চলছিল**, আর সেটাই আসল গোড়া। এখন দুটোতেই একই
+               *    viewport-ভিত্তিক সীমা।
+               *
+               * ⚠️ `w-auto` — ছোট ছবি জোর করে টেনে বড় করা হয় না, নইলে
+               *    থাম্বনেইল ঝাপসা হয়ে ফুলে উঠত।
+               */
+              style={{ maxHeight: 'calc(100dvh - 14rem)' }}
+              className="mx-auto block h-auto w-auto max-w-full object-contain"
             />
           )}
         </div>

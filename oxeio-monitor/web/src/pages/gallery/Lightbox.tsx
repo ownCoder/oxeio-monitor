@@ -183,7 +183,28 @@ export function Lightbox({
                 urls.reportLoad(item, 'full');
               }}
               onError={() => urls.reportError(item, 'full')}
-              className={`max-h-full max-w-full object-contain transition-opacity ${
+              /**
+               * ⚠️⚠️ **`max-h-full` এখানে কিছুই আটকায় না** — আর ক্লাসগুলো
+               *    পড়ে সেটা বোঝার উপায় নেই, তাই ভুলটা এতদিন টিকে ছিল।
+               *
+               *    শতাংশ `max-height` তখনই খাটে যখন অভিভাবকের উচ্চতা
+               *    "definite"। ঘরটা `grid` + `place-items-center`, আর
+               *    `align-items: center` বসালে item নিজের কনটেন্ট থেকে মাপ
+               *    নেয় — "১০০% কীসের?" প্রশ্নটা চক্রাকার হয়ে যায়, তাই
+               *    ব্রাউজার সীমাটা **উপেক্ষা করে**।
+               *
+               *    ⚠️ ফলে `object-contain`-ও অকেজো: ১৯২০×১০৮০ ছবি ৮৫৫px
+               *    পর্দায় **১০৬৭px** উঁচু হয়ে বসত (মেপে দেখা), ৭২৩px ঘর
+               *    উপচে গোটা পর্দা ঢেকে ফেলত, আর নিচের ফুটার ও ← →
+               *    বোতামগুলো বাইরে চলে যেত।
+               *
+               * ⭐ তাই **viewport-ভিত্তিক** সীমা — কোনো অভিভাবকের উপর
+               *    নির্ভর করে না, তাই ভবিষ্যতে কেউ মোড়কের layout বদলালেও
+               *    ভাঙবে না। `100dvh` মোবাইলের ঠিকানা-বার লুকোলে/দেখালেও
+               *    সঠিক থাকে, আর ১১rem হেডার+ফুটারের জায়গা।
+               */
+              style={{ maxHeight: 'calc(100dvh - 11rem)' }}
+              className={`max-w-full object-contain transition-opacity ${
                 ready ? 'opacity-100' : 'opacity-0'
               }`}
             />
