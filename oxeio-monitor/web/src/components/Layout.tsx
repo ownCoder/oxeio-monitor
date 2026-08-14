@@ -139,7 +139,14 @@ export function Layout() {
       </header>
 
       {/* ⚠️ E12 — ফোনে সারিটা নিজেই আড়াআড়ি স্ক্রল করে, পুরো পাতা নয় */}
-      <nav className="flex gap-1 overflow-x-auto border-b border-line bg-surface px-2">
+      {/*
+        ⚠️ `overflow-y-hidden` — `Tabs.tsx`-এর সাথে একই কারণে। Tailwind-এর
+           `overflow-x-auto` দুই অক্ষেই `auto` বসায়, আর ভেতরের লিঙ্ক এক
+           পিক্সেল উঁচু হলেই Windows-এ তীরসহ উল্লম্ব scrollbar বেরিয়ে আসে।
+           এখানে আজ বার নেই, কিন্তু ফাঁদটা হুবহু এক — একই সারিতে একটা লিঙ্ক
+           যোগ হলেই ফিরে আসত।
+      */}
+      <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line bg-surface px-2">
         {nav.map((item) => (
           <NavLink
             key={item.to}
