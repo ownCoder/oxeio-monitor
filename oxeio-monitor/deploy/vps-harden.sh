@@ -353,17 +353,41 @@ fi
 # ⚠️⚠️ এটাই এই স্ক্রিপ্টের সবচেয়ে জরুরি যাচাই। কনফিগে `port = 22,2222`
 #    লেখা থাকা আর ফায়ারওয়ালে সত্যিই দুটো পোর্ট পাহারায় থাকা এক কথা নয় —
 #    আর দ্বিতীয়টা না হলে ব্যর্থতাটা সম্পূর্ণ নীরব।
-f2b_rule=""
+# ⚠️⚠️ **দুটো ব্যাকএন্ড, দুটো সম্পূর্ণ আলাদা নাম ও ফরম্যাট** — আর প্রথম
+#    আসল রানেই (Ubuntu 24.04, ১৫ আগস্ট) দেখা গেল এখানে ধরা পড়ে না:
+#
+#      iptables  → চেইনের নাম `f2b-sshd`,   পোর্ট `--dports 22,2222`
+#      nftables  → চেইনের নাম `f2b-chain`,  সেট `addr-set-sshd`,
+#                  পোর্ট `tcp dport { 22, 2222 }`
+#
+#    আধুনিক Ubuntu-তে fail2ban ডিফল্টে **nftables** বেছে নেয়, তাই শুধু
+#    `f2b-sshd` খুঁজলে কিছুই মিলত না আর স্ক্রিপ্ট "যাচাই করা গেল না" বলে
+#    থেমে যেত — অথচ জেল দিব্যি কাজ করছিল (ছ-টা IP ব্যানও হয়ে গিয়েছিল)।
+rule_ports=""
+
 if command -v iptables >/dev/null 2>&1; then
   f2b_rule="$(iptables -S INPUT 2>/dev/null | grep -F 'f2b-sshd' | head -1 || true)"
-fi
-if [ -z "$f2b_rule" ] && command -v nft >/dev/null 2>&1; then
-  f2b_rule="$(nft list ruleset 2>/dev/null | grep -F 'f2b-sshd' | head -1 || true)"
+  if [ -n "$f2b_rule" ]; then
+    rule_ports="$(printf '%s\n' "$f2b_rule" | sed -n 's/.*--dports \([0-9,]*\).*/\1/p' | head -1)"
+  fi
 fi
 
-rule_ports=""
-if [ -n "$f2b_rule" ]; then
-  rule_ports="$(printf '%s\n' "$f2b_rule" | sed -n 's/.*--dports \([0-9,]*\).*/\1/p' | head -1)"
+# ⚠️ `addr-set-sshd` ধরে খোঁজা, `f2b-chain` নয় — চেইনটা সব জেলের জন্য
+#    একটাই, কিন্তু সেটটা জেল-নির্দিষ্ট। তাই অন্য কোনো জেল থাকলেও এটা
+#    ঠিক sshd-র সারিটাই তোলে।
+if [ -z "$rule_ports" ] && command -v nft >/dev/null 2>&1; then
+  f2b_rule="$(nft list ruleset 2>/dev/null | grep -F 'addr-set-sshd' | grep -F 'dport' | head -1 || true)"
+  if [ -n "$f2b_rule" ]; then
+    # `tcp dport { 22, 2222 } …` → `22,2222`  (ফাঁকা জায়গা ফেলে দিয়ে)
+    rule_ports="$(printf '%s\n' "$f2b_rule" \
+      | sed -n 's/.*dport[[:space:]]*{\([^}]*\)}.*/\1/p' \
+      | tr -d '[:space:]' | head -1)"
+    # ⚠️ একটামাত্র পোর্ট হলে nft বন্ধনী ছাড়াই লেখে — `tcp dport 2222`
+    if [ -z "$rule_ports" ]; then
+      rule_ports="$(printf '%s\n' "$f2b_rule" \
+        | sed -n 's/.*dport[[:space:]]*\([0-9]\{1,5\}\).*/\1/p' | head -1)"
+    fi
+  fi
 fi
 
 if [ -z "$rule_ports" ]; then
@@ -469,8 +493,10 @@ echo "   জেলের অবস্থা   :  fail2ban-client status sshd"
 echo "   ব্যান তোলা      :  fail2ban-client set sshd unbanip <IP>"
 echo "   আপডেট মহড়া     :  unattended-upgrade --dry-run -v"
 printf '\n'
-printf '   \033[33m⚠️ ৮০/৪৪৩ (Caddy) এই জেলের বাইরে — Docker-এর প্রকাশিত পোর্টে\033[0m\n'
-printf '   \033[33m   fail2ban পৌঁছায় না। লগইন রুটের rate limit Caddy-তে বসাতে হবে।\033[0m\n\n'
+printf '   \033[33m⚠️ ৮০/৪৪৩ (Caddy) এই জেলের বাইরে — Docker-এর প্রকাশিত পোর্ট\033[0m\n'
+printf '   \033[33m   DNAT হয়ে FORWARD/DOCKER চেইন দিয়ে যায়, INPUT দিয়ে নয়।\033[0m\n'
+printf '   \033[32m   ✓ ওই দিকটা Caddy-তেই সামলানো — লগইনে ৩০/মিনিট প্রতি IP\033[0m\n'
+printf '   \033[32m     (web/Caddyfile-এর rate_limit · G116)। এই জেল শুধু SSH-এর।\033[0m\n\n'
 
 # ⚠️ FAIL হলেও exit 0 — ইচ্ছাকৃত। যা বসেছে তা বসেই আছে, আর অসম্পূর্ণ
 #    যাচাইকে ব্যর্থতা বলে ধরলে কেউ স্ক্রিপ্টটা আবার চালাতে ভয় পেতেন।
