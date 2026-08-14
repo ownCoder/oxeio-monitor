@@ -122,8 +122,14 @@ export function SummaryTab({
       ),
     },
     {
+      /**
+       * ⚠️ হেডারে "days shown" — এটা এই সারির দিনগুলোর টার্গেট, "এ পর্যন্ত
+       *    কত হওয়ার কথা ছিল" নয়। শুধু "Target" লেখা থাকলে পাঠক পাশের
+       *    Counted থেকে বিয়োগ করে নিজের মতো একটা ঘাটতি বানিয়ে ফেলতেন —
+       *    আর সেই বানানো সংখ্যাটায় এজেন্ট বসার আগের দিনগুলোও থাকত।
+       */
       key: 'target',
-      header: 'Target',
+      header: 'Target · days shown',
       align: 'right',
       render: (row) => <Hours hours={row.targetHours} tone="muted" />,
     },
@@ -145,8 +151,12 @@ export function SummaryTab({
     {
       // ⚠️ ঘাটতিই একমাত্র লাল সংখ্যা এই টেবিলে — লাল মানে "মনোযোগ দরকার",
       //    আর সব কলাম লাল করলে লালের মানেই হারিয়ে যেত।
+      // ⚠️⚠️ হেডারে "vs expected" — সংখ্যাটা Target বিয়োগ Counted **নয়**।
+      //    সার্ভার এটা মাপে কেবল সেই দিনগুলোর বিপরীতে যেগুলো সত্যিই দেখা
+      //    হয়েছে ও শেষ হয়েছে (`SummaryRow.shortfallHours`)। কথাটা না
+      //    লিখলে টেবিলটা নিজেই নিজের সাথে অমিল দেখাত।
       key: 'shortfall',
-      header: 'Shortfall',
+      header: 'Shortfall vs expected',
       align: 'right',
       render: (row) =>
         row.shortfallHours > 0 ? (
@@ -172,9 +182,14 @@ export function SummaryTab({
 
   return (
     <>
+      {/*
+        ⭐⭐ `hint`-এর বাক্যটাই এই টেবিলের চাবি: তিনটে সংখ্যা তিনটে আলাদা
+        প্রশ্নের উত্তর। এটা ছাড়া পাঠক Target থেকে Counted বিয়োগ করে মেলাতে
+        গিয়ে ভাবতেন Shortfall কলামে ভুল আছে।
+      */}
       <Card
         title={groupBy === 'month' ? 'Month by month' : 'Week by week'}
-        hint="Counted = worked + adjustment — this is what the target is matched against"
+        hint="Counted = worked + adjustment. Shortfall is measured only against what was expected by yesterday — days before tracking started, and today, are never counted as a shortfall."
         padded={false}
       >
         <Table

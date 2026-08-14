@@ -66,6 +66,21 @@ const OVERTIME_NOTE_EN =
   'Overtime hours are not converted to money - no rate has been decided ' +
   '(open question O4).';
 
+/**
+ * ⭐⭐ ছাপা কাগজে **তিনটে সংখ্যা তিনটে আলাদা প্রশ্নের উত্তর** — বাক্যটা
+ * ছাড়া পাঠক বিয়োগ করে মেলাতে গিয়ে ভাবতেন হিসাবে ভুল আছে।
+ *
+ * ⚠️ কলামের হেডারে এটা লেখা যায় না: PDF-এর কলামপ্রস্থ পিক্সেলে বাঁধা,
+ *    লম্বা হেডার কেটে যেত। তাই পাদটীকা — কিন্তু **থাকতেই হবে**, কারণ
+ *    মানুষ কাগজটাকেই বিশ্বাস করে, আর গত রাউন্ডে কাগজটাই এমন ঘাটতির
+ *    অভিযোগ করত যা এজেন্ট বসার আগের দিনগুলোর।
+ */
+const SHORTFALL_NOTE_EN =
+  'Target (h) covers every day shown. Shortfall (h) is measured only against ' +
+  'what was expected by yesterday - days before tracking started, and today, ' +
+  'are never counted as a shortfall. Overtime (h) is hours beyond the full ' +
+  'target for the days shown.';
+
 // ── ছাপার লাইন (খাঁটি) ───────────────────────────────────────────────────────
 
 /**
@@ -197,7 +212,9 @@ export function attendancePdf(
       ['Days with work', String(report.totals.daysWithWork)],
       ['Total worked (h)', hoursText(report.totals.workedHours)],
       ['Total credited (h)', hoursText(report.totals.creditedHours)],
-      ['Total target (h)', hoursText(report.totals.targetHours)],
+      // ⚠️ "days listed" — সংখ্যাটা উপরের Target কলামের যোগফল, "এ পর্যন্ত
+      //    কত হওয়ার কথা ছিল" নয় (`AttendanceReport.totals`-এর নোট)
+      ['Total target - days listed (h)', hoursText(report.totals.targetHours)],
     ],
     notes: notesFor(report.meta, lossy, [CATEGORY_NOTE]),
   });
@@ -234,6 +251,9 @@ export function summaryPdf(
     ),
     table: tableOf(columns, lines),
     notes: notesFor(report.meta, lossy, [
+      // ⚠️ ঘাটতির বাক্যটা **আগে**, কারণ কাগজ দেখে মানুষ প্রথমেই ওই
+      //    কলামটা নিয়ে প্রশ্ন করেন
+      SHORTFALL_NOTE_EN,
       // ⭐ নোটটা ফাইলের ভেতরেই থাকে — শুধু JSON-এ থাকলে যিনি PDF ছাপিয়ে
       //    মিটিংয়ে নিয়ে যান তিনি জানতেনই না, আর নিজের মতো একটা হার
       //    বসিয়ে ফেলতেন (O4)

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { prorate } from '../summary/proration';
-import { countWorkdays } from '../summary/summary.math';
+import { countWorkdays, elapsedWorkdays } from '../summary/summary.math';
 import { PrismaService } from '../prisma/prisma.service';
 import { paceSecOf } from './progress.math';
 import { workDateOf } from './util/dhaka-time';
@@ -105,8 +105,15 @@ export class ProgressService {
      */
     const holidayFrom = week7Start < monthStart ? week7Start : monthStart;
 
-    const [todayRow, monthRow, week7Row, employee, adjustmentRow, holidayRows] =
-      await Promise.all([
+    const [
+      todayRow,
+      monthRow,
+      week7Row,
+      employee,
+      adjustmentRow,
+      holidayRows,
+      firstSeen,
+    ] = await Promise.all([
         this.prisma.activitySegment.aggregate({
           _sum: { durationSec: true },
           where: { employeeId, countsAsWork: true, workDate: today },
@@ -165,6 +172,30 @@ export class ProgressService {
           where: { holidayDate: { gte: holidayFrom, lte: monthEnd } },
           select: { holidayDate: true },
         }),
+        /**
+         * ⭐⭐ **সার্ভার কবে থেকে এই কর্মীকে নিয়ে হিসাব করছে** — তার
+         * সবচেয়ে পুরোনো `daily_summary` সারি। প্রত্যাশার জানালা এর আগে
+         * শুরু হয় না।
+         *
+         * ⚠️ মাস দিয়ে ছাঁকা হয় না, ইচ্ছাকৃত: প্রশ্নটা "এই মাসে তার ডেটা
+         *    আছে কি" নয়, "তাকে কবে থেকে গুনছি"। মাস দিয়ে ছাঁকলে প্রতিটি
+         *    মাসের ১ তারিখেই ট্র্যাকিং নতুন করে "শুরু" হতো।
+         *
+         * ⚠️ সংস্থা-স্তরের min **নয়** — তাহলে পরে যোগ হওয়া কর্মীর জানালা
+         *    সংস্থার প্রথম দিন থেকে শুরু হতো, অর্থাৎ সে সিস্টেমে আসার
+         *    আগের সময়টাও তার ঘাটতিতে ঢুকত।
+         *
+         * ⚠️⚠️ **এটা "এজেন্ট কবে বসেছে" নয়।** `refreshDate()` প্রতিটি
+         *    active কর্মীর সারি লেখে, ডেটা থাক বা না থাক — তাই ১ অক্টোবর
+         *    সক্রিয় হয়ে ৮ অক্টোবর এজেন্ট পাওয়া কর্মীর এজেন্টহীন দিনগুলো
+         *    এখনো পুরো ঘাটতি। আগে এখানে উল্টোটা দাবি করা ছিল, আর ওই
+         *    মিথ্যা মন্তব্যটা পড়ে কেউ ভাবতেন কেসটা ঢাকা পড়ে গেছে।
+         */
+        this.prisma.dailySummary.findFirst({
+          where: { employeeId },
+          orderBy: { workDate: 'asc' },
+          select: { workDate: true },
+        }),
       ]);
 
     const monthActiveSec = monthRow._sum.durationSec ?? 0;
@@ -198,16 +229,30 @@ export class ProgressService {
 
     const expectedWorkdays = p.employeeWorkdays;
 
-    /** ⚠️ গত কর্মদিবসও তার কর্মকালের ভেতরেই — নইলে যোগ দেওয়ার দিনই "পিছিয়ে" */
-    const elapsedFrom =
-      employee?.joinedOn && employee.joinedOn.getTime() > monthStart.getTime()
-        ? employee.joinedOn
-        : monthStart;
-
-    const workdaysElapsed =
-      elapsedFrom.getTime() > today.getTime()
-        ? 0
-        : countWorkdays(elapsedFrom, today, off, holidays);
+    /**
+     * ⭐⭐ **জানালাটা এখানে হিসাব করা হয় না — `elapsedWorkdays()` করে।**
+     *
+     * ⚠️⚠️ আগে এখানে নিজের একটা হিসাব ছিল: `max(মাসের ১, joinedOn)` থেকে
+     *    **আজ ধরে** ক্যালেন্ডার কর্মদিবস। সেটাই ছিল এই রিপোর সবচেয়ে বড়
+     *    পাপের উৎস — কর্মী তার নিজের tray/`/me`-তে যা দেখতেন আর owner
+     *    Monthly পাতায় যা দেখতেন, দুটোর ফারাক দাঁড়িয়েছিল ~৮৯ ঘণ্টা।
+     *    কারণ দুটো:
+     *      ১· **আজকের দিনটা ধরা হতো।** ভোর ৬টায় tray "৮ ঘণ্টা পিছিয়ে"
+     *         দেখাত, সন্ধ্যায় নিজে থেকেই ঠিক হয়ে যেত — একই মানুষ দিনে
+     *         দুবার দুই রায় পেতেন, কেবল ঘড়ির কাঁটার কারণে।
+     *      ২· **ট্র্যাকিং শুরুর আগের দিনও গোনা হতো**, অর্থাৎ এজেন্ট বসার
+     *         আগের না-দেখা দিনগুলো তার ব্যর্থতা হয়ে যেত।
+     */
+    const workdaysElapsed = elapsedWorkdays({
+      periodStart: monthStart,
+      periodEnd: monthEnd,
+      today,
+      joinedOn: employee?.joinedOn ?? null,
+      leftOn: employee?.leftOn ?? null,
+      trackingStartedOn: firstSeen?.workDate ?? null,
+      weeklyOffDay: off,
+      holidays,
+    });
 
     /**
      * এক কর্মদিবসের ভাগ। ⚠️ পলিসি থেকে সরাসরি, তার কর্মদিবস দিয়ে ভাগ করে

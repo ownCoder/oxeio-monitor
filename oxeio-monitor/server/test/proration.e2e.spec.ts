@@ -70,9 +70,29 @@ async function makeEmployee(opts: {
   return e.id;
 }
 
-/** rollup চালানো — আগস্টের একটা দিন দিয়ে, "এখন" মাসের শেষে */
-async function rollup(): Promise<void> {
-  await summary.refreshDate(utc(31), new Date(Date.UTC(2026, 7, 31, 12)));
+/**
+ * rollup চালানো — আগস্টের একটা দিন দিয়ে, "এখন" মাসের শেষে।
+ *
+ * ⚠️ `now` = ৩১ আগস্ট দুপুর UTC → ঢাকায় ওই দিনেরই সন্ধ্যা, তাই
+ *    `today` = ৩১ আগস্ট। প্রত্যাশার জানালা তাই **৩০ আগস্টেই থামে**
+ *    (আজকের দিনটা গোনা হয় না, `summary.math.ts`-এর `elapsedWindow()`)।
+ */
+async function rollup(now = new Date(Date.UTC(2026, 7, 31, 12))): Promise<void> {
+  await summary.refreshDate(utc(31), now);
+}
+
+/**
+ * ওই কর্মীর কোনো দিনের `daily_summary` সারি বসানো।
+ *
+ * ⭐ **কেন এটা দরকার:** প্রত্যাশার জানালা শুরু হয় ওই কর্মীর **সবচেয়ে
+ * পুরোনো `daily_summary` সারি** থেকে — অর্থাৎ "তাকে কবে থেকে দেখছি"।
+ * সারি না বসালে rollup নিজেই আজকের (৩১ আগস্টের) সারিটা লেখে, আর তখন
+ * ট্র্যাকিং-শুরু = আজ, অর্থাৎ শেষ হয়ে যাওয়া একটা দিনও দেখা হয়নি।
+ */
+function seeDays(employeeId: number, days: number[]): Promise<unknown> {
+  return h.prisma.dailySummary.createMany({
+    data: days.map((d) => ({ employeeId, workDate: utc(d) })),
+  });
 }
 
 const monthRow = (employeeId: number) =>
@@ -125,13 +145,67 @@ describe('rollup — monthly_summary-তে prorated টার্গেট', () 
   });
 
   /**
-   * ⚠️ যোগ দেওয়ার দিন থেকে গোনা হয় বলে সে প্রথম দিনেই "পিছিয়ে" থাকে না।
-   * মাসের শুরু থেকে গুনলে ১৭ তারিখে যোগ দেওয়া কর্মী প্রথম দিনেই ১২৮
-   * ঘণ্টার ঘাটতি নিয়ে শুরু করত — tray-তে লাল, আর কারণটা অদৃশ্য।
+   * ⭐⭐ **সংখ্যাটা বদলেছে — ১৩ থেকে ০ — আর সেটাই এখন সঠিক।**
+   *
+   * এই টেস্ট আগে দাবি করত `workdaysElapsed === 13` ও
+   * `expectedSec === targetSec`, অর্থাৎ ১৭ তারিখে যোগ দেওয়া কর্মীর কাছে
+   * ৩১ আগস্টেই পুরো ১০৪ ঘণ্টা দাবি করা হচ্ছে। কিন্তু এই দৃশ্যে তার
+   * **একটাও `daily_summary` সারি নেই** — `rollup()` নিজেই ৩১ তারিখের
+   * সারিটা প্রথমবার বসায়। অর্থাৎ ওই ১৩ দিনে আমরা তাকে দেখিইনি।
+   *
+   * ⚠️ **অনুপস্থিত পর্যবেক্ষণকে ব্যর্থতা বলে গোনা যাবে না** (এই প্রকল্পের
+   * কেন্দ্রীয় নীতি)। না-দেখা দিনের প্রত্যাশা ০, আর তাই pace-ও ০ — "সে
+   * পিছিয়ে" নয়, "আমরা জানি না"।
+   *
+   * ⚠️ টার্গেট (`target_sec`) কিন্তু **অটুট** — ওটা চুক্তির সংখ্যা, আর
+   * পে-রোলের কর্তন ওখান থেকেই হয়। এই বদল কেবল pace/expected-কে ছোঁয়।
    */
-  it('গত কর্মদিবসও তার কর্মকালের ভেতরেই গোনা হয়', async () => {
+  it('যাকে এখনো একটা শেষ-হওয়া দিনেও দেখা হয়নি, তার প্রত্যাশা ০', async () => {
     const id = await makeEmployee({ empCode: 'PR-ELAPSED', joinedOn: utc(17) });
     await rollup();
+
+    const row = await monthRow(id);
+
+    expect(row.workdaysElapsed).toBe(0);
+    expect(row.expectedSec).toBe(0);
+    expect(row.paceSec).toBe(0);
+    // ⭐ অথচ টার্গেট আগের মতোই তার নিজের ১৩ কর্মদিবসের
+    expect(row.targetSec).toBe(13 * 8 * HOUR);
+  });
+
+  /**
+   * ⭐ ট্র্যাকিং শুরুর পর থেকে গোনা হয়, **আজকের দিনটা বাদে**।
+   *
+   * ⚠️ একটামাত্র সারি (১৭ আগস্ট) বসানোই যথেষ্ট — জানালার শুরু ঠিক করে
+   * তার **সবচেয়ে পুরোনো** সারিটা, কতগুলো সারি আছে তা নয়। ১৮–৩০-এর
+   * অনুপস্থিত সারিগুলো "না-দেখা দিন" নয়: এজেন্ট তো বসেই গেছে, ওগুলো
+   * সত্যিকারের শূন্য দিন।
+   */
+  it('ট্র্যাকিং শুরুর পরের কর্মদিবস গোনা হয়, আজকের দিন বাদে', async () => {
+    const id = await makeEmployee({ empCode: 'PR-SEEN', joinedOn: utc(17) });
+    await seeDays(id, [17]);
+    await rollup();
+
+    const row = await monthRow(id);
+
+    // ১৭–৩০ আগস্ট (৩১ = আজ, বাদ), শুক্রবার ২১ ও ২৮ বাদে = ১২ দিন
+    expect(row.workdaysElapsed).toBe(12);
+    expect(row.expectedSec).toBe(96 * HOUR);
+    // ⚠️ ১৩ দিনের টার্গেটের ঠিক ১২/১৩ — শেষ দিনটা এখনো শেষ হয়নি
+    expect(row.expectedSec).toBe(Math.round((row.targetSec * 12) / 13));
+  });
+
+  /**
+   * ⭐⭐ **মাস শেষ হয়ে গেলে প্রত্যাশা ঠিক টার্গেটে গিয়ে ঠেকে** — তার
+   * বেশিও নয়, কমও নয়। না মিললে যে কর্মী পুরো মাস নিখুঁত কাজ করেছেন
+   * তিনিও শেষে "পিছিয়ে" দেখতেন, আর এই ফিচারটার পুরো উদ্দেশ্যই আস্থা।
+   */
+  it('মাস ফুরিয়ে গেলে প্রত্যাশা = পুরো টার্গেট', async () => {
+    const id = await makeEmployee({ empCode: 'PR-CLOSED', joinedOn: utc(17) });
+    await seeDays(id, [17]);
+
+    // "এখন" ১ সেপ্টেম্বর — আগস্টের শেষ দিনটাও এখন গতকালের আগে
+    await rollup(new Date(Date.UTC(2026, 8, 1, 12)));
 
     const row = await monthRow(id);
 

@@ -70,7 +70,11 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
     [
       ...infoRows('Attendance (F01)', report.meta),
       ['Total worked (hours)', String(report.totals.workedHours)],
-      ['Total target (hours)', String(report.totals.targetHours)],
+      // ⚠️ লেবেলে "days listed" — সংখ্যাটা উপরের Target কলামের যোগফল,
+      //    "এ পর্যন্ত কত হওয়ার কথা ছিল" নয়। শুধু "Total target" লেখা
+      //    থাকলে পাঠক ওটাকেই ঘাটতির ভিত্তি ধরে নিতেন, অথচ এতে এজেন্ট
+      //    বসার আগের দিনগুলোও আছে (`AttendanceReport.totals`-এর নোট)।
+      ['Total target · days listed (hours)', String(report.totals.targetHours)],
     ],
   );
 }
@@ -90,9 +94,20 @@ export function summaryWorkbook(report: SummaryReport): Promise<Buffer> {
     hours('Worked (hours)', (r: SummaryRow) => r.workedHours),
     hours('Adjustment (hours)', (r: SummaryRow) => r.adjustmentHours),
     hours('Credited (hours)', (r: SummaryRow) => r.creditedHours),
-    hours('Target (hours)', (r: SummaryRow) => r.targetHours),
-    hours('Shortfall (hours)', (r: SummaryRow) => r.shortfallHours),
-    hours('Overtime (hours)', (r: SummaryRow) => r.overtimeHours),
+    // ⚠️⚠️ তিনটে হেডারই স্পষ্ট করে বলে **কোন সংখ্যার বিপরীতে** মাপা:
+    //    টার্গেট এই দিনগুলোর, কিন্তু ঘাটতি কেবল সেই দিনগুলোর যেগুলো দেখা
+    //    হয়েছে ও শেষ হয়েছে। শুধু "Target/Shortfall" লেখা থাকলে পাঠক
+    //    বিয়োগ করে মেলাতে গিয়ে ভাবতেন হিসাবে ভুল আছে — অথচ দুটো দুই
+    //    প্রশ্নের উত্তর (`SummaryRow`-এর নোট)।
+    hours('Target · days shown (hours)', (r: SummaryRow) => r.targetHours),
+    hours(
+      'Shortfall vs expected so far (hours)',
+      (r: SummaryRow) => r.shortfallHours,
+    ),
+    hours(
+      'Overtime beyond target (hours)',
+      (r: SummaryRow) => r.overtimeHours,
+    ),
   ];
 
   return buildWorkbook(

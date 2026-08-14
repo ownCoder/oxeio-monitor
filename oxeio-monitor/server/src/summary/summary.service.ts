@@ -5,7 +5,7 @@ import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { prorate } from './proration';
 import {
-  countWorkdays,
+  elapsedWorkdays,
   hoursToSec,
   isWorkday,
   monthBounds,
@@ -186,7 +186,7 @@ export class SummaryService {
     const { start, end, yearMonth } = monthBounds(workDate);
     const ids = employees.map((e) => e.id);
 
-    const [days, holidayRows, existing] = await Promise.all([
+    const [days, holidayRows, existing, firstSeen] = await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { employeeId: { in: ids }, workDate: { gte: start, lte: end } },
         select: {
@@ -203,16 +203,57 @@ export class SummaryService {
         where: { employeeId: { in: ids }, yearMonth },
         select: { employeeId: true, targetMetAt: true },
       }),
+      /**
+       * ⭐⭐ **সার্ভার কবে থেকে এই কর্মীকে নিয়ে হিসাব করছে** — তার সবচেয়ে
+       * পুরোনো `daily_summary` সারি।
+       *
+       * ⚠️⚠️ নামটা যেন বিভ্রান্ত না করে: এটা **"এজেন্ট কবে বসেছে" নয়**।
+       *    ঠিক নিচের লুপটাই (`refreshDate()`) প্রতিটি active কর্মীর সারি
+       *    লেখে, ডেটা থাক বা না থাক — তাই কেউ active হওয়ার দিনেই তার
+       *    প্রথম সারি বসে যায়, এজেন্ট তখনো না পৌঁছালেও।
+       *
+       * ⚠️⚠️ **কর্মীপ্রতি, সংস্থা-স্তরে নয়** — এখানে আগে `where` ছাড়া
+       *    একটাই `findFirst` ছিল, অর্থাৎ পুরো সংস্থার প্রথম দিন। তাতে
+       *    দুটো ভুল হতো:
+       *      ১· পরে যোগ হওয়া কর্মীর জানালা সংস্থার প্রথম দিন থেকে শুরু
+       *         হতো — অর্থাৎ সে সিস্টেমে আসার **আগের** মাসগুলোও তার
+       *         ঘাটতিতে ঢুকত (`joined_on` খালি বা ঢিলে হলে যা খুবই সম্ভব)।
+       *      ২· কোয়েরিটা নিষ্ক্রিয় কর্মীর সারিও পড়ত, তাই বহু আগে চলে
+       *         যাওয়া কারো ডেটা গোটা দলের জানালা পিছিয়ে দিত।
+       *
+       * ⚠️⚠️ **যেটা এটা সারায় না:** ১ অক্টোবর যোগ দিয়ে ৮ অক্টোবর এজেন্ট
+       *    পাওয়া কর্মীর ৫টা এজেন্টহীন দিন এখনো পুরো ঘাটতি — কারণ ১
+       *    তারিখেই তার `no_activity` সারি লেখা হয়ে যায়। আগে এখানে ঠিক
+       *    এই কেসটা "সারানো হয়েছে" বলে দাবি করা ছিল; দাবিটা মিথ্যা ছিল।
+       *    ⭐ সারাতে হলে গোনা শুরু করতে হতো প্রথম **`worked`** সারি থেকে,
+       *    আর তাতে সত্যিকারের প্রথম-দিকের অনুপস্থিতিও অদৃশ্য হয়ে যেত।
+       *
+       * ⚠️ **মাস দিয়ে ছাঁকা হয় না** — ইচ্ছাকৃত। প্রশ্নটা "এই মাসে তার
+       *    ডেটা আছে কি" নয়, "তাকে কবে থেকে দেখছি"। মাস দিয়ে ছাঁকলে প্রতিটি
+       *    মাসের ১ তারিখেই ট্র্যাকিং নতুন করে "শুরু" হতো, আর সেপ্টেম্বরের
+       *    প্রত্যাশা আগস্টের মতোই ভুল কাটা পড়ত।
+       */
+      this.prisma.dailySummary.groupBy({
+        by: ['employeeId'],
+        where: { employeeId: { in: ids } },
+        _min: { workDate: true },
+      }),
     ]);
 
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
     const daysBy = groupBy(days, (d) => d.employeeId);
     const metAtBy = new Map(existing.map((m) => [m.employeeId, m.targetMetAt]));
 
-    // "আজ পর্যন্ত" — তবে পুরোনো মাস হালনাগাদ করলে মাসের শেষ দিন পর্যন্ত,
-    // নইলে গত মাসের workdays_elapsed চিরকাল পুরো মাস ছাড়িয়ে যেত
+    /**
+     * ⚠️ `refreshDate()` আজকের দৈনিক সারি **আগে** লিখে তারপর এখানে আসে,
+     * তাই একেবারে প্রথম রানে এটা আজকের তারিখই হবে — আর তখন প্রত্যাশা ০,
+     * যেটাই সৎ: শেষ হয়ে যাওয়া একটা দিনও এখনো দেখা হয়নি।
+     */
+    const trackedFromBy = new Map(
+      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
+    );
+
     const today = workDateOf(now);
-    const elapsedTo = today < start ? null : today > end ? end : today;
 
     const ops: Prisma.PrismaPromise<unknown>[] = [];
 
@@ -242,27 +283,30 @@ export class SummaryService {
        * ⚠️ `workdaysElapsed`-ও তার কর্মকালের ভেতরেই গোনা হয়। নইলে ১৫
        * তারিখে যোগ দেওয়া কর্মী মাসের শুরু থেকে "পিছিয়ে" দেখাত — প্রথম
        * দিনেই ৮০ ঘণ্টা ঘাটতি নিয়ে শুরু করত।
+       *
+       * ⭐⭐ জানালার তিনটে সীমাই (**তার** ট্র্যাকিং-শুরু, যোগ/ছাড়ার দিন,
+       *    আর আজকের দিনটা বাদ) `elapsedWorkdays()`-এ — কেন, সেখানকার নোট
+       *    দেখুন। tray (`progress.service.ts`), Live Board আর রিপোর্ট
+       *    (F01/F02) **এই একই ফাংশনটাই** ডাকে, তাই চার পর্দায় সংখ্যাটা
+       *    আর আলাদা হতে পারে না। হিসাবটা খাঁটি ফাংশনে রাখা হয়েছে বলেই
+       *    `tracking-start.spec.ts` ডাটাবেস ছাড়াই প্রতিটা ধার পরীক্ষা করে।
        */
-      const elapsedFrom =
-        e.joinedOn !== null && e.joinedOn.getTime() > start.getTime()
-          ? e.joinedOn
-          : start;
-
-      const elapsedEnd =
-        e.leftOn !== null && elapsedTo !== null && e.leftOn.getTime() < elapsedTo.getTime()
-          ? e.leftOn
-          : elapsedTo;
-
       const numbers = rollupMonth({
         workedSec: sum(rows.map((r) => r.workedSec)),
         adjustmentSec: sum(rows.map((r) => r.adjustmentSec)),
         targetSec: p.targetSec,
         expectedWorkdays: p.employeeWorkdays,
         monthWorkdays: p.monthWorkdays,
-        workdaysElapsed:
-          elapsedEnd === null || elapsedFrom.getTime() > elapsedEnd.getTime()
-            ? 0
-            : countWorkdays(elapsedFrom, elapsedEnd, e.weeklyOffDay, holidays),
+        workdaysElapsed: elapsedWorkdays({
+          periodStart: start,
+          periodEnd: end,
+          today,
+          joinedOn: e.joinedOn,
+          leftOn: e.leftOn,
+          trackingStartedOn: trackedFromBy.get(e.id) ?? null,
+          weeklyOffDay: e.weeklyOffDay,
+          holidays,
+        }),
         daysWithWork: rows.filter((r) => r.workedSec > 0).length,
       });
 

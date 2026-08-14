@@ -116,6 +116,14 @@ export class DigestService {
       monthTo: workDate,
       today: today1.rows,
       month: month.rows,
+      /**
+       * ⭐⭐ প্রত্যাশা F02-র **meta** থেকে, সারি থেকে নয়। সারিতে আছে
+       * "মাসের ১ তারিখ → আজ"-এর টার্গেট; meta-তে আছে ঠিক সেই জানালার
+       * হিসাব যেটা tray, Live Board আর Monthly পাতা ব্যবহার করে
+       * (ট্র্যাকিং শুরু → গতকাল)। এখানে সারি থেকে বিয়োগ করে বানালে
+       * ইমেইল আর ড্যাশবোর্ড একই কর্মীর নামে দু-রকম ঘাটতি বলত।
+       */
+      expectedHours: month.meta.expectedHours,
     });
   }
 

@@ -17,8 +17,10 @@ import {
   type UsageGroup,
   type UsageTally,
 } from '../activity/activity.math';
+import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { elapsedWindow } from '../summary/summary.math';
 import type { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
 import {
   MIME_OF,
@@ -31,21 +33,29 @@ import {
   productivityWorkbook,
   summaryWorkbook,
 } from './reports.sheets';
+/**
+ * ⚠️⚠️ **`countWorkdays` ও `monthBoundsOf` এখানে ইচ্ছাকৃতভাবে import করা
+ * হয় না।** দৈনিক টার্গেটের হর পলিসির `expected_workdays`, ক্যালেন্ডার
+ * থেকে গোনা কোনো সংখ্যা নয় — আর ঠিক ওই দুটো ফাংশন হাতের কাছে থাকাতেই
+ * একদিন হরটা ক্যালেন্ডারে ফিরে গিয়েছিল। কর্মদিবস গোনার দরকার হলে
+ * `targetSecIn()` নিজেই গুনে নেয় (সেটা লব, হর নয়)।
+ */
 import {
+  approximateHolidayDates,
   bucketOf,
-  countWorkdays,
   dailyTargetSec,
   eachDate,
   isoDayOf,
   isWorkday,
-  monthBoundsOf,
-  monthKeyOf,
   monthsIn,
+  overlapOf,
   parseReportRange,
   secondsToHours,
   sharePct,
+  targetSecIn,
   toIsoDate,
   weekStartIsoDay,
+  type DateSpan,
   type GroupBy,
   type ReportRange,
   type WorkdayRule,
@@ -85,14 +95,44 @@ interface ResolvedEmployee {
   leftOn: Date | null;
   monthlyTargetSec: number;
   weeklyOffDay: number | null;
+  /**
+   * ⭐⭐ এক কর্মদিবসের টার্গেট = মাসিক ÷ পলিসির `expected_workdays`।
+   *
+   * ⚠️ কর্মীপ্রতি **একবারই** বের করা হয় এবং মাস বদলালেও বদলায় না — ঠিক
+   *    এই ধ্রুবকতাটাই `prorate()`-এর সাথে মিল রাখে। আগে এটা মাসভেদে
+   *    বদলাত (হর ছিল ওই মাসের ক্যালেন্ডার কর্মদিবস), আর তাতে একই কর্মীর
+   *    একই মাসে রিপোর্ট বলত ৭.৭০ ঘণ্টা, tray বলত ৮.০০।
+   */
+  dailyTargetSec: number;
 }
 
 interface ReportContext {
   range: ReportRange;
   employees: ResolvedEmployee[];
   excluded: string[];
+  /**
+   * ⭐⭐ যে ছুটির তারিখগুলোর উপর এই রিপোর্টের হর দাঁড়ানো, তার মধ্যে যেগুলো
+   * এখনো পাকা নয় ('YYYY-MM-DD')। ঠিক সেই সারিগুলো থেকেই আসে যেগুলো দিয়ে
+   * কর্মদিবস গোনা হয়েছে — এক সংখ্যা, এক সংজ্ঞা।
+   */
+  approximateHolidayDates: string[];
+  /**
+   * ⭐⭐ কর্মীপ্রতি "এ পর্যন্ত কত হওয়ার কথা ছিল", ঘণ্টায় — `ReportMeta.expectedHours`।
+   * সংজ্ঞা ও কেন সার্ভারে, দুটোই ওই টাইপের নোটে।
+   */
+  expectedHours: Record<number, number>;
   /** ওই কর্মীর ওই দিনের টার্গেট, সেকেন্ডে (ছুটির দিনে ০) */
   targetSecOf(employee: ResolvedEmployee, date: Date): number;
+  /**
+   * ⭐⭐ ওই পরিসরের **প্রত্যাশা**, সেকেন্ডে — অর্থাৎ পরিসরের যেটুকু
+   * `elapsedWindow()`-এর ভেতরে পড়ে কেবল সেটুকুর টার্গেট।
+   *
+   * ⚠️ `targetSecOf()`-এর যোগফলের চেয়ে এটা **ছোট বা সমান**, আর ফারাকটা
+   *    ইচ্ছাকৃত: ট্র্যাকিং শুরুর আগের দিন আর আজকের অসমাপ্ত দিনটা টার্গেটে
+   *    আছে, প্রত্যাশায় নেই। কারও ঘাটতি মাপা হয় **কেবল** এই সংখ্যাটার
+   *    বিপরীতে — না-দেখা দিন কারো ব্যর্থতা নয়।
+   */
+  expectedSecOf(employee: ResolvedEmployee, span: DateSpan): number;
   ruleOf(employee: ResolvedEmployee): WorkdayRule;
   employedOn(employee: ResolvedEmployee, date: Date): boolean;
 }
@@ -202,6 +242,15 @@ export class ReportsService {
         rows: rows.length,
         workedHours: secondsToHours(workedSec),
         creditedHours: secondsToHours(creditedSec),
+        /**
+         * ⚠️⚠️ এটা **উপরের সারিগুলোর Target কলামের যোগফল**, "এ পর্যন্ত কত
+         * হওয়ার কথা ছিল" নয় (সেটা `meta.expectedHours`)। ওয়েবে ও PDF-এ
+         * সংখ্যাটা ঠিক ওই কলামের নিচে পাদটীকা হিসেবে বসে, তাই এটাকে
+         * প্রত্যাশার জানালায় নিলে **কলামটা আর যোগ হতো না** — একটা মোট
+         * যেটা নিজের কলামের সাথে মেলে না, সেটা যেকোনো ভুল সংখ্যার চেয়ে
+         * খারাপ। তাই ফারাকটা লেবেলে বলা হয় ("Target · days listed"), মোট
+         * বদলে নয়।
+         */
         targetHours: secondsToHours(targetSec),
         daysWithWork,
       },
@@ -317,6 +366,40 @@ export class ReportsService {
       for (const [key, acc] of [...buckets].sort(([a], [b]) =>
         a < b ? -1 : 1,
       )) {
+        /**
+         * ⭐⭐ **ঘাটতির হর প্রত্যাশা, অতিরিক্তের হর টার্গেট — ইচ্ছাকৃতভাবে
+         * আলাদা, আর এটাই এই ফাইলের সবচেয়ে জরুরি সিদ্ধান্ত।**
+         *
+         * টার্গেট একটা **ক্যালেন্ডারের তথ্য**: এই দিনগুলোর জন্য কত ঘণ্টা
+         * ছিল। ঘাটতি একটা **মানুষ সম্পর্কে রায়**, আর রায় কেবল সেই
+         * দিনগুলোর উপর হতে পারে যেগুলো আমরা সত্যিই দেখেছি ও যেগুলো শেষ
+         * হয়েছে — তাই তার হর `expectedSecOf()`।
+         *
+         * ⚠️⚠️ এটা না করলে যা হতো (আর গত রাউন্ডে হয়েছিল): Monthly পাতা
+         *    বলত "expected ৮ঘ · pace −২ঘ", অথচ **একই মাসের** Excel/PDF
+         *    বলত "target ৮৩.২ঘ · shortfall ৭৭.২ঘ" — কারণ ওতে এজেন্ট বসার
+         *    আগের দিনগুলোও ধরা ছিল। দুটোর মধ্যে মানুষ কাগজটাকেই বিশ্বাস
+         *    করে, আর কাগজটাই ছিল অভিযোগকারী।
+         *
+         * ⚠️ অতিরিক্ত মাপা হয় **পুরো টার্গেটের** বিপরীতে, প্রত্যাশার নয়।
+         *    প্রত্যাশা ধরলে আজকের কাজ করা ঘণ্টাগুলো (আজকের দিনটা
+         *    প্রত্যাশায় নেই) সবার নামে "অতিরিক্ত" হয়ে ছাপা হতো, অথচ
+         *    মাসের টার্গেটই এখনো ছোঁয়া হয়নি। "এগিয়ে আছি" আর "বেশি কাজ
+         *    করেছি" এক কথা নয়।
+         *
+         * ⭐ পর্ব শেষ হয়ে গেলে (গত মাসের রিপোর্ট) জানালা পুরো বালতিটাই
+         *    ঢাকে, অর্থাৎ প্রত্যাশা = টার্গেট আর দুটো হর মিলে যায় — তাই
+         *    পুরোনো মাসের ছাপা কাগজ এই বদলে নড়ে না।
+         *
+         * ⚠️ দুটোই মেলানো হয় `credited_sec`-এর সাথে, `worked_sec`-এর সাথে
+         *    নয় (§ ২.১-ঙ) — নইলে owner-এর দেওয়া সংশোধন রিপোর্টে উধাও হয়ে
+         *    যেত।
+         */
+        const expectedSec = ctx.expectedSecOf(employee, {
+          from: acc.start,
+          to: acc.end,
+        });
+
         rows.push({
           employeeId: employee.id,
           empCode: employee.empCode,
@@ -330,11 +413,8 @@ export class ReportsService {
           adjustmentHours: secondsToHours(acc.adjustmentSec),
           creditedHours: secondsToHours(acc.creditedSec),
           targetHours: secondsToHours(acc.targetSec),
-          // ⚠️ ঘাটতি ও অতিরিক্ত মেলানো হয় `credited_sec`-এর সাথে,
-          //    `worked_sec`-এর সাথে নয় (§ ২.১-ঙ) — নইলে owner-এর দেওয়া
-          //    সংশোধন রিপোর্টে উধাও হয়ে যেত।
           shortfallHours: secondsToHours(
-            Math.max(0, acc.targetSec - acc.creditedSec),
+            Math.max(0, expectedSec - acc.creditedSec),
           ),
           overtimeHours: secondsToHours(
             Math.max(0, acc.creditedSec - acc.targetSec),
@@ -575,7 +655,14 @@ export class ReportsService {
           // ⚠️ `monthlySalary` এখানে **নেই** এবং কখনো যোগ করা যাবে না —
           //    ম্যানেজারও এই endpoint ডাকেন
           policy: {
-            select: { monthlyTargetHours: true, weeklyOffDay: true },
+            // ⭐⭐ `expectedWorkdays` — দৈনিক টার্গেটের **হর**। এটা না আনলে
+            //    এখানে আবার ক্যালেন্ডার থেকে গোনা কর্মদিবস বসত, আর ঠিক
+            //    সেটাই ছিল রিপোর্ট ও tray-র দুই সংখ্যার উৎস।
+            select: {
+              monthlyTargetHours: true,
+              expectedWorkdays: true,
+              weeklyOffDay: true,
+            },
           },
         },
         orderBy: { empCode: 'asc' },
@@ -583,7 +670,11 @@ export class ReportsService {
       this.prisma.workPolicy.findFirst({
         where: { isActive: true },
         orderBy: { id: 'asc' },
-        select: { monthlyTargetHours: true, weeklyOffDay: true },
+        select: {
+          monthlyTargetHours: true,
+          expectedWorkdays: true,
+          weeklyOffDay: true,
+        },
       }),
     ]);
 
@@ -608,6 +699,8 @@ export class ReportsService {
         );
       }
 
+      const monthlyTargetSec = Number(policy.monthlyTargetHours) * HOUR;
+
       employees.push({
         id: e.id,
         empCode: e.empCode,
@@ -615,8 +708,12 @@ export class ReportsService {
         department: e.department,
         joinedOn: e.joinedOn,
         leftOn: e.leftOn,
-        monthlyTargetSec: Number(policy.monthlyTargetHours) * HOUR,
+        monthlyTargetSec,
         weeklyOffDay: policy.weeklyOffDay,
+        dailyTargetSec: dailyTargetSec(
+          monthlyTargetSec,
+          policy.expectedWorkdays,
+        ),
       });
     }
 
@@ -626,8 +723,9 @@ export class ReportsService {
       );
     }
 
-    // ⚠️ ছুটি আনা হয় **পুরো মাসগুলোর** জন্য, শুধু রেঞ্জের জন্য নয় — দৈনিক
-    //    টার্গেটের হর ওই মাসের মোট কর্মদিবস (§ ২.১-খ)।
+    // ⚠️ ছুটি আনা হয় **পুরো মাসগুলোর** জন্য, শুধু রেঞ্জের জন্য নয় — কারণ
+    //    দুটো, আর কোনোটাই দৈনিক টার্গেটের হর নয় (হর পলিসির ধ্রুবক):
+    //    `monthsIn()`-এর নোট দেখুন।
     const months = monthsIn(range.from, range.to);
     const holidayRows = await this.prisma.holiday.findMany({
       where: {
@@ -636,48 +734,134 @@ export class ReportsService {
           lte: months[months.length - 1].last,
         },
       },
-      select: { holidayDate: true },
+      // ⚠️ `name`-ও আনা হয়, কারণ অনিশ্চয়তার চিহ্নটা ("(সম্ভাব্য)") নামেই
+      //    থাকে — আলাদা কলামে নয় (`prisma/holidays.data.ts`-এর মাথা দেখুন)।
+      select: { holidayDate: true, name: true },
     });
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
-
-    // একই নীতির কর্মীরা একই সংখ্যা ভাগ করে নেন — মাসে একবারই গোনা হয়
-    const workdayCache = new Map<string, number>();
-    const workdaysInMonth = (
-      date: Date,
-      weeklyOffDay: number | null,
-    ): number => {
-      const key = `${monthKeyOf(date)}|${weeklyOffDay ?? '-'}`;
-      const cached = workdayCache.get(key);
-      if (cached !== undefined) return cached;
-
-      const { first, last } = monthBoundsOf(date);
-      const count = countWorkdays(first, last, { weeklyOffDay, holidays });
-      workdayCache.set(key, count);
-      return count;
-    };
 
     const ruleOf = (employee: ResolvedEmployee): WorkdayRule => ({
       weeklyOffDay: employee.weeklyOffDay,
       holidays,
     });
 
+    /**
+     * ⭐⭐ **এক হার।** দিনটা কর্মদিবস হলে তার টার্গেট কর্মীর নিজের
+     * `dailyTargetSec` — মাস যাই হোক, ওই মাসে কটা ছুটি থাকুক না কেন।
+     *
+     * ⚠️⚠️ আগে এখানে হর ছিল **ওই মাসের ক্যালেন্ডার কর্মদিবস**, আর সেটাই
+     *    ছিল একই কর্মীর একই মাসে দুটো আলাদা দৈনিক টার্গেটের উৎস: tray ও
+     *    `monthly_summary` বলত ২০৮ ÷ ২৬ = ৮.০০ ঘণ্টা, রিপোর্ট বলত
+     *    ২০৮ ÷ ২৭ = ৭.৭০। আরও খারাপ, ছুটি বাড়লে রিপোর্টের দৈনিক টার্গেট
+     *    **বাড়ত** — অর্থাৎ ছুটি দিয়ে কর্মীর কোনো লাভই হতো না।
+     *    কেন পলিসির ধ্রুবকই সঠিক, তা `dailyTargetSec()`-এর নোটে।
+     */
+    const targetSecOf = (employee: ResolvedEmployee, date: Date): number =>
+      isWorkday(date, ruleOf(employee)) ? employee.dailyTargetSec : 0;
+
+    /**
+     * ⭐⭐ **"এ পর্যন্ত কত হওয়ার কথা ছিল" — এখানেই, একবারই।**
+     *
+     * ⚠️ জানালাটা নিজে বানানো হয় **না**: `summary.math.ts`-এর
+     *    `elapsedWindow()` ডাকা হয়, ঠিক যেটা মাসিক rollup আর tray ডাকে।
+     *    এখানে আবার `today − ১` লিখলে সেটাই হতো চতুর্থ সংজ্ঞা, আর ঠিক
+     *    এভাবেই আগের তিনটে জন্মেছিল।
+     *
+     * ⭐ **ওই কর্মীর নিজের** ট্র্যাকিং-শুরু (তার সবচেয়ে পুরোনো
+     *    `daily_summary` সারি), সংস্থার প্রথম দিন নয় — নইলে যে কর্মীর
+     *    রেকর্ডই পরে তৈরি হয়েছে, তার আগের দিনগুলোও তার ঘাটতি হয়ে যেত।
+     *
+     * ⚠️⚠️ **যেটা এটা সারায় না** (`summary.math.ts` ও `progress.service.ts`-এর
+     *    একই নোট দেখুন): ১ অক্টোবর সক্রিয় হয়ে ৮ অক্টোবর এজেন্ট পাওয়া কর্মী।
+     *    `refreshDate()` প্রতিটি active কর্মীর সারি লেখে — ডেটা থাক বা না
+     *    থাক — তাই তার ট্র্যাকিং-শুরুও ১ অক্টোবরই বসে, আর এজেন্টহীন সাতটা
+     *    দিন **এখনো পুরো ঘাটতি**। এই জানালা প্রথম ইনস্টলের ফাঁকটা ঢাকে,
+     *    পরে যোগ দেওয়া কর্মীর ফাঁক নয় (G120)।
+     *
+     * ⚠️ যোগফলটা `targetSecIn()` দিয়ে — **কর্মদিবস × দৈনিক টার্গেট**, ঠিক
+     *    যেভাবে `prorate()` মাসের টার্গেট বের করে। দৈনিক টার্গেট এখন সব
+     *    মাসে এক, তাই এই গুণফল আর দিনে-দিনে যোগফল একই ঘণ্টা দেয় — অর্থাৎ
+     *    সংখ্যাটা পাতায় দেখা ঘরগুলোরই যোগফল। **দুটোই**
+     *    `test/reports.target.spec.ts` পাহারা দেয়; হর মাসভেদে বদলালে এই
+     *    সমতাটা ভাঙত, আর তখন গুণ করাটা ভুল হতো।
+     */
+    const firstSeen = await this.prisma.dailySummary.groupBy({
+      by: ['employeeId'],
+      where: { employeeId: { in: employees.map((e) => e.id) } },
+      _min: { workDate: true },
+    });
+    const trackedFromBy = new Map(
+      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
+    );
+
+    // ⚠️ ঢাকার আজ — `parseReportRange()`-ও ঠিক এভাবেই ছাঁটাইয়ের সীমা বের করে
+    const today = workDateOf(new Date());
+
+    const windowBy = new Map(
+      employees.map((employee) => [
+        employee.id,
+        elapsedWindow({
+          periodStart: range.from,
+          periodEnd: range.to,
+          today,
+          joinedOn: employee.joinedOn,
+          leftOn: employee.leftOn,
+          trackingStartedOn: trackedFromBy.get(employee.id) ?? null,
+        }),
+      ]),
+    );
+
+    /**
+     * ⭐⭐ **প্রত্যাশা মাপার একমাত্র জায়গা** — meta-র সংখ্যা আর সারির
+     * ঘাটতি, দুটোই এখান দিয়ে যায়। বালতিগুলোর প্রত্যাশা যোগ করলে ঠিক
+     * `meta.expectedHours`-ই ফেরে, কারণ বালতিগুলো রেঞ্জটাকে ভাগ করে নেয়।
+     *
+     * ⚠️ জানালা `null` = খালি (আজ রেঞ্জের প্রথম দিন, বা তাকে এখনো একটা
+     *    শেষ-হওয়া দিনেও দেখা হয়নি) — তখন প্রত্যাশা ০, আর ০-এর বিপরীতে
+     *    কারও ঘাটতিও থাকতে পারে না। সেটাই কাম্য।
+     */
+    const expectedSecOf = (
+      employee: ResolvedEmployee,
+      span: DateSpan,
+    ): number => {
+      const window = windowBy.get(employee.id) ?? null;
+      if (window === null) return 0;
+
+      const seen = overlapOf(window, span);
+      return seen === null
+        ? 0
+        : targetSecIn(seen, ruleOf(employee), employee.dailyTargetSec);
+    };
+
+    const expectedHours: Record<number, number> = {};
+    for (const employee of employees) {
+      expectedHours[employee.id] = secondsToHours(
+        expectedSecOf(employee, { from: range.from, to: range.to }),
+      );
+    }
+
     return {
       range,
       employees,
       excluded,
+      expectedHours,
+      expectedSecOf,
+      /**
+       * ⭐⭐ **ঠিক সেই সারিগুলো**, যেগুলো দিয়ে উপরের `holidays` সেটটা — আর
+       * তাই মাসের কর্মদিবস ও দৈনিক টার্গেটের হর — বানানো হলো। আলাদা
+       * কোয়েরি করলে দুটো সংখ্যা দুই জায়গা থেকে আসত, আর একদিন (রেঞ্জ বা
+       * ফিল্টার একটু বদলালেই) দুটো আলাদা কথা বলত।
+       */
+      approximateHolidayDates: approximateHolidayDates(
+        holidayRows.map((h) => ({ date: h.holidayDate, name: h.name })),
+      ),
       ruleOf,
       employedOn: (employee, date) =>
         (employee.joinedOn === null ||
           date.getTime() >= employee.joinedOn.getTime()) &&
         (employee.leftOn === null ||
           date.getTime() <= employee.leftOn.getTime()),
-      targetSecOf: (employee, date) =>
-        isWorkday(date, ruleOf(employee))
-          ? dailyTargetSec(
-              employee.monthlyTargetSec,
-              workdaysInMonth(date, employee.weeklyOffDay),
-            )
-          : 0,
+      targetSecOf,
     };
   }
 
@@ -809,10 +993,24 @@ function metaOf(ctx: ReportContext): ReportMeta {
     generatedAt: new Date().toISOString(),
     excludedEmployees: ctx.excluded,
 
-    // ⭐ পুরো মাসের টার্গেট — হিসাব নয়, নীতিতে লেখা সংখ্যা। ওয়েব পাতা
-    //    এটা নিজে বানাতে গিয়ে সরকারি ছুটি বাদ দিতে ভুলত (২০৮ → ২১৬)।
+    // ⭐⭐ অনিশ্চয়তা সংখ্যা পর্যন্ত পৌঁছায়: এই মাসগুলোর কোন ছুটির তারিখ
+    //    এখনো পাকা নয়। ওগুলো নড়লে কর্মদিবস নড়ে, টার্গেট নড়ে, পে-রোলের
+    //    ভগ্নাংশও নড়ে — তাই চুপ করে থাকা যায় না।
+    approximateHolidayDates: ctx.approximateHolidayDates,
+
+    // ⭐ **নীতিতে লেখা** মাসিক টার্গেট (২০৮) — হিসাব নয়। ওয়েব পাতা এটা
+    //    নিজে বানাতে গিয়ে সরকারি ছুটি বাদ দিতে ভুলত (২০৮ → ২১৬)।
+    // ⚠️⚠️ ওই মাসের **আসল** মোট টার্গেট এটা নয়: দৈনিক টার্গেট এখন
+    //    ২০৮ ÷ ২৬ ধ্রুবক, তাই ২৫ কর্মদিবসের মাসে মোট দাঁড়ায় ২০০ ঘণ্টা
+    //    (`monthly_summary.target_sec`-ও ঠিক তাই)। রেঞ্জ একাধিক মাস ছুঁতে
+    //    পারে বলে এখানে মাস-নির্ভর একটা সংখ্যা বসানো যায় না —
+    //    docs/08-Gap-Analysis.md-এ খোলা প্রশ্ন হিসেবে লেখা আছে।
     monthTargetHours: Object.fromEntries(
       ctx.employees.map((e) => [e.id, e.monthlyTargetSec / HOUR]),
     ),
+
+    // ⭐⭐ "এ পর্যন্ত কত হওয়ার কথা ছিল" — জানালাটা `elapsedWindow()`-এর,
+    //    অর্থাৎ tray ও Live Board-এর সাথে হুবহু একই সংজ্ঞা।
+    expectedHours: ctx.expectedHours,
   };
 }

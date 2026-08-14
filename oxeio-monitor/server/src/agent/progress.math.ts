@@ -6,45 +6,56 @@
  * সবার tray-তে সারাদিন জ্বলজ্বল করত, অথচ ধরার একমাত্র উপায় হতো DB ভরে
  * heartbeat পাঠানো। এখানে থাকায় DB ছাড়াই পরীক্ষা করা যায়।
  *
- * ⚠️ `summary.math.ts`-এর `rollupMonth()` ইচ্ছাকৃতভাবে **ব্যবহার করা হয়নি**,
- * যদিও সূত্র একই। ওটা `targetSec <= 0` পেলে `RangeError` ছোড়ে — মাসিক
- * rollup-এ সেটাই ঠিক (জোরে ভাঙা ভালো), কিন্তু heartbeat-এর পথে একটা
- * ভুল কনফিগ করা work policy তখন ওই কর্মীর **প্রতিটা** heartbeat-কে ৫০০
- * বানিয়ে দিত — অর্থাৎ একটা ভুল সংখ্যার শাস্তি হতো পুরো ট্র্যাকিং বন্ধ।
- * এখানে তাই ছোড়া হয় না, `0` ধরে নেওয়া হয়।
+ * ⭐⭐ **সূত্রটা এখন এই ফাইলের নিজের নয়** — `summary.math.ts`-এর
+ * `proratedExpectedSec()`। আগে এখানে হুবহু একই গণিত হাতে লেখা ছিল, আর
+ * সেটাই ছিল আসল ঝুঁকি: মাসিক rollup-এর সূত্র বদলালে tray চুপচাপ পুরোনো
+ * উত্তর দিতেই থাকত, আর কর্মী নিজের tray-তে যা দেখেন owner ড্যাশবোর্ডে তার
+ * চেয়ে আলাদা সংখ্যা দেখতেন। এই ফাইল এখন শুধু **heartbeat-এর নিরাপত্তা**
+ * যোগ করে (নিচের নোট), গণিত নয়।
  */
+
+import { proratedExpectedSec } from '../summary/summary.math';
+
+const SEC_PER_HOUR = 3600;
 
 export interface PaceInput {
   /** worked + owner-এর সংশোধন (§ ২.১-ঙ) — ঋণাত্মক হলে ০ ধরা হয় */
   creditedSec: number;
-  /** work policy থেকে, হার্ডকোড ২০৮ নয় */
+  /** work policy থেকে, হার্ডকোড ২০৮ নয় (⭐ G37-এর পর **তার prorated** টার্গেট) */
   monthlyTargetHours: number;
-  /** পুরো মাসে কত কর্মদিবস (সাপ্তাহিক ছুটি ও `holidays` বাদে) */
+  /** পুরো মাসে **তার** কত কর্মদিবস (সাপ্তাহিক ছুটি ও `holidays` বাদে) */
   expectedWorkdays: number;
-  /** মাসের ১ তারিখ থেকে **আজ ধরে** কত কর্মদিবস পেরিয়েছে */
+  /**
+   * কত কর্মদিবস **শেষ হয়ে গেছে** — `summary.math.ts`-এর `elapsedWorkdays()`
+   * থেকেই আসতে হবে।
+   *
+   * ⚠️ "মাসের ১ তারিখ থেকে **আজ ধরে**" **নয়** — এখানে আগে তাই লেখা ছিল,
+   * আর `ProgressService` সত্যিই তাই গুনত। দুটো ভুল ওতে ছিল:
+   *   ১· আজকের দিনটা প্রত্যাশায় ধরা হতো, তাই ভোরবেলা tray "পিছিয়ে"
+   *      দেখাত আর সন্ধ্যায় নিজে থেকেই ঠিক হয়ে যেত।
+   *   ২· ট্র্যাকিং শুরুর আগের দিনগুলোও গোনা হতো, তাই এজেন্ট বসার আগের
+   *      না-দেখা দিনগুলো কর্মীর ঘাটতি হয়ে দাঁড়াত।
+   * ফলে tray আর Monthly পাতা ~৮৯ ঘণ্টা আলাদা বলত।
+   */
   workdaysElapsed: number;
 }
 
 /**
  * আজ পর্যন্ত কত সেকেন্ড হওয়ার কথা ছিল।
  *
- * ⚠️ `expectedWorkdays === 0` হলে ০ — পুরো মাস ছুটি ঘোষণা করলে সেটা সম্ভব।
- * না আটকালে `NaN` তারে চলে যেত, আর এজেন্টের `System.Text.Json` `NaN`
- * চেনে না — গোটা heartbeat-এর উত্তরটাই (revoke কমান্ড সহ) পড়া যেত না।
+ * ⚠️ `summary.math.ts`-এর `rollupMonth()` ইচ্ছাকৃতভাবে ডাকা হয় না, যদিও
+ * expected-এর সূত্র এক। ওটা `targetSec <= 0` পেলে `RangeError` ছোড়ে —
+ * মাসিক rollup-এ সেটাই ঠিক (জোরে ভাঙা ভালো), কিন্তু heartbeat-এর পথে একটা
+ * ভুল কনফিগ করা work policy তখন ওই কর্মীর **প্রতিটা** heartbeat-কে ৫০০
+ * বানিয়ে দিত — অর্থাৎ একটা ভুল সংখ্যার শাস্তি হতো পুরো ট্র্যাকিং বন্ধ।
+ * তাই শুধু সংখ্যাটুকু (`proratedExpectedSec`) নেওয়া হয়, যেটা ছোড়ে না।
  */
 export function expectedSecOf(input: PaceInput): number {
-  const { monthlyTargetHours, expectedWorkdays, workdaysElapsed } = input;
-
-  if (!Number.isFinite(monthlyTargetHours) || monthlyTargetHours <= 0) return 0;
-  if (!Number.isFinite(expectedWorkdays) || expectedWorkdays <= 0) return 0;
-
-  // ⚠️ ০ ও `expectedWorkdays`-এর মধ্যে আটকানো। আজকের তারিখ থেকেই মাসের
-  //    সীমা বের করা হয় বলে বাস্তবে ছাড়ানোর কথা নয়, কিন্তু ভবিষ্যতে কেউ
-  //    পুরোনো তারিখ দিয়ে ডাকলে প্রত্যাশা টার্গেট ছাড়িয়ে যেত — তখন সবাই
-  //    "পিছিয়ে" দেখাত।
-  const elapsed = Math.min(Math.max(workdaysElapsed, 0), expectedWorkdays);
-
-  return Math.round((monthlyTargetHours * 3600 * elapsed) / expectedWorkdays);
+  return proratedExpectedSec({
+    targetSec: input.monthlyTargetHours * SEC_PER_HOUR,
+    expectedWorkdays: input.expectedWorkdays,
+    workdaysElapsed: input.workdaysElapsed,
+  });
 }
 
 /**

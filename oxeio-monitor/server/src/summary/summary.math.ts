@@ -346,6 +346,194 @@ export function monthBounds(workDate: Date): MonthBounds {
   };
 }
 
+// ══════════ প্রত্যাশার জানালা — ট্র্যাকিং শুরু থেকে গতকাল পর্যন্ত ══════════
+
+/** দুই প্রান্তই ধরা — `countWorkdays()`-এর মতোই */
+export interface ElapsedWindow {
+  from: Date;
+  to: Date;
+}
+
+/**
+ * ⭐⭐ **এই প্রকল্পে "কত দিন পেরিয়েছে" প্রশ্নের একমাত্র ইনপুট।**
+ *
+ * ⚠️ একসময় এর তিনটে আলাদা সংস্করণ ছিল — মাসিক rollup, tray (`/me`) আর Live
+ * Board প্রত্যেকে নিজের মতো গুনত, আর কর্মী নিজের পর্দায় যা দেখতেন owner
+ * তার চেয়ে ~৮৯ ঘণ্টা আলাদা দেখতেন। দুই পর্দায় দুই উত্তর মানে কোনটা সত্যি
+ * সেই প্রশ্নের উত্তর নেই। এখন **তিনটে পথ** এই একটাই আকৃতি ভরে দেয় —
+ * `summary.service`, `progress.service`, `reports.service`।
+ *
+ * ⚠️ `dashboard.service` এই তালিকায় **নেই**, আর সেটা ভুল নয়: Live Board
+ * মাসের সংখ্যাটা নতুন করে গোনে না, `monthly_summary.expected_sec` **পড়ে** —
+ * অর্থাৎ এই ফাংশনেরই সংরক্ষিত ফল। তার সাত-দিনের ফিতেটা অবশ্য নিজের
+ * `trendDayExpectation()` ব্যবহার করে, যা **ইচ্ছাকৃতভাবে** আজকের দিনটা রাখে
+ * (কারণ ফিতের কাজ "আজ পর্যন্ত কী হলো" দেখানো); সেই ফারাকটা ওই ফাংশনের
+ * নিজের নোটে ব্যাখ্যা করা আছে।
+ */
+export interface ElapsedWindowInput {
+  /**
+   * জানালার বাইরের সীমা।
+   *
+   * ⚠️ নাম `monthStart`/`monthEnd` **নয়**, কারণ শুধু মাসিক rollup এটা
+   *    ডাকে না: রিপোর্ট (F01/F02) চাওয়া রেঞ্জের দুই প্রান্ত পাঠায়। নিয়ম
+   *    এক, সীমাটা কলারের।
+   */
+  periodStart: Date;
+  periodEnd: Date;
+  /** ঢাকার **আজকের** কর্মদিবস (`workDateOf(now)`) — নিজে জানালার বাইরে থাকে */
+  today: Date;
+  /** G37 — `null` = পর্বের আগে থেকেই আছে */
+  joinedOn: Date | null;
+  leftOn: Date | null;
+  /**
+   * ⭐ **এই কর্মীর** সবচেয়ে পুরোনো `daily_summary.work_date`।
+   *
+   * ⚠️⚠️ **এটা "এজেন্ট কবে বসেছে" নয়** — এটা "সার্ভার কবে থেকে এই
+   *    কর্মীকে নিয়ে হিসাব করছে"। `refreshDate()` প্রতিটি **active**
+   *    কর্মীর সারি লেখে, তার ডেটা থাক বা না থাক (`summary.service.ts`),
+   *    তাই সক্রিয় হওয়ার দিনই সাধারণত এই তারিখ।
+   *
+   * ⚠️⚠️ ফলে এটা যা ঢাকে আর যা ঢাকে না, দুটো আলাদা করে জানা দরকার:
+   *    **ঢাকে** — এই সার্ভার বসার আগের দিনগুলো (প্রথম ইনস্টল), আর
+   *    কেউ সিস্টেমে যোগ হওয়ার আগে সংস্থার যে ইতিহাস আছে (org-min নিলে
+   *    জুলাই থেকে গোনা শুরু হতো)।
+   *    **ঢাকে না** — ১ অক্টোবর সক্রিয় হয়ে ৮ অক্টোবর এজেন্ট পাওয়া কর্মীর
+   *    ৫টা এজেন্টহীন দিন। ১ তারিখেই তার `no_activity` সারি বসে যায়, তাই
+   *    এই তারিখ ১ অক্টোবরই হয় আর দিনগুলো পুরো ঘাটতি হিসেবেই থাকে।
+   *    ⚠️ আগে এখানে উল্টোটা **দাবি করা ছিল**; দাবিটা মিথ্যা ছিল।
+   *
+   * ⭐ সংখ্যাটা সবসময় org-min-এর সমান বা পরে, তাই দুটো মেলানোর দরকার নেই।
+   *
+   * ⚠️ `null` বা অনুপস্থিত = জানা নেই, আর তখন এই ধারণাটা জানালার উপর
+   *    **কোনো প্রভাবই ফেলে না** (জানালা শুরু হয় পর্বের শুরু বা যোগ দেওয়ার
+   *    দিন থেকে)।
+   */
+  trackingStartedOn?: Date | null;
+}
+
+export interface ElapsedInput extends ElapsedWindowInput {
+  weeklyOffDay: number | null;
+  holidays: ReadonlySet<number>;
+}
+
+/**
+ * ⭐⭐ প্রত্যাশা কোন দিনগুলোর উপর হিসাব হবে — **সেই জানালাটা**।
+ *
+ * ⚠️⚠️ **ট্র্যাকিং শুরুর আগের দিন গোনা হয় না।** এই ইনস্টলেশনে এজেন্ট বসেছে
+ *    ১৩ আগস্ট ২০২৬; তার আগে কে কত কাজ করেছে আমরা **জানি না**। মাসের ১
+ *    তারিখ থেকে গুনলে ওই না-দেখা দিনগুলো নীরবে "০ ঘণ্টা কাজ" হয়ে যেত, আর
+ *    Monthly পাতা প্রত্যেককে ~৯৪ ঘণ্টা পিছিয়ে দেখাত — এমন এক সময়ের জন্য
+ *    যখন মাপার যন্ত্রটাই বসেনি। **অনুপস্থিত পর্যবেক্ষণ ব্যর্থতা নয়।**
+ *
+ * ⚠️⚠️ **আজকের দিনটাও বাদ** — জানালা শেষ হয় `today − ১ দিনে`। Live
+ *    Board-এ ঠিক এই ভুলটাই ধরা পড়েছিল: আজকের পুরো ৮ ঘণ্টা প্রত্যাশায়
+ *    ধরলে ভোর ৬টায় দল "১১৪ ঘণ্টা পিছিয়ে" দেখাত, আর সন্ধ্যা নাগাদ সংখ্যাটা
+ *    নিজে থেকেই ঠিক হয়ে যেত — একই দল দিনে দুবার দুই রকম রায় পেত, কেবল
+ *    ঘড়ির কাঁটার কারণে। তাই pace-এর মানে: **গতকাল পর্যন্ত কে কোথায়।**
+ *
+ * ⭐ এই দুটো সিদ্ধান্তই এখন **সব পর্দায় এক** — তবে দুইভাবে: মাসিক rollup
+ *    (Monthly পাতা ও পে-রোলের pace), tray/`/me` আর রিপোর্ট এই ফাংশনটা
+ *    **ডাকে**; Live Board ও দৈনিক ডাইজেস্ট তার সংরক্ষিত ফল
+ *    (`monthly_summary.expected_sec`, `meta.expectedHours`) **পড়ে**। দুটোর
+ *    উত্তর তাই এক, আর সংজ্ঞাটা একটাই জায়গায় লেখা।
+ *    ⚠️ ব্যতিক্রম একটাই ও ইচ্ছাকৃত — Live Board-এর সাত-দিনের ফিতে
+ *    (`trendDayExpectation()`), যা আজকের দিনটা রাখে।
+ *    আগে তিনটে আলাদা সংজ্ঞা ছিল আর দুই পাতা দুই সংখ্যা বলত (Live Board ৪২ঘ,
+ *    Monthly ৯৪৬ঘ)। দুটো সংখ্যা দুই কথা বললে কোনটা সত্যি সেই প্রশ্নের
+ *    উত্তর থাকে না।
+ *
+ * ⚠️ `null` ফেরত = জানালাটাই খালি (পর্ব এখনো শুরু হয়নি, আজ মাসের ১ তারিখ,
+ *    ট্র্যাকিং আজই শুরু, বা সে চলে যাওয়ার পরের মাস) — "০ কর্মদিবস", যেটা
+ *    `0` কর্মদিবসের চেয়ে আলাদা কিছু নয়, তবু কলারের কাছে স্পষ্ট থাকে।
+ */
+export function elapsedWindow(input: ElapsedWindowInput): ElapsedWindow | null {
+  // ⚠️ শুরুর তিনটে সীমার মধ্যে **সবচেয়ে পরেরটা** — একজন ১৭ তারিখে যোগ
+  //    দিলে ট্র্যাকিং ১৩ তারিখে শুরু হলেও তার জানালা ১৭ থেকেই।
+  const from = maxDate(input.periodStart, input.joinedOn, input.trackingStartedOn ?? null);
+
+  // ⚠️ শেষের তিনটে সীমার মধ্যে **সবচেয়ে আগেরটা**। `periodEnd` না রাখলে গত
+  //    মাসের `workdays_elapsed` চিরকাল পুরো মাস ছাড়িয়ে বাড়ত।
+  const to = minDate(
+    new Date(input.today.getTime() - MS_PER_DAY),
+    input.periodEnd,
+    input.leftOn,
+  );
+
+  return from.getTime() > to.getTime() ? null : { from, to };
+}
+
+/**
+ * ওই জানালায় কত কর্মদিবস — `rollupMonth()`-এর `workdaysElapsed`।
+ *
+ * ⚠️⚠️ গোনা হয় **ক্যালেন্ডার কর্মদিবস** (`isWorkday`), `daily_summary`
+ *    **সারি নয়**। Live Board একসময় সারি গুনত (`day_type !== 'holiday'`)
+ *    আর সেটা নীরবে ভুল ছিল: ছুটির দিনে কেউ এক ঘণ্টা কাজ করলে `dayTypeOf()`
+ *    দিনটাকে `worked` লেখে, তাই ওই ছুটির দিনটাই একটা পুরো ৮ ঘণ্টার
+ *    **প্রত্যাশা** হয়ে যেত — অর্থাৎ ছুটির দিনে কাজ করার শাস্তি।
+ */
+export function elapsedWorkdays(input: ElapsedInput): number {
+  const window = elapsedWindow(input);
+  if (window === null) return 0;
+  return countWorkdays(window.from, window.to, input.weeklyOffDay, input.holidays);
+}
+
+/** `proratedExpectedSec()`-এর তিনটে সংখ্যা */
+export interface ExpectedInput {
+  /** ⭐ G37 — **তার নিজের** মাসিক টার্গেট (`prorate()` থেকে), ফ্ল্যাট ২০৮ নয় */
+  targetSec: number;
+  /** ⭐ G37 — **তার নিজের** কর্মদিবস (d) */
+  expectedWorkdays: number;
+  /** `elapsedWorkdays()` থেকে — নিজে বানিয়ে নিলে জানালাটাই আবার আলাদা হয়ে যেত */
+  workdaysElapsed: number;
+}
+
+/**
+ * ⭐⭐ **প্রত্যাশা কত সেকেন্ড** — § ২.১-খ-র সূত্রের একমাত্র বাস্তবায়ন।
+ *
+ * ```
+ * expected_sec = target_sec × workdays_elapsed ÷ expected_workdays
+ * ```
+ *
+ * ⚠️ `rollupMonth()` (Monthly পাতা, Live Board, পে-রোলের pace) আর
+ *    `progress.math.ts` (tray, `/me`) — দুটোই এখান দিয়ে যায়। আগে সূত্রটা
+ *    দু-জায়গায় হাতে লেখা ছিল; একই সূত্র দুবার লেখা মানে একদিন একটা বদলাবে
+ *    আর অন্যটা বদলাবে না।
+ *
+ * ⚠️ এখানে **ছোড়া হয় না**, ০ ফেরে। heartbeat-এর পথে একটা ভুল কনফিগ করা
+ *    work policy তখন ওই কর্মীর প্রতিটা heartbeat-কে ৫০০ বানিয়ে দিত —
+ *    একটা ভুল সংখ্যার শাস্তি হতো পুরো ট্র্যাকিং বন্ধ। কড়া যাচাই যেখানে
+ *    দরকার সেখানে (`rollupMonth`) আলাদা করে বসানো আছে।
+ */
+export function proratedExpectedSec(input: ExpectedInput): number {
+  const { targetSec, expectedWorkdays, workdaysElapsed } = input;
+
+  // ⚠️ কর্মদিবস শূন্য হলে ভাগ করা যায় না (পুরো মাস ছুটি ঘোষণা করলে হতে
+  //    পারে)। না আটকালে `NaN` ডাটাবেসে ও তারে চলে যেত, আর এজেন্টের
+  //    `System.Text.Json` `NaN` চেনে না — গোটা heartbeat-এর উত্তরটাই
+  //    (revoke কমান্ড সহ) পড়া যেত না।
+  if (!Number.isFinite(targetSec) || targetSec <= 0) return 0;
+  if (!Number.isFinite(expectedWorkdays) || expectedWorkdays <= 0) return 0;
+
+  // ⚠️ ০ ও `expectedWorkdays`-এর মধ্যে আটকানো — নইলে পুরোনো তারিখ দিয়ে
+  //    ডাকলে প্রত্যাশা টার্গেট ছাড়িয়ে যেত আর তখন সবাই "পিছিয়ে" দেখাত।
+  return Math.round((targetSec * clamp(workdaysElapsed, 0, expectedWorkdays)) / expectedWorkdays);
+}
+
+/** ⚠️ `null` মানে "এই সীমাটা নেই", তাই সে কখনো জেতে না। */
+function maxDate(base: Date, ...others: readonly (Date | null)[]): Date {
+  return others.reduce<Date>(
+    (best, d) => (d !== null && d.getTime() > best.getTime() ? d : best),
+    base,
+  );
+}
+
+function minDate(base: Date, ...others: readonly (Date | null)[]): Date {
+  return others.reduce<Date>(
+    (best, d) => (d !== null && d.getTime() < best.getTime() ? d : best),
+    base,
+  );
+}
+
 // ══════════════════════════ মাসিক rollup (K05/K06) ══════════════════════════
 
 export interface MonthInput {
@@ -358,6 +546,13 @@ export interface MonthInput {
   expectedWorkdays: number;
   /** ⭐ G37 — ওই মাসের মোট কর্মদিবস (D), বেতনের ভগ্নাংশের হর */
   monthWorkdays: number;
+  /**
+   * কত কর্মদিবস **শেষ হয়ে গেছে** — `elapsedWorkdays()` থেকে।
+   *
+   * ⚠️ "মাসের ১ তারিখ থেকে আজ পর্যন্ত" নয়: ট্র্যাকিং শুরুর আগের দিন আর
+   * আজকের দিনটা এর বাইরে (কারণ `elapsedWindow()`-এ)। সংখ্যাটা নিজে থেকে
+   * বানিয়ে নিলে Monthly পাতা আবার Live Board-এর সাথে অমিল দেখাত।
+   */
   workdaysElapsed: number;
   /** যত দিনে worked_sec > 0 */
   daysWithWork: number;
@@ -429,13 +624,13 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
    */
   const creditedSec = Math.max(0, workedSec + adjustmentSec);
 
-  // ⚠️ কর্মদিবস শূন্য হলে ভাগ করা যায় না (পুরো মাস ছুটি ঘোষণা করলে হতে পারে)।
-  //    না আটকালে expected = NaN হয়ে ডাটাবেসে চলে যেত, আর pace কার্ড
-  //    সংখ্যার বদলে খালি দেখাত।
-  const expectedSec =
-    expectedWorkdays > 0
-      ? Math.round((targetSec * clamp(workdaysElapsed, 0, expectedWorkdays)) / expectedWorkdays)
-      : 0;
+  // ⭐ সূত্রটা এখানে আর লেখা নেই — `proratedExpectedSec()`-এ, কারণ tray-ও
+  //    ঠিক এই সূত্রই ডাকে। দুবার লিখলে একদিন একটা বদলাত আর অন্যটা নয়।
+  const expectedSec = proratedExpectedSec({
+    targetSec,
+    expectedWorkdays,
+    workdaysElapsed,
+  });
 
   return {
     workedSec,

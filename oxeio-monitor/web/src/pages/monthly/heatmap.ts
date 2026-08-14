@@ -59,7 +59,11 @@ export interface EmployeeGridRow {
   creditedHours: number;
   /** এ পর্যন্ত নিখাদ কাজ — সংশোধন ছাড়া */
   workedHours: number;
-  /** এ পর্যন্ত যতটুকু হওয়ার কথা ছিল (§ ২.১-খ-র `expected_sec`) */
+  /**
+   * এ পর্যন্ত যতটুকু হওয়ার কথা ছিল (§ ২.১-খ-র `expected_sec`)।
+   * ⚠️ **সার্ভার থেকে আসা সংখ্যা** (`meta.expectedHours`) — এখানে যোগ করে
+   *    বানানো হয় না। কেন, `buildMonthGrid()`-এর ভেতরের নোট দেখুন।
+   */
   expectedHours: number;
   /** `credited − expected`. ঋণাত্মক = পিছিয়ে আছেন */
   paceHours: number;
@@ -144,7 +148,6 @@ export function buildMonthGrid(
     const cells: DayCell[] = [];
     let creditedHours = 0;
     let workedHours = 0;
-    let expectedHours = 0;
     let daysWithWork = 0;
     let weeklyOffWeekday: number | null = null;
     let firstDay: string | null = null;
@@ -164,7 +167,6 @@ export function buildMonthGrid(
 
       creditedHours += row.creditedHours;
       workedHours += row.workedHours;
-      expectedHours += row.targetHours;
       if (row.workedHours > 0) daysWithWork += 1;
       if (row.dayType === 'weekly_off') weeklyOffWeekday ??= weekdayIndexOf(date);
 
@@ -189,6 +191,38 @@ export function buildMonthGrid(
     //    অথচ পে-রোল হিসাব করত ২০৮ ধরে — ড্যাশবোর্ড আর বেতন দুটো আলাদা
     //    সংখ্যা বললে কোনোটাই বিশ্বাসযোগ্য থাকে না।
     const monthTarget = report.meta.monthTargetHours[employeeId] ?? null;
+
+    /**
+     * ⭐⭐ **প্রত্যাশা সার্ভার থেকে আসে — এখানে যোগ করা হয় না।**
+     *
+     * ⚠️⚠️ আগে এখানে লেখা ছিল `expectedHours += row.targetHours`, অর্থাৎ
+     *    মাসের ১ তারিখ থেকে আজ পর্যন্ত প্রতিটি দিনের টার্গেটের যোগফল।
+     *    দুটো জিনিস ব্রাউজার জানে না, আর দুটোতেই ভুল হতো:
+     *
+     *      ১· **কর্মীকে কবে থেকে দেখা শুরু হয়েছে।** এই ইনস্টলেশনে এজেন্ট
+     *         বসেছে ১৩ আগস্ট ২০২৬ — তার আগে কে কত কাজ করেছে আমরা জানি না।
+     *         মাসের ১ থেকে গুনলে ওই না-দেখা দিনগুলো নীরবে "০ ঘণ্টা কাজ"
+     *         হয়ে যেত, আর পাতাটা প্রত্যেককে ~৯৪ ঘণ্টা পিছিয়ে দেখাত —
+     *         এমন এক সময়ের জন্য যখন মাপার যন্ত্রটাই বসেনি।
+     *         **অনুপস্থিত পর্যবেক্ষণ ব্যর্থতা নয়।**
+     *
+     *      ২· **আজকের দিনটা প্রত্যাশায় ধরা হয় না।** ধরলে ভোর ৬টায় গোটা
+     *         দল "১১৪ ঘণ্টা পিছিয়ে" দেখাত আর সন্ধ্যা নাগাদ সংখ্যাটা নিজে
+     *         থেকেই ঠিক হয়ে যেত — একই দল দিনে দুবার দুই রায় পেত, কেবল
+     *         ঘড়ির কাঁটার কারণে।
+     *
+     * ⭐ জানালার সংজ্ঞা একটাই, আর সেটা সার্ভারে (`summary.math.ts` →
+     *    `elapsedWindow()`)। Live Board, tray/`/me` আর দৈনিক ইমেইলও ওটাই
+     *    ব্যবহার করে। শুধু "ট্র্যাকিং কবে শুরু" তারিখটা পাঠিয়ে এখানে যোগ
+     *    করানো যেত, কিন্তু তাহলে "আজকের দিন বাদ" নিয়মটা **আবার** এই
+     *    ফাইলে লেখা থাকত — আর ঠিক সেভাবেই বাগটা জন্মেছিল। ক্লায়েন্টে
+     *    এখন কোনো নিয়ম নেই, শুধু পড়া আছে।
+     *
+     * ⚠️ `?? 0` — সারি আছে অথচ meta-তে নেই, এমন হওয়ার কথা নয় (দুটোই একই
+     *    কর্মী-তালিকা থেকে)। তবু হলে "কোনো দাবি নেই" ধরা হয়, "পিছিয়ে" নয়:
+     *    অজানাকে ঘাটতি বলা মানে একজন মানুষ সম্পর্কে একটা অভিযোগ।
+     */
+    const expectedHours = report.meta.expectedHours[employeeId] ?? 0;
 
     rows.push({
       employeeId,

@@ -44,6 +44,9 @@ const meta: ReportMeta = {
   generatedAt: '2026-08-11T12:34:56.000Z',
   excludedEmployees: [],
   monthTargetHours: {},
+  expectedHours: {},
+  // ⚠️ এই নমুনা জগতে কোনো ছুটিই নেই, তাই খালি — "কোনো সম্ভাব্য তারিখ নেই"
+  approximateHolidayDates: [],
 };
 
 function attendance(over: Partial<AttendanceReport> = {}): AttendanceReport {

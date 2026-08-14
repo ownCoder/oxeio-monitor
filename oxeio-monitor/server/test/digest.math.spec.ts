@@ -62,13 +62,21 @@ function source(over: Partial<DigestSource> = {}): DigestSource {
     monthTo: '2026-08-11',
     today: [day()],
     month: [month()],
+    /**
+     * ⭐ F02-র `meta.expectedHours` — সার্ভারের হিসাব করা জানালা
+     * (ট্র্যাকিং শুরু → **গতকাল**)। ৮ কর্মদিবস × ৮ ঘণ্টা।
+     *
+     * ⚠️ এটা এখন ডাইজেস্টের **ইনপুট**, আউটপুট নয়। আগে সংখ্যাটা এখানেই
+     * বানানো হতো (মাসের টার্গেট বিয়োগ আজকের টার্গেট), আর সেটাই ছিল
+     * জানালার দ্বিতীয় সংজ্ঞা — ট্র্যাকিং শুরুর দিনটা সে চিনত না।
+     */
+    expectedHours: { 1: 64 },
     ...over,
   };
 }
 
-describe('buildDigest — আজকের টার্গেট বাদ দেওয়া', () => {
-  it('⭐ প্রত্যাশা গোনা হয় গতকাল পর্যন্ত — আজকের ৮ ঘণ্টা বাদ', () => {
-    // মাসের টার্গেট আজ পর্যন্ত ৭২, আজকের টার্গেট ৮ → গতকাল পর্যন্ত ৬৪
+describe('buildDigest — প্রত্যাশা সার্ভারের একটাই সংজ্ঞা থেকে', () => {
+  it('⭐ সার্ভার যা বলে ডাইজেস্ট তাই ধরে — নিজে গোনে না', () => {
     const digest = buildDigest(source());
 
     expect(digest.rows[0].expectedHours).toBe(64);
@@ -76,10 +84,13 @@ describe('buildDigest — আজকের টার্গেট বাদ দে
     expect(digest.rows[0].behind).toBe(false);
   });
 
+  /**
+   * ⭐⭐ **এটাই আসল ফাঁদ, আর এখন সেটা সার্ভারেই বন্ধ।**
+   * `monthly_summary.pace_sec` একসময় আজকের দিনটাও গুনত, তাই সন্ধ্যা
+   * ৬:৩০-এ ঠিক টার্গেট ধরে চলা মানুষও ০.৫ ঘণ্টা "পিছিয়ে" দেখাতেন — আর
+   * তালিকায় প্রতিদিন সবাই থাকত, ফলে তিন দিনেই ইমেইলটা পড়া বন্ধ হতো।
+   */
   it('⭐⭐ ঠিক টার্গেট ধরে চলা কেউ সন্ধ্যা ৬:৩০-এ "পিছিয়ে" হন না', () => {
-    // এটাই আসল ফাঁদ: `monthly_summary.pace_sec` ব্যবহার করলে এই লোক
-    // ০.৫ ঘণ্টা পিছিয়ে দেখাতেন (আজকের পুরো ৮ ঘণ্টা প্রত্যাশায় ধরা থাকত),
-    // আর তালিকায় প্রতিদিন সবাই থাকত
     const digest = buildDigest(
       source({
         today: [day({ creditedHours: 7.5 })],
@@ -104,12 +115,37 @@ describe('buildDigest — আজকের টার্গেট বাদ দে
     expect(digest.behind).toHaveLength(1);
   });
 
-  it('⚠️ প্রত্যাশা কখনো ঋণাত্মক নয় — মাসের প্রথম কর্মদিবসে', () => {
-    // ১ তারিখে মাসের টার্গেট = আজকের টার্গেট, বিয়োগ করলে ঠিক ০
+  /**
+   * ⭐⭐⭐ **এই ফাইলের সবচেয়ে জরুরি টেস্ট — ট্র্যাকিং শুরুর আগের দিন।**
+   *
+   * ⚠️ মাসের সারিতে টার্গেট ৭২ ঘণ্টা (১ তারিখ থেকে আজ), কিন্তু এজেন্ট
+   * বসেছে গতকাল — তাই সার্ভার বলছে প্রত্যাশা মাত্র ৮ ঘণ্টা। ডাইজেস্ট
+   * সেটাই মানে। পুরোনো কোড (`month.targetHours − day.targetHours`)
+   * এখানে ৬৪ বসাত, অর্থাৎ যে দিনগুলোতে মাপার যন্ত্রই ছিল না সেগুলোর
+   * ৫৬ ঘণ্টা কর্মীর ঘাটতি হয়ে যেত। **অনুপস্থিত পর্যবেক্ষণ ব্যর্থতা নয়।**
+   */
+  it('⭐ এজেন্ট বসার আগের দিনগুলো ঘাটতি হয়ে ওঠে না', () => {
+    const digest = buildDigest(
+      source({
+        today: [day({ creditedHours: 6 })],
+        month: [month({ creditedHours: 6, targetHours: 72 })],
+        expectedHours: { 1: 8 },
+      }),
+    );
+
+    expect(digest.rows[0].expectedHours).toBe(8);
+    expect(digest.rows[0].paceHours).toBe(-2);
+    // ⚠️ পুরোনো সূত্রে এটা −৫৮ হতো, আর তালিকার মাথায় বসত
+    expect(digest.behind).toHaveLength(1);
+  });
+
+  it('⚠️ শেষ হওয়া একটা দিনও দেখা না হলে প্রত্যাশা ০, ঋণাত্মক নয়', () => {
     const digest = buildDigest(
       source({
         today: [day({ targetHours: 8, creditedHours: 3 })],
         month: [month({ targetHours: 8, creditedHours: 3, workdays: 1 })],
+        // জানালা খালি — আজই মাসের/ট্র্যাকিংয়ের প্রথম দিন
+        expectedHours: { 1: 0 },
       }),
     );
 
@@ -118,7 +154,7 @@ describe('buildDigest — আজকের টার্গেট বাদ দে
     expect(digest.behind).toHaveLength(0);
   });
 
-  it('ছুটির দিনে আজকের টার্গেট ০, তাই প্রত্যাশা মাসের পুরোটাই', () => {
+  it('আজ ছুটির দিন হলেও গতকাল পর্যন্তের প্রত্যাশা অটুট', () => {
     const digest = buildDigest(
       source({
         today: [day({ dayType: 'weekly_off', targetHours: 0, creditedHours: 0, status: 'no_activity' })],
@@ -136,7 +172,9 @@ describe('buildDigest — আজকের টার্গেট বাদ দে
 
 describe('buildDigest — তালিকা ও ক্রম', () => {
   it('মাসের সারি না থাকলেও সারিটা থাকে, শূন্য ধরে', () => {
-    const digest = buildDigest(source({ month: [] }));
+    // ⚠️ প্রত্যাশাও অজানা — আর অজানাকে **ঘাটতি** বলা যাবে না, নইলে
+    //    rollup পিছিয়ে থাকলেই ইমেইল সবাইকে অভিযুক্ত করত
+    const digest = buildDigest(source({ month: [], expectedHours: {} }));
 
     expect(digest.rows).toHaveLength(1);
     expect(digest.rows[0].monthHours).toBe(0);
@@ -170,6 +208,7 @@ describe('buildDigest — তালিকা ও ক্রম', () => {
           month({ employeeId: 1, empCode: 'OX-001', creditedHours: 72 }), // +৮
           month({ employeeId: 2, empCode: 'OX-002', creditedHours: 60 }), // −৪
         ],
+        expectedHours: { 1: 64, 2: 64, 3: 64 },
       }),
     );
 
@@ -235,6 +274,7 @@ describe('digestBody', () => {
         month({ employeeId: 1, empCode: 'OX-001', creditedHours: 72 }),
         month({ employeeId: 2, empCode: 'OX-002', creditedHours: 40 }),
       ],
+      expectedHours: { 1: 64, 2: 64 },
     }),
   );
   const body = digestBody(digest, 'oXeio Office');
@@ -253,10 +293,12 @@ describe('digestBody', () => {
     expect(body).toContain('expected 64.00');
   });
 
-  it('আজকের টার্গেট বাদ দেওয়ার কারণটা ইমেইলেই লেখা থাকে', () => {
-    // ⭐ না লিখলে পাঠক ভাবতেন সংখ্যাটা মাসের পুরো pace, আর ড্যাশবোর্ডের
-    //    সাথে না মেলায় দুটোর একটাকে "ভাঙা" ধরে নিতেন
+  it('জানালার দুই সীমাই ইমেইলে লেখা থাকে', () => {
+    // ⭐ না লিখলে পাঠক ভাবতেন সংখ্যাটা মাসের ১ তারিখ থেকে পুরো pace, আর
+    //    ড্যাশবোর্ডের সাথে না মেলায় দুটোর একটাকে "ভাঙা" ধরে নিতেন
     expect(body).toContain("leave out today's target");
+    // ⚠️ আর এই লাইনটা না থাকলে এজেন্ট বসার আগের দিনগুলো নীরবে ঘাটতি মনে হতো
+    expect(body).toContain('before tracking started');
   });
 
   it('⚠️⚠️ কোনো ডোমেইন, প্রসেসের নাম বা URL যায় না', () => {

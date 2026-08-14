@@ -53,6 +53,8 @@
 
 > **অবস্থান:** `oXeio Office/oxeio-monitor/`
 > নিচের গাছে **✅ = কোড আছে ও চলছে**, **⏳ = এখনো পরিকল্পনা**।
+> ⚠️ কয়েকটা সারিতে ✅-র বদলে ⚠️ — কোড আছে, কিন্তু **মাঠে একবারও চালানো
+> হয়নি** (তালিকাটা [README](../README.md)-এ এক জায়গায়)।
 > সর্বশেষ অবস্থা ও কী কী যাচাই হয়েছে: [09-Build-Log](09-Build-Log.md)
 
 ```
@@ -164,13 +166,30 @@ oxeio-monitor/
 │   │   # scripts/sample-data.cjs      ⚙️ শুধু ডেমোর জন্য — manifest ধরে --undo করে
 │   │   # prisma/staff.local.json      🔒 আসল নাম ও বেতন — gitignore, কখনো কমিট নয় (G70)
 │   │   # prisma/staff.example.json    ✅ নমুনা — ফাইল না থাকলে seed এটা দিয়ে চলে
-│   │   # prisma/parse-staff.ts        ✅ ⭐ তালিকা যাচাই — ভুল বেতন/তারিখ ঢোকার আগেই থামায় (১৮ টেস্ট)
+│   │   # prisma/parse-staff.ts        ✅ ⭐ তালিকা যাচাই — ভুল বেতন/তারিখ ঢোকার আগেই থামায় (২২ টেস্ট)
 │   │   # prisma/check-staff.ts        ✅ `npm run check:staff` — DB ছাড়াই তালিকা পরীক্ষা, কিছু লেখে না
+│   │   # prisma/holidays.data.ts      ✅ ⭐ R7 — বাংলাদেশের ছুটি ২০২৬–২৭, ৫১টা সারি (৭৭ টেস্ট)
+│   │   #    ⭐⭐ `approximate` ঘর — চাঁদ/তিথি-নির্ভর ৩৩টা তারিখ নামের শেষে
+│   │   #       "(সম্ভাব্য)" নিয়ে DB-তে যায়, যাতে মালিক পর্দায় দেখতে পান
+│   │   #    ⭐ `planHolidaySeedRun()` — seed কখনো বদলায়/মোছে না, শুধু বসায়;
+│   │   #       চলতি ও অতীত মাস `SEED_HOLIDAYS_PAST=true` ছাড়া আটকে থাকে
+│   │   #       (ওতে target_sec · pace_sec · পে-রোলের d÷D নড়ত — সরাসরি টাকা)
+│   │   #    ⚠️ `APPROX_SUFFIX` স্ট্রিংটার **যমজ কপি** `src/reports/reports.range.ts`-এ —
+│   │   #       `prisma/` ↔ `src/` import দুই দিকেই ভাঙে, তাই দুটো এক আছে কি না
+│   │   #       `test/holidays.spec.ts` পাহারা দেয়
 │   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
 │   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
-│   │   ├── digest/                     ✅ F07 সন্ধ্যা ৬:৩০-এর ডাইজেস্ট
+│   │   ├── digest/                     ✅ **দুটো ডাইজেস্ট, এক মডিউল**
+│   │   │   ├── digest.{job,math,service}.ts   ✅ F07 — রোজ সন্ধ্যা ৬:৩০
+│   │   │   ├── weekly.rules.ts                ✅ ⭐ R3 — সপ্তাহের গণিত, খাঁটি ফাংশন
+│   │   │   ├── weekly.service.ts              ⚠️ ⭐ গ্রুপ-চ্যাটে চলে যাওয়া আটকানোর প্রহরী
+│   │   │   │   #  `WEEKLY_DIGEST_ALLOW_GROUP` না দিলে গ্রুপ chat id-তে যাবেই না —
+│   │   │   │   #  সাপ্তাহিক সারাংশে **সবার** নাম ও ঘণ্টা থাকে, তাই ভুল চ্যাটে
+│   │   │   │   #  একবার গেলে সেটা আর ফেরানো যায় না
+│   │   │   └── weekly.job.ts                  ⚠️ শুক্র সন্ধ্যা (`WEEKLY_DIGEST_DAY/HOUR`)
+│   │   │   #  ⚠️ মাঠে **একবারও চলেনি** — আসল বটে একটাও সাপ্তাহিক বার্তা যায়নি
 │   │   ├── ops/                        ✅ K02 এনক্রিপটেড ব্যাকআপ · K03 কপি · K04 হেলথ
 │   │   ├── reports/                    ✅ F01–F06 · Excel · PDF
 │   │   ├── screenshots/                ✅ E06 গ্যালারি · I07 signed URL · I08 audit
@@ -204,9 +223,20 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — ৭৪৬টি টেস্ট, ৩৭টি ফাইল
+│   └── test/                               ✅ Vitest + supertest — **১০৮৯টি টেস্ট, ৫৩টি ফাইল**
+│       #  ⚠️ ৩৫টি ফাইল (৮৫৯ টেস্ট) DB ছাড়াই চলে; ১৮টি `*.e2e.spec.ts`
+│       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
+│       ├── holidays.spec.ts                ✅ ⭐ ৭৭ — তালিকা যাচাই · seed পরিকল্পনা ·
+│       │                                   #   "(সম্ভাব্য)" চিহ্নের দুই কপি এক আছে কি না
+│       ├── weekly-digest.spec.ts           ✅ ⭐ ৭৭ — R3-এর গণিত ও গ্রুপ-চ্যাট প্রহরী
+│       ├── tracking-start.spec.ts          ✅ ২৭ — `elapsedWindow()`: ট্র্যাকিং শুরুর
+│       │                                   #   আগের দিন কারো ব্যর্থতা নয়
+│       ├── reports.target.spec.ts          ✅ ২৩ — রিপোর্টের দৈনিক টার্গেটও এখন
+│       │                                   #   পলিসির `expected_workdays` ভাগ করে
+│       ├── trend-expectation.spec.ts       ✅ ১৫ — ৭ দিনের ফিতের প্রত্যাশা এখন
+│       │                                   #   ক্যালেন্ডার দেখে, `daily_summary` সারি গুনে নয়
 │       └── setup/harness.ts  setup/global-setup.ts
 │
 ├── web/                                    # ── React 19 + Vite + Tailwind v4 ──
@@ -246,7 +276,10 @@ oxeio-monitor/
 │       ├── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
 │       └── pages/MyDataPage.tsx            ✅ ⭐ J05 — tray-র "My data" এখানে নামে
 │           #  ⚠️ কোনো বোতাম নেই — একটা বসালেই approval workflow-র প্রথম ধাপ
-│   └── test/format.spec.ts                 ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
+│   └── test/                               ✅ **৭৩টি, ২ ফাইল**
+│       ├── format.spec.ts                  ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
+│       └── onTheClock.spec.ts              ✅ ৯টি — Live Board-এর দুই ট্যাব;
+│           #  ⚠️ কেউ যেন **কোনো ট্যাবেই না পড়ে নীরবে উধাও** হয়ে না যায়
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
 │
@@ -267,8 +300,11 @@ oxeio-monitor/
 │   ├── make-cert.ps1                       # self-signed সার্ট + পিন (certs/)
 │   ├── defender-exclusions.ps1             # AV exception স্ক্রিপ্ট
 │   ├── vps-setup.sh                        ✅ VPS প্রথমবার দাঁড় করানো (ADR-026)
-│   └── vps-update.sh                       ✅ ⭐ পরের প্রতিটা হালনাগাদ — pull · migration · রিবিল্ড · স্বাস্থ্য
-│                                              ⚠️ seed চালায় না — ওটা কর্মীর নাম/বেতন/তারিখ চাপা দিত
+│   ├── vps-update.sh                       ✅ ⭐ পরের প্রতিটা হালনাগাদ — pull · migration · রিবিল্ড · স্বাস্থ্য
+│   │                                          ⚠️ seed চালায় না — ওটা কর্মীর নাম/বেতন/তারিখ চাপা দিত
+│   └── vps-harden.sh                       ⚠️ R6-এর অর্ধেক — fail2ban + security-only auto-update
+│                                              ⚠️ **একবারও চালানো হয়নি**, কোনো মেশিনে নয়
+│                                              ⚠️ বাকি অর্ধেক এখনো হয়নি: Caddy-তে `/api/v1/auth/*` rate limit
 └── (রেপো রুটে) .github/workflows/ci.yml   ✅ server · web · docker — তিনটি job
 ```
 
@@ -338,7 +374,11 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | মধ্যরাতে দিন বদল | `SegmentBuilder` | `agent/util/dhaka-time` ✅ | — |
 | Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
 | অফলাইন কাজ → dedupe | `LocalQueue` `SyncClient` | `agent/util/derive-uuid` ✅ | — |
-| মাসিক ২০৮ঘ টার্গেট + pace | `TrayIcon` · `TodayForm` | `summary/` · `agent/progress.service` ✅ | `components/ProgressRing.tsx` |
+| মাসিক টার্গেট + pace (কর্মদিবস × ৮ঘ, ফ্ল্যাট ২০৮ নয়) | `TrayIcon` · `TodayForm` | `summary/proration.ts` · `reports/reports.range.ts` (`dailyTargetSec`) · `agent/progress.service` ✅ | `components/ProgressRing.tsx` |
+| ⚠️ **একই টার্গেট, দুই হার** | — | tray · `/me` · `reports/` পলিসির `expected_workdays` ভাগ করে; কিন্তু `dashboard.service.ts`-এর লাইভ কার্ড এখনো **ক্যালেন্ডার কর্মদিবস** ভাগ করে আর `monthTargetSec`-এ ফ্ল্যাট ২০৮ঘ পাঠায় — মেলানো বাকি | `LiveBoardPage` · `api/dashboard.ts` |
+| **R7** ছুটির ক্যালেন্ডার (২০২৬–২৭) | — | `prisma/holidays.data.ts` → `seed.ts` ✅ · `admin/holidays.service` ✅ | `settings/HolidaysSection.tsx` |
+| **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি | — |
+| ট্র্যাকিং শুরুর জানালা | — | `summary/summary.math.ts` → `elapsedWindow()` ✅ — tray · Monthly · ডাইজেস্ট · রিপোর্ট **এক সংজ্ঞা** (এজেন্ট বসার আগের না-দেখা দিন কারো ঘাটতি নয়)। ⚠️ ৭ দিনের ফিতে (`trendDayExpectation`) **ইচ্ছাকৃতভাবে আজকের দিনটা রাখে** — ভিন্ন প্রশ্ন, ফাংশনের নোটে লেখা | `MonthlyPage` · `live/WeekAndMonth.tsx` |
 | অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
 | লাইভ স্ট্যাটাস | heartbeat ✅ | `dashboard/live.controller` ✅ | `LiveBoardPage.tsx` |
 | মাসিক হিটম্যাপ | — | `summary/` · `day-close.job` ✅ | `MonthlyPage.tsx` |

@@ -3,10 +3,16 @@
  *
  *   1. Work policy   — মাসিক ২০৮ ঘণ্টা, শুক্র সাপ্তাহিক ছুটি, ছবি ০৭:০০–২৩:০০
  *   2. App categories — productive / neutral / unproductive রুল
- *   3. Holidays      — শুধু নির্দিষ্ট তারিখের জাতীয় ছুটি (নিচের নোট দেখুন)
+ *   3. Holidays      — ২০২৬–২৭-এর সরকারি ছুটি (`holidays.data.ts`)
  *   4. Owner account — .env-এর SEED_OWNER_* থেকে
  *
  * বারবার চালানো নিরাপদ — সব কিছু upsert।
+ *
+ * ⚠️⚠️ **একটাই ব্যতিক্রম, আর সেটা টাকার:** ছুটি বসানো "নিরাপদ পুনরাবৃত্তি"
+ *    নয়। চলতি বা অতীত মাসে একটা নতুন ছুটি বসলে ওই মাসের কর্মদিবস কমে,
+ *    টার্গেট ও pace বদলায়, আর পে-রোলের `d ÷ D` ভগ্নাংশও বদলায়। তাই seed
+ *    ওই মাসগুলোতে **নিজে থেকে কিছু বসায় না** — শুধু তারিখগুলো নাম ধরে ছাপে।
+ *    বসাতে হলে `SEED_HOLIDAYS_PAST=true` (deploy/README.md § ২.১গ)।
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,6 +20,17 @@ import { join } from 'node:path';
 import { hash } from '@node-rs/argon2';
 import { MatchType, PrismaClient, Productivity, UserRole } from '@prisma/client';
 
+import {
+  BD_HOLIDAYS,
+  HOLIDAY_YEARS,
+  dhakaToday,
+  gazetteNotes,
+  holidayRowName,
+  planHolidaySeedRun,
+  validateHolidays,
+  yearsSettled,
+  yearsToSeed,
+} from './holidays.data';
 import { parseStaff, shouldSeedSampleStaff, type StaffRow } from './parse-staff';
 
 const prisma = new PrismaClient();
@@ -189,32 +206,177 @@ async function seedAppCategories(): Promise<number> {
 
 // ── 3 · holidays ────────────────────────────────────────────────────────────
 //
-// ⚠️ শুধু **নির্দিষ্ট তারিখের** জাতীয় ছুটি এখানে আছে।
-//    ঈদ, শবে বরাত, দুর্গাপূজা, বুদ্ধ পূর্ণিমা ইত্যাদি চান্দ্র/পঞ্জিকা-নির্ভর —
-//    সেগুলোর তারিখ প্রতি বছর সরকারি প্রজ্ঞাপনে আসে। অনুমান করে বসানো হয়নি,
-//    কারণ ভুল তারিখ pace-এর কর্মদিবস হিসাব নষ্ট করবে (§ ২.১-খ)।
-//    → Settings → Holidays থেকে প্রজ্ঞাপন দেখে যোগ করে নিতে হবে (open question O2)।
+// ⚠️⚠️ আগে এখানে ছিল কেবল ৭টা **নির্দিষ্ট তারিখের** ছুটি; চান্দ্রগুলো
+//    (ঈদ, আশুরা, শবে বরাত, দুর্গাপূজা…) "অনুমান করা যাবে না" যুক্তিতে বাদ
+//    ছিল। কিন্তু বাদ দেওয়া মানে ওই দিনগুলো **কর্মদিবস** হিসেবে গোনা — অর্থাৎ
+//    চুপচাপ "ছুটি নেই" বলা, যা একটা সক্রিয় ভুল: প্রত্যেকের টার্গেট ও pace
+//    দুটোই বেশি দেখাত (roadmap R7 · open question O2)।
+//    এখন তালিকাটা `holidays.data.ts`-এ, আর আনুমানিক তারিখ **আনুমানিক বলেই**
+//    যায় — নামের শেষে "(সম্ভাব্য)"। কেন এভাবে, তা ওই ফাইলের মাথায় লেখা।
 
-const FIXED_HOLIDAYS_2026: Array<[string, string]> = [
-  ['2026-02-21', 'আন্তর্জাতিক মাতৃভাষা দিবস'],
-  ['2026-03-17', 'জাতির পিতার জন্মদিন'],
-  ['2026-03-26', 'স্বাধীনতা দিবস'],
-  ['2026-05-01', 'মে দিবস'],
-  ['2026-08-15', 'জাতীয় শোক দিবস'],
-  ['2026-12-16', 'বিজয় দিবস'],
-  ['2026-12-25', 'বড়দিন'],
-];
+const HOLIDAY_SEED_KEY = 'seed.holidays';
 
-async function seedHolidays(): Promise<number> {
-  for (const [date, name] of FIXED_HOLIDAYS_2026) {
-    const holidayDate = new Date(`${date}T00:00:00.000Z`);
-    await prisma.holiday.upsert({
-      where: { holidayDate },
-      update: { name },
-      create: { holidayDate, name, type: 'public' },
+/**
+ * ⭐⭐ **চলতি ও অতীত মাসে ছুটি বসানোর স্পষ্ট সম্মতি।**
+ *
+ * ⚠️⚠️ কেন একটা পতাকা লাগল: `npm run seed` দেখতে নিরীহ ("সব upsert, বারবার
+ *    চালানো নিরাপদ"), কিন্তু চলতি মাসের মাঝপথে একটা নতুন ছুটি বসলে ওই মাসের
+ *    কর্মদিবস D কমে যায় → `dailyTargetSec = মাসিক ÷ D` বাড়ে →
+ *    `monthly_summary`-র `target_sec`·`expected_sec`·`pace_sec` তিনটেই নড়ে,
+ *    আর G37-এর `d ÷ D` ভগ্নাংশ (`src/payroll/payroll.service.ts`) **সরাসরি
+ *    টাকায়** গিয়ে পড়ে। অর্থাৎ একটা রুটিন কমান্ড নীরবে বেতন বদলে দিত।
+ *
+ * ⚠️ মিলানো হয় হুবহু `'true'`-র সাথে। `1`/`yes` লিখলে সম্মতি **ধরা হয় না**,
+ *    আর তখন seed তারিখগুলো আবার নাম ধরে ছাপে — অর্থাৎ ভুলটা নীরব নয়, চোখে
+ *    পড়ে। উল্টো দিকে "যেকোনো অ-খালি মান = হ্যাঁ" ধরলে একটা ফাঁকা-নয়-এমন
+ *    টাইপো (`SEED_HOLIDAYS_PAST=false`) সম্মতি হয়ে যেত।
+ */
+const ALLOW_PAST_HOLIDAYS = process.env.SEED_HOLIDAYS_PAST === 'true';
+
+/** `settings`-এর ওই একটামাত্র সারি: কোন কোন বছর একবার বসানো হয়ে গেছে */
+interface HolidaySeedState {
+  years?: number[];
+}
+
+async function loadSeededYears(): Promise<number[]> {
+  const row = await prisma.setting.findUnique({
+    where: { key: HOLIDAY_SEED_KEY },
+    select: { value: true },
+  });
+  if (!row || typeof row.value !== 'object' || row.value === null) return [];
+  const years = (row.value as HolidaySeedState).years;
+  return Array.isArray(years) ? years.filter((y) => typeof y === 'number') : [];
+}
+
+/**
+ * ছুটির ক্যালেন্ডার বসানো।
+ *
+ * ⭐⭐ **seed এখানে কিছু বদলায় না, মোছেও না — শুধু অনুপস্থিত সারি বসায়।**
+ *    সরকার ঘোষণা দিলে মালিক Settings → Holidays-এ তারিখ/নাম ঠিক করবেন, আর
+ *    পরের `db seed` সেটা ফিরিয়ে দেবে না। আগের কোড `update: { name }` করত —
+ *    তাতে হাতে করা প্রতিটা সংশোধন পরের seed-এ মুছে যেত।
+ *
+ * ⭐⭐ **নোটগুলো প্রতিবারই ছাপে — ছুটি বসুক বা না বসুক।** আগে বছর বসে গেলে
+ *    এখান থেকেই early-return হতো, তাই `unlisted`/`renamed` নোট প্রথম রানের
+ *    পর **চিরতরে নীরব** হয়ে যেত। ⚠️ "না বলা সিদ্ধান্ত নয়, চেপে যাওয়া" —
+ *    নিয়মটা seed নিজেই দ্বিতীয় রানে ভাঙছিল।
+ *
+ * ⭐⭐ **আর চলতি/অতীত মাসে seed নিজে থেকে কিছু বসায় না** — ওই মাসগুলোর
+ *    সংখ্যা ইতিমধ্যে বেরিয়ে গেছে, তাই সেখানে ছুটি বসানো মানে পিছন ফিরে
+ *    টার্গেট ও পে-রোল বদলানো। বসাতে হলে `SEED_HOLIDAYS_PAST=true`
+ *    (`ALLOW_PAST_HOLIDAYS`-এর নোট)। নইলে তারিখগুলো **নাম ধরে ধরে** ছাপা হয়।
+ */
+async function seedHolidays(): Promise<{
+  summary: string;
+  standing: string[];
+  notes: string[];
+}> {
+  const problems = validateHolidays(BD_HOLIDAYS);
+  if (problems.length > 0) {
+    // ⚠️ থামানো হয়, কারণ ভুল তারিখ সরাসরি কর্মদিবসের হিসাবে ঢোকে
+    throw new Error(`ছুটির তালিকায় ভুল:\n  - ${problems.join('\n  - ')}`);
+  }
+
+  const seeded = await loadSeededYears();
+  const years = yearsToSeed(HOLIDAY_YEARS, seeded);
+
+  // ⚠️ DB **প্রতিবারই** পড়া হয়, বছর বাকি থাক বা না থাক — নইলে বলার মতো
+  //    কিছু আছে কি না সেটাই জানা যেত না।
+  const rows = await prisma.holiday.findMany({
+    select: { holidayDate: true, name: true },
+  });
+
+  // ⭐ পরিকল্পনা হয় **পুরো তালিকার** উপর; `years` শুধু ঠিক করে কী বসবে
+  const run = planHolidaySeedRun(
+    BD_HOLIDAYS,
+    rows.map((row) => ({
+      date: row.holidayDate.toISOString().slice(0, 10),
+      name: row.name,
+    })),
+    years,
+    // ⚠️ "আজ" ঢাকার তারিখ, মেশিনের স্থানীয় ঘড়ির নয় — `dhakaToday()`-র নোট
+    { today: dhakaToday(new Date()), allowPast: ALLOW_PAST_HOLIDAYS },
+  );
+
+  for (const entry of run.create) {
+    await prisma.holiday.create({
+      data: {
+        // ⚠️ `@db.Date` কলাম UTC-মধ্যরাত ধরে; স্থানীয় সময় দিলে ঢাকায় ছুটিটা
+        //    আগের দিনে গিয়ে পড়ত (`parse-staff.ts`-এ একই ফাঁদ)
+        holidayDate: new Date(`${entry.date}T00:00:00.000Z`),
+        name: holidayRowName(entry),
+        // ⚠️ পর্দার Type বাছাইয়ে শুধু public/optional/company আছে — নতুন কোনো
+        //    মান দিলে মালিক Edit → Save করলেই সেটা নিঃশব্দে বদলে যেত
+        type: 'public',
+      },
     });
   }
-  return FIXED_HOLIDAYS_2026.length;
+
+  /**
+   * ⭐⭐ যে বছরে সম্মতির অপেক্ষায় সারি রয়ে গেছে, সেটা "বসানো হয়ে গেছে" নয়
+   *    — নইলে `SEED_HOLIDAYS_PAST=true` পরের রানে আর কোনো কাজেই লাগত না
+   *    (`yearsSettled`-এর নোটে কারণ ও এর দামটাও লেখা)।
+   *
+   * ⚠️ `settings` কেবল তখনই ছোঁয়া হয় যখন সত্যিই একটা বছর সম্পূর্ণ বসল —
+   *    নইলে প্রতিটা রান একই মান আবার লিখত, আর `updated_at` মিথ্যে বলত।
+   */
+  const settledYears = yearsSettled(years, run.needsConsent);
+  if (settledYears.length > 0) {
+    await prisma.setting.upsert({
+      where: { key: HOLIDAY_SEED_KEY },
+      create: {
+        key: HOLIDAY_SEED_KEY,
+        value: { years: [...seeded, ...settledYears] },
+      },
+      update: { value: { years: [...seeded, ...settledYears] } },
+    });
+  }
+
+  /**
+   * ⭐⭐ সারাংশে **প্রতিটা ভাগ আলাদা করে** বলা হয়। আগে শুধু "কতটা বসেছে"
+   *    ছাপা হতো; এখন যেগুলো **বসেনি** সেগুলোর সংখ্যাও থাকে, কারণ "০টি
+   *    বসেছে" পড়ে দুটো একেবারে আলাদা জিনিস বোঝা যেত — "সব আগে থেকেই ঠিক
+   *    ছিল" আর "১৮টা তারিখ আটকে আছে"।
+   */
+  const approx = run.create.filter((h) => h.approximate).length;
+  const parts = [
+    `${run.create.length}টি বসেছে (${approx}টি সম্ভাব্য তারিখ)`,
+    `${run.kept}টি আগে থেকেই ছিল`,
+  ];
+  if (run.needsConsent.length > 0) {
+    parts.push(`${run.needsConsent.length}টি চলতি/অতীত মাস বলে আটকানো`);
+  }
+  if (run.heldBack.length > 0) {
+    parts.push(`${run.heldBack.length}টি বন্ধ বছরে (তাই বসেনি)`);
+  }
+  /**
+   * ⚠️ তিনটে অবস্থা আলাদা করে বলা হয়। "কোনো বছর সম্পূর্ণ হয়নি" আর "সব
+   *    বছর আগেই সম্পূর্ণ" — দুটোই "নতুন কিছু বন্ধ হয়নি", কিন্তু প্রথমটা
+   *    মানে কিছু আটকে আছে, দ্বিতীয়টা মানে সব ঠিক আছে।
+   */
+  if (years.length === 0) {
+    const done = [...seeded].sort((a, b) => a - b).join(', ');
+    parts.push(`সব বছর আগেই সম্পূর্ণ (${done})`);
+  } else if (settledYears.length > 0) {
+    parts.push(`বছর সম্পূর্ণ হলো: ${settledYears.join(', ')}`);
+  } else {
+    parts.push('কোনো বছর সম্পূর্ণ হয়নি — সম্মতির অপেক্ষায় সারি আছে');
+  }
+
+  /**
+   * ⚠️ পুরোনো/অচেনা সারি **মোছা হয় না**, শুধু দেখানো হয়। ২০২৪-এ ১৭ মার্চ ও
+   *    ১৫ আগস্ট সরকারি ছুটি থেকে বাদ পড়েছে, অথচ আগের seed ওগুলো বসিয়ে গেছে —
+   *    চলতি DB-তে ওরা এখনো কর্মদিবস কমিয়ে রাখছে। কোনটা ভুল আর কোনটা মালিকের
+   *    নিজের যোগ করা ছুটি, সেটা এখান থেকে বোঝার উপায় নেই — তাই সিদ্ধান্তটা
+   *    তাঁর, আমাদের নয়। ⭐ কিন্তু **না বলা**-টা সিদ্ধান্ত নয়, চেপে যাওয়া —
+   *    তাই `run.notes` প্রতিবারই ফেরে, `run.create` খালি হলেও।
+   */
+  return {
+    summary: parts.join(' · '),
+    // ⚠️ তালিকা সম্পর্কে **স্থায়ী** কথা — এই রান কী করল, তার সাথে গুলিয়ে নয়
+    standing: gazetteNotes(BD_HOLIDAYS),
+    notes: run.notes,
+  };
 }
 
 // ── 4 · কর্মী তালিকা ────────────────────────────────────────────────────────
@@ -377,7 +539,14 @@ async function main(): Promise<void> {
   console.log('✅ seed সম্পূর্ণ');
   console.log(`   work policy   : #${policyId} · ২০৮ ঘণ্টা/মাস · ছবি ০৭:০০–২৩:০০`);
   console.log(`   app categories: ${rules}টি রুল`);
-  console.log(`   holidays      : ${holidays}টি (শুধু নির্দিষ্ট তারিখের — বাকিগুলো হাতে যোগ করুন)`);
+  console.log(`   holidays      : ${holidays.summary}`);
+  console.log(
+    '                   ⚠️ "(সম্ভাব্য)" লেখা তারিখগুলো চাঁদ/তিথি-নির্ভর — ঘোষণা এলে ঠিক করে নিন',
+  );
+  // ⚠️ তালিকা সম্পর্কে স্থায়ী কথা আগে, তারপর এই রান কী করল
+  for (const note of [...holidays.standing, ...holidays.notes]) {
+    console.log(`                   ${note}`);
+  }
   console.log(`   কর্মী          : ${staff} জন — কারো policy সই করা নেই, রোলআউটের আগে দরকার`);
   console.log(`   owner         : ${ownerEmail} (প্রথম লগইনে পাসওয়ার্ড বদলাতে হবে)`);
 }

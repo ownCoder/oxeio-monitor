@@ -23,12 +23,8 @@ import {
   type TeamHour,
 } from './dashboard.math';
 
-import {
-  countWorkdays,
-  dailyTargetSec as dailyTargetSecOf,
-  isWorkday,
-  monthBoundsOf,
-} from '../reports/reports.range';
+import { isWorkday, monthBoundsOf } from '../reports/reports.range';
+import { prorate } from '../summary/proration';
 
 const HOUR = 3600;
 
@@ -47,6 +43,13 @@ const NO_DEVICES: readonly DeviceReport[] = [];
 
 /** ⚠️ ডিফল্ট মাসিক টার্গেট — পলিসি না থাকলে (§ ২.১-খ, ২০৮ ঘণ্টা) */
 const DEFAULT_TARGET_HOURS = 208;
+
+/**
+ * ⚠️ দৈনিক টার্গেটের **হর**, পলিসি না থাকলে — `summary.service.ts`-এর
+ * একই নামের ধ্রুবকের সাথে মিলিয়ে রাখা। দুটো আলাদা হলে এই কার্ড আর
+ * `monthly_summary` আবার দুই সংখ্যা বলত, ঠিক যে রোগটা নিচে সারানো হয়েছে।
+ */
+const DEFAULT_POLICY_WORKDAYS = 26;
 
 export interface LiveCard {
   employeeId: number;
@@ -283,7 +286,20 @@ export class DashboardService {
         empCode: true,
         fullName: true,
         designation: true,
-        policy: { select: { monthlyTargetHours: true, weeklyOffDay: true } },
+        // ⚠️ `joinedOn`/`leftOn` লাগে কারণ টার্গেট **prorate** হয় — মাসের
+        //    মাঝপথে যোগ দেওয়া কর্মীর মাসিক টার্গেট পুরো মাসেরটা নয়।
+        joinedOn: true,
+        leftOn: true,
+        policy: {
+          // ⭐⭐ `expectedWorkdays` — দৈনিক টার্গেটের **হর**। এটা না আনলে
+          //    এখানে ক্যালেন্ডার কর্মদিবস দিয়ে ভাগ করতে হতো, আর সেটাই ছিল
+          //    tray ও এই কার্ডের মধ্যে ফারাকের আসল কারণ।
+          select: {
+            monthlyTargetHours: true,
+            weeklyOffDay: true,
+            expectedWorkdays: true,
+          },
+        },
       },
       orderBy: { empCode: 'asc' },
     });
@@ -396,7 +412,31 @@ export class DashboardService {
       // ⚠️ নীতি আলাদা হলে সাপ্তাহিক ছুটির বারও আলাদা, তাই কর্মদিবস
       //    কর্মীপ্রতি গোনা হয় — সবার জন্য একটাই সংখ্যা ধরে নেওয়া যায় না।
       const rule = { weeklyOffDay: e.policy?.weeklyOffDay ?? null, holidays };
-      const workdays = countWorkdays(monthFirst, monthLast, rule);
+
+      /**
+       * ⭐⭐ **টার্গেট এখানে নতুন করে গোনা হয় না — `prorate()` ডাকা হয়**,
+       * অর্থাৎ যে ফাংশনটা `monthly_summary.target_sec` লেখে ঠিক সেটাই।
+       *
+       * ⚠️ আগে এখানে নিজের হিসাব ছিল, আর তার হর ছিল **ক্যালেন্ডার কর্মদিবস**,
+       *    অথচ `prorate()` ভাগ করে **পলিসির `expected_workdays`** দিয়ে। ২৭
+       *    কর্মদিবসের আগস্টে তাই tray বলত ৮ঘ/দিন · ২১৬ঘ/মাস, আর এই কার্ড
+       *    বলত ৭ঘ ৪২মি/দিন · ২০৮ঘ/মাস — একই কর্মী, একই মাস, দুই সংখ্যা।
+       *    কর্মী নিজের পর্দাটাকে আর মালিক তাঁরটাকে সত্যি ধরতেন, আর কারো
+       *    পক্ষেই টের পাওয়ার উপায় ছিল না (G88)।
+       *
+       * ⭐ সমাধানটা ইচ্ছাকৃতভাবে "একই সূত্র দুই জায়গায় লেখা" নয়, **একই
+       *    ফাংশন ডাকা** — নইলে পরের বার একটা বদলে অন্যটা থেকে যেত।
+       */
+      const target = prorate({
+        monthStart: monthFirst,
+        monthEnd: monthLast,
+        joinedOn: e.joinedOn,
+        leftOn: e.leftOn,
+        weeklyOffDay: rule.weeklyOffDay,
+        holidays,
+        monthlyTargetSec: targetHours * HOUR,
+        policyWorkdays: e.policy?.expectedWorkdays ?? DEFAULT_POLICY_WORKDAYS,
+      });
 
       return {
         employeeId: e.id,
@@ -409,10 +449,10 @@ export class DashboardService {
           now,
         }),
         todayWorkedSec: todaySec.get(e.id) ?? 0,
-        dailyTargetSec: Math.round(dailyTargetSecOf(targetHours * HOUR, workdays)),
+        dailyTargetSec: Math.round(target.dailyTargetSec),
         todayIsWorkday: isWorkday(today, rule),
         monthWorkedSec: monthSec.get(e.id) ?? 0,
-        monthTargetSec: Math.round(targetHours * HOUR),
+        monthTargetSec: Math.round(target.targetSec),
         lastHeartbeatAt: latestHeartbeat(own),
         agentPresence: agentPresence(own),
       };
@@ -504,16 +544,6 @@ export class DashboardService {
     const monthKey = formatWorkDate(today).slice(0, 7);
 
     /**
-     * ⭐ **কবে থেকে দেখা শুরু** — সবচেয়ে পুরোনো `daily_summary` সারি।
-     * ⚠️ এর আগের দিনগুলোতে শূন্য দেখানো যাবে না; ওগুলো "জানি না"।
-     */
-    const earliest = await this.prisma.dailySummary.findFirst({
-      orderBy: { workDate: 'asc' },
-      select: { workDate: true },
-    });
-    const trackedFromMs = earliest?.workDate.getTime() ?? null;
-
-    /**
      * ⚠️⚠️ **সক্রিয় কর্মীদের তালিকা আগে**, আর সেটা এখানে জরুরি — শুধু
      *    নাম দেখানোর জন্য নয়।
      *
@@ -531,20 +561,36 @@ export class DashboardService {
      */
     const active = await this.prisma.employee.findMany({
       where: { status: 'active' },
-      select: { id: true, fullName: true },
+      select: {
+        id: true,
+        fullName: true,
+        /**
+         * ⚠️ যোগ/ছাড়ার দিন ও সাপ্তাহিক ছুটির বার এখানে **নতুন করে** টানা
+         * হয়েছে — ফিতের প্রত্যাশা এখন `daily_summary` সারি গুনে নয়,
+         * ক্যালেন্ডার দেখে হয় (নিচের `trendDayExpectation()`)। এগুলো
+         * ছাড়া "ওই দিনটা ওর কর্মদিবস ছিল কি না" প্রশ্নের উত্তরই নেই।
+         */
+        joinedOn: true,
+        leftOn: true,
+        policy: { select: { weeklyOffDay: true } },
+      },
     });
     const nameOf = new Map(active.map((e) => [e.id, e.fullName]));
 
-    // ⚠️ কর্মীপ্রতি সারি, গোষ্ঠীবদ্ধ নয় — `day_type` ও দৈনিক টার্গেট
+    // ⚠️ কর্মীপ্রতি সারি, গোষ্ঠীবদ্ধ নয় — দৈনিক টার্গেট ও সাপ্তাহিক ছুটি
     //    দুটোই কর্মীভেদে আলাদা, তাই যোগফলটা কোডে করা হয়।
-    const [rowsAll, monthRowsAll] = await Promise.all([
+    const [rowsAll, monthRowsAll, firstSeen, holidayRows] = await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { workDate: { gte: first, lte: today } },
         select: {
           employeeId: true,
           workDate: true,
           workedSec: true,
-          dayType: true,
+          /**
+           * ⚠️⚠️ `dayType` এখানে আর **পড়াই হয় না**। ওটা দিয়েই আগে
+           * প্রত্যাশা গোনা হতো (`dayType !== 'holiday'`), আর সেটা নীরবে
+           * ভুল ছিল — কারণ নিচের `trendDayExpectation()`-এর নোটে।
+           */
         },
       }),
       this.prisma.monthlySummary.findMany({
@@ -554,12 +600,63 @@ export class DashboardService {
           creditedSec: true,
           targetSec: true,
           expectedWorkdays: true,
+          // ⭐ প্রত্যাশা আর এখানে গোনা হয় না — কেন, নিচের নোট দেখুন
+          expectedSec: true,
         },
+      }),
+      /**
+       * ⭐⭐ **কাকে কবে থেকে দেখছি — কর্মীপ্রতি।**
+       *
+       * ⚠️ আগে এখানে দল-স্তরের একটা `findFirst` ছিল, আর ফিতের প্রত্যাশায়
+       *    সেটা ব্যবহারই হতো না। এখন হয়: দল-স্তরের min নিলে ১ অক্টোবর
+       *    যোগ দেওয়া কর্মীর জন্য জানালা জুলাই থেকে শুরু হতো।
+       *
+       * ⭐ দল-স্তরের min এখান থেকেই বেরিয়ে আসে (নিচের `trackedFromMs`) —
+       *    দুটো আলাদা কোয়েরির দরকার নেই, আর দুটো সংখ্যা কখনো আলাদাও হতে
+       *    পারে না।
+       *
+       * ⚠️ মাস দিয়ে ছাঁকা হয় **না** — `summary.service.ts`-এর একই
+       *    কোয়েরির মতোই। ছাঁকলে প্রতি মাসের ১ তারিখে ট্র্যাকিং নতুন করে
+       *    "শুরু" হতো।
+       */
+      this.prisma.dailySummary.groupBy({
+        by: ['employeeId'],
+        where: { employeeId: { in: active.map((e) => e.id) } },
+        _min: { workDate: true },
+      }),
+      /**
+       * ⚠️ ফিতের সাত দিনের সরকারি ছুটি। ছুটির দিনে কারো টার্গেট থাকে না,
+       *    আর সেটা `daily_summary` সারি দেখে জানার উপায় নেই।
+       */
+      this.prisma.holiday.findMany({
+        where: { holidayDate: { gte: first, lte: today } },
+        select: { holidayDate: true },
       }),
     ]);
 
     const rows = rowsAll.filter((r) => nameOf.has(r.employeeId));
     const monthRows = monthRowsAll.filter((m) => nameOf.has(m.employeeId));
+    const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
+
+    /**
+     * ⭐ **কবে থেকে দেখা শুরু** — সবচেয়ে পুরোনো `daily_summary` সারি।
+     * ⚠️ এর আগের দিনগুলোতে শূন্য দেখানো যাবে না; ওগুলো "জানি না"।
+     *
+     * ⚠️ এটা **দল-স্তরের** প্রশ্ন — ফিতের `days[].tracked` আর "কবে থেকে
+     *    দেখছি" লেবেল, দুটোই গোটা বোর্ডের কথা বলে। কর্মীপ্রতি সীমাটা
+     *    আলাদা আর সেটা নিচে `TrendStaff.trackedFrom`-এ যায়।
+     *
+     * ⚠️ সক্রিয় কর্মীদের মধ্যেই খোঁজা হয় — বোর্ডের বাকি সব সংখ্যাও তাই,
+     *    আর ছেড়ে-যাওয়া কারো পুরোনো সারি ফিতেটাকে অকারণে পিছিয়ে দিত।
+     */
+    const trackedFromBy = new Map(
+      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
+    );
+    const trackedFromMs = firstSeen.reduce<number | null>((min, f) => {
+      const ms = f._min.workDate?.getTime();
+      if (ms === undefined) return min;
+      return min === null || ms < min ? ms : min;
+    }, null);
 
     /**
      * ⭐ কর্মীপ্রতি **এক কর্মদিবসের** টার্গেট = মাসিক ÷ তার কর্মদিবস।
@@ -574,22 +671,36 @@ export class DashboardService {
       );
     }
 
+    /**
+     * ⚠️ যাঁর চলতি মাসের `monthly_summary` সারিই নেই, তিনি প্রত্যাশার
+     * হিসাবে **আসেন না** — `?? 0` বসিয়ে ধরে নেওয়া হয় না। ০ ধরলে তিনি
+     * `expectedStaff`-এ গুনতেন অথচ দলের টার্গেট-রেখাটা নীরবে নিচে নামত,
+     * অর্থাৎ দল আসলের চেয়ে ভালো দেখাত। বাস্তবে অবস্থাটা প্রায় অসম্ভব —
+     * `refreshDate()` দৈনিক ও মাসিক দুটো সারিই একসাথে লেখে, তাই মাসিক
+     * সারি না থাকা মানে দৈনিক সারিও নেই, মানে `trackedFrom` এমনিতেই খালি।
+     */
+    const staff: TrendStaff[] = active
+      .filter((e) => dailyTargetOf.has(e.id))
+      .map((e) => ({
+        employeeId: e.id,
+        weeklyOffDay: e.policy?.weeklyOffDay ?? null,
+        joinedOn: e.joinedOn,
+        leftOn: e.leftOn,
+        trackedFrom: trackedFromBy.get(e.id) ?? null,
+        dailyTargetSec: dailyTargetOf.get(e.id) ?? 0,
+      }));
+
     const days: TrendDay[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(first.getTime() + i * 86_400_000);
       const ms = date.getTime();
-      const own = rows.filter((r) => r.workDate.getTime() === ms);
 
       let workedSec = 0;
-      let expectedStaff = 0;
-      let targetSec = 0;
-      for (const r of own) {
-        workedSec += r.workedSec;
-        if (r.dayType !== 'holiday') {
-          expectedStaff += 1;
-          targetSec += dailyTargetOf.get(r.employeeId) ?? 0;
-        }
+      for (const r of rows) {
+        if (r.workDate.getTime() === ms) workedSec += r.workedSec;
       }
+
+      const expectation = trendDayExpectation(date, staff, holidays);
 
       days.push({
         date: formatWorkDate(date),
@@ -597,51 +708,51 @@ export class DashboardService {
         // ⚠️ সারি থাকা নয়, **তারিখটা ট্র্যাকিং শুরুর পরে কি না** — সেটাই
         //    মাপকাঠি। নইলে ভবিষ্যতের কোনো ফাঁকা দিনও "দেখা হয়নি" হয়ে যেত।
         tracked: trackedFromMs !== null && ms >= trackedFromMs,
-        expectedStaff,
-        targetSec: Math.round(targetSec),
+        expectedStaff: expectation.expectedStaff,
+        targetSec: Math.round(expectation.targetSec),
       });
     }
 
     /**
-     * ⚠️⚠️ `expected` **এখানে আবার হিসাব করা হয়**, `monthly_summary`-র
-     *    কলামটা নেওয়া হয় না — কারণ ওটা মাসের ১ তারিখ থেকে গোনে।
-     *    ট্র্যাকিং শুরুর আগের দিনগুলো বাদ দিলে তবেই সংখ্যাটা সৎ।
-     */
-    const monthStart = new Date(`${monthKey}-01T00:00:00.000Z`);
-    const from =
-      trackedFromMs !== null && trackedFromMs > monthStart.getTime()
-        ? new Date(trackedFromMs)
-        : monthStart;
-
-    /**
-     * ⚠️⚠️ **আজকের দিনটা বাদ** (`lt: today`, `lte` নয়) — আর এটা না করলে
-     *    ভুলটা রোজ সকালে ফিরে আসত।
+     * ⭐⭐ **প্রত্যাশা `monthly_summary.expected_sec` থেকেই নেওয়া হয় —
+     *    এখানে আর গোনা হয় না।**
      *
-     *    আজকের পুরো কর্মদিবসটা প্রত্যাশায় ধরলে ভোর ৬টায় দল দেখাত "১১৪
-     *    ঘণ্টা পিছিয়ে", আর সন্ধ্যা নাগাদ সংখ্যাটা নিজে থেকেই ঠিক হয়ে যেত।
-     *    অর্থাৎ একই দল দিনে দুবার দুই রকম রায় পেত, কেবল ঘড়ির কাঁটার কারণে।
+     * ⚠️⚠️ আগে এখানে নিজের একটা হিসাব ছিল, আর সেটা দু-দিক থেকে ভুল ছিল:
      *
-     * ⭐ তাই pace-এর মানে দাঁড়াল: **গতকাল পর্যন্ত হিসাব করলে কে কোথায়।**
-     *    আজকের কাজ credited-এ যোগ হতেই থাকে, তাই দিন যত গড়ায় সংখ্যাটা
-     *    কেবল ভালোর দিকেই যায় — কখনো ভুয়া আতঙ্ক তৈরি করে না।
+     *    ১· **`daily_summary` সারি গোনা হতো** (`day_type !== 'holiday'`)।
+     *       কিন্তু ছুটির দিনে কেউ এক ঘণ্টা কাজ করলে `dayTypeOf()` দিনটাকে
+     *       `worked` লেখে — তাই ওই ছুটির দিনটাই একটা পুরো কর্মদিবসের
+     *       **প্রত্যাশা** হয়ে যেত। ছুটির দিনে কাজ করার শাস্তি।
+     *    ২· ট্র্যাকিং-শুরু ধরা হতো **দল-স্তরে**, অথচ প্রশ্নটা কর্মী-স্তরের।
+     *       নতুন কর্মীর প্রথম কয়েকটা না-দেখা দিন তার ঘাটতি হয়ে যেত।
+     *
+     *    আর সবচেয়ে বড় কথা: এটা ছিল প্রত্যাশার **তৃতীয়** বাস্তবায়ন, তাই
+     *    Live Board, Monthly পাতা আর tray তিনটে আলাদা সংখ্যা বলত।
+     *
+     * ⭐ এখন সংখ্যাটা একবারই তৈরি হয় (`summary.service.ts` →
+     *    `elapsedWorkdays()` → `proratedExpectedSec()`, প্রতি ১৫ মিনিটে
+     *    K06), আর সবাই সেটাই পড়ে। উপরের `creditedSec`/`targetSec`-ও একই
+     *    সারি থেকে আসে, তাই rollup পিছিয়ে থাকলেও বোর্ডের তিনটে সংখ্যা
+     *    অন্তত **একে অপরের সাথে মেলে** — আগে একটা তাজা, দুটো বাসি হতো।
+     *
+     * ⚠️⚠️ **উপরের ফিতেটা ওই একই দুটো ভুল ৪০ লাইন দূরে বয়ে বেড়াচ্ছিল**,
+     *    আর এই নোটটা তার নিন্দা লিখেই পাশ কাটিয়ে গিয়েছিল। এখন ফিতেও
+     *    `trendDayExpectation()` দিয়ে চলে: একই কর্মদিবসের সংজ্ঞা
+     *    (ক্যালেন্ডার, সারি নয়), একই কর্মী-স্তরের ট্র্যাকিং-শুরু, একই
+     *    যোগ/ছাড়ার সীমা।
+     *
+     * ⚠️ **দুটো পার্থক্য বাকি, দুটোই ইচ্ছাকৃত, দুটোই লেখা আছে** —
+     *    `test/trend-expectation.spec.ts`-এর শেষ describe সেগুলো পাহারা
+     *    দেয়। প্রধানটা **আজকের দিন**: এই `expectedSec` "এ পর্যন্ত কত
+     *    হওয়ার কথা ছিল" (আজ শেষ হয়নি বলে আজ বাদ), আর ফিতের `targetSec`
+     *    অন্য প্রশ্নের উত্তর — "**ওই দিনটার** টার্গেট কত ছিল"; আজকেরও
+     *    টার্গেট আছে, দিনটা কেবল এখনো চলছে।
+     *    ⚠️ আজকের টার্গেট শূন্য করা যেত না: `WeekAndMonth.tsx` এখনো
+     *    `expectedStaff === 0` দেখলে দিনটাকে "day off" লেখে, তাই শূন্য
+     *    বসালে বোর্ড দাবি করত আজ সবার ছুটি — একটা বাগ সারাতে গিয়ে সরাসরি
+     *    মিথ্যা। দ্বিতীয়টা `TrendStaff.trackedFrom`-এর নোটে।
      */
-    const monthRowsDaily = await this.prisma.dailySummary.findMany({
-      where: {
-        workDate: { gte: from, lt: today },
-        // ⚠️ এখানেও একই ছাঁকনি — নইলে প্রত্যাশায় ছেড়ে-যাওয়া মানুষের দিন যোগ হতো
-        employeeId: { in: active.map((e) => e.id) },
-      },
-      select: { employeeId: true, dayType: true },
-    });
-
-    let expectedSec = 0;
-    for (const r of monthRowsDaily) {
-      if (r.dayType !== 'holiday') {
-        expectedSec += dailyTargetOf.get(r.employeeId) ?? 0;
-      }
-    }
-    expectedSec = Math.round(expectedSec);
-
+    const expectedSec = monthRows.reduce((a, m) => a + m.expectedSec, 0);
     const creditedSec = monthRows.reduce((a, m) => a + m.creditedSec, 0);
 
     /**
@@ -756,4 +867,107 @@ function sumByEmployee(
   rows: Array<{ employeeId: number; _sum: { durationSec: number | null } }>,
 ): Map<number, number> {
   return new Map(rows.map((r) => [r.employeeId, r._sum.durationSec ?? 0]));
+}
+
+// ── সাত দিনের ফিতের প্রত্যাশা ───────────────────────────────────────────────
+
+/**
+ * ⭐ ফিতের এক দিনের প্রত্যাশা গুনতে একজন কর্মীর যা যা লাগে।
+ *
+ * ⭐ এই ফাংশনদুটো স্বভাবে `dashboard.math.ts`-এর, এই ফাইলের নয় — কিন্তু
+ * ওই ফাইলটা এই কাজের সীমানার বাইরে (অন্য কেউ সমান্তরালে সেখানে কাজ
+ * করছেন)। তাই আপাতত এখানে **module-স্তরে**, ক্লাসের বাইরে; সরানোটা
+ * কাট-পেস্ট আর `test/trend-expectation.spec.ts`-এর import বদলানো।
+ */
+export interface TrendStaff {
+  employeeId: number;
+  /** ISO দিন (শুক্র = ৫)। `null` = প্রতিটি ক্যালেন্ডার দিনই কর্মদিবস। */
+  weeklyOffDay: number | null;
+  joinedOn: Date | null;
+  leftOn: Date | null;
+  /**
+   * ⭐⭐ **তার নিজের** সবচেয়ে পুরোনো `daily_summary.work_date`।
+   *
+   * ⚠️ `null` = এই কর্মীর একটাও সারি নেই, অর্থাৎ তাকে কোনোদিন দেখাই
+   * হয়নি — তখন কোনো দিনেরই প্রত্যাশা দাবি করা হয় না।
+   *
+   * ⚠️⚠️ **এই এক জায়গায় `elapsedWindow()`-এর সাথে অমিল, আর সেটা এখানে
+   * লিখে রাখা হলো।** ওখানে `trackingStartedOn: null` মানে "সীমাটা জানা
+   * নেই, তাই জানালার উপর কোনো প্রভাব নেই" — অর্থাৎ কখনো না-দেখা কর্মীও
+   * পুরো মাসের প্রত্যাশা পান। এখানে উল্টো: না দেখে থাকলে প্রত্যাশাও নেই।
+   * ⭐ পার্থক্যটা **পর্দায় কখনো দেখা যায় না**, কারণ কলার কেবল সেই
+   * কর্মীদেরই পাঠায় যাঁদের চলতি মাসের `monthly_summary` সারি আছে, আর
+   * `refreshDate()` দৈনিক ও মাসিক সারি একসাথেই লেখে — মাসিক সারি থাকা
+   * মানে দৈনিক সারিও আছে, মানে এই `null` অপৌঁছনীয়। দুটোর মধ্যে কড়াটাই
+   * বাছা হয়েছে: "জানি না"-কে প্রত্যাশা বানানো এই ফাইলের মূল নিয়মের
+   * বিরুদ্ধে যায় (নিয়ম ২)।
+   */
+  trackedFrom: Date | null;
+  /** এক কর্মদিবসের টার্গেট (সেকেন্ড) — `monthly_summary` থেকে */
+  dailyTargetSec: number;
+}
+
+/**
+ * ⭐⭐ **ফিতের এক দিনে দলের প্রত্যাশা — মাসের কার্ড যে নিয়ম মানে, সেটাই।**
+ *
+ * ⚠️⚠️ আগে এটা `daily_summary` **সারি গুনে** হতো (`day_type !== 'holiday'`),
+ * আর সেটা নীরবে ভুল ছিল: ছুটির দিনে কেউ এক ঘণ্টা কাজ করলে `dayTypeOf()`
+ * দিনটাকে `worked` লেখে (`summary.math.ts`), তাই ওই ছুটির দিনটাই একটা
+ * পুরো কর্মদিবসের **প্রত্যাশা** হয়ে যেত — ছুটির দিনে কাজ করার শাস্তি।
+ * উল্টো দিকে সারি না থাকলে প্রত্যাশাও থাকত না, অর্থাৎ rollup পিছিয়ে
+ * থাকলে দলের টার্গেট-রেখা নিজে থেকেই নেমে যেত।
+ *
+ * ⭐ তাই এখন প্রশ্নটা **ক্যালেন্ডারকে** করা হয়, সারিকে নয় — ঠিক যেমন
+ * `summary.math.ts`-এর `elapsedWorkdays()` করে। চারটে সীমা, ওখানকার
+ * `elapsedWindow()`-এর সাথে মিলিয়ে:
+ *   ১· ওই দিনটা তার কর্মদিবস (সাপ্তাহিক ছুটি নয়, সরকারি ছুটিও নয়)
+ *   ২· সে তখন কর্মরত (`joined_on` … `left_on`)
+ *   ৩· দিনটা **তার নিজের** ট্র্যাকিং-শুরুর পরে — না দেখা দিন কারো ঘাটতি নয়
+ *   ৪· …এবং জানালার শেষপ্রান্ত, যেটা এখানে **ইচ্ছাকৃতভাবে আলাদা** ⬇
+ *
+ * ⚠️⚠️ `elapsedWindow()` আজকের দিনটা বাদ দেয়, এই ফাংশন **দেয় না** — আর
+ * সেটা ভুল নয়, ভিন্ন প্রশ্ন। মাসের কার্ড বলে "এ পর্যন্ত কত হওয়ার কথা
+ * ছিল" (আজ শেষ হয়নি, তাই আজ বাদ); ফিতে বলে "**ওই দিনটার** টার্গেট কত
+ * ছিল" (আজকেরও টার্গেট আছে, দিনটা কেবল চলছে)। ⚠️ এটাকে "সমান" করতে গিয়ে
+ * আজকের প্রত্যাশা শূন্য করবেন না — `WeekAndMonth.tsx` `expectedStaff === 0`
+ * দেখলে দিনটাকে "day off" লেখে, আর তখন বোর্ড দাবি করত আজ সবার ছুটি।
+ *
+ * ⚠️ দ্বিতীয় (ও শেষ) অমিলটা `TrendStaff.trackedFrom`-এর নোটে — কখনো
+ * না-দেখা কর্মীর ক্ষেত্রে, আর সেটা পর্দায় অপৌঁছনীয়।
+ */
+export function trendDayExpectation(
+  day: Date,
+  staff: readonly TrendStaff[],
+  holidays: ReadonlySet<number>,
+): { expectedStaff: number; targetSec: number } {
+  let expectedStaff = 0;
+  let targetSec = 0;
+
+  for (const s of staff) {
+    if (!isExpectedOn(day, s, holidays)) continue;
+    expectedStaff += 1;
+    targetSec += s.dailyTargetSec;
+  }
+
+  // ⚠️ round এখানে হয় না — কলার একবারই করে (`Math.round`)। প্রতিটা
+  //    কর্মীর ভাগ আলাদা করে round করলে দলের যোগফল মাসিক টার্গেটে গিয়ে
+  //    ঠেকত না; `reports.range.ts`-এর `dailyTargetSec()`-এর নোটে একই কথা।
+  return { expectedStaff, targetSec };
+}
+
+/** ⭐ একজন-এক দিন — উপরের চারটে সীমার তিনটে (চতুর্থটা কলারের প্রশ্নভেদে) */
+function isExpectedOn(
+  day: Date,
+  s: TrendStaff,
+  holidays: ReadonlySet<number>,
+): boolean {
+  const ms = day.getTime();
+
+  // ⚠️ ট্র্যাকিং-শুরু আগে দেখা হয়, কারণ `null` মানে "জানি না" — আর তখন
+  //    বাকি প্রশ্নগুলোর উত্তর জেনেও লাভ নেই
+  if (s.trackedFrom === null || ms < s.trackedFrom.getTime()) return false;
+  if (s.joinedOn !== null && ms < s.joinedOn.getTime()) return false;
+  if (s.leftOn !== null && ms > s.leftOn.getTime()) return false;
+
+  return isWorkday(day, { weeklyOffDay: s.weeklyOffDay, holidays });
 }

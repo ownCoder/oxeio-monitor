@@ -140,8 +140,15 @@ export function AttendanceTab({
           label="Total counted"
           value={<Hours hours={totals.creditedHours} />}
         />
+        {/*
+          ⚠️⚠️ লেবেলে "days listed" — সংখ্যাটা নিচের Target কলামের যোগফল,
+          "এ পর্যন্ত কত হওয়ার কথা ছিল" নয়। এখানে ট্র্যাকিং শুরুর আগের দিন
+          আর আজকের অসমাপ্ত দিনও আছে, তাই এটাকে Total counted-এর পাশে রেখে
+          বিয়োগ করলে যে ঘাটতি বেরোয় সেটা মিথ্যে। প্রত্যাশা আসে
+          `meta.expectedHours` থেকে, আর সেটা Monthly পাতা দেখায়।
+        */}
         <Stat
-          label="Total target"
+          label="Total target · days listed"
           value={<Hours hours={totals.targetHours} />}
           tone="muted"
         />
