@@ -282,7 +282,19 @@ function Cell({
       aria-label={label}
       aria-pressed={selected}
       style={style}
-      className={`block size-[18px] rounded-[3px] transition focus:outline-none focus:ring-2 focus:ring-brand/40 ${look} ${
+      /**
+       * ⚠️ ফোনে ঘর বড় (২৬px), ডেস্কটপে আগের ১৮px — কারণ ফোনে **এই ঘরটাই
+       *    একমাত্র দরজা**: হোভার নেই, তাই একটা দিনের হিসাব দেখার আর কোনো
+       *    উপায় নেই (`CellDetail`-এর নোট দেখুন)। ১৮px ঘরে পিচ দাঁড়াত ২০px,
+       *    অর্থাৎ আঙুলের নিচে দুটো দিন — আর ভুল ঘরে চাপ পড়লে নিচের প্যানেলে
+       *    **অন্য দিনের** হিসাব খুলত। তারিখটা ওখানে লেখা থাকে বলে ধরা পড়ে,
+       *    কিন্তু কেউ না তাকালে ধরা পড়ে না।
+       * ⚠️ ৪৪px (সুপারিশকৃত সর্বনিম্ন) দেওয়া হয়নি — ৩১টা কলামে ওটা ১৩৬৪px,
+       *    অর্থাৎ প্রতিটা সারি পড়তে তিন পর্দা টানতে হতো। ২৬px-এ পিচ ২৮px,
+       *    ভুল-ছোঁয়া অনেক কমে আর গ্রিডটা এক-দুই টানেই পার হয়।
+       * ⭐ ডেস্কটপ এক পিক্সেলও বদলায়নি — ওখানে হোভারই যথেষ্ট।
+       */
+      className={`block size-[26px] rounded-[3px] transition focus:outline-none focus:ring-2 focus:ring-brand/40 sm:size-[18px] ${look} ${
         selected ? 'outline outline-2 outline-offset-1 outline-ink' : ''
       }`}
     />
