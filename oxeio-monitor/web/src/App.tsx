@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
+import { VersionBadge } from './components/VersionBadge';
 import { AlertsPage } from './pages/AlertsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
@@ -127,6 +128,13 @@ export function App() {
     <BrowserRouter>
       <AuthProvider>
         <Router />
+        {/*
+          ⭐ রুটার ও Layout-এর **বাইরে**, ইচ্ছাকৃতভাবে — তাই ব্যাজটা
+             লগইন পাতা, পাসওয়ার্ড-বদলের পাতা আর ৪০৪-সহ **প্রতিটা** পর্দায়
+             থাকে। ভেতরে বসালে ঠিক যে অবস্থাগুলোতে "কোন বিল্ড চলছে" জানা
+             সবচেয়ে জরুরি, সেখানেই ওটা থাকত না।
+        */}
+        <VersionBadge />
       </AuthProvider>
     </BrowserRouter>
   );

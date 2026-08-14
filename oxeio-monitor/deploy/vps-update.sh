@@ -57,6 +57,20 @@ else
 fi
 
 # ── ২· migration ────────────────────────────────────────────────────────────
+# ── ভার্সন ───────────────────────────────────────────────────────────────
+# ⭐⭐ ভার্সনটা **git থেকে**, হাতে লেখা নয়।
+#
+#    `rev-list --count` প্রতি কমিটে ঠিক **এক** বাড়ে — তাই সংখ্যাটা সত্যিই
+#    "প্রতিটা বদলে বাড়ে", আর কেউ বাড়াতে ভুলতে পারে না। ⚠️ হাতে বাড়ানো
+#    সংখ্যা একদিন পিছিয়ে পড়ত, আর তখন পর্দা বলত নতুন কোড চলছে অথচ চলত
+#    পুরোনোটা — ভুল ভার্সন না-থাকা ভার্সনের চেয়ে খারাপ।
+#
+# ⚠️ `export` — `docker compose` এগুলো `build.args`-এ পড়ে (docker-compose.yml)।
+export APP_BUILD="$(git rev-list --count HEAD 2>/dev/null || echo dev)"
+export APP_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo local)"
+export APP_BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+ok "ভার্সন #$APP_BUILD · $APP_COMMIT"
+
 say "২· ডাটাবেসের গড়ন"
 
 cd "$COMPOSE_DIR"

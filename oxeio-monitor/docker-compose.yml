@@ -25,6 +25,11 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+      # ⭐ ওয়েবের সাথে **একই** ভার্সন — `/health` এটা ফেরত দেয়, আর
+      #    ড্যাশবোর্ড দুটো মিলিয়ে দেখে (অর্ধেক ডিপ্লয় ধরার একমাত্র উপায়)।
+      args:
+        APP_BUILD: ${APP_BUILD:-}
+        APP_COMMIT: ${APP_COMMIT:-}
     container_name: oxeio-api
     restart: unless-stopped
     depends_on:
@@ -163,6 +168,12 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      # ⭐ `deploy/vps-update.sh` git থেকে ভরে দেয়। খালি থাকলে ইমেজের
+      #    ডিফল্ট (`dev`/`local`) বসে — বিল্ড থামে না, শুধু সৎ থাকে।
+      args:
+        APP_BUILD: ${APP_BUILD:-}
+        APP_COMMIT: ${APP_COMMIT:-}
+        APP_BUILT_AT: ${APP_BUILT_AT:-}
     container_name: oxeio-web
     restart: unless-stopped
     depends_on:

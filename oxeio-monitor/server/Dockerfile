@@ -16,6 +16,15 @@ RUN npx prisma generate && npm run build
 FROM node:24-alpine AS runtime
 ENV NODE_ENV=production
 ENV TZ=Asia/Dhaka
+
+# ⭐ একই ভার্সন ওয়েবের সাথে — `/health` এটা ফেরত দেয়, আর ড্যাশবোর্ড দুটো
+#    মিলিয়ে দেখে। ⚠️ অর্ধেক ডিপ্লয় (নতুন ওয়েব, পুরোনো api) নইলে সম্পূর্ণ
+#    নীরব থাকত, আর "ফিক্সটা তো বসিয়েছি, কাজ করছে না কেন" প্রশ্নের উত্তর
+#    খুঁজতে ঘণ্টা যেত।
+ARG APP_BUILD=dev
+ARG APP_COMMIT=local
+ENV APP_BUILD=$APP_BUILD
+ENV APP_COMMIT=$APP_COMMIT
 WORKDIR /app
 
 RUN apk add --no-cache tzdata dumb-init
