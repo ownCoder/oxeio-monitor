@@ -21,12 +21,43 @@ import { SettingsPage } from './pages/settings/SettingsPage';
  * বা "পাসওয়ার্ড না বদলে ঘুরে বেড়াচ্ছে" — এমন কিছু সম্ভবই নয়।
  */
 function Router() {
-  const { user, loading } = useAuth();
+  const { user, loading, offline, refresh } = useAuth();
 
   if (loading) {
     return (
       <div className="grid min-h-full place-items-center text-sm text-ink-3">
         Loading…
+      </div>
+    );
+  }
+
+  /**
+   * ⭐⭐ "সার্ভারে পৌঁছাতে পারিনি" আর "সেশন শেষ" — দুটো আলাদা কথা,
+   * তাই দুটো আলাদা পর্দা।
+   *
+   * ⚠️ এখানে লগইন পর্দা দেখানো মানে ব্যবহারকারীকে একটা **মিথ্যা** বলা:
+   *    তাঁর cookie দিব্যি বেঁচে আছে, শুধু প্লেনটা পৌঁছায়নি। হোমস্ক্রিনের
+   *    PWA মোবাইল ডেটায় বারবার ঠান্ডা-চালু হয়, তাই ফোনে এটাই নিত্য ঘটনা
+   *    হতো — আর পাসওয়ার্ড টাইপ করে সাবমিট না করা পর্যন্ত আসল কারণটা
+   *    জানাই যেত না।
+   */
+  if (!user && offline) {
+    return (
+      <div className="grid min-h-full place-items-center p-6 text-center">
+        <div className="max-w-xs">
+          <p className="text-sm font-medium text-ink">No connection</p>
+          <p className="mt-2 text-sm text-ink-3">
+            Can’t reach the server. You are still signed in — this page will
+            recover on its own once the connection is back.
+          </p>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-4 rounded-md border border-line px-3 py-2 text-sm text-ink-2 hover:bg-surface-2"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }

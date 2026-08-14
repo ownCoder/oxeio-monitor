@@ -1,9 +1,86 @@
 <!doctype html>
-<html lang="bn">
+<!--
+  ⭐ `lang="en"` — আগে `bn` লেখা ছিল, কিন্তু **পর্দার প্রতিটা শব্দ ইংরেজি**
+     ("Switch to light mode", "Reports", "No connection")। বাংলা এই রিপোতে
+     কোড-কমেন্ট আর ডকুমেন্টে, ইউজার-ইন্টারফেসে নয়।
+
+  ⚠️ ভুল `lang` নীরবে তিনটে জিনিস ভাঙে, আর তিনটেই ফোনে বেশি দেখা যায়:
+       · স্ক্রিন-রিডার ইংরেজি লেখা **বাংলা উচ্চারণে** পড়ে — অর্থাৎ যাঁর
+         সবচেয়ে দরকার তাঁর কাছেই পাতাটা দুর্বোধ্য হয়ে যায়
+       · Chrome "এই পাতাটা অনুবাদ করবেন?" জিজ্ঞেস করে — ইংরেজি পাতাকে
+         ইংরেজিতে অনুবাদের প্রস্তাব, প্রতিবার
+       · ফন্ট ও শব্দভাঙা (hyphenation) ভুল ভাষার নিয়মে চলে
+     `manifest.webmanifest`-এর `"lang": "en"`-ও তাই — দুই জায়গায় দুই ভাষা
+     লিখলে ইনস্টল করা অ্যাপ আর ব্রাউজারের ট্যাব দুরকম আচরণ করত।
+-->
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>oXeio — Workforce Monitor</title>
+
+    <!-- ── আইকন ────────────────────────────────────────────────────────
+      ⚠️ ফাইলগুলো `public/`-এ, তাই পথ শুরুতেই `/` — Vite ওগুলো হুবহু
+         `dist/`-এ কপি করে, hash যোগ করে না।
+      ⭐ SVG আগে, `.ico` পরে: আধুনিক ব্রাউজার SVG-টাই নেয় (যেকোনো মাপে
+         ঝকঝকে), পুরোনোরা SVG চেনে না বলে `.ico`-তে নেমে আসে।
+    -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+
+    <!--
+      ⚠️ iOS ম্যানিফেস্টের আইকন **দেখেই না** — হোমস্ক্রিনের ছবিটা কেবল
+         এই ট্যাগ থেকে আসে। না দিলে iPhone পাতার একটা স্ক্রিনশট নিয়ে
+         আইকন বানাত, আর সেটা হতো অচেনা ধূসর চৌকো।
+    -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <!-- ── PWA ─────────────────────────────────────────────────────────
+      ⭐⭐ `theme_color`/`background_color` কেন ওই দুটো মান
+         (`public/manifest.webmanifest`-এ কমেন্ট লেখা যায় না — JSON, তাই
+         কারণটা এখানে):
+
+         · `theme_color: #000000` = `--color-chrome`-এর **ডার্ক** মান।
+           টপবারটা `bg-chrome`, আর অ্যাপের ডিফল্ট থিম গাঢ় (`index.css`-এ
+           `color-scheme: dark`, OS-এর পছন্দ ইচ্ছাকৃতভাবে দেখা হয় না)।
+           তাই ইনস্টল করা অ্যাপ যেভাবে খোলে, স্ট্যাটাস বারও ঠিক সেই রঙে।
+         · `background_color: #0e1116` = `--color-paper`-এর ডার্ক মান।
+           এটা স্প্ল্যাশ পর্দার রং, অর্থাৎ JS চালু হওয়ার আগের কয়েকটা
+           মুহূর্ত। ⚠️ ডিফল্ট সাদা রেখে দিলে প্রতিবার অ্যাপ খোলার সময়
+           একঝলক সাদা ঝলকানি দেখা যেত, তারপর গাঢ় পর্দা।
+         ⚠️ manifest-এ `light-dark()` চলে না — একটাই মান নেওয়া যায়, তাই
+            ডিফল্ট থিমেরটা নেওয়া হলো।
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!--
+      ⭐ **দুটো** `theme-color` — দুটোই `--color-chrome`-এর দুই মান, কারণ
+         টপবার দুই থিমেই গাঢ় (লাইটে #191c22, ডার্কে #000000)।
+      ⚠️ অ্যাপের নিজের সুইচটা `localStorage`-এ, OS-এর পছন্দে নয়। তাই এই
+         দুটোর বাছাই আর অ্যাপের থিম সবসময় হুবহু মিলবে না — কিন্তু দুটো
+         মানই গাঢ়, তাই স্ট্যাটাস বার কখনোই সাদা হয়ে টপবারের সাথে ধাক্কা
+         খায় না। একটা মাত্র মান দিলে ব্রাউজার-UI আর পাতার কিনারায় স্পষ্ট
+         রেখা দেখা যেত।
+    -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#191c22" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+
+    <!--
+      iOS-এর জন্য (Safari এখনো manifest-এর `display`/`name` পুরোপুরি মানে না)
+      ⚠️ `status-bar-style` **`black`, `black-translucent` নয়** —
+         translucent দিলে পাতাটা স্ট্যাটাস বারের **নিচ দিয়ে** চলে যেত, আর
+         টপবারের লেখা ঘড়ি-ব্যাটারির সাথে মিশে যেত। ঠিক করতে হলে
+         `viewport-fit=cover` + `env(safe-area-inset-top)` লাগত, অর্থাৎ
+         `Layout.tsx`-এ বদল — যা এই কাজের আওতার বাইরে, আর দরকারও নেই।
+      ⚠️ `apple-mobile-web-app-title` না দিলে iOS `<title>`-এর পুরোটা
+         ("oXeio — Workforce Monitor") আইকনের নিচে বসাত আর কেটে দিত।
+    -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="oXeio" />
+
+    <meta name="description" content="Live workforce monitoring for oXeio LLC — attendance, activity and screenshots." />
   </head>
   <body>
     <div id="root"></div>

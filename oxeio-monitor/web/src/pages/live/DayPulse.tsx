@@ -101,6 +101,16 @@ export function DayPulse({
               onMouseEnter={() => setHover(h.hour)}
               onFocus={() => setHover(h.hour)}
               onBlur={() => setHover(null)}
+              /*
+               * ⚠️ ফোনের জন্য — `onMouseEnter`/`onFocus` দুটোর একটাও ওখানে
+               *    ভরসা করা যায় না। Safari (iOS ও macOS) **বোতামে ট্যাপ
+               *    করলে ফোকাস দেয় না**, আর সিন্থেটিক `mouseenter` ব্রাউজার
+               *    ভেদে আসে-যায়। ফলে উপরের সারিটা সারাক্ষণ "সবচেয়ে ব্যস্ত
+               *    ঘণ্টা"-তেই আটকে থাকত, আর বাকি ২৩ ঘণ্টার সংখ্যা ফোনে
+               *    দেখারই কোনো উপায় থাকত না — অথচ hit-target পুরো কলাম
+               *    জুড়ে বানানোই হয়েছিল ছোঁয়ার কথা ভেবে।
+               */
+              onClick={() => setHover(h.hour)}
               aria-label={`${hourLabel(h.hour)} — ${formatDuration(h.activeSec)}, ${h.people} people`}
             >
               <span

@@ -227,6 +227,17 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
                           onMouseLeave={() => setHover(null)}
                           onFocus={() => setHover(s)}
                           onBlur={() => setHover(null)}
+                          /*
+                           * ⚠️ ফোনের জন্য। নিচের স্থির লাইনটা ইচ্ছাকৃতভাবে
+                           *    ভাসমান টুলটিপের বদলে বসানো হয়েছিল, যাতে
+                           *    ছোঁয়াতেও পড়া যায় — কিন্তু ওটা ভরত শুধু
+                           *    `mouseenter`/`focus` থেকে, আর Safari বোতামে
+                           *    ট্যাপ করলে ফোকাস দেয় না। ফলে সেগমেন্টে চাপ
+                           *    দিয়ে ফোনে কিছুই দেখা যেত না, আর `title`
+                           *    টুলটিপও ছোঁয়ার পর্দায় কখনো ওঠে না —
+                           *    অর্থাৎ দিনের বিস্তারিত ফোনে সম্পূর্ণ অদৃশ্য।
+                           */
+                          onClick={() => setHover(s)}
                           className={`absolute top-0 bottom-0 focus:outline-2 focus:outline-brand focus:[outline-offset:-2px] ${SEG_CLASS[s.seg.state]}`}
                           style={{
                             left: `${leftPct(s.fromMin)}%`,

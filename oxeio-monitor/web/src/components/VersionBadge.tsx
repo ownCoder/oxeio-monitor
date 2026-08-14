@@ -72,10 +72,18 @@ export function VersionBadge() {
          hover ধরে, যাতে বিস্তারিত দেখা যায়।
       ⚠️ `z-40` — মোডাল (z-50) ও তার ছায়ার নিচে। ব্যাজ কোনোদিন ডায়ালগের
          উপরে বসতে পারে না।
+
+      ⚠️⚠️ **ছোঁয়ার পর্দায় ব্যাজটা কোনো ক্লিকই ধরে না** (`hover: hover`
+         থাকলে তবেই `pointer-events-auto`)। কারণটা সোজা: বিস্তারিত পাওয়ার
+         একমাত্র পথ `title` টুলটিপ, আর টুলটিপ ফোনে কখনোই ওঠে না — অর্থাৎ
+         ওখানে ব্যাজটা ক্লিক ধরে **শুধু অন্যের ট্যাপ খেয়ে ফেলার জন্য**।
+         ডান-নিচের কোণাটা ঠিক সেই জায়গা যেখানে সেটিংসের সারির বোতাম আর
+         পাতার শেষ কাজগুলো বসে, তাই ওখানে আঙুল দিলে কিছুই হতো না আর মনে
+         হতো বোতামটা ভাঙা।
     */
     <div className="pointer-events-none fixed right-2 bottom-2 z-40 select-none">
       <span
-        className={`pointer-events-auto num rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${
+        className={`num rounded-md px-1.5 py-0.5 text-[10px] tabular-nums [@media(hover:hover)]:pointer-events-auto ${
           mismatch
             ? 'bg-brand-bg text-brand-ink'
             : 'bg-surface/70 text-ink-3 hover:text-ink-2'

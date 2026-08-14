@@ -43,6 +43,12 @@ FROM caddy:2-alpine AS runtime
 ENV TZ=Asia/Dhaka
 RUN apk add --no-cache tzdata
 
+# ⭐ PWA-র ফাইলগুলোও এই এক লাইনেই যায় — আলাদা কিছু করতে হয় না:
+#   · `public/` (manifest, favicon, icons) — Vite হুবহু `dist/`-এ কপি করে
+#   · `dist/sw.js` — `vite.config.ts`-এর `oxeio-service-worker` প্লাগইন বানায়
+# ⚠️ `.dockerignore`-এ কোনোদিন `public` যোগ করবেন না। করলে বিল্ড সফল হতো,
+#    অ্যাপও চলত — শুধু আইকন উধাও, আর PWA **ইনস্টলই করা যেত না** (manifest
+#    ছাড়া ব্রাউজার "Add to Home screen" দেখায় না)। নীরব ব্যর্থতা।
 COPY --from=build /app/dist /srv
 COPY Caddyfile /etc/caddy/Caddyfile
 

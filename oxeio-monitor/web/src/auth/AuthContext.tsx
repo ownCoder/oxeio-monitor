@@ -10,7 +10,7 @@ import {
 
 import * as authApi from '../api/auth';
 import type { Me } from '../api/auth';
-import { setUnauthorizedHandler } from '../api/client';
+import { ApiError, setUnauthorizedHandler } from '../api/client';
 import { IdleWarning } from './IdleWarning';
 import { login as loginRequest, type LoginCredentials } from './twoFactorApi';
 import { useIdleLogout } from './useIdleLogout';
@@ -36,6 +36,18 @@ interface AuthState {
    * এটা দেখেই "ভুল পাসওয়ার্ড" নয়, "সময় শেষ" বার্তাটা দেখায়।
    */
   timedOut: boolean;
+  /**
+   * ⭐⭐ সার্ভারের সাথে কথাই বলা যায়নি — **সেশন শেষ নয়**।
+   *
+   * ⚠️ আগে দুটো অবস্থা এক করে ফেলা হতো: `me()` যে কারণেই ব্যর্থ হোক
+   *    (৪০১ হোক, নাকি প্লেন নেই) লগইন পর্দা উঠত। ব্রাউজার ট্যাবে ওটা
+   *    বিরল, কিন্তু হোমস্ক্রিনের PWA মোবাইল ডেটায় বারবার ঠান্ডা-চালু হয় —
+   *    ওখানে এটাই নিত্য ঘটনা। ফল দুটোই খারাপ: মালিক ভাবতেন সেশন শেষ
+   *    হয়ে গেছে (অথচ cookie দিব্যি বেঁচে), আর নেট ফিরে এলেও অ্যাপ নিজে
+   *    থেকে ফিরত না। "জানি না"-কে "লগ আউট" বলা — নিষিদ্ধ রূপান্তরটারই
+   *    আরেক মুখ।
+   */
+  offline: boolean;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -44,12 +56,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [timedOut, setTimedOut] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       setUser(await authApi.me());
-    } catch {
-      setUser(null);
+      setOffline(false);
+    } catch (err) {
+      /**
+       * ⭐ সার্ভার **উত্তর দিয়েছে** কি না — এটাই একমাত্র প্রশ্ন।
+       *
+       * `ApiError` মানে উত্তর এসেছে (৪০১ = সেশন সত্যিই শেষ), তাই
+       * লগইন পর্দাই ঠিক। অন্য যেকোনো ব্যতিক্রম মানে fetch-ই পৌঁছায়নি —
+       * ⚠️ তখন সেশন নিয়ে আমরা **কিছুই জানি না**, তাই `user` ছোঁয়া হয় না;
+       * অ্যাপ শুধু "সংযোগ নেই" বলে, আর নেট ফিরলে নিচের `online` শ্রোতা
+       * নিজে থেকেই আবার চেষ্টা করে।
+       */
+      if (err instanceof ApiError) {
+        setUser(null);
+        setOffline(false);
+      } else {
+        setOffline(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -60,6 +88,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // সাথে সাথেই লগইন পর্দায় ফিরে যাওয়া
     setUnauthorizedHandler(() => setUser(null));
     void refresh();
+  }, [refresh]);
+
+  /**
+   * ⭐ নেট ফিরে এলে নিজে থেকেই আবার দেখা। এটা না থাকলে ব্যবহারকারীকে
+   * হাতে রিফ্রেশ করতে হতো — আর হোমস্ক্রিনের অ্যাপে "রিফ্রেশ" বোতামই নেই,
+   * তাই তাঁকে অ্যাপ বন্ধ করে আবার খুলতে হতো।
+   */
+  useEffect(() => {
+    const onOnline = (): void => void refresh();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, [refresh]);
 
   const signIn = useCallback(
@@ -105,8 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const idle = useIdleLogout(user !== null, expire);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut, refresh, timedOut }),
-    [user, loading, signIn, signOut, refresh, timedOut],
+    () => ({ user, loading, signIn, signOut, refresh, timedOut, offline }),
+    [user, loading, signIn, signOut, refresh, timedOut, offline],
   );
 
   return (
