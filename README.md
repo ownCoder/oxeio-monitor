@@ -1,313 +1,165 @@
-# oXeio Employee Monitoring & Time Tracking System
+# oXeio Workforce Monitor
 
-> ১৫ জন স্টাফের Windows PC-তে র‍্যান্ডম স্ক্রিনশট, নিখুঁত টাইম ট্র্যাকিং ও অ্যাপ/ওয়েবসাইট মনিটরিং —
-> **সম্পূর্ণ নিজস্ব (self-hosted)** — নিজের VPS-এ, কোনো তৃতীয় পক্ষের SaaS-এ নয়।
+Self-hosted time tracking and screen monitoring for a small Windows office.
+No SaaS, no per-seat fee, no third party holding your staff's screenshots — it
+runs on one VPS you control.
+
+Built for one real company (7 staff, Dhaka) and running in production since
+August 2026. Open-sourced because the interesting part isn't the code — it's
+the **hundred small decisions** about what a monitoring tool should refuse to do.
+
+> **A note on language.** Code comments and the ten documents in `docs/` are
+> written in **Bengali**. The user interface, commit subjects and this README are
+> English. That's deliberate: the comments explain *why* a line exists, and they
+> were written to be read by the people who maintain this.
+
+---
+
+## What it refuses to do
+
+Monitoring software earns trust by what it leaves out. These are not "not yet"
+items — they were considered and **rejected**, and the reasons are in
+[`docs/04-Features.md § L`](docs/04-Features.md) and
+[`docs/05-Options-Decisions.md`](docs/05-Options-Decisions.md).
+
+| Never | Why |
+|---|---|
+| **Keystroke logging** | Passwords and private messages would pass through it. There is no version of this that is safe to store. |
+| **Reading screen content** | Screenshots are stored and shown, never OCR'd, classified, or searched. |
+| **Webcam or microphone** | Not requested, not implemented, not wanted. |
+| **Silent installation** | Staff sign a monitoring policy first ([template](docs/monitoring-policy-template.md)). The agent shows a tray icon and a "My data" window. |
+| **Hiding hours from the person who worked them** | Every employee can open their own page and see exactly what was recorded, including any manual correction the owner made and the reason for it. |
+| **Screenshots outside 07:00–23:00** | Capture is time-boxed, and images auto-delete after 90 days. |
+| **Approval workflows** | The owner can correct hours, but nobody has to ask permission to work. |
+
+The one principle everything else follows: **a number must never claim to know
+something it doesn't.** A day the server wasn't watching is drawn as a dotted
+outline, not a zero bar. "Agent offline" and "person not working" are different
+colours. This sounds obvious and is responsible for a surprising share of the
+bugs in [`docs/08-Gap-Analysis.md`](docs/08-Gap-Analysis.md).
+
+---
+
+## How it fits together
+
+```
+Windows PC ×N                    one VPS
+┌──────────────────┐            ┌─────────────────────────────┐
+│ oXeio.Agent      │  HTTPS     │  Caddy ──┬── React dashboard│
+│  · active/idle   │ ─────────► │          └── NestJS API     │
+│  · screenshots   │  enroll    │              │              │
+│  · app + domain  │  token     │          Postgres 16        │
+│ oXeio.Watchdog   │            │              │              │
+│  · restarts it   │            │          nightly backup     │
+└──────────────────┘            └─────────────────────────────┘
+```
+
+- **Agent** — C# / .NET 8, three projects: `oXeio.Agent` (the service),
+  `oXeio.Core` (rules, zero Win32 — so it's testable), `oXeio.Watchdog`.
+  Queues to disk when the network drops and drains later; hours are never lost
+  to a bad connection.
+- **Server** — NestJS 11 + Prisma 6 + Postgres 16. 84 endpoints.
+- **Dashboard** — React 19 + Vite 7 + Tailwind 4. Installable as a PWA.
+- **Deploy** — Docker Compose + Caddy (automatic TLS). One `vps-update.sh`.
+
+---
+
+## The part that took the longest
+
+Not the screenshots. **Deciding what "eight hours of work" means.**
+
+There is no fixed shift — any active hour of the day counts. So the monthly
+target is `workdays × 8h`, and *workdays* depends on a `holidays` table that the
+owner edits. Change one holiday and every person's target, pace, and prorated
+salary fraction move. February 2026 is 20–24 workdays depending on what's in
+that table; August is 25–27.
+
+Getting one number to mean one thing across the tray app, the live board, the
+monthly page, the reports, the daily email and the weekly Telegram summary took
+three rounds of adversarial review to get right — and
+[`docs/09-Build-Log.md`](docs/09-Build-Log.md) has the whole account of getting
+it wrong first.
+
+---
+
+## Status
+
+Running in production for one company. Honest state of things:
 
 | | |
 |---|---|
-| **স্ট্যাটাস** | 🔨 সব স্তর দাঁড়িয়েছে — এজেন্ট · সার্ভার (**৭৬ endpoint**) · ড্যাশবোর্ড (৬ পাতা)। **১৫৮০ টেস্ট** (সার্ভার ১০৮৯ · এজেন্ট ৪১৮ · ওয়েব ৭৩) — ⚠️ এক মেশিনে সবগুলো চালানো যায় না, [কোনটা কীভাবে গোনা](#টেস্ট)। ১১ আগস্ট আসল এজেন্ট প্রথমবার সার্ভারে ডেটা পাঠিয়েছে — রাতে **নিজের তোলা স্ক্রিনশটও**। ⚠️ কী মাঠে চলেছে আর কী শুধু বিল্ড পাস করেছে — [09 § ৩ঈ](docs/09-Build-Log.md) |
-| **প্রতিষ্ঠান** | oXeio |
-| **স্টাফ** | ১৫ জন · সব Windows PC |
-| **ট্র্যাকিং** | **কোনো শিফট নেই** — দিনের যেকোনো সময় active থাকলেই গোনা হয় (২৪ ঘণ্টা) |
-| **টার্গেট** | **কর্মদিবস × ৮ ঘণ্টা** প্রকৃত কাজ (দৈনিক ভাগটা পলিসির `expected_workdays` থেকে — ২০৮ ÷ ২৬ = ৮ঘ, ক্যালেন্ডার থেকে নয়)। ⚠️⚠️ **মাসের মোটটা `holidays` টেবিলের উপর দাঁড়ানো, তাই স্থির নয়** — নিচের টেবিল। ⚠️ ফ্ল্যাট ২০৮ নয়; মাঝপথে যোগ দিলে টার্গেট ও বেতন **দুটোই** prorate হয় ([G37](docs/08-Gap-Analysis.md)) |
-| **স্ক্রিনশট** | প্রতি ৫ মিনিটে র‍্যান্ডম · শুধু **০৭:০০ – ২৩:০০** · ৯০ দিন পর অটো ডিলিট |
-| **সার্ভার** | **VPS** ([ADR-026](docs/05-Options-Decisions.md)) — **২ vCPU · ৪ GB RAM · ৮০ GB SSD** (~$১২–২৪/মাস)। ৯০ দিনের ছবি ~২২ GB + DB, ব্যাকআপ ও OS মিলিয়ে ~৩৫–৪৫ GB। ⚠️ ৫০ GB নয় — ডিস্ক ভরলে Postgres লেখা বন্ধ করে দেয়। ⏳ আগে ২–৩ দিন অফিসের PC-তে |
-| **আনুমানিক সময়** | ৭ সপ্তাহ (MVP ৩ সপ্তাহে) |
+| **Tests** | Server **869** (no DB) + 222 e2e · Web **73** · Agent **303 facts / 128 cases** |
+| **Proven in the field** | Agent capture and enrollment, screenshots, daily digest email, Telegram alerts, backups, auto-update |
+| **Built but never run for real** | Weekly Telegram summary · holiday seeding on the VPS · `vps-harden.sh` · PWA install on a real phone |
+| **Known gaps** | 16 open, all written down with reproduction and cost — [`docs/08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) |
 
-### ⚠️ কর্মদিবস — একটা সংখ্যা নয়, `holidays` টেবিলের ফল
+That third row is the one worth reading. This project keeps a standing list of
+things that are *coded and tested but have never executed against reality*,
+because the gap between those two states is where the expensive bugs live.
 
-একই মাসের টার্গেট **তিন রকম** হতে পারে, শুধু ছুটির টেবিলে কী বসানো আছে
-তার উপর। ২০২৬ সালের হিসাব:
-
-| `holidays` টেবিলে যা বসানো | ২০২৬-এর কর্মদিবস | টার্গেট | ফেব্রু | আগস্ট |
-|---|---|---|---|---|
-| কিছুই না — শুধু সাপ্তাহিক ছুটি (শুক্র) | ২৪–২৭ দিন | ১৯২–২১৬ঘ | ২৪ | ২৭ |
-| ⭐ **VPS-এ আজ যা আছে** — পুরোনো seed-এর ৭টা নির্দিষ্ট-তারিখের ছুটি | ২৩–২৬ দিন | ১৮৪–২০৮ঘ | ২৩ | ২৬ |
-| `prisma/holidays.data.ts`-এর পুরো তালিকা বসলে | ২০–২৬ দিন | ১৬০–২০৮ঘ | ২০ | ২৫ |
-
-⭐ **সংখ্যাগুলো গোনা, অনুমান নয়** — `prisma/holidays.data.ts`-এর ৫১টা সারি
-(২০২৬-এ ২৮ · ২০২৭-এ ২৩) আর `summary/summary.math.ts`-এর `countWorkdays`
-নিয়ম (সাপ্তাহিক ছুটি = শুক্রবার, `seed.ts`-এর `weeklyOffDay: 5`) ধরে
-বারো মাস আলাদা করে গুনে।
-
-⚠️ **তিন নম্বর সারিটা এখনো বাস্তব নয়** — VPS-এ ছুটির seed একবারও চলেনি
-(নিচের তালিকা), তাই ওখানে এখনো দ্বিতীয় সারির অবস্থা (মালিক Settings →
-Holidays-এ হাতে কিছু যোগ না করে থাকলে)।
-
-⚠️⚠️ **আর seed চালালেও এক লাফে তিন নম্বর সারিতে যাওয়া যায় না।** চলতি ও
-অতীত মাসে seed নিজে থেকে কিছুই বসায় না — ওতে `target_sec` · `pace_sec` আর
-পে-রোলের `d ÷ D` ভগ্নাংশ নড়ে, অর্থাৎ **সরাসরি টাকা**
-([deploy/README § ২.১গ](oxeio-monitor/deploy/README.md))। আজ (১৪ আগস্ট ২০২৬)
-চালালে জানুয়ারি–আগস্টের **১৮টা তারিখ আটকে থাকবে** (নাম ধরে ধরে ছাপা হবে),
-আর বসবে কেবল সেপ্টেম্বর থেকে পরের মাসগুলোর সারি। ২০২৬-এ তাতে বদলায় মোটে
-দুটো মাস: **অক্টোবর ২৬ → ২৪ দিন, নভেম্বর ২৬ → ২৫**। সেপ্টেম্বর ও ডিসেম্বর
-অবিকল থাকে — ওই মাসের নতুন ছুটিগুলো শুক্রবারে পড়েছে বা আগে থেকেই বসানো।
-
-⚠️ আর দুই-তিন নম্বর সারি **কোনোদিনই পুরোপুরি মিলবে না**: VPS-এ পুরোনো
-seed-এর `2026-08-15 জাতীয় শোক দিবস` বসে আছে, দিবসটা ২০২৪-এ সরকারি তালিকা
-থেকে বাদ পড়েছে, আর seed কখনো কিছু **মোছে না** — শুধু "তালিকায় নেই" বলে
-নোটে তোলে। ওটা হাতে মুছতে হবে (Settings → Holidays)।
-
-⚠️ তালিকার **৩৩টা তারিখ `approximate`** (২০২৬-এ ১৮ · ২০২৭-এ ১৫) — ঈদ, আশুরা,
-পূজা, শবে বরাত সব চাঁদ বা তিথি-নির্ভর। ঘোষণা এলে তারিখ নড়লে উপরের সংখ্যাও
-নড়বে। (৫১টার মধ্যে ৮টা এমনিতেই শুক্রবারে পড়েছে, তাই ওগুলো কোনো কর্মদিবস
-কমায় না।)
-
-⚠️⚠️ **এক নিয়ম, কিন্তু Live Board এখনো তা মানে না।** tray · `/me` ·
-Reports · Monthly — সবাই পলিসির `expected_workdays` (২৬) দিয়ে ভাগ করে, তাই
-দৈনিক ৮ঘ স্থির আর মাসের মোট কর্মদিবস অনুযায়ী ওঠানামা করে। কিন্তু
-`server/src/dashboard/dashboard.service.ts` লাইভ কার্ডে **ক্যালেন্ডার
-কর্মদিবস** দিয়ে ভাগ করে আর `monthTargetSec`-এ **ফ্ল্যাট ২০৮ঘ** পাঠায়।
-২৭ কর্মদিবসের মাসে তাই Live Board বলে "৭ঘ ৪২মি/দিন · ২০৮ঘ/মাস", আর tray
-বলে "৮ঘ/দিন · ২১৬ঘ/মাস"। ⚠️ উপরের টেবিলটা **নিয়ম**, আর নিয়মটা এখনো এক
-জায়গায় বসানো বাকি।
+⚠️ **Not a product.** There's no multi-tenancy, no installer wizard, no support.
+It is one company's internal tool, published in full. If you run it, you are
+your own vendor.
 
 ---
 
-> ⚠️ **"তৈরি" আর "চালিয়ে দেখা" এক নয়।** ১১ আগস্ট গোটা স্ট্যাক শূন্য থেকে
-> চালানো হয়েছে। **আসল এজেন্ট** এনরোল হয়ে segment · app usage · `locked`
-> স্টেট · আপডেট নামানো পর্যন্ত করেছে; ব্যাকআপ ডিক্রিপ্ট করে **restore**
-> পর্যন্ত মিলিয়ে দেখা হয়েছে (অফসাইট কপিসহ); **TLS** চালু করে SPKI পিন
-> মেলানো হয়েছে; **আসল SMTP-তে দুটো অ্যালার্ট ইমেইল** এসেছে; 2FA, H04
-> রোলআউট ও তিনটে অ্যালার্ট পথও চলেছে।
-> ⭐ **রাতে এজেন্টের নিজের তোলা ছবিও সার্ভারে পৌঁছেছে** — স্লট ১৯:২৫,
-> ছবি উঠল ১৯:২৯:৫৪-এ, দুই মনিটরে ১৯২০×১০৮০ (১২৩ KB · ৯৯ KB),
-> থাম্বনেইল ৩২০×১৮০, আর ছবির পাশে অ্যাপের নাম (A07)।
-> ✅ **টেলিগ্রামও এখন মাঠে প্রমাণিত** (১৪ আগস্ট) — আসল বটে, আসল sweep
-> দিয়ে, `channels_sent = {email,telegram}`।
-> তিন ভাগে সাজানো তালিকা → [09-Build-Log § ৩ঈ](docs/09-Build-Log.md)
+## Running it
 
-> ⚠️ **"তৈরি কিন্তু মাঠে চালিয়ে দেখা হয়নি" — তালিকাটা আবার ভরে গেছে।**
-> এই তিনটে ১৪ আগস্টের ব্যাচে লেখা হয়েছে; কোড আছে, টেস্ট আছে, **কিন্তু
-> একটাও কখনো সত্যিকারের সার্ভারে চলেনি**:
-> **(১) সাপ্তাহিক টেলিগ্রাম সারাংশ** (`server/src/digest/weekly.*.ts`) —
-> ৭৭টা টেস্ট পাস, কিন্তু আসল বট দিয়ে একটাও সাপ্তাহিক বার্তা পাঠানো হয়নি।
-> ⚠️ দৈনিক ডাইজেস্ট প্রমাণিত বলে এটাও প্রমাণিত **নয়** — গ্রুপ-চ্যাটে যাওয়া
-> আটকানোর প্রহরীটা (`WEEKLY_DIGEST_ALLOW_GROUP`) এখানে নতুন।
-> **(২) VPS-এ ছুটির seed** (`server/prisma/holidays.data.ts`) — লোকালে ৭৭টা
-> টেস্টে যাচাই, কিন্তু VPS-এ `seed` একবারও চালানো হয়নি; ওখানকার `holidays`
-> টেবিলে আজও পুরোনো seed-এর ৭টা সারি (উপরের টেবিলের দ্বিতীয় সারি)।
-> **(৩) `oxeio-monitor/deploy/vps-harden.sh`** — fail2ban ও security-only
-> auto-update বসায়, কিন্তু **কোনো মেশিনে একবারও চালানো হয়নি**।
-> **(৪) PWA ইনস্টল** (R12, `web/src/pwa-sw.ts`) — ⭐ এটার **অর্ধেক প্রমাণিত**,
-> আর ভাগটা জেনে রাখা দরকার: লাইভ সাইটে ব্রাউজার থেকে মেপে দেখা হয়েছে যে
-> সার্ভিস ওয়ার্কার `activated`, ক্যাশে ঠিক ১০টা শেল-এন্ট্রি, আর **`/api`-র
-> কিছুই নেই** — অর্থাৎ কেন্দ্রীয় দাবিটা মাঠে যাচাই করা। ⚠️ কিন্তু **কেউ
-> এখনো কোনো আসল ফোনে অ্যাপটা ইনস্টল করেনি**, আর দুটো ভিন্ন বিল্ডের মধ্যে
-> ওয়ার্কারের দখল নেওয়ার চক্রটাও দেখা হয়নি। ⚠️ ভুল হলে ফলটা অস্বাভাবিক
-> একগুঁয়ে: খারাপ ওয়ার্কার ব্রাউজারে **আটকে বসে থাকে**, আর রিফ্রেশেও যায় না।
-
-> 🐛 **সেই চালানোতেই ছ-টা বাগ বেরিয়েছে**, ছ-টাই "সত্যিই চালালে তবেই ধরা
-> পড়ে" জাতের। সবচেয়ে গুরুতর তিনটে:
-> **(১)** MSI ডাউনলোড `200 OK` আর সঠিক `Content-Length` পাঠিয়ে **শূন্য
-> বাইট** দিত — auto-update কোনোদিন কাজ করতে পারত না।
-> **(২)** ইনস্টল কমান্ডে `ENROLLMENTCODE` লেখা ছিল, MSI চেনে `ENROLLCODE` —
-> ১৫টা PC-তে এজেন্ট বসত, **একটাও enroll হতো না**।
-> **(৩)** TLS চালু করলে ড্যাশবোর্ড **পুরো অচল** হয়ে যেত।
-> বিস্তারিত → [09 § ৩ঋ](docs/09-Build-Log.md) ও [§ ৩এ](docs/09-Build-Log.md)
-
----
-
-## 📚 ডকুমেন্টেশন
-
-| # | ফাইল | কী আছে |
-|---|---|---|
-| 01 | [Planning](docs/01-Planning.md) | লক্ষ্য, স্কোপ, ফেজ, টাইমলাইন, বাজেট, ঝুঁকি, রোলআউট প্ল্যান |
-| 02 | [Workflow](docs/02-Workflow.md) | ডেটা ফ্লো, দৈনিক অপারেশন, ইউজার জার্নি, ডেভ ওয়ার্কফ্লো, অনবোর্ডিং, ইনসিডেন্ট হ্যান্ডলিং |
-| 03 | [Project Map](docs/03-Project-Map.md) | কম্পোনেন্ট ম্যাপ, রেপো স্ট্রাকচার, মডিউল ডিপেন্ডেন্সি, ফিচার→ফাইল ম্যাপিং |
-| 04 | [Features](docs/04-Features.md) | পূর্ণ ফিচার ক্যাটালগ — প্রায়োরিটি, ফেজ, acceptance criteria |
-| 05 | [Options & Decisions](docs/05-Options-Decisions.md) | প্রতিটা টেকনিক্যাল সিদ্ধান্তের বিকল্প, তুলনা ও কারণ (ADR) |
-| 06 | [Research](docs/06-Research.md) | প্রতিযোগী বিশ্লেষণ, Windows API গবেষণা, আইনি দিক, ৩ বছরের খরচ |
-| 07 | [Technical Spec](docs/07-Technical-Spec.md) | DB স্কিমা, API কনট্রাক্ট, এজেন্ট state machine, সার্ভার সেটআপ |
-| 08 | [Gap Analysis](docs/08-Gap-Analysis.md) | প্ল্যানে যা বাদ পড়েছিল এবং যা যোগ হলো — **G1–G119** (G108–G119 = ইচ্ছাকৃতভাবে **না-সারানো** ফাঁক) |
-| 09 | [Build Log](docs/09-Build-Log.md) | ⭐ **এখন পর্যন্ত কী হয়েছে, কী আটকে আছে, পরের ধাপ** |
-| 10 | [Roadmap](docs/10-Roadmap.md) | সামনে কী, কোন ক্রমে — রিসার্চ-ভিত্তিক ফিচার তালিকা, আর যা ইচ্ছা করেই করব না |
-| 🎨 | [UI Mockup](docs/mockup/dashboard-mockup.html) | ৭টি স্ক্রিনের ক্লিকযোগ্য ডিজাইন মকআপ |
-| 🎨 | [Tray Mockup](docs/mockup/tray-today-mockup.html) | এজেন্টের "Today's hours" জানালার রি-ডিজাইন — আগে/পরে, চারটে স্টেট, দুই থিম |
-
-**নতুন হলে পড়ার ক্রম:** `09 → 01 → মকআপ → 04 → 07`
-
-## 📂 কোড
-
-`oxeio-monitor/`
-
-- **`server/`** NestJS 11 + Prisma 6 · ১৯ মডেল · **৭৬ endpoint**
-  (৫৬ ড্যাশবোর্ড · ১০ auth · ১০ এজেন্ট) · **১০৮৯ টেস্ট · ৫৩ ফাইল**
-  agent ingest · dashboard · activity (ক্যাটাগরি) · screenshots · reports (Excel/PDF) ·
-  admin · alerts · ops (ব্যাকআপ/হেলথ) · summary (nightly jobs) ·
-  digest (দৈনিক F07 + **সাপ্তাহিক**) · payroll
-- **`agent/`** C# .NET 8 · **৪১৮ টেস্ট** (Core ৩২১ · Agent ৯৭) · `oXeio.Core` (নিয়ম, শূন্য Win32) +
-  `oXeio.Agent` (DXGI ক্যাপচার · idle/lock/sleep · অ্যাপ ও ডোমেইন · SQLite outbox ·
-  tray) + `oXeio.Watchdog`। `--diagnose` দিয়ে যেকোনো PC-তে যাচাই করা যায়।
-- **`web/`** React 19 + Vite + Tailwind v4 · **৭৩ টেস্ট · ২ ফাইল** · Live Board · Employee Detail ·
-  গ্যালারি · Monthly হিটম্যাপ · Reports · Settings · Security
-- **`installer/`** WiX 7 → সাইলেন্ট MSI · **`deploy/`** TLS ও Defender স্ক্রিপ্ট ·
-  VPS setup/update · ⚠️ `vps-harden.sh` (একবারও চালানো হয়নি)
-
----
-
-## ▶️ কীভাবে চালাবেন
-
-⭐ **দুটো আলাদা পথ, গুলিয়ে ফেলবেন না।** নিচের এক–তিন নম্বর ধাপ **ডেভ**-এর —
-সোর্স থেকে, hot reload সহ। অফিসের সার্ভারে বসানোর পথ আলাদা:
-[অফিসের সার্ভারে — ডেভ নয়](#অফিসের-সার্ভারে--ডেভ-নয়)।
-
-### এক· ডাটাবেস (একবার)
+Requires Docker, and — if you build outside containers — Node 22+ (the
+images use Node 24) and .NET 8 on Windows for the agent.
 
 ```bash
-cd oxeio-monitor && docker compose up -d postgres
-```
-
-⚠️ **`postgres` শব্দটা বাদ দেবেন না।** খালি `docker compose up -d` `api`
-কনটেইনারও তোলে, আর সেটা পোর্ট ৩০০০ দখল করে রাখে — নিচের `start:dev`
-উঠতেই পারবে না। `api` শুরু থেকেই compose-এ ছিল, অর্থাৎ ফাঁদটা পুরোনো;
-নতুন শুধু `web` — সেটাও ডেভে লাগে না।
-
-প্রথমবার হলে স্কিমা ও seed:
-
-```bash
-cd oxeio-monitor/server && npm run prisma:deploy && npm run seed
-```
-
-⚠️ `npx prisma migrate deploy` **সরাসরি চালাবেন না** — `P1012 · Environment
-variable not found: DATABASE_URL` দিয়ে থেমে যাবে। `.env` আছে এক ফোল্ডার
-উপরে (`oxeio-monitor/.env`), তাই স্ক্রিপ্টগুলো `dotenv -e ../.env --` দিয়ে
-মোড়া। উপরের `npm run` ফর্মটাই সেই মোড়কসহ চলে।
-
-⚠️ `.env` লাগবে — `oxeio-monitor/.env.example` কপি করে `DATABASE_URL`,
-`JWT_SECRET` (৩২+ অক্ষর) আর `SEED_OWNER_*` বসান।
-
-⚠️ **আসল কর্মী তালিকা রিপোতে নেই** (নাম ও বেতন — ওটা তাঁদের তথ্য)।
-`server/prisma/staff.example.json` দেখে `staff.local.json` বানান; না বানালে
-seed নমুনা নাম ও বেতন ০ দিয়ে চলে।
-
-### দুই· সার্ভার
-
-```bash
-cd oxeio-monitor && npm --prefix server run start:dev
-```
-
-### তিন· ড্যাশবোর্ড (আলাদা টার্মিনাল)
-
-```bash
-cd oxeio-monitor && npm --prefix web run dev
-```
-
-`http://localhost:5173` — লগইন `.env`-এর `SEED_OWNER_*` দিয়ে।
-⚠️ সরাসরি `:3000`-এ যাবেন না: সেশন cookie `SameSite=Strict`, তাই লগইন সফল
-দেখাবে কিন্তু পরের রিকোয়েস্টেই ৪০১। proxy-র কারণে ব্রাউজারের চোখে সবই এক origin।
-
-⚠️ প্রথম লগইনে **পাসওয়ার্ড বদলাতে বাধ্য করবে** (G33) — এটা ঠিক আচরণ।
-
-### চার· এজেন্ট একটা PC-তে
-
-বসানোর আগে যাচাই — এতে কিছু জমা হয় না, শুধু কনসোলে ফল লেখে:
-
-```bash
-cd oxeio-monitor/agent && dotnet run --project src/oXeio.Agent -- --diagnose
-```
-
-ঠিক থাকলে MSI বানান — **সার্ভারের ঠিকানা ভেতরে বেক করে**:
-
-```bash
-cd oxeio-monitor/agent/installer && powershell -File build.ps1
-```
-
-⭐ তারপর প্রতিটা PC-তে শুধু **ডাবল-ক্লিক** (অ্যাডমিন হিসেবে), আর স্টাফ
-নিজের ইমেইল-পাসওয়ার্ড দিয়ে সাইন ইন করে — কোনো কোড, কোনো কমান্ড নেই
-([ADR-024](docs/05-Options-Decisions.md))।
-
-⚠️ আগে তার **portal account** খোলা থাকতে হবে: Settings → Staff → Portal
-account। ওই লগইন দিয়েই সে পরে নিজের ঘণ্টা দেখবে (`/me`)।
-
-স্ক্রিপ্টেড রোলআউটে (কেউ কীবোর্ডে বসবে না) কোডের পথটা রয়ে গেছে —
-এনরোলমেন্ট কোড: **Settings → Devices → Enrolment code**, একবারই দেখানো
-হয়, ২৪ ঘণ্টায় মেয়াদ শেষ:
-
-```bash
-msiexec /i oXeioAgent-0.3.7.msi /qn SERVERURL="https://hub.oxeio.com" ENROLLCODE="<code>"
-```
-
-### অফিসের সার্ভারে — ডেভ নয়
-
-উপরের এক–তিন ধাপের বদলে, তিনটে কনটেইনার (`postgres` · `api` · **`web`**):
-
-```bash
-cd oxeio-monitor
-docker compose --profile setup run --rm migrate   # স্কিমা + seed
+git clone https://github.com/ownCoder/oxeio-monitor.git
+cd oxeio-monitor/oxeio-monitor
+cp .env.example .env          # then edit — JWT_SECRET and passwords are placeholders
 docker compose up -d
 ```
 
-⚠️⚠️ **`migrate` ধাপটা বাদ দেওয়া যাবে না** — `up -d` নিজে থেকে ওটা চালায় না
-(`profiles: ["setup"]`, ইচ্ছাকৃত), আর প্রোডাকশন ইমেজে prisma CLI নেইও।
-বাদ দিলে ডাটাবেসে **একটাও টেবিল বসে না**, আর API উঠে প্রতিটা রিকোয়েস্টে ভাঙে।
+The dashboard is on `:8080`, or set `CADDY_SITE=your.domain` and Caddy fetches a
+certificate itself. Full walkthrough, including the Windows agent and the
+first-run checklist: [`oxeio-monitor/deploy/README.md`](oxeio-monitor/deploy/README.md).
 
-ড্যাশবোর্ড `http://<server>:8080` (`.env`-এ `WEB_PORT`)। Caddy `/api/*` কে
-api কনটেইনারে পাঠায়, বাকি পাতা নিজে দেয় — ব্রাউজারের চোখে **একটাই origin**,
-তাই `SameSite=Strict` cookie কাজ করে আর CORS-এর প্রশ্নই ওঠে না।
-
-পুরো রানবুক (সার্ট ও TLS · ফায়ারওয়াল · AV ছাড় · MSI বিলি · প্রথম দিনের
-চেকলিস্ট): [deploy/README](oxeio-monitor/deploy/README.md)
-
-### টেস্ট
+**Tests.** They can't all run on one machine — the e2e suite needs Postgres, the
+agent needs Windows:
 
 ```bash
-(cd oxeio-monitor/server && npm test)    # ⚠️ Postgres চালু থাকতে হবে (ধাপ এক)
-(cd oxeio-monitor/web    && npm test)
-(cd oxeio-monitor/agent  && dotnet test) # ⚠️ oXeio.Agent.Tests-এর জন্য Windows লাগে
+cd oxeio-monitor/server && npm test     # needs Docker for Postgres
+cd oxeio-monitor/web    && npm test
+cd oxeio-monitor/agent  && dotnet test  # Windows
 ```
-
-⭐ **উপরের ১৫৮০ সংখ্যাটা কীভাবে গোনা** — তিনটে আলাদা কমান্ড, তিনটে আলাদা
-পরিবেশ, তাই এক মেশিনে একসাথে চলে না:
-
-| কোথায় | কত | কীভাবে জানা |
-|---|---|---|
-| সার্ভার · DB ছাড়া | **৮৫৯** (৩৫ ফাইল) | ⭐ চালিয়ে দেখা — খাঁটি ফাংশনের টেস্ট, Postgres লাগে না |
-| সার্ভার · `*.e2e.spec.ts` | **২৩০** (১৮ ফাইল) | ⚠️ **চালানো হয়নি** — Postgres দরকার। `vitest list` দিয়ে গোনা (collect করে, চালায় না) |
-| ওয়েব | **৭৩** (২ ফাইল) | ⭐ চালিয়ে দেখা |
-| এজেন্ট (C#) | **৪১৮** | ⚠️ এই মেশিনে `dotnet` নেই — সংখ্যাটা আগের `dotnet test` রানের, এবার মাপা হয়নি। ⚠️ [03-Project-Map](docs/03-Project-Map.md) Core-এ ৩২২ বলে, এখানে ৩২১ — একটার ফারাক, মেপে মেলানো বাকি |
-
-⚠️ **"পাস" আর "গোনা" এক নয়** — ১৫৮০-র মধ্যে **৯৩২** এই ব্যাচে সত্যিই
-চালিয়ে সবুজ দেখা হয়েছে; বাকি ৬৪৮ কেবল গোনা।
 
 ---
 
-## 🎯 এক নজরে সিস্টেম
+## Documentation
 
-```
-১৫টি Windows PC                    অফিসের সার্ভার PC              ব্রাউজার
-┌──────────────┐                 ┌──────────────────┐         ┌─────────────┐
-│ oXeio Agent  │  HTTPS/LAN      │  API + Postgres  │  HTTPS  │  Dashboard  │
-│  • স্ক্রিনশট  │ ──────────────▶ │  + Screenshot    │ ◀────── │  Owner +    │
-│  • টাইম      │  (offline হলে   │    storage       │         │  Manager    │
-│  • অ্যাপ      │   queue-তে জমা) │  + Nightly jobs  │         └─────────────┘
-└──────────────┘                 └──────────────────┘
-```
+Ten documents in [`docs/`](docs/), all Bengali. The two worth opening even if you
+don't read Bengali — the tables and code references carry most of the meaning:
 
-**মূল নিয়ম চারটি:**
-1. স্ক্রিনশট — প্রতি ৫ মিনিটের স্লটে ১টা, **সময়টা র‍্যান্ডম** (কেউ আগে থেকে জানবে না)
-2. টাইম — **১ মিনিট** কি-বোর্ড/মাউস নিষ্ক্রিয় হলে টাইমার **hold**, নড়লেই আবার **চালু**
-3. হিসাব — **সময়ের কোনো বাঁধন নেই।** সকাল ৭টা হোক বা রাত ১০টা, শুক্রবার হোক বা সোমবার — কেউ active থাকলেই গোনা হয়। একমাত্র মাপকাঠি **মাসের মোট ঘণ্টা** (⚠️ ফ্ল্যাট ২০৮ নয় — ওই মাসের কর্মদিবস × ৮ঘ; উপরের § "কর্মদিবস — একটা সংখ্যা নয়")। কে কখন এল, কখন লাঞ্চ করল — কিছুই ট্র্যাক হয় না
-3b. **কোনো অনুমোদন ব্যবস্থা নেই** — মিটিং claim নেই, ছুটির আবেদন নেই, স্টাফের চাপার মতো কোনো বাটন নেই। মাত্র ৩টি স্টেট: ACTIVE · IDLE · LOCKED
-4. ডেটা — ৯০ দিন পর স্ক্রিনশট **অটো ডিলিট**, সব কিছু অফিসের ভেতরেই থাকে
+| | |
+|---|---|
+| [`08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) | Every known defect, why it's bad, when it will bite, what it costs to fix. Resolved ones stay, marked ✅. |
+| [`09-Build-Log.md`](docs/09-Build-Log.md) | What broke and why, in order. Includes the bugs that only appeared in production. |
 
-**🎨 ডিজাইন দেখুন:** [dashboard-mockup.html](docs/mockup/dashboard-mockup.html) — ৭টি স্ক্রিনের ক্লিকযোগ্য মকআপ
+Also: [`04-Features.md`](docs/04-Features.md) (115 features, including the
+rejected ones), [`05-Options-Decisions.md`](docs/05-Options-Decisions.md)
+(architecture decisions with the discarded alternatives),
+[`10-Roadmap.md`](docs/10-Roadmap.md).
 
 ---
 
-## ⚖️ রোলআউটের আগে বাধ্যতামূলক
+## Legal and ethical use
 
-এই সিস্টেম চালুর আগে **অবশ্যই**:
-1. লিখিত Monitoring Policy তৈরি ও প্রত্যেক স্টাফের স্বাক্ষর
-2. সবাইকে জানিয়ে ব্রিফিং মিটিং
-3. স্টাফ নিজের ডেটা দেখার অ্যাক্সেস চালু
+Employee monitoring is regulated differently in every jurisdiction, and in many
+places it requires disclosure, consent, or a works-council agreement. This
+repository ships a
+[monitoring policy template](docs/monitoring-policy-template.md) because the
+original deployment required signatures before a single agent was installed.
 
-বিস্তারিত: [01-Planning § রোলআউট](docs/01-Planning.md) এবং [06-Research § আইনি](docs/06-Research.md)
+**Do that.** Deploying this without telling the people being monitored is
+both wrong and, in many countries, illegal. The software cannot enforce that
+for you.
 
 ---
 
-## 🚫 যা এই সিস্টেম কখনোই করবে না
-
-কীলগিং · ক্লিপবোর্ড ক্যাপচার · ফাইলের ভেতরের লেখা পড়া · ফুল URL সংরক্ষণ ·
-ওয়েবক্যাম/মাইক্রোফোন · ব্যক্তিগত ল্যাপটপ · গোপন ইনস্টলেশন ·
-রাত ১১টা–সকাল ৭টার স্ক্রিনশট · কে কখন লাঞ্চ করল · কোনো অনুমোদন ব্যবস্থা
+*No licence is attached yet, which means default copyright applies and you may
+read the code but not reuse it. If you want to use any of this, open an issue.*
