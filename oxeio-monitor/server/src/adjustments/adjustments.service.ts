@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -95,6 +96,9 @@ export class AdjustmentsService {
       throw new BadRequestException('workDate cannot be in the future');
     }
 
+    // ⭐ R1 — মাস বন্ধ থাকলে এখানেই থামে, DB-তে কিছু বসার আগে
+    await this.assertMonthOpen(workDate);
+
     // প্রমাণের অ্যালার্টটা সত্যিই আছে কি না — ভুল আইডি দিলে FK ভেঙে ৫০০ হতো
     if (dto.evidenceAlertId !== undefined) {
       const alert = await this.prisma.alert.findUnique({
@@ -170,6 +174,9 @@ export class AdjustmentsService {
       },
     });
     if (!before) throw new NotFoundException('Adjustment not found');
+
+    // ⭐ R1 — বাতিলও মাসের যোগফল নড়ায়, তাই এখানেও একই প্রহরী
+    await this.assertMonthOpen(before.workDate);
 
     // ⚠️ দুবার বাতিল করলে দ্বিতীয়বারের কারণটা প্রথমটাকে চাপা দিত
     if (before.revokedAt) {
@@ -255,6 +262,33 @@ export class AdjustmentsService {
    * ব্যর্থ হলে শুধু লগ — সংশোধনটা ইতিমধ্যে DB-তে বসে গেছে, আর পরের
    * নিয়মিত rollup (K06, ১৫ মিনিট) এমনিতেই ঠিক করে দেবে।
    */
+  /**
+   * ⭐⭐ **R1 — বন্ধ মাসে ঘণ্টা নড়ে না।**
+   *
+   * ⚠️⚠️ দুই জায়গাতেই ডাকতে হয় — **নতুন সংশোধনে আর বাতিলেও**। বাতিলটা
+   *    ভুলে যাওয়া সহজ, কিন্তু ওটাও মাসের যোগফল ঠিক ততটাই নড়ায়: যে
+   *    ঘণ্টা যোগ হয়েছিল, বাতিলে সেটা ফেরত যায়। শুধু `create`-এ প্রহরী
+   *    দিলে দরজাটা অর্ধেক বন্ধ থাকত — আর অর্ধেক বন্ধ দরজা খোলা দরজার
+   *    চেয়ে খারাপ, কারণ সবাই ভাবত বন্ধ।
+   *
+   * ⚠️ ৪০৯ (Conflict), ৪০৩ নয় — ব্যবহারকারীর **অধিকার** আছে, কিন্তু
+   *    জিনিসটার **অবস্থা** এখন এটা মানে না। ৪০৩ দিলে মালিক ভাবতেন তাঁর
+   *    ভূমিকা কমে গেছে।
+   */
+  private async assertMonthOpen(workDate: Date): Promise<void> {
+    const yearMonth = workDate.toISOString().slice(0, 7);
+    const closed = await this.prisma.monthClosure.findUnique({
+      where: { yearMonth },
+      select: { closedAt: true, closedBy: true },
+    });
+    if (!closed) return;
+
+    throw new ConflictException(
+      `${yearMonth} was closed on ${closed.closedAt.toISOString().slice(0, 10)} by ${closed.closedBy}. ` +
+        'Payroll for that month is already fixed — reopen it first if this correction is genuinely needed.',
+    );
+  }
+
   private async refresh(workDate: Date): Promise<void> {
     try {
       await this.summary.refreshDate(workDate);

@@ -186,6 +186,31 @@ export class SummaryService {
     const { start, end, yearMonth } = monthBounds(workDate);
     const ids = employees.map((e) => e.id);
 
+    /**
+     * ⭐⭐ **R1 — বন্ধ মাস আর গোনা হয় না।** এটাই পুরো ফিচারটার একমাত্র
+     * কার্যকর লাইন; বাকি সব (endpoint, ৪০৯, পর্দা) এর চারপাশের মোড়ক।
+     *
+     * ⚠️⚠️ কেন দরকার: নিচের হিসাবটা **প্রতিবার ওই মুহূর্তের `holidays`
+     *    টেবিল পড়ে** আর `prorate()` দিয়ে d ও D আবার গোনে। তাই ছুটির একটা
+     *    তারিখ নড়লেই গত মাসের `target_sec` · `expected_sec` ·
+     *    `expected_workdays` · `month_workdays` চারটেই পিছন ফিরে বদলাত —
+     *    আর পে-রোল ওই সারি থেকেই d ও D পড়ে, অর্থাৎ **বেতন দিয়ে দেওয়ার
+     *    পরেও হিসাব নড়ত**, নীরবে।
+     *
+     * ⚠️ ফেরত যাওয়া হয় **নীরবে নয়** — লগে লেখা হয়, নইলে "সংখ্যা আপডেট
+     *    হচ্ছে না কেন" খুঁজতে গিয়ে কেউ এখানে পৌঁছাত না।
+     */
+    const closed = await this.prisma.monthClosure.findUnique({
+      where: { yearMonth },
+      select: { closedAt: true },
+    });
+    if (closed) {
+      this.logger.log(
+        `${yearMonth} is closed (${closed.closedAt.toISOString()}) — monthly figures left untouched`,
+      );
+      return;
+    }
+
     const [days, holidayRows, existing, firstSeen] = await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { employeeId: { in: ids }, workDate: { gte: start, lte: end } },

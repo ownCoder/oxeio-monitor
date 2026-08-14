@@ -367,3 +367,18 @@ export class SetStageDto {
   @IsOptional() @IsBoolean()
   isMandatory?: boolean;
 }
+
+
+/**
+ * R1 — মাস বন্ধ করার সাথে ঐচ্ছিক একটা নোট।
+ *
+ * ⚠️ নোটটা **কেন** বন্ধ করা হলো তার জায়গা ("আগস্টের বেতন ৩ সেপ্টেম্বর
+ *    দেওয়া হয়েছে")। ছয় মাস পরে কেউ audit ঘাঁটলে তারিখটার চেয়ে কারণটাই
+ *    বেশি কাজে দেয়।
+ */
+export class CloseMonthDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  note?: string;
+}
