@@ -109,8 +109,26 @@ export class BackupService {
     private readonly state: BackupStateStore,
   ) {
     this.passphrase = (config.get<string>('BACKUP_PASSPHRASE') ?? '').trim();
+    /**
+     * ⚠️⚠️ **`?.trim() ||`, `??` নয় — আর এই এক অক্ষরের তফাতেই ব্যাকআপ
+     * কোনোদিন চলেনি।**
+     *
+     * `.env.example`-এ লাইনটা `BACKUP_DIR=` (ফাঁকা) হিসেবে বসানো, তাই
+     * `config.get()` ফেরত দেয় **খালি স্ট্রিং**, `undefined` নয়। `??`
+     * কেবল `null`/`undefined` ধরে — খালি স্ট্রিং পেরিয়ে যায়। ফলে
+     * ডিফল্টটা কোনোদিন ব্যবহারই হয়নি, আর `resolve('')` দাঁড়াত
+     * **প্রসেসের cwd**-তে, অর্থাৎ `/app` — যেখানে লেখার অনুমতি নেই।
+     *
+     * ⭐ ব্যর্থতাটা তবু **জোরে** হয়েছে (`EACCES`), আর সেটা ভাগ্য: ওই
+     * ফোল্ডারে লেখার অনুমতি থাকলে ডাম্প নীরবে কনটেইনারের ভেতরে বসত আর
+     * প্রতি ডিপ্লয়ে মুছে যেত — কেউ কিছু টেরই পেত না।
+     *
+     * ⚠️ পাশের প্রতিটা অপশন (`BACKUP_COPY_TO`, `BACKUP_PG_DUMP`,
+     * `BACKUP_DOCKER_*`) `?.trim() ||` ব্যবহার করে; **কেবল এটাই `??`
+     * ছিল**। একই ফাইলে দু-রকম নিয়ম — ঠিক যেভাবে এই বাগগুলো জন্মায়।
+     */
     this.dir = resolve(
-      config.get<string>('BACKUP_DIR') ??
+      config.get<string>('BACKUP_DIR')?.trim() ||
         // ডকের লেআউট (07 § ৬.২): `D:\oXeio\storage\` -এর পাশে `D:\oXeio\backups\`
         join(storageRoot(config), '..', 'backups'),
     );
