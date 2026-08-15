@@ -14,12 +14,18 @@ import { PoliciesTab } from './PoliciesTab';
 import { StaffTab } from './StaffTab';
 
 /**
- * E09 · E10 · E11 · D06 — সেটিংস (**owner-only**)।
+ * E09 · E10 · E11 · D06 — সেটিংস।
  *
- * ⚠️ পুরো পর্দাটাই owner-এর। ম্যানেজারকে Layout-এর নেভে ট্যাবটাই দেখানো
- *    হয় না — এখানকার ৪০৩ পর্দাটা শেষ রক্ষাকবচ, প্রথম নয়। URL হাতে টাইপ
- *    করে কেউ এলে যেন খালি পাতা বা ভাঙা কল দেখে বিভ্রান্ত না হয়, তাই
- *    সোজাসুজি "অনুমতি নেই" বলা হয়।
+ * ⭐ **ম্যানেজারও ঢোকেন** *(১৫ আগস্ট)*, তবে তিনটে ট্যাবে: Staff ·
+ *    Categories · Policies & holidays। Leave · Months · Agent updates ·
+ *    Audit log — এগুলো owner-এরই।
+ *
+ * ⚠️ পর্দা থেকে ট্যাব লুকানো **শেষ রক্ষাকবচ নয়, প্রথমটা** — আসল পাহারা
+ *    সার্ভারের `@Roles`-এ। এখানে লুকানো হয় যাতে কেউ এমন বোতাম না দেখেন
+ *    যেটা চাপলে ৪০৩ আসবে।
+ *
+ * ⚠️ স্টাফ (`role=employee`) এখানে এলে সোজাসুজি "অনুমতি নেই" — খালি পাতা
+ *    বা ভাঙা কল দেখে বিভ্রান্ত হওয়ার চেয়ে ভালো।
  *
  * ⭐ ট্যাবগুলো আলাদা রুট নয়, `?tab=` — দুটো কারণে:
  *    ১· `App.tsx` ছুঁতে হয় না (ওটা অন্য এজেন্টের ফাইল), অথচ
@@ -29,18 +35,28 @@ import { StaffTab } from './StaffTab';
  *       তালিকা বসে থাকার সুযোগ নেই।
  */
 
+/**
+ * ⭐ `manager: true` মানে ম্যানেজারও ট্যাবটা পান *(১৫ আগস্ট)*।
+ *
+ * ⚠️ ঘরটা **প্রতিটা সারিতে লিখতেই হয়** (`false`-ও), ঐচ্ছিক নয় — তাই নতুন
+ *    ট্যাব যোগ করলে TypeScript-ই মনে করিয়ে দেবে সিদ্ধান্তটা নিতে।
+ *    ঐচ্ছিক রাখলে ভুলে যাওয়া আর "না" বলা দেখতে এক হয়ে যেত, আর একদিন
+ *    কেউ ভুলে গিয়ে ভাবত সেটাই ঠিক আছে।
+ */
 const TABS = [
-  { id: 'staff', label: 'Staff' },
-  { id: 'categories', label: 'Categories' },
-  { id: 'policies', label: 'Policies & holidays' },
+  { id: 'staff', label: 'Staff', manager: true },
+  { id: 'categories', label: 'Categories', manager: true },
+  { id: 'policies', label: 'Policies & holidays', manager: true },
   // ⭐ Policies-এর ঠিক পরে: ছুটির তালিকা মাসের সংখ্যা **বদলায়**, আর এই
   //    ট্যাবটা সেগুলো **থামায়** — একই প্রশ্নের দুই দিক, তাই পাশাপাশি।
-  { id: 'leave', label: 'Leave' },
-  { id: 'months', label: 'Months' },
+  // ⚠️ Leave ও Months owner-এর: দুটোই সরাসরি টাকার হিসাব নাড়ায়।
+  { id: 'leave', label: 'Leave', manager: false },
+  { id: 'months', label: 'Months', manager: false },
   // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
   //    সবার শেষে থাকাটা প্রতিষ্ঠিত (বছরে দু-একবার খোলা হয়)
-  { id: 'agent', label: 'Agent updates' },
-  { id: 'audit', label: 'Audit log' },
+  { id: 'agent', label: 'Agent updates', manager: false },
+  // ⚠️ audit log-এ কে কার স্ক্রিনশট দেখেছে সেটাও থাকে — owner-এরই
+  { id: 'audit', label: 'Audit log', manager: false },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['id'];
@@ -71,10 +87,19 @@ export function SettingsPage() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
 
-  const raw = params.get('tab');
-  const active: TabKey = isTabKey(raw) ? raw : 'staff';
+  const isOwner = user?.role === 'owner';
+  const tabs = isOwner ? TABS : TABS.filter((t) => t.manager);
 
-  if (user?.role !== 'owner') {
+  const raw = params.get('tab');
+  /**
+   * ⚠️ ট্যাবটা **এই ব্যবহারকারীর জন্য** বৈধ কি না, শুধু "নাম মেলে কি না"
+   * নয়। নইলে `?tab=audit` টাইপ করলে ম্যানেজার খালি পাতা দেখতেন —
+   * নেভে কিছু নেই, অথচ কনটেন্টও নেই।
+   */
+  const active: TabKey =
+    isTabKey(raw) && tabs.some((t) => t.id === raw) ? raw : 'staff';
+
+  if (user?.role !== 'owner' && user?.role !== 'manager') {
     return (
       <Page title="Settings">
         {/*
@@ -92,7 +117,7 @@ export function SettingsPage() {
     <Page title="Settings" subtitle={SUBTITLE[active]}>
       <div className="mb-4">
         <Tabs
-          items={TABS}
+          items={tabs}
           active={active}
           label="Settings sections"
           // `replace` — ট্যাব বদলানো ব্রাউজারের ইতিহাসে জমা হলে

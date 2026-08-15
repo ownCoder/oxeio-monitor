@@ -25,13 +25,18 @@ import { CreateCategoryDto, RecategorizeDto, UpdateCategoryDto } from './dto';
 /**
  * D06 — মালিকের ক্যাটাগরি রুল (`/api/v1/categories`, স্পেক § ৪.২)।
  *
- * ⚠️ পুরো কন্ট্রোলারটাই **owner-only** — মেথড-লেভেলে নয়, ক্লাস-লেভেলে।
- * পরে কেউ নতুন endpoint যোগ করলে সেটাও আপনাআপনি owner-only থাকবে।
- * মেথডে বসালে নতুন endpoint নীরবে ম্যানেজারের নাগালে চলে যেত — আর
- * ক্যাটাগরির নিয়ম বদলানো মানে **সবার রিপোর্টের সংখ্যা বদলে দেওয়া**
- * (স্পেক § ৪.৩: সেটিংস শুধু owner-এর)।
+ * ⭐ **owner ও manager** *(মালিকের সিদ্ধান্ত, ১৫ আগস্ট; আগে owner-only)* —
+ * রোজকার কাজ, আর নতুন ডোমেইন শ্রেণিভুক্ত করতে owner-কে ডাকতে হলে
+ * "কত শতাংশ অচেনা" সংখ্যাটা বাড়তেই থাকত।
+ *
+ * ⚠️ role এখনো **ক্লাস-লেভেলে**, মেথডে নয় — পরে নতুন endpoint যোগ হলে
+ * সেটাও একই নিয়মে থাকবে, কেউ আলাদা করে ভাবতে ভুলে গেলেও।
+ *
+ * ⚠️⚠️ মনে রাখা দরকার, ক্যাটাগরির নিয়ম বদলানো মানে **সবার রিপোর্টের
+ * সংখ্যা বদলে দেওয়া** — বিশেষত `recategorize` পুরোনো সারিগুলোকেও নতুন
+ * নিয়মে ফেলে। ⭐ তাই প্রতিটা বদল `audit_log`-এ নাম ধরে লেখা থাকে।
  */
-@Roles(UserRole.owner)
+@Roles(UserRole.owner, UserRole.manager)
 @Controller('categories')
 export class CategoryController {
   constructor(private readonly categories: CategoryService) {}

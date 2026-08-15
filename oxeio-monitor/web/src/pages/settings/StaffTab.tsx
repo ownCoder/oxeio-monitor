@@ -75,9 +75,16 @@ type StatusFilter = EmployeeStatus | 'all';
 
 export function StaffTab() {
   const { user } = useAuth();
-  // ⭐ পুরো পেজটাই owner-only, তবু এখানে আবার দেখা হয়: বেতনের সিদ্ধান্তটা
-  //    যে জায়গায় বেতন দেখানো হয়, ঠিক সেখানেই থাকা দরকার।
+  /**
+   * ⭐ দুটো আলাদা প্রশ্ন, তাই দুটো আলাদা নাম — যদিও আজ দুটোরই উত্তর
+   * `role === 'owner'`।
+   *
+   * ⚠️ একটাই চলক রাখলে কাল বেতনের নিয়ম বদলালে (বা ম্যানেজার deactivate
+   * করতে পারলে) দুটো জিনিস একসাথে নড়ত, আর কেউ খেয়াল করত না।
+   */
   const canSeeSalary = user?.role === 'owner';
+  /** portal অ্যাকাউন্ট · পাসওয়ার্ড রিসেট · deactivate — সার্ভারে owner-only */
+  const isOwner = user?.role === 'owner';
 
   const [status, setStatus] = useState<StatusFilter>('active');
   const [searchText, setSearchText] = useState('');
@@ -263,10 +270,15 @@ export function StaffTab() {
       key: 'actions',
       header: '',
       align: 'right',
+      /**
+       * ⚠️ ম্যানেজার **Edit**-ই শুধু পান *(১৫ আগস্ট)*। portal অ্যাকাউন্ট,
+       * পাসওয়ার্ড রিসেট, deactivate/reactivate — সার্ভারে ওগুলো
+       * owner-only, তাই বোতামও দেখানো হয় না। দেখালে চাপলেই ৪০৩ আসত।
+       */
       render: (emp) => (
         <RowActions>
           <MiniButton onClick={() => setEditing(emp)}>Edit</MiniButton>
-          {emp.status === 'active' ? (
+          {!isOwner ? null : emp.status === 'active' ? (
             <>
               <MiniButton
                 onClick={() => setPortalFor(emp)}

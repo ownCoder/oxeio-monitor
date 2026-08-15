@@ -65,7 +65,10 @@ const NAV: NavItem[] = [
    */
   { to: '/alerts', label: 'Alerts', roles: ['owner'] },
   // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
-  { to: '/settings', label: 'Settings', roles: ['owner'] },
+  // ⭐ ম্যানেজারও ঢোকেন *(১৫ আগস্ট)* — Staff · Categories · Policies &
+  //    holidays, এই তিনটে ট্যাব তাঁর। বাকিগুলো `SettingsPage` নিজেই
+  //    role দেখে সরিয়ে রাখে।
+  { to: '/settings', label: 'Settings', roles: ['owner', 'manager'] },
   /**
    * ⭐ I06 — **তিনটে ভূমিকারই**, owner-only নয়: এটা ট্র্যাকিংয়ের পর্দা নয়,
    *    নিজের অ্যাকাউন্টের 2FA সেটিং। owner-only করলে ম্যানেজারের অ্যাকাউন্ট
