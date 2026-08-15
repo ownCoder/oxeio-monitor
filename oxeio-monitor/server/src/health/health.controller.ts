@@ -7,8 +7,19 @@ import { PrismaService } from '../prisma/prisma.service';
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
-  /// Docker healthcheck ও Live Board-এর "সার্ভার আছে তো?" — দুটোই এখানে।
-  /// লগইন ছাড়াই পৌঁছাতে হয়, তাই @Public।
+  /// Docker healthcheck · Live Board-এর "সার্ভার আছে তো?" · আর বাইরের
+  /// uptime নজরদারি (R4) — তিনটেই এখানে। লগইন ছাড়াই পৌঁছাতে হয়, তাই @Public।
+  ///
+  /// ⚠️⚠️ **ডাটাবেস মরে গেলেও এটা HTTP ২০০ ফেরায়** — কেবল বডিতে
+  /// `status: 'degraded'` লেখে। দেখে ভুল মনে হয়, কিন্তু ৫০৩ করা যাবে না:
+  /// Docker-এর healthcheck এই একই পথ ধরে, আর ব্যর্থ healthcheck মানে
+  /// কনটেইনার রিস্টার্ট। ডাটাবেস ডাউন থাকলে API রিস্টার্ট করে কিছুই
+  /// সারে না — শুধু **রিস্টার্ট লুপ** তৈরি হয়, আর তাতে লগও হারায়।
+  ///
+  /// ⭐ তাই বাইরের নজরদারিকে **স্ট্যাটাস কোড নয়, শব্দ** দেখতে হবে:
+  /// UptimeRobot-এ "Keyword" মনিটর, keyword `"db":"up"`
+  /// (`deploy/README.md § R4`)। ⚠️ শুধু স্ট্যাটাস কোড দেখলে ডাটাবেস মরে
+  /// পড়ে থাকলেও সে চিরকাল "UP" দেখাত — ঠিক যে অন্ধ জায়গাটা R4 ঢাকার কথা।
   @Public()
   @Get()
   async check(): Promise<{
