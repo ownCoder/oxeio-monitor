@@ -9,6 +9,7 @@ import {
   type WorkPolicyView,
 } from '../../api/admin';
 import { useApi } from '../../api/useApi';
+import { useAuth } from '../../auth/AuthContext';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Page';
 import { Empty, ErrorBox, Loading } from '../../components/States';
@@ -61,10 +62,18 @@ const OFF_DAY_LABEL: Record<number, string> = {
   7: 'Sun',
 };
 
+/**
+ * ⚠️ ম্যানেজার পান **শুধু ছুটির অংশটা** *(১৫ আগস্ট)*। `work_policies`
+ * সার্ভারে owner-only থেকেই গেছে — মাসিক টার্গেট বা ছবির উইন্ডো বদলালে
+ * প্রতিটা PC-র আচরণ বদলায়। উপরের সেকশনটা না লুকালে ম্যানেজার ট্যাব খুলেই
+ * একটা ৪০৩ বাক্স দেখতেন, আর ভাবতেন কিছু ভেঙে আছে।
+ */
 export function PoliciesTab() {
+  const { user } = useAuth();
+
   return (
     <div className="space-y-6">
-      <WorkPoliciesSection />
+      {user?.role === 'owner' && <WorkPoliciesSection />}
       <HolidaysSection />
     </div>
   );

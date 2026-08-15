@@ -374,7 +374,18 @@ describe('ম্যানেজারের অ্যাক্সেস', () => 
     await manager.http
       .post('/api/v1/holidays')
       .set('X-CSRF-Token', manager.csrf)
-      .send({ date: '2026-12-25', name: 'Boro Din' })
+      .send({ holidayDate: '2026-12-25', name: 'Boro Din' })
+      .expect(201);
+
+    await manager.http
+      .post('/api/v1/categories')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({
+        matchType: 'domain',
+        pattern: 'figma.com',
+        displayName: 'Figma',
+        category: 'productive',
+      })
       .expect(201);
   });
 

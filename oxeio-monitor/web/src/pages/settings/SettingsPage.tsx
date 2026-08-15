@@ -46,7 +46,14 @@ import { StaffTab } from './StaffTab';
 const TABS = [
   { id: 'staff', label: 'Staff', manager: true },
   { id: 'categories', label: 'Categories', manager: true },
-  { id: 'policies', label: 'Policies & holidays', manager: true },
+  // ⚠️ ম্যানেজার এখানে **শুধু ছুটি** পান (work policy owner-only), তাই
+  //    তাঁর জন্য নামটাও আলাদা — নইলে তিনি এমন কিছু খুঁজতেন যা পর্দায় নেই।
+  {
+    id: 'policies',
+    label: 'Policies & holidays',
+    managerLabel: 'Holidays',
+    manager: true,
+  },
   // ⭐ Policies-এর ঠিক পরে: ছুটির তালিকা মাসের সংখ্যা **বদলায়**, আর এই
   //    ট্যাবটা সেগুলো **থামায়** — একই প্রশ্নের দুই দিক, তাই পাশাপাশি।
   // ⚠️ Leave ও Months owner-এর: দুটোই সরাসরি টাকার হিসাব নাড়ায়।
@@ -88,7 +95,11 @@ export function SettingsPage() {
   const [params, setParams] = useSearchParams();
 
   const isOwner = user?.role === 'owner';
-  const tabs = isOwner ? TABS : TABS.filter((t) => t.manager);
+  const tabs = isOwner
+    ? TABS
+    : TABS.filter((t) => t.manager).map((t) =>
+        'managerLabel' in t ? { ...t, label: t.managerLabel } : t,
+      );
 
   const raw = params.get('tab');
   /**
@@ -113,8 +124,14 @@ export function SettingsPage() {
     );
   }
 
+  /** ⚠️ ম্যানেজারের policies ট্যাবে work policy নেই, তাই লেখাটাও আলাদা */
+  const subtitle =
+    !isOwner && active === 'policies'
+      ? 'Days off — the hours target moves with them'
+      : SUBTITLE[active];
+
   return (
-    <Page title="Settings" subtitle={SUBTITLE[active]}>
+    <Page title="Settings" subtitle={subtitle}>
       <div className="mb-4">
         <Tabs
           items={tabs}
