@@ -407,11 +407,20 @@ export function LiveBoardPage() {
         </div>
 
         <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
+          {/*
+            ⭐ ছুটির দিনে কার্ডটার **নামও বদলায়** *(১৫ আগস্ট)*। "Against
+               today's target" যখন কারো কোনো টার্গেটই নেই, তখন শিরোনামটাই
+               একটা স্ববিরোধ — আর নিচে বারো লাইন খালি রেল সেটাকে
+               "সবাই শূন্য শতাংশ"-এর মতো দেখাত। ছুটির দিনে ঘণ্টাগুলো
+               তবু সত্যি, তাই কার্ডটা তখন শুধু ঘণ্টাই দেখায়।
+          */}
           <Card
-            title="Against today's target"
+            title={
+              stats.withTarget === 0 ? 'Hours today' : "Against today's target"
+            }
             hint={
               stats.withTarget === 0
-                ? 'No target today — weekly off or holiday'
+                ? 'Weekly off or holiday — nothing is expected of anyone today'
                 : 'Furthest along first · green means the target is met'
             }
             padded={false}
