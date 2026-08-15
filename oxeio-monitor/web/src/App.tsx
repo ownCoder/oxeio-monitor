@@ -80,6 +80,17 @@ function Router() {
 
   const isOwner = user.role === 'owner';
   /**
+   * ⭐ Settings-এর রুটটা ম্যানেজারেরও *(১৫ আগস্ট)* — তিনি Staff · Categories
+   * · Holidays পান। ভেতরে কোন ট্যাব তিনি দেখবেন সেটা `SettingsPage`-এর কাজ।
+   *
+   * ⚠️⚠️ এটা আলাদা চলক, `isOwner || isManager` নয়: **নেভ, রুট আর পর্দা —
+   * তিন জায়গায় একই শর্ত থাকতে হয়**। মাঠে ধরা পড়েছে ঠিক এই ফাঁকটাই —
+   * `Layout`-এর নেভ আর `SettingsPage` দুটোই ম্যানেজারকে ঢুকতে দিচ্ছিল,
+   * কিন্তু রুটটা owner-only থেকে গিয়েছিল; ম্যানেজার নেভে Settings দেখতেন,
+   * চাপলে **"Not found"**।
+   */
+  const mayOpenSettings = isOwner || user.role === 'manager';
+  /**
    * ⚠️ সার্ভারের গার্ড পড়ে দেখা: স্টাফের জন্য `/screenshots` ও `/me`
    *    **ছাড়া** আর কোনো ড্যাশবোর্ড endpoint খোলা নেই (`live`, `employees`,
    *    `activity`, `reports` — সবগুলোয় ক্লাস-লেভেল `@Roles(owner, manager)`)।
@@ -133,20 +144,22 @@ function Router() {
         <Route path="security" element={<SecurityPage />} />
 
         {/*
-          ⭐ owner না হলে রুটটা **থাকেই না** — সরাসরি `/settings` টাইপ করলে
-             "পাওয়া যায়নি" আসে, ৪০৩ নয়। ৪০৩ বললে উল্টো স্বীকার করা হতো যে
-             পর্দাটা আছে। (`createRoutesFromChildren` non-element চাইল্ড
-             নীরবে বাদ দেয়, তাই `false` বসানো নিরাপদ — v7-এর ডকুমেন্টেড
-             আচরণ, ঠিক এই ধরনের শর্তের জন্যই রাখা।)
-        */}
-        {/*
           ⚠️ owner না হলে রুটটা **থাকেই না** — সেটিংসের মতোই। অ্যালার্টে
           হোস্টনেম, কর্মীর নাম আর ডিভাইসের অবস্থা একসাথে থাকে, আর
           সেগুলো ম্যানেজারের নাগালের বাইরে (স্পেক § ৪.৩)।
         */}
         {isOwner && <Route path="alerts" element={<AlertsPage />} />}
 
-        {isOwner && <Route path="settings" element={<SettingsPage />} />}
+        {/*
+          ⭐ যাঁর অধিকার নেই তাঁর জন্য রুটটা **থাকেই না** — সরাসরি
+             `/settings` টাইপ করলে "পাওয়া যায়নি" আসে, ৪০৩ নয়। ৪০৩ বললে
+             উল্টো স্বীকার করা হতো যে পর্দাটা আছে। (`createRoutesFromChildren`
+             non-element চাইল্ড নীরবে বাদ দেয়, তাই `false` বসানো নিরাপদ —
+             v7-এর ডকুমেন্টেড আচরণ, ঠিক এই ধরনের শর্তের জন্যই রাখা।)
+        */}
+        {mayOpenSettings && (
+          <Route path="settings" element={<SettingsPage />} />
+        )}
 
         <Route path="*" element={<NotFoundPage />} />
       </Route>
