@@ -27,7 +27,21 @@ ENV APP_BUILD=$APP_BUILD
 ENV APP_COMMIT=$APP_COMMIT
 WORKDIR /app
 
-RUN apk add --no-cache tzdata dumb-init
+# ⭐⭐ `postgresql16-client` — রাতের ব্যাকআপের `pg_dump` (K02)।
+#
+# ⚠️⚠️ এটা না থাকায় ব্যাকআপ **কোনোদিন একবারও চলেনি**, আর ব্যর্থতাটা ছিল
+# প্রায় নীরব: অ্যালার্ট উঠত ঠিকই, কিন্তু ৪৬টা খোলা অ্যালার্টের ভিড়ে
+# "The nightly backup failed" আলাদা করে কেউ পড়েনি (১৫ আগস্ট ধরা পড়ে)।
+#
+# ⚠️ **মেজর ভার্সন মিলতে হবে** — সার্ভার Postgres ১৬, তাই ক্লায়েন্টও ১৬।
+# পুরোনো `pg_dump` নতুন সার্ভার দেখলে সরাসরি অস্বীকার করে ("server version
+# mismatch"), আর তখন ব্যর্থতাটা আবার রোজ রাতে ফিরে আসত।
+#
+# ⭐ বিকল্প ছিল হোস্টের docker সকেট api কনটেইনারে খুলে দেওয়া
+# (`BACKUP_DOCKER_CONTAINER`) — নেওয়া হয়নি: ওটা কার্যত হোস্টে root-সমান
+# ক্ষমতা, আর এখানে দরকার কেবল একটা ক্লায়েন্ট বাইনারি (~২ MB) যা
+# নেটওয়ার্ক দিয়েই ডাম্প নিতে পারে।
+RUN apk add --no-cache tzdata dumb-init postgresql16-client
 
 COPY package*.json ./
 COPY prisma ./prisma
