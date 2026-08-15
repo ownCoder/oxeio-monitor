@@ -357,3 +357,141 @@ describe('POST /agent/enroll-login — 2FA', () => {
     expect(await h.prisma.device.count()).toBe(0);
   });
 });
+
+/**
+ * ⭐⭐ **একটা ডিভাইস-সারি একজনেরই — নীরবে হাতবদল হবে না।**
+ *
+ * ⚠️⚠️ আসল অফিসে ধরা পড়া বাগ: দুজন কর্মীর PC পালা করে "হঠাৎ offline"
+ * হয়ে যেত, আর Staff পর্দায় তাঁদের সারি ফিরে যেত "Ready to install"-এ।
+ * কারণ `upsert`-এর চাবি ছিল কেবল `machineGuid`, আর সংঘাতে `employeeId`
+ * ও `tokenHash` দুটোই লিখে দেওয়া হতো — তাই একই GUID পাঠানো দুটো মেশিনের
+ * মধ্যে একটাই সারি হাতবদল করত।
+ *
+ * ⚠️ `machineGuid` আসে Windows-এর রেজিস্ট্রি থেকে, আর সেটা **ডিস্ক-ইমেজ
+ * ক্লোনে হুবহু কপি হয়** — অর্থাৎ অফিসে একটা PC সাজিয়ে বাকিগুলোয় ইমেজ
+ * বসালেই সবার GUID এক।
+ */
+describe('POST /agent/enroll-login — ডিভাইস কারো নামে বসলে', () => {
+  const OTHER_EMAIL = 'sadia@test.local';
+  const OTHER_PASSWORD = 'other-password-123';
+
+  /** দ্বিতীয় একজন কর্মী + তার portal লগইন */
+  const addOtherStaff = async (): Promise<number> => {
+    const policy = await h.prisma.workPolicy.findFirstOrThrow();
+    const other = await h.prisma.employee.create({
+      data: { empCode: 'OX-002', fullName: 'Sadia Akther', policyId: policy.id },
+    });
+
+    await h.prisma.user.create({
+      data: {
+        email: OTHER_EMAIL,
+        passwordHash: await hashPassword(OTHER_PASSWORD),
+        fullName: 'Sadia Akther',
+        role: UserRole.employee,
+        employeeId: other.id,
+        mustChangePw: false,
+      },
+    });
+
+    return other.id;
+  };
+
+  /**
+   * ⭐ এটাই মূল দাবি: **দ্বিতীয়জন সারিটা কেড়ে নিতে পারে না**, আর
+   * প্রথমজনের ডিভাইস অক্ষত থাকে।
+   */
+  it('অন্য কর্মী একই machineGuid নিয়ে এলে ৪০৯, আর প্রথমজনের ডিভাইস অটুট', async () => {
+    const otherId = await addOtherStaff();
+    const guid = randomUUID();
+
+    const first = await enrollLogin({
+      ...facts({ machineGuid: guid }),
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
+    expect(first.status).toBe(200);
+
+    // ⚠️ hostname আলাদা — অর্থাৎ **অন্য একটা PC**, একই GUID নিয়ে (ক্লোন)
+    const second = await enrollLogin({
+      ...facts({ machineGuid: guid, hostname: 'PC-09', windowsUsername: 'sadia' }),
+      email: OTHER_EMAIL,
+      password: OTHER_PASSWORD,
+    });
+
+    expect(second.status).toBe(409);
+
+    const device = await h.prisma.device.findUniqueOrThrow({
+      where: { machineGuid: guid },
+    });
+    expect(device.employeeId).toBe(employeeId);
+    // ⭐ টোকেনও বদলায়নি — প্রথম PC-র এজেন্ট চলতেই থাকে
+    expect(device.tokenHash).toBe(
+      (await h.prisma.device.findUniqueOrThrow({ where: { id: first.body.deviceId } }))
+        .tokenHash,
+    );
+
+    // ⚠️ দ্বিতীয়জনের কোনো ডিভাইস তৈরি হয়নি — "Ready to install"-ই থাকবে
+    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(0);
+  });
+
+  /** ⭐ একই কর্মী আবার বসালে আগের মতোই চলে — এটা ভাঙা যাবে না */
+  it('একই কর্মী আবার ইনস্টল করলে সারিটাই হালনাগাদ হয়', async () => {
+    const guid = randomUUID();
+
+    const first = await enrollLogin({
+      ...facts({ machineGuid: guid }),
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
+    expect(first.status).toBe(200);
+
+    const again = await enrollLogin({
+      ...facts({ machineGuid: guid, monitors: 3 }),
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
+
+    expect(again.status).toBe(200);
+    expect(again.body.deviceId).toBe(first.body.deviceId);
+    expect(await h.prisma.device.count()).toBe(1);
+
+    const device = await h.prisma.device.findUniqueOrThrow({
+      where: { machineGuid: guid },
+    });
+    expect(device.monitors).toBe(3);
+  });
+
+  /**
+   * ⭐ বৈধ হস্তান্তরের পথ — PC হাতবদল হলে মালিক revoke করেন, তারপর নতুন
+   * কর্মী নিতে পারেন। সচেতন একটা ধাপ, নীরব চুরি নয়।
+   */
+  it('revoke করা ডিভাইস নতুন কর্মী নিতে পারেন', async () => {
+    const otherId = await addOtherStaff();
+    const guid = randomUUID();
+
+    await enrollLogin({
+      ...facts({ machineGuid: guid }),
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    }).expect(200);
+
+    await h.prisma.device.update({
+      where: { machineGuid: guid },
+      data: { status: 'revoked' },
+    });
+
+    const handover = await enrollLogin({
+      ...facts({ machineGuid: guid, windowsUsername: 'sadia' }),
+      email: OTHER_EMAIL,
+      password: OTHER_PASSWORD,
+    });
+
+    expect(handover.status).toBe(200);
+
+    const device = await h.prisma.device.findUniqueOrThrow({
+      where: { machineGuid: guid },
+    });
+    expect(device.employeeId).toBe(otherId);
+    expect(device.status).toBe('active');
+  });
+});
