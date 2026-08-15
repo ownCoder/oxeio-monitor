@@ -95,8 +95,11 @@ export function Stat({
           : 'text-ink';
 
   return (
-    <div className="px-3.5 py-2.5">
-      <div className="text-[11.5px] text-ink-3">{label}</div>
+    <div className="bg-surface px-3.5 py-2.5">
+      {/* ⭐ মকআপের `.kpi .lbl` — ছোট, বড় হাতের, ফাঁকা-অক্ষরে */}
+      <div className="text-[9px] tracking-[0.07em] text-ink-3 uppercase">
+        {label}
+      </div>
       <div className={`num mt-0.5 text-xl leading-tight font-semibold ${color}`}>
         {value}
         {unit && (
@@ -127,12 +130,16 @@ export function StatRow({ children }: { children: ReactNode }) {
     দেখতে আরেকটা কার্ড। মকআপে ওটা কার্ড নয় — পাতার **মাথা**, আর তাই
     নিচের আসল কার্ডগুলোর সাথে প্রতিযোগিতা করে না।
 
-    ⭐ `divide-x` — ভাগগুলো আলাদা করতে যতটুকু কালি দরকার ঠিক ততটুকু।
-    ⚠️ `divide-y` **ও** দেওয়া হয়েছে: ফোনে গ্রিডটা কয়েক সারিতে নামে, আর
-    তখন কেবল খাড়া রেখা থাকলে সারিগুলো একটার গায়ে আরেকটা লেপ্টে যেত।
+    ⚠️⚠️ **আর এখানে আমি একবার উল্টো দিকে গিয়েছিলাম** — বর্ডারটা তুলে
+    `border-y` করে দিয়েছিলাম, "মকআপে বাক্স নেই" ভেবে। মকআপের CSS আসলে
+    বলে `border: 1px solid var(--line); border-radius: 8px` — বাক্সটা
+    আছেই। ⭐ চোখে আন্দাজ না করে **CSS-টা পড়ে** ধরা পড়েছে।
+
+    ⭐ `gap-px` + পটভূমির রং = ভাগ-রেখা, বর্ডার নয়। বর্ডার দিলে ফোনে
+    সারি বদলানোর সময় দুটো রেখা পাশাপাশি পড়ে মোটা দেখাত।
   */
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] divide-x divide-y divide-line border-y border-line">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-px overflow-hidden rounded-lg border border-line bg-line">
       {children}
     </div>
   );

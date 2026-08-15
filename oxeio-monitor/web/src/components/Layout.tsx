@@ -82,6 +82,15 @@ const NAV: NavItem[] = [
    * দেখতে পারবেন।)
    */
   { to: '/me', label: 'My data', roles: ['employee'] },
+  /**
+   * ⭐ মকআপ ক-এর সাইডবারে Live Board-এর ঠিক পরেই।
+   *
+   * ⚠️ এখানে আগে লেখা ছিল ট্যাবটা "সরানো হয়েছে" — কারণ `/staff` বলে
+   *    কোনো পাতা ছিল না, ট্যাবটা "পাওয়া যায়নি"-তে ঠেকত। এখন পাতাটা
+   *    আছে (`StaffPage`), তাই ট্যাবটাও ফিরল।
+   * ⚠️ **Settings → Staff-এর নকল নয়**: ওখানে সম্পাদনা, এখানে দেখা।
+   */
+  { to: '/staff', label: 'Staff', roles: ['owner', 'manager'] },
   {
     to: '/screenshots',
     label: 'Screenshots',
@@ -300,8 +309,9 @@ export function Layout() {
         >
           {nav.map((item) => (
             <div key={item.to}>
+              {/* ⭐ মকআপের `.side .grp` — ৮.৫px, বড় হাতের, ফাঁকা-অক্ষরে */}
               {item.section && (
-                <div className="mt-3 mb-1 px-2.5 text-[11px] text-ink-3">
+                <div className="mt-3 mb-1 px-2.5 text-[9px] tracking-[0.1em] text-ink-3 uppercase">
                   {item.section}
                 </div>
               )}

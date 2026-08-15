@@ -6,6 +6,7 @@ import { VersionBadge } from './components/VersionBadge';
 import { AlertsPage } from './pages/AlertsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
+import { StaffPage } from './pages/StaffPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
@@ -114,10 +115,19 @@ function Router() {
         />
 
         {/*
-          ⚠️ `staff` বলে কোনো তালিকা-পর্দা নেই (স্পেক § ৫-এ ছ-টা পর্দা, স্টাফ
-             ম্যানেজমেন্ট সেটিংসের ভেতরে)। এখানে শুধু একজনের একটা দিন —
-             লাইভ বোর্ডের কার্ড থেকে ক্লিক করে আসার জায়গা।
+          ⭐⭐ **Staff তালিকা** *(মালিকের চাওয়া, ১৫ আগস্ট — মকআপ ক-এর
+             সাইডবারে ওটা আছে)*।
+
+          ⚠️ এখানে আগে লেখা ছিল "`staff` বলে কোনো তালিকা-পর্দা নেই" — আর
+             সেটাই ছিল সাইডবার থেকে ট্যাবটা তুলে দেওয়ার কারণ। এখন পাতাটা
+             আছে, তাই ট্যাবটাও ফিরেছে।
+
+          ⚠️ owner + manager — `/live` থেকেই ডেটা আসে, আর ওই endpoint
+             স্টাফের জন্য ৪০৩। নেভেও তাই কেবল দুজনের।
         */}
+        {(isOwner || user?.role === 'manager') && (
+          <Route path="staff" element={<StaffPage />} />
+        )}
         <Route path="staff/:id" element={<EmployeeDetailPage />} />
 
         {/*
