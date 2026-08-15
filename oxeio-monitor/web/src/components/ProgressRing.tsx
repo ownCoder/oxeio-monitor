@@ -117,16 +117,27 @@ export function ProgressBar({
   max,
   className = '',
   ariaLabel = 'Progress',
+  tone = 'auto',
 }: {
   value: number;
   max: number;
   className?: string;
   /** রিংয়ের মতোই — কীসের অগ্রগতি */
   ariaLabel?: string;
+  /**
+   * ⭐ `'ok'` — শুরু থেকেই সবুজ *(১৫ আগস্ট)*।
+   *
+   * ⚠️ ডিফল্ট `'auto'`-ই প্রায় সবখানে ঠিক: বার নিরপেক্ষ থাকে আর
+   *    **টার্গেট ছুঁলে** সবুজ হয়, অর্থাৎ সবুজ মানে "হয়ে গেছে"। সেটা
+   *    ভাঙার একটাই বৈধ কারণ — যেখানে **কোনো টার্গেটই নেই**, তাই "হয়ে
+   *    গেছে/হয়নি" প্রশ্নটাই ওঠে না (ছুটির দিনে করা কাজ)। ওখানে
+   *    নিরপেক্ষ রং "এখনো হয়নি"-র মতো পড়া যেত।
+   */
+  tone?: 'auto' | 'ok';
 }) {
   const pct = pctOf(value, max);
   const shown = Math.min(100, Math.max(0, pct));
-  const met = pct >= 100;
+  const met = tone === 'ok' || pct >= 100;
 
   return (
     <div

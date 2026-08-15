@@ -410,9 +410,8 @@ export function LiveBoardPage() {
           {/*
             ⭐ ছুটির দিনে কার্ডটার **নামও বদলায়** *(১৫ আগস্ট)*। "Against
                today's target" যখন কারো কোনো টার্গেটই নেই, তখন শিরোনামটাই
-               একটা স্ববিরোধ — আর নিচে বারো লাইন খালি রেল সেটাকে
-               "সবাই শূন্য শতাংশ"-এর মতো দেখাত। ছুটির দিনে ঘণ্টাগুলো
-               তবু সত্যি, তাই কার্ডটা তখন শুধু ঘণ্টাই দেখায়।
+               একটা স্ববিরোধ। ঘণ্টাগুলো তবু সত্যি — আর বারগুলো তখন
+               **এক কর্মদিবসের** বিপরীতে আঁকা হয়, সবুজ রঙে (`TeamBars`)।
           */}
           <Card
             title={
@@ -420,7 +419,7 @@ export function LiveBoardPage() {
             }
             hint={
               stats.withTarget === 0
-                ? 'Weekly off or holiday — nothing is expected of anyone today'
+                ? 'Day off — green shows today’s hours against a normal working day'
                 : 'Furthest along first · green means the target is met'
             }
             padded={false}
