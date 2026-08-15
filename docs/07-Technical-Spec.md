@@ -507,15 +507,39 @@ work_date  =  started_at-এর Asia/Dhaka তারিখ (সব টেবি�
              (১) সাপ্তাহিক ছুটি নয়   (work_policies.weekly_off_day, ডিফল্ট শুক্র = 5)
        এবং   (২) holidays টেবিলে নেই
 
-expected_workdays  = ওই মাসের মোট কর্মদিবস          → monthly_summary-তে জমা
-workdays_elapsed   = ১ তারিখ থেকে আজ পর্যন্ত (আজ ধরে) কর্মদিবস
+month_workdays     = ওই মাসের মোট কর্মদিবস (D)      → monthly_summary.month_workdays
+expected_workdays  = **তার নিজের** কর্মদিবস (d)     → monthly_summary.expected_workdays
+                     = D ∩ [joined_on … left_on]
+leave_workdays     = তার অনুমোদিত ছুটির কর্মদিবস    → monthly_summary.leave_workdays
 
-expected_sec = target_sec × workdays_elapsed / expected_workdays
+target_sec   = (d − ছুটি) × দৈনিক টার্গেট
+workdays_elapsed = elapsedWorkdays() — নিচের চারটে সীমা মেনে
+expected_sec = target_sec × workdays_elapsed / (d − ছুটি)
 pace_sec     = credited_sec − expected_sec      -- ধনাত্মক = এগিয়ে (§ ২.১-ঙ)
 ```
 
-- **টার্গেট ২০৮ ঘণ্টাই থাকে** — মাসে কর্মদিবস ২৪ হোক বা ২৭, টার্গেট বদলায় না
-- pace লাইন মাসের **শেষ কর্মদিবসে ঠিক ২০৮-এ** গিয়ে ঠেকে — তাই মাস শেষে ভুয়া "এগিয়ে" দেখাবে না
+> ⚠️⚠️ **এই ব্লকের তিনটে লাইন ২০২৬-০৮-১৪/১৫-তে বদলেছে, আর পুরোনো
+> লাইনগুলো কেবল সেকেলে ছিল না — ওগুলোই ছিল মাঠে ধরা পড়া তিনটে বাগের
+> হুবহু বর্ণনা।** যা লেখা ছিল, আর কেন ভুল ছিল:
+>
+> | আগে লেখা ছিল | কেন ভুল | এখন |
+> |---|---|---|
+> | `expected_workdays = ওই মাসের মোট কর্মদিবস` | G37 · ADR-025 — ১৫ তারিখে যোগ দেওয়া কর্মীর টার্গেটও পুরো মাসের হতো | d = **তার নিজের** কর্মদিবস; D আলাদা কলামে (পে-রোলের `d ÷ D` লাগে) |
+> | `workdays_elapsed = ১ তারিখ থেকে আজ পর্যন্ত (**আজ ধরে**)` | ⚠️⚠️ এটাই ছিল tray ও Monthly পাতার **~৮৯ ঘণ্টার** ফারাকের উৎস। "আজ ধরে" মানে ভোর ৬টায় tray "৮ ঘণ্টা পিছিয়ে" দেখাত আর সন্ধ্যায় নিজে থেকেই ঠিক হয়ে যেত — একই মানুষ দিনে দুবার দুই রায় পেতেন, কেবল ঘড়ির কাঁটার কারণে। আর ট্র্যাকিং বসার আগের না-দেখা দিনগুলোও তাঁর ঘাটতি হয়ে যেত | `elapsedWindow()` — শুরু max(পর্বের শুরু, `joined_on`, **তার নিজের** ট্র্যাকিং-শুরু), শেষ min(**গতকাল**, পর্বের শেষ, `left_on`) |
+> | `টার্গেট ২০৮ ঘণ্টাই থাকে — কর্মদিবস ২৪ হোক বা ২৭, বদলায় না` | ⚠️ সরাসরি ADR-025-এর বিরোধী। টার্গেট **d × ৮ঘ**, অর্থাৎ মাসভেদে ১৯২–২১৬ঘ | `target_sec = (d − ছুটি) × dailyTargetSec` |
+>
+> ⭐ **একটাই বাস্তবায়ন:** `server/src/summary/summary.math.ts` →
+> `elapsedWindow()` / `elapsedWorkdays()` / `proratedExpectedSec()`, আর
+> `summary.service` · `progress.service` (tray) · `dashboard.service`
+> (Live Board) · `reports.service` চারটেই **ওই ফাংশনগুলোই ডাকে**। সূত্র
+> দু'জায়গায় লেখা নয় — নইলে পরের বার একটা বদলে অন্যটা থেকে যেত (G88)।
+
+- ⭐ **দৈনিক টার্গেটের হর পলিসির ধ্রুবক** (`work_policies.expected_workdays`,
+  ডিফল্ট ২৬), ওই মাসের ক্যালেন্ডার কর্মদিবস **নয়**। ⚠️ ক্যালেন্ডার ধরলে
+  ছুটি বাড়লে দৈনিক টার্গেট **বাড়ত** — অর্থাৎ ছুটি দিয়ে কর্মীর কোনো লাভই
+  হতো না, আর ২৭ কর্মদিবসের আগস্টে tray বলত ৮.০০ঘ, রিপোর্ট বলত ৭.৭০ঘ।
+- ⭐ **R2 — ছুটি লব ও হর দুটোতেই বাদ যায়**, তাই "প্রতি কাজের দিনে প্রত্যাশা"
+  অপরিবর্তিত থাকে। ⚠️ কিন্তু d ও D **ছোঁয়া হয় না** — ছুটি সবেতন।
 - `weekly_off_day = NULL` দিলে প্রতিটি ক্যালেন্ডার দিনই কর্মদিবস
 - ⚠️ ছুটির দিনে কেউ কাজ করলে **ঘণ্টা পুরোপুরি গোনা হবে**, কিন্তু expected বাড়বে না — সে এগিয়ে যাবে। এটাই কাম্য।
 
@@ -674,20 +698,29 @@ void Tick()  // প্রতি ১ সেকেন্ডে
 
 ### ৩.২.১ মাসিক টার্গেট ও গতি (pace) হিসাব
 
+> ⚠️⚠️ **এই ব্লকটাও ২০২৬-০৮-১৫-তে সংশোধিত।** আগে এখানে
+> `const MONTH_TARGET = 208 * 3600` ছিল আর চারটে হিসাবই ওই ফ্ল্যাট সংখ্যার
+> বিরুদ্ধে হতো — অর্থাৎ ১৫ তারিখে যোগ দেওয়া কর্মীও পুরো ২০৮ ঘণ্টার ঘাটতি
+> নিয়ে শুরু করতেন (G37 · ADR-025)। আর শেষ লাইনে `pace_sec = worked_sec −
+> expected_sec` লেখা ছিল, যেটা ঠিক উপরের লাইনটার (`credited_sec`) সাথেই
+> **বিরোধী**: সার্ভারের দোষে ঘণ্টা হারানো স্টাফ owner-এর সংশোধনের পরেও
+> সারা মাস "পিছিয়ে" দেখতেন, আর সংশোধনটার পুরো উদ্দেশ্যই ব্যর্থ হতো (§ ২.১-ঙ · G35)।
+
 ```csharp
-const int MONTH_TARGET = 208 * 3600;   // ৭,৪৮,৮০০ সেকেন্ড
+// ⭐ টার্গেট **ফ্ল্যাট ২০৮ নয়** — প্রতি কর্মীর নিজের (§ ২.১-খ, ADR-025)
+target_sec    = (d − leave_workdays) * daily_target_sec
 
 // মাসের মোট — দিনের যেকোনো সময়ের, যেকোনো দিনের
 worked_sec    = UNION(ACTIVE) over the month   // কাঁচা হিসাব, § ২.১-গ
 credited_sec  = worked_sec + adjustment_sec    // owner-এর সংশোধন ধরে, § ২.১-ঙ
-shortfall_sec = Math.Max(0, MONTH_TARGET - credited_sec)
-overtime_sec  = Math.Max(0, credited_sec - MONTH_TARGET)
-target_met    = credited_sec >= MONTH_TARGET
+shortfall_sec = Math.Max(0, target_sec - credited_sec)
+overtime_sec  = Math.Max(0, credited_sec - target_sec)
+target_met    = credited_sec >= target_sec
 
 // গতি — মাসের মাঝপথে কে কোথায় দাঁড়িয়ে
-// ⚠️ workdays_elapsed ও expected_workdays-এর সংজ্ঞা § ২.১-খ (হার্ডকোড ২৬ নয়)
-expected_sec  = MONTH_TARGET * (workdays_elapsed / (double)expected_workdays)
-pace_sec      = worked_sec - expected_sec      // ধনাত্মক = এগিয়ে
+// ⚠️ workdays_elapsed ও d-এর সংজ্ঞা § ২.১-খ (হার্ডকোড ২৬ নয়)
+expected_sec  = target_sec * (workdays_elapsed / (double)(d - leave_workdays))
+pace_sec      = credited_sec - expected_sec    // ⚠️ credited, worked নয় (G35)
 ```
 
 **Tray-তে সবসময় দেখা যাবে:**
@@ -697,7 +730,19 @@ pace_sec      = worked_sec - expected_sec      // ধনাত্মক = এগ
 🟢 oXeio · এই মাসে ২০৮.০ / ২০৮ ঘণ্টা   ✅ টার্গেট সম্পূর্ণ
 ```
 
-**যা আর নেই:** দৈনিক টার্গেট, দেরির ফ্ল্যাগ, আগে চলে যাওয়ার ফ্ল্যাগ, লাঞ্চের হিসাব, শিফটের বাইরের ধারণা। দৈনিক ৮ ঘণ্টা শুধু **নির্দেশক** হিসেবে দেখানো হয় (২০৮ ÷ ২৬), মাপকাঠি হিসেবে নয়।
+**যা আর নেই:** দেরির ফ্ল্যাগ, আগে চলে যাওয়ার ফ্ল্যাগ, লাঞ্চের হিসাব,
+শিফটের বাইরের ধারণা।
+
+⚠️ **"দৈনিক টার্গেট নেই" কথাটা আর সত্যি নয়** — এখানে আগে ওটাও এই তালিকায়
+ছিল। দৈনিক টার্গেট (`monthlyTargetHours ÷ policy.expected_workdays`, ডিফল্ট
+২০৮ ÷ ২৬ = ৮ঘ) এখন **সংখ্যা হিসেবে ব্যবহৃত হয়**: কার্ডের progress ring
+(E02), Live Board-এর "Met today's target" টাইল, tray-র আজকের বার, আর
+রিপোর্টের প্রতিদিনের `targetSecOf()` — সবই ওটা দিয়ে চলে।
+
+⭐ তবু **মাপকাঠিটা মাসিকই** — একদিন কম হলে কিছু হয় না, মাস শেষে
+`target_sec` পূর্ণ হলেই হলো। দৈনিক সংখ্যাটা "আজ কেমন যাচ্ছে" বলে, "আজ
+ব্যর্থ" বলে না। ⚠️ ছুটির দিনে ওটা ০, আর তখন খালি বার নয়, একটা বাক্য
+দেখানো হয় (J04)।
 
 ### ৩.৩ Screenshot scheduler (৫ মিনিট স্লট, র‍্যান্ডম সময়)
 

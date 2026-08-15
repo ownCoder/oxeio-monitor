@@ -1,10 +1,20 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
+import { listAlerts } from '../api/alerts';
 import type { Role } from '../api/auth';
+import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark, Wordmark } from './Brand';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeToggle } from './ThemeToggle';
+
+/**
+ * নেভের ব্যাজের তাল — বোর্ডের pulse-এর মতোই ধীরে।
+ *
+ * ⚠️ অ্যালার্ট মিনিটে মিনিটে বদলায় না, আর এটা **প্রতিটা পাতায়** চলে
+ *    (Layout সব রুটের বাইরে)। দ্রুত ডাকলে গোটা অ্যাপ জুড়ে অকারণ ট্রাফিক হতো।
+ */
+const ALERT_BADGE_MS = 120_000;
 
 interface NavItem {
   to: string;
@@ -12,6 +22,22 @@ interface NavItem {
   end?: boolean;
   /** কোন ভূমিকা এই ট্যাবটা **দেখতে পাবে** */
   roles: Role[];
+  /**
+   * ⭐ মকআপ ক-এর ভাগের লেবেল — এই আইটেমটার **ঠিক আগে** বসে।
+   *
+   * ⚠️ কেবল সাইডবারে (`lg`-এর উপরে)। ফোনের আড়াআড়ি সারিতে ভাগের লেবেল
+   *    মানে ট্যাবের মাঝে একটা লেখা যেটা চাপা যায় না — সরু পর্দায় ওটা
+   *    জায়গা খায় আর ট্যাব বলে ভুল হয়।
+   */
+  section?: string;
+  /**
+   * ⭐ নামের পাশে একটা সংখ্যা (মকআপে `Alerts 2`)।
+   *
+   * ⚠️⚠️ `undefined` আর `0` **এক নয়**: `0` মানে "গুনেছি, কিছু নেই" — ব্যাজ
+   *    বসে না; `undefined` মানে "এখনো জানি না"। দুটোকে এক ধরলে সংখ্যা
+   *    আসার আগেই নেভ দাবি করত সব ঠিক আছে।
+   */
+  badge?: number;
 }
 
 /**
@@ -63,7 +89,7 @@ const NAV: NavItem[] = [
    * ⚠️ owner-only — অ্যালার্টে হোস্টনেম, কর্মীর নাম আর ডিভাইসের অবস্থা
    * একসাথে থাকে (§ ৪.৩)। ম্যানেজারকে ব্যাজটাও দেখানো হয় না।
    */
-  { to: '/alerts', label: 'Alerts', roles: ['owner'] },
+  { to: '/alerts', label: 'Alerts', roles: ['owner'], section: 'Oversight' },
   // ⚠️ owner-only — `App.tsx`-এ রুটটাও শুধু owner-এর জন্যই বসে
   // ⭐ ম্যানেজারও ঢোকেন *(১৫ আগস্ট)* — Staff · Categories · Policies &
   //    holidays, এই তিনটে ট্যাব তাঁর। বাকিগুলো `SettingsPage` নিজেই
@@ -93,7 +119,30 @@ const ROLE_LABEL: Record<string, string> = {
 export function Layout() {
   const { user, signOut } = useAuth();
   const { pathname } = useLocation();
-  const nav = user ? NAV.filter((item) => item.roles.includes(user.role)) : [];
+  /**
+   * ⭐ না-দেখা অ্যালার্টের সংখ্যা — নেভের ব্যাজের জন্য।
+   *
+   * ⚠️ owner ছাড়া কেউ ডাকে না (`listAlerts` owner-only), নইলে ম্যানেজারের
+   *    ব্রাউজার প্রতি দু-মিনিটে একটা করে ৪০৩ কুড়াত।
+   * ⚠️ ব্যর্থ হলে `undefined` — ০ নয়। সংখ্যাটা না জানলে নেভ চুপ থাকে,
+   *    "কোনো অ্যালার্ট নেই" বলে না।
+   */
+  const alerts = usePolling(
+    (signal) =>
+      user?.role === 'owner'
+        ? listAlerts({ limit: 1 }, signal)
+        : Promise.resolve(null),
+    ALERT_BADGE_MS,
+    [user?.role],
+  );
+
+  const nav = user
+    ? NAV.filter((item) => item.roles.includes(user.role)).map((item) =>
+        item.to === '/alerts'
+          ? { ...item, badge: alerts.data?.total }
+          : item,
+      )
+    : [];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -191,20 +240,37 @@ export function Layout() {
           className="hidden w-44 shrink-0 border-r border-line bg-surface p-2 lg:block"
         >
           {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `mb-0.5 block rounded-md px-2.5 py-2 text-[13px] transition ${
-                  isActive
-                    ? 'bg-ok/10 font-semibold text-ok-ink'
-                    : 'text-ink-2 hover:bg-paper hover:text-ink'
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
+            <div key={item.to}>
+              {item.section && (
+                <div className="mt-3 mb-1 px-2.5 text-[10.5px] font-semibold tracking-wider text-ink-3 uppercase">
+                  {item.section}
+                </div>
+              )}
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `mb-0.5 flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-[13px] transition ${
+                    isActive
+                      ? 'bg-ok/10 font-semibold text-ok-ink'
+                      : 'text-ink-2 hover:bg-paper hover:text-ink'
+                  }`
+                }
+              >
+                <span>{item.label}</span>
+                {/*
+                  ⚠️ `> 0` — শূন্য হলে ব্যাজ **বসেই না**। "0" লেখা একটা ব্যাজ
+                     চোখ টানে ঠিক যতটা "3" লেখাটা টানে, অথচ বলার মতো কিছু নেই।
+                  ⚠️ রংটা হলুদ (`idle`), লাল নয় — খোলা অ্যালার্ট মানে
+                     "দেখুন", "এখনই হাত দিন" নয়; লাল বোর্ডের এজেন্ট-টাইলের।
+                */}
+                {item.badge != null && item.badge > 0 && (
+                  <span className="num rounded-full bg-idle/15 px-1.5 py-px text-[10.5px] font-semibold text-idle-ink">
+                    {item.badge}
+                  </span>
+                )}
+              </NavLink>
+            </div>
           ))}
         </nav>
 

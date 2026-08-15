@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 
 import { getTopUsage } from '../api/activity';
 import { listAlerts } from '../api/alerts';
@@ -7,6 +8,7 @@ import {
   getTeamPulse,
   getTeamTrend,
   type LiveCard,
+  type TrendDay,
 } from '../api/dashboard';
 import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
@@ -24,7 +26,8 @@ import {
 import { DayPulse } from './live/DayPulse';
 import { OpenAlerts } from './live/OpenAlerts';
 import { TopApps } from './live/TopApps';
-import { StatusStrip, TargetBars } from './live/TeamBars';
+import { StatusStrip } from './live/TeamBars';
+import { TeamTable } from './live/TeamTable';
 import { MonthCard, TopPerformers, WeekBars } from './live/WeekAndMonth';
 import { PersonCard } from './live/PersonCard';
 import { getLatestShots, NO_SHOTS } from './live/latestShots';
@@ -87,6 +90,7 @@ type LeaderWindow = (typeof LEADER_WINDOWS)[number]['id'];
 
 export function LiveBoardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   /**
    * ⚠️ `/live` শুধু owner ও manager-এর (live.controller.ts-এ ক্লাস-লেভেল
@@ -246,43 +250,56 @@ export function LiveBoardPage() {
           </p>
         )}
 
+        {/*
+          ⭐⭐ **ছ-টা টাইল, মকআপ ক-এর ক্রমেই** — কাজ করছেন · আজকের ঘণ্টা ·
+          দলের pace · জনপ্রতি গড় · এজেন্ট সচল · খোলা অ্যালার্ট।
+
+          ⭐ প্রতিটার নিচে **এক লাইনের প্রেক্ষাপট** (`sub`), আর ওটাই এই
+          সারির আসল কাজ: একটা কাঁচা সংখ্যা প্রায়ই দুভাবে পড়া যায়, আর তখন
+          মানুষ যেটা ভয় পান সেটাই ধরে নেন। "pace −৬ঘ" ভয়ংকর শোনায় যতক্ষণ
+          না জানা যায় গোনা শুরুই হয়েছে তিন দিন আগে।
+
+          ⚠️⚠️ **যা জানা নেই তা লেখা হয় না।** মকআপে টাইলের নিচে ছিল
+          "৩ জন ছুটিতে" ও "১ কর্মদিবস পেরিয়েছে" — দুটোর কোনোটাই বোর্ডের
+          ডেটায় নেই (`/live` ছুটি জানে না, `TrendMonth`-এ কর্মদিবসের
+          সংখ্যাও নেই)। ⭐ তাই ওই দুটো জায়গায় **অন্য সত্যি কথা** বসেছে যা
+          একই ভুল-পড়া ঠেকায়: কতজনের আজ টার্গেটই নেই, আর কবে থেকে গোনা হচ্ছে।
+          অনুমান করে লিখলে টাইলটা এমন কিছু দাবি করত যা সে জানে না।
+        */}
         <StatRow>
           <Stat
             label="Working now"
             value={stats.active}
             unit={`/${stats.total}`}
+            sub={
+              stats.total - stats.withTarget > 0
+                ? `${stats.total - stats.withTarget} on a day off`
+                : undefined
+            }
           />
+
           {/*
-            ⭐ হর **`withTarget`**, `total` নয় — ছুটিতে থাকা কর্মী "টার্গেট
-               ছোঁয়নি" দলে পড়লে ছুটির দিনটাই ব্যর্থতার মতো দেখাত।
+            ⭐ মকআপের "▲ গতকালের চেয়ে ২ঘ ১০মি" — তুলনাটা `trend.days` থেকে,
+               নতুন কোনো কল ছাড়াই।
+
+            ⚠️⚠️ গতকাল **ট্র্যাক করা না থাকলে তুলনা দেখানো হয় না**। ওই দিনের
+               `workedSec` তখন ০, আর "▲ ১৮ঘ বেশি" লিখলে সেটা সরাসরি মিথ্যা —
+               কাল কেউ কম কাজ করেনি, কাল আমরা দেখিইনি।
+            ⚠️ আজকের দিনটা এখনো চলছে, তাই দুপুরে তুলনাটা প্রায় সবসময় ঋণাত্মক।
+               সেটা ভুল নয়, আর সেজন্যই এটা রঙিন নয় — কেবল তথ্য।
           */}
           <Stat
-            label="Met today's target"
-            value={stats.withTarget === 0 ? '—' : stats.metTarget}
-            unit={stats.withTarget === 0 ? undefined : `/${stats.withTarget}`}
-            tone={
-              stats.withTarget === 0 || stats.metTarget === 0
-                ? 'muted'
-                : 'counted'
-            }
+            label="Hours today"
+            value={formatDuration(stats.todaySec)}
+            sub={yesterdayDelta(trend.data?.days, stats.todaySec)}
           />
-          <Stat label="Hours today" value={formatDuration(stats.todaySec)} />
-          <Stat
-            label="Average today"
-            value={
-              stats.workedToday === 0
-                ? '—'
-                : formatDuration(stats.todaySec / stats.workedToday)
-            }
-            tone={stats.workedToday === 0 ? 'muted' : 'counted'}
-          />
+
           {/*
-            ⭐⭐ **মাসের pace — গোটা অ্যাপের কেন্দ্রীয় সংখ্যাটা।** এতদিন এটা
-               কেবল নিচের কার্ডে ছিল, অথচ "আমরা কি পিছিয়ে আছি" প্রশ্নটাই
-               বোর্ড খোলার সবচেয়ে সাধারণ কারণ — তাই উপরের সারিতেই।
+            ⭐⭐ **মাসের pace — গোটা অ্যাপের কেন্দ্রীয় সংখ্যাটা।** "আমরা কি
+               পিছিয়ে আছি" প্রশ্নটাই বোর্ড খোলার সবচেয়ে সাধারণ কারণ।
 
             ⚠️ রংটা **হলুদ, লাল নয়** (`behind`)। পিছিয়ে থাকা খারাপ, কিন্তু
-               "এখনই হাত দিন" নয় — লাল ওই একটাই টাইলের জন্য রাখা (নিচে)।
+               "এখনই হাত দিন" নয়।
             ⚠️ `trackedFrom` না থাকলে জানালাটাই খালি, অর্থাৎ **সংখ্যা নেই** —
                তখন `০` নয়, `—`, নইলে "ঠিক আছে" বলে মিথ্যা দাবি হতো।
           */}
@@ -304,13 +321,78 @@ export function LiveBoardPage() {
                   ? 'behind'
                   : 'counted'
             }
+            sub={
+              trend.data?.month.trackedFrom
+                ? `counted from ${formatDate(trend.data.month.trackedFrom)}`
+                : 'no finished day counted yet'
+            }
           />
-          {/* ⚠️ পর্দায় একটাই লাল টাইল — নইলে লাল রঙের মানেই হারিয়ে যায় */}
+
+          {/*
+            ⚠️ হর `workedToday`, `total` নয় — যাঁরা আজ শুরুই করেননি তাঁদের
+               শূন্য দিয়ে ভাগ করলে গড়টা "দল কেমন করছে" নয়, "কতজন এসেছে"
+               বলত। ⭐ `sub`-এ দৈনিক টার্গেট, কিন্তু **কেবল সবার এক হলে**।
+          */}
           <Stat
-            label="Agent down"
-            value={stats.agentDown}
-            tone={stats.agentDown > 0 ? 'attention' : 'muted'}
+            label="Average today"
+            value={
+              stats.workedToday === 0
+                ? '—'
+                : formatDuration(stats.todaySec / stats.workedToday)
+            }
+            tone={stats.workedToday === 0 ? 'muted' : 'counted'}
+            sub={
+              commonDailyTarget(cards) != null
+                ? `target ${formatDuration(commonDailyTarget(cards) as number)}`
+                : undefined
+            }
           />
+
+          {/*
+            ⭐ মকআপ ক-এর মতো **ইতিবাচক দিক থেকে** — "কতগুলো সচল", "কতগুলো
+               মরা" নয়। সাতটার সাতটাই চললে সংখ্যাটা তখন একটা আশ্বাস, আর
+               সেটাই বোর্ড খোলার একটা বৈধ কারণ।
+
+            ⚠️⚠️ **লাল এখানেই, আর পর্দায় এটাই একমাত্র লাল।** এজেন্ট বন্ধ
+               মানে ঠিক এই মুহূর্তে কারো ঘণ্টা **হারিয়ে যাচ্ছে** — সেটা
+               খোলা অ্যালার্টের চেয়ে ভিন্ন জাতের, কারণ অ্যালার্ট ইতিমধ্যে
+               ঘটে যাওয়া কিছুর খবর। তাই পাশের টাইলটা হলুদ, এটা লাল।
+          */}
+          <Stat
+            label="Agents up"
+            value={stats.total - stats.agentDown}
+            unit={`/${stats.total}`}
+            tone={stats.agentDown > 0 ? 'attention' : 'counted'}
+            sub={
+              stats.agentDown > 0
+                ? `${stats.agentDown} silent — hours are being lost`
+                : 'every heartbeat is fresh'
+            }
+          />
+
+          {/*
+            ⚠️ owner ছাড়া কেউ অ্যালার্ট দেখেন না (`listAlerts` owner-only),
+               তাই ম্যানেজারের কাছে টাইলটা `—` দেখাত। ⭐ তার বদলে টাইলটাই
+               বসে না — খালি ঘর একটা প্রশ্ন তৈরি করত যার উত্তর তাঁর জন্য নেই।
+          */}
+          {isOwner && (
+            <Stat
+              label="Open alerts"
+              value={alerts.data ? alerts.data.total : '—'}
+              tone={
+                !alerts.data
+                  ? 'muted'
+                  : alerts.data.total > 0
+                    ? 'behind'
+                    : 'counted'
+              }
+              sub={
+                alerts.data && alerts.data.total > 0
+                  ? alerts.data.rows[0]?.title
+                  : undefined
+              }
+            />
+          )}
         </StatRow>
 
         {/*
@@ -424,7 +506,7 @@ export function LiveBoardPage() {
             }
             padded={false}
           >
-            <TargetBars cards={cards} />
+            <TeamTable cards={cards} />
           </Card>
 
           {/*
@@ -613,7 +695,40 @@ export function LiveBoardPage() {
 
   return (
     <Page
-      title="Live Board"
+      title={
+        <span className="flex items-center gap-2">
+          Live Board
+          {/*
+            ⭐ মকআপ ক-এর `LIVE` ব্যাজ — এই পাতাটা নিজে থেকেই নতুন হয়, সেটা
+               বলার জন্য। বাকি পাতাগুলো হয় না, তাই পার্থক্যটা বলার মতো।
+
+            ⚠️⚠️ **শেষ রিফ্রেশ ব্যর্থ হলে ব্যাজটা নেভে**, আর এটাই এর একমাত্র
+               শর্ত। সবুজ বিন্দু জ্বলতে থাকলে ওটা দাবি করে "যা দেখছেন তা
+               এইমাত্রকার" — অথচ নিচের সংখ্যাগুলো তখন কয়েক মিনিটের পুরোনো।
+               ঠিক ওই মুহূর্তে ব্যাজটাই হতো পর্দার সবচেয়ে বড় মিথ্যা।
+          */}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${
+              board.error
+                ? 'bg-line/60 text-ink-3'
+                : 'bg-ok/10 text-ok-ink'
+            }`}
+            title={
+              board.error
+                ? 'The last refresh failed — the numbers below are older'
+                : 'This page refreshes itself every 30 seconds'
+            }
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                board.error ? 'bg-ink-3' : 'animate-pulse bg-ok'
+              }`}
+              aria-hidden
+            />
+            {board.error ? 'STALE' : 'LIVE'}
+          </span>
+        </span>
+      }
       subtitle={data ? `${formatDate(data.workDate)} · Dhaka time` : 'Right now'}
       actions={
         <div className="flex items-center gap-2">
@@ -643,6 +758,20 @@ export function LiveBoardPage() {
           >
             Refresh
           </Button>
+          {/*
+            ⭐ মকআপ ক-এর তৃতীয় বোতাম। ⚠️ মকআপে একটা "আজ" বোতামও ছিল —
+               সেটা বসানো হয়নি, কারণ বোর্ড **কেবল আজকেরই** দেখায়, অন্য
+               তারিখ বাছার পথ নেই। যে বোতাম কিছু বদলায় না, সেটা পর্দায়
+               থাকলে ব্যবহারকারী ধরে নিতেন অন্য তারিখও দেখা যায়।
+          */}
+          {canViewBoard && (
+            <Button
+              onClick={() => navigate('/reports')}
+              title="Excel and PDF for any date range"
+            >
+              Reports
+            </Button>
+          )}
         </div>
       }
     >
@@ -658,6 +787,47 @@ export function LiveBoardPage() {
       )}
     </Page>
   );
+}
+
+/**
+ * ⭐ "▲ গতকালের চেয়ে ২ঘ ১০মি" — মকআপ ক-এর টাইলে যা ছিল।
+ *
+ * ⚠️⚠️ **গতকাল ট্র্যাক করা না থাকলে `undefined`**, শূন্য নয়। ওই দিনের
+ * `workedSec` তখনো ০ আসে, আর সেটাকে তুলনায় বসালে টাইল বলত "▲ ১৮ঘ বেশি" —
+ * সরাসরি মিথ্যা: কাল কেউ কম কাজ করেনি, কাল **আমরা দেখিইনি**। এটাই এই
+ * ফাইলের সবচেয়ে পুরোনো নিয়ম (`tracked` ঘরটার জন্মই এই কারণে)।
+ *
+ * ⚠️ শেষ সারিটা আজকের, তাই গতকাল **শেষ থেকে দ্বিতীয়**।
+ */
+function yesterdayDelta(
+  days: readonly TrendDay[] | undefined,
+  todaySec: number,
+): string | undefined {
+  if (!days || days.length < 2) return undefined;
+
+  const yesterday = days[days.length - 2];
+  if (!yesterday.tracked) return undefined;
+
+  const delta = todaySec - yesterday.workedSec;
+  // ⚠️ ৫ মিনিটের কম ফারাক দেখানো হয় না — "▲ ২মি" কোনো খবর নয়, কেবল কালি
+  if (Math.abs(delta) < 300) return 'about the same as yesterday';
+
+  return `${delta > 0 ? '▲' : '▼'} ${formatDuration(Math.abs(delta))} vs yesterday`;
+}
+
+/**
+ * সবার দৈনিক টার্গেট এক হলে সেই সংখ্যাটা, নইলে `null`।
+ *
+ * ⚠️ আলাদা নীতিতে থাকা দল হলে একটা সংখ্যা বেছে দেখানো যেত না — তখন টাইল
+ * এমন একটা "টার্গেট" দাবি করত যা কারো কারো ক্ষেত্রে ভুল। ⭐ আর ছুটির দিনে
+ * সবার টার্গেট ০, তাই তখনো কিছু দেখানো হয় না।
+ */
+function commonDailyTarget(cards: readonly LiveCard[]): number | null {
+  const withTarget = cards.filter((c) => c.dailyTargetSec > 0);
+  if (withTarget.length === 0) return null;
+
+  const first = withTarget[0].dailyTargetSec;
+  return withTarget.every((c) => c.dailyTargetSec === first) ? first : null;
 }
 
 interface BoardStats {
