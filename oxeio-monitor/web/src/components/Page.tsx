@@ -15,7 +15,15 @@ export function Page({
   actions,
   children,
 }: {
-  title: ReactNode;
+  /**
+   * ⭐ **ঐচ্ছিক** — Live Board শিরোনাম ছাড়াই চলে (মকআপ ক-এ ওটা নেই;
+   * পাতার নাম সাইডবারে জ্বলে, তারিখ-সময় উপরের বারে)।
+   *
+   * ⚠️ শিরোনাম না থাকলে **ফাঁকা জায়গাটুকুও বসে না** — নইলে একটা অদৃশ্য
+   * শিরোনামের জন্য পর্দার মাথায় ৭০px খালি পড়ে থাকত, ঠিক যেখানে মকআপের
+   * KPI সারিটা বসার কথা।
+   */
+  title?: ReactNode;
   /** এক লাইনের ব্যাখ্যা — কী দেখানো হচ্ছে, কোন তারিখের */
   subtitle?: ReactNode;
   /** তারিখ বাছাই, ডাউনলোড, রিফ্রেশ — ডানদিকে */
@@ -24,17 +32,21 @@ export function Page({
 }) {
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-          {subtitle && (
-            <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>
+      {(title || actions) && (
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            {title && (
+              <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+            )}
+            {subtitle && (
+              <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>
+            )}
+          </div>
+          {actions && (
+            <div className="flex flex-wrap items-end gap-2">{actions}</div>
           )}
         </div>
-        {actions && (
-          <div className="flex flex-wrap items-end gap-2">{actions}</div>
-        )}
-      </div>
+      )}
       {children}
     </div>
   );
