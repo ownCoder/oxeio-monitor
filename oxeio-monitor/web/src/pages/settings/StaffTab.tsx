@@ -528,9 +528,7 @@ function patchOf(
 ): UpdateEmployeeBody {
   const patch: UpdateEmployeeBody = {};
 
-  if (after.empCode.trim() !== before.empCode) {
-    patch.empCode = after.empCode.trim();
-  }
+  // ⚠️ `empCode` তুলনাই করা হয় না — ঘরটা read-only, আর সার্ভারও ওটা নেয় না।
   if (after.fullName.trim() !== before.fullName) {
     patch.fullName = after.fullName.trim();
   }
@@ -574,28 +572,26 @@ function EmployeeForm({
   const { busy, error, run } = useMutation();
 
   /**
-   * ⭐ নতুন কর্মীর ফর্ম খুললে কোডটা আগে থেকেই বসে যায় (`OX-13`)।
+   * ⭐ নতুন কর্মীর ফর্মে কোডটা **আগেভাগে দেখানো** হয় (`OX-13`) — কিন্তু
+   * ওটা কেবল দেখার জন্য, পাঠানোর জন্য নয়। আসল কোড বসে সার্ভারে, সেভ
+   * করার মুহূর্তে।
    *
-   * ⚠️ **সম্পাদনার সময় নয়** — ওখানে কোডটা কর্মীর নিজের, আর ওটা বদলে
-   * দেওয়ার কোনো কারণ নেই।
+   * ⚠️ তাই লেখাটা "next", "your code will be" নয়: দুজন মালিক একসাথে
+   * যোগ করলে একজন পরেরটা পাবেন, আর পর্দা তখন মিথ্যে বলে থাকত।
    *
-   * ⚠️ ব্যর্থ হলে চুপ করে থাকা হয় ইচ্ছাকৃতভাবে: এটা নিছক সুবিধা, আর
-   * এর জন্য পুরো ফর্মে একটা লাল বার্তা দেখানো অর্থহীন — মালিক তখন
-   * নিজেই কোডটা টাইপ করে নিতে পারেন।
+   * ⚠️ **সম্পাদনার সময় ডাকা হয় না** — ওখানে কোডটা কর্মীর নিজের।
    *
-   * ⚠️ যা টাইপ করা হয়ে গেছে তার উপরে বসে না (`prev.empCode === ''`) —
-   * ধীর সংযোগে উত্তর আসতে দেরি হলে হাতে লেখা কোড মুছে যেত।
+   * ⚠️ ব্যর্থ হলে চুপ করে থাকা হয় ইচ্ছাকৃতভাবে: এটা নিছক তথ্য, আর এর
+   * জন্য পুরো ফর্মে লাল বার্তা দেখানো অর্থহীন — সেভ করলে কোড ঠিকই বসবে।
    */
   useEffect(() => {
     if (employee) return;
 
     const ac = new AbortController();
     nextEmployeeCode(ac.signal)
-      .then(({ code }) =>
-        setForm((prev) => (prev.empCode === '' ? { ...prev, empCode: code } : prev)),
-      )
+      .then(({ code }) => setForm((prev) => ({ ...prev, empCode: code })))
       .catch(() => {
-        /* পরামর্শ না এলে ঘরটা খালিই থাকুক */
+        /* না এলে ঘরটা "Assigned on save" দেখাবে */
       });
 
     return () => ac.abort();
@@ -614,8 +610,8 @@ function EmployeeForm({
           await updateEmployee(employee.id, patch);
         }
       } else {
+        // ⚠️ `empCode` পাঠানো হয় না — সার্ভার নিজে বসায়, আর পাঠালে ৪০০
         const body: CreateEmployeeBody = {
-          empCode: form.empCode.trim(),
           fullName: form.fullName.trim(),
           ...(orUndefined(form.email) ? { email: form.email.trim() } : {}),
           ...(orUndefined(form.designation)
@@ -636,14 +632,14 @@ function EmployeeForm({
     });
   };
 
-  const incomplete =
-    form.empCode.trim() === '' || form.fullName.trim() === '';
+  // ⚠️ কোড আর শর্ত নয় — ওটা সার্ভারের কাজ। শুধু নাম চাই।
+  const incomplete = form.fullName.trim() === '';
 
   return (
     <Modal
       title={employee ? `${employee.fullName} — edit` : 'New staff member'}
       hint={
-        employee ? `Code ${employee.empCode}` : 'Code and name are required'
+        employee ? `Code ${employee.empCode}` : 'Only the name is required'
       }
       onClose={onClose}
       footer={
@@ -655,7 +651,7 @@ function EmployeeForm({
             tone="primary"
             onClick={submit}
             disabled={busy || incomplete}
-            title={incomplete ? 'Both code and name are required' : undefined}
+            title={incomplete ? 'The name is required' : undefined}
           >
             {busy ? 'Saving…' : 'Save'}
           </Button>
@@ -664,26 +660,39 @@ function EmployeeForm({
     >
       <div className="space-y-3.5">
         <FormGrid>
+          {/*
+            ⭐⭐ কোডটা **দেখার জিনিস, লেখার নয়** — সার্ভার বসায়, কেউ বদলাতে
+            পারে না। ঘরটা তবু রাখা হয়েছে (লুকিয়ে ফেলা হয়নি), কারণ
+            রোলআউটের দিনে "এর কোড কত?" প্রশ্নটা এই ফর্মেই ওঠে।
+
+            ⚠️ `disabled` কেবল পর্দার ভদ্রতা নয় — সার্ভারেও ঘরটা নেই
+            (`CreateEmployeeDto`/`UpdateEmployeeDto`), তাই DevTools দিয়ে
+            চালাকি করলেও ৪০০। দুই দিকেই বন্ধ না করলে একদিন একটা বদলাত।
+          */}
           <TextField
             label="Employee code"
             value={form.empCode}
-            onChange={set('empCode')}
-            required
+            onChange={() => {
+              /* বদলানো যায় না */
+            }}
+            disabled
             mono
-            maxLength={32}
-            autoFocus={!employee}
             hint={
               employee
-                ? 'Letters, digits, hyphen and underscore only'
-                : 'Suggested from the highest code so far — change it if you like'
+                ? 'Assigned by the system — this never changes'
+                : form.empCode === ''
+                  ? 'Assigned automatically when you save'
+                  : 'Assigned automatically — this is the next one in line'
             }
           />
+          {/* ⚠️ কোডের ঘরটা এখন disabled, তাই মোডাল খুললে কার্সার এখানে */}
           <TextField
             label="Full name"
             value={form.fullName}
             onChange={set('fullName')}
             required
             maxLength={120}
+            autoFocus={!employee}
           />
           <TextField
             label="Email"

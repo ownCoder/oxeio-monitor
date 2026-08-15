@@ -95,15 +95,20 @@ describe('GET /employees/next-code', () => {
     expect(await next()).toBe('OX-10');
   });
 
-  /** ⭐ পরামর্শটা সত্যিই ব্যবহারযোগ্য — এটাই আসল দাবি */
-  it('পরামর্শ দেওয়া কোড দিয়ে সত্যিই কর্মী যোগ করা যায়', async () => {
+  /**
+   * ⭐ আগেভাগে দেখানো কোডটাই সত্যিই বসে — এটাই আসল দাবি।
+   *
+   * ⚠️ কোড **পাঠানো হয় না**; সার্ভার নিজে বসায়। তাই এটা একই সাথে দেখায়
+   * যে পূর্বাভাস আর বাস্তবতা এক।
+   */
+  it('আগেভাগে দেখানো কোডটাই সেভ করলে বসে', async () => {
     await createEmployeeWithCode(h.prisma, 'OX-01');
 
     const code = await next();
     const res = await owner.http
       .post('/api/v1/employees')
       .set('X-CSRF-Token', owner.csrf)
-      .send({ empCode: code, fullName: 'Notun Kormi' });
+      .send({ fullName: 'Notun Kormi' });
 
     expect(res.status).toBe(201);
     expect(res.body.empCode).toBe(code);
@@ -113,6 +118,84 @@ describe('GET /employees/next-code', () => {
   it('ম্যানেজারও পায়', async () => {
     const manager = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
     await manager.http.get('/api/v1/employees/next-code').expect(200);
+  });
+});
+
+/**
+ * **কর্মী-কোড সিস্টেম বসায়, কেউ বদলাতে পারে না।**
+ *
+ * ⚠️ কেন এই টেস্টগুলো: কোডটা মানুষের **পরিচয়** — রিপোর্ট, Excel, পে-রোল
+ * শিট আর ছাপানো কাগজে ওটাই লেখা থাকে। হাতে বসানোর সুযোগ থাকলে দুটো
+ * বিপদ ছিল: টাইপো (`OX-007` বনাম `OX-07`, দুটোই আসল ডেটায় ঘটেছে), আর
+ * মাঝপথে বদলে ফেলা — যাতে পুরোনো কাগজ আর নতুন পর্দা দুই কথা বলত।
+ *
+ * ⭐ পর্দায় ঘরটা `disabled`, কিন্তু আসল পাহারা **এখানে** — DevTools দিয়ে
+ * সরাসরি রিকোয়েস্ট পাঠালেও যাতে ঢুকতে না পারে।
+ */
+describe('কর্মী-কোড — সিস্টেমের হাতে', () => {
+  // ⚠️ উপরের গ্লোবাল `beforeEach`-ই ডাটাবেস ধুয়ে owner-কে লগইন করায়
+
+  it('কোড না পাঠালেও কর্মী তৈরি হয়, আর কোড বসে', async () => {
+    const res = await owner.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ fullName: 'Kono Code Chara' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.empCode).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(res.body.empCode.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * ⚠️ ৪০০, নীরবে উপেক্ষা **নয়** — `forbidNonWhitelisted`। "পাঠালাম অথচ
+   * বসল না" অবস্থাটা এই ফিল্ডে সবচেয়ে বিপজ্জনক, কারণ কোডটা মানুষ চোখে
+   * চেনে আর ধরে নিত সেটাই বসেছে।
+   */
+  it('তৈরির সময় কোড পাঠালে ৪০০', async () => {
+    const res = await owner.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ empCode: 'MY-OWN-99', fullName: 'Nijer Code' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('সম্পাদনায় কোড বদলাতে চাইলে ৪০০, আর কোড অটুট থাকে', async () => {
+    const created = await owner.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ fullName: 'Age Jini Chilen' })
+      .expect(201);
+
+    const before: string = created.body.empCode;
+
+    await owner.http
+      .patch(`/api/v1/employees/${created.body.id}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ empCode: 'BODLE-DILAM' })
+      .expect(400);
+
+    const after = await owner.http
+      .get(`/api/v1/employees/${created.body.id}`)
+      .expect(200);
+
+    expect(after.body.empCode).toBe(before);
+  });
+
+  /** ⭐ পরপর যোগ করলে কোড এগোয় — একই কোড দুবার বসে না */
+  it('পরপর তিনজন যোগ করলে তিনটে আলাদা কোড', async () => {
+    const codes: string[] = [];
+
+    for (const name of ['Ek', 'Dui', 'Tin']) {
+      const res = await owner.http
+        .post('/api/v1/employees')
+        .set('X-CSRF-Token', owner.csrf)
+        .send({ fullName: name })
+        .expect(201);
+      codes.push(res.body.empCode);
+    }
+
+    expect(new Set(codes).size).toBe(3);
   });
 });
 
