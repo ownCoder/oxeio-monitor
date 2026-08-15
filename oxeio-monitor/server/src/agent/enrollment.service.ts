@@ -120,6 +120,88 @@ export class EnrollmentService {
   }
 
   /**
+   * ⭐⭐ **একটা ডিভাইস-সারি একজনেরই — নীরবে হাতবদল হবে না।**
+   *
+   * ⚠️⚠️ যে বাগটা এটা সারায়: `upsert`-এর চাবি ছিল কেবল `machineGuid`, আর
+   * সংঘাত হলে `employeeId` ও `tokenHash` **দুটোই লিখে দেওয়া হতো**। ফলে
+   * দুটো মেশিন একই `machineGuid` পাঠালে একটাই সারি দুজনের মধ্যে হাতবদল
+   * করত, আর প্রতিবার:
+   *
+   *   · আগের PC-র টোকেন অচল হয়ে যেত → তার এজেন্ট চুপচাপ ৪০১ খেয়ে
+   *     **কিছুই পাঠাতে পারত না** (মালিকের চোখে "হঠাৎ offline")
+   *   · আগের কর্মীর ডিভাইস-সংখ্যা **শূন্য** হয়ে যেত → Staff পর্দায়
+   *     "Ready to install", Live Board-এ "No agent yet"
+   *
+   * ⚠️ পুরো ব্যাপারটা **নীরব** ছিল: কোনো এরর নয়, কোনো লগ নয়। ধরা পড়ত
+   *    কেবল ওই কর্মীর হারানো ঘণ্টা দিয়ে, দিন পেরিয়ে যাওয়ার পর।
+   *
+   * ⭐ `machineGuid` আসে `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`
+   *    থেকে, আর সেটা **ডিস্ক-ইমেজ ক্লোনে হুবহু কপি হয়** (এজেন্টের নিজের
+   *    `DeviceTokenStore`-এ কথাটা লেখাই আছে)। একই PC-তে দুজন সাইন ইন
+   *    করলেও একই দশা।
+   *
+   * ⭐ **বৈধ হস্তান্তরের পথ খোলা:** ডিভাইসটা `revoked` হলে নতুন কর্মী
+   *    নিতে পারেন। অর্থাৎ PC হাতবদল হলে মালিক Settings → Devices-এ
+   *    একবার revoke করবেন — সচেতন একটা ধাপ, নীরব চুরি নয়।
+   */
+  private async assertNotSomeoneElses(
+    tx: Prisma.TransactionClient,
+    dto: EnrollFacts,
+    employeeId: number,
+  ): Promise<void> {
+    const existing = await tx.device.findUnique({
+      where: { machineGuid: dto.machineGuid },
+      select: {
+        status: true,
+        hostname: true,
+        windowsUsername: true,
+        employeeId: true,
+        employee: { select: { empCode: true } },
+      },
+    });
+
+    // নতুন মেশিন · আগেরটা কারো নামে নেই · একই কর্মী আবার বসাচ্ছেন —
+    // তিনটেই স্বাভাবিক
+    if (
+      !existing ||
+      existing.employeeId === null ||
+      existing.employeeId === employeeId
+    ) {
+      return;
+    }
+
+    // ⭐ revoke করা মানে মালিক ইচ্ছে করে ছেড়ে দিয়েছেন — তখন নেওয়া যায়
+    if (existing.status !== 'active') return;
+
+    /**
+     * ⚠️ লগে **পুরো ছবিটা** — কারণ দুটো সম্পূর্ণ আলাদা ঘটনা এখানে এসে
+     * মেলে, আর পার্থক্যটা কেবল hostname দেখেই বোঝা যায়:
+     *   · hostname **এক** → একই PC-তে দুজন সাইন ইন করছেন
+     *   · hostname **আলাদা** → দুটো PC একই MachineGuid পাঠাচ্ছে, অর্থাৎ
+     *     ক্লোন করা ডিস্ক-ইমেজ। তখন ওই মেশিনের GUID বদলাতে হবে।
+     */
+    this.logger.warn(
+      `enrol refused: machineGuid ${dto.machineGuid} already belongs to ` +
+        `${existing.employee?.empCode ?? `employee #${existing.employeeId}`} ` +
+        `as "${existing.hostname}\\${existing.windowsUsername}" — ` +
+        `attempt from "${dto.hostname}\\${dto.windowsUsername}" for employee #${employeeId}. ` +
+        (existing.hostname === dto.hostname
+          ? 'Same hostname: two people are signing in on one PC.'
+          : 'Different hostname: these two PCs share a Windows MachineGuid (cloned disk image).'),
+    );
+
+    /**
+     * ⚠️ বার্তায় **নাম নয়, empCode** — এটা স্টাফের পর্দায় ভেসে ওঠে, আর
+     * স্টাফ সাধারণত সহকর্মীদের তালিকা দেখে না। কোডটা মালিকের কাছে
+     * যথেষ্ট, আর তিনিই পরের ধাপটা করবেন।
+     */
+    throw new ConflictException(
+      `This PC is already registered to ${existing.employee?.empCode ?? 'another staff member'}. ` +
+        'If it was handed over, the owner must revoke it first: Settings → Devices.',
+    );
+  }
+
+  /**
    * দুটো পথেরই শেষ ধাপ — ডিভাইসের সারি, `agent_start` ইভেন্ট, আর কনফিগ।
    *
    * ⚠️ এক জায়গায় রাখা হয়েছে ইচ্ছাকৃতভাবে। দুবার লিখলে একদিন একটা পথে
@@ -137,6 +219,8 @@ export class EnrollmentService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        await this.assertNotSomeoneElses(tx, dto, employeeId);
+
         // একই PC-তে এজেন্ট আবার ইনস্টল করলে নতুন সারি নয়, আগেরটাই হালনাগাদ
         const device = await tx.device.upsert({
           where: { machineGuid: dto.machineGuid },
