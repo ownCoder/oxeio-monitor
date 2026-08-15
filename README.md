@@ -4,7 +4,7 @@ Self-hosted time tracking and screen monitoring for a small Windows office.
 No SaaS, no per-seat fee, no third party holding your staff's screenshots — it
 runs on one VPS you control.
 
-Built for one real company (7 staff, Dhaka) and running in production since
+Built for one real company (12 staff, Dhaka) and running in production since
 August 2026. Open-sourced because the interesting part isn't the code — it's
 the **hundred small decisions** about what a monitoring tool should refuse to do.
 
@@ -64,7 +64,7 @@ Windows PC ×N                    one VPS
   `oXeio.Core` (rules, zero Win32 — so it's testable), `oXeio.Watchdog`.
   Queues to disk when the network drops and drains later; hours are never lost
   to a bad connection.
-- **Server** — NestJS 11 + Prisma 6 + Postgres 16. 84 endpoints.
+- **Server** — NestJS 11 + Prisma 6 + Postgres 16. 94 endpoints.
 - **Dashboard** — React 19 + Vite 7 + Tailwind 4. Installable as a PWA.
 - **Deploy** — Docker Compose + Caddy (automatic TLS). One `vps-update.sh`.
 
@@ -76,8 +76,8 @@ Not the screenshots. **Deciding what "eight hours of work" means.**
 
 There is no fixed shift — any active hour of the day counts. So the monthly
 target is `workdays × 8h`, and *workdays* depends on a `holidays` table that the
-owner edits. Change one holiday and every person's target, pace, and prorated
-salary fraction move. February 2026 is 20–24 workdays depending on what's in
+owner edits — and, since the leave register landed, on who was away. Change one
+holiday and every person's target, pace, and prorated salary fraction move. February 2026 is 20–24 workdays depending on what's in
 that table; August is 25–27.
 
 Getting one number to mean one thing across the tray app, the live board, the
@@ -94,10 +94,10 @@ Running in production for one company. Honest state of things:
 
 | | |
 |---|---|
-| **Tests** | Server **869** (no DB) + 222 e2e · Web **73** · Agent **303 facts / 128 cases** |
+| **Tests** | Server **918** (no DB) + 222 e2e · Web **73** · Agent **303 facts / 128 cases** |
 | **Proven in the field** | Agent capture and enrollment, screenshots, daily digest email, Telegram alerts, backups, auto-update, login rate limiting, fail2ban |
-| **Built but never run for real** | Weekly Telegram summary · holiday seeding on the VPS · PWA install on a real phone |
-| **Known gaps** | 17 open, all written down with reproduction and cost — [`docs/08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) |
+| **Built but never run for real** | Weekly Telegram summary · PWA install on a real phone · offsite backup and uptime monitoring (both wait on an account signup) |
+| **Known gaps** | 19 open, all written down with reproduction and cost — [`docs/08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) |
 
 That third row is the one worth reading. This project keeps a standing list of
 things that are *coded and tested but have never executed against reality*,
@@ -146,7 +146,7 @@ don't read Bengali — the tables and code references carry most of the meaning:
 | [`08-Gap-Analysis.md`](docs/08-Gap-Analysis.md) | Every known defect, why it's bad, when it will bite, what it costs to fix. Resolved ones stay, marked ✅. |
 | [`09-Build-Log.md`](docs/09-Build-Log.md) | What broke and why, in order. Includes the bugs that only appeared in production. |
 
-Also: [`04-Features.md`](docs/04-Features.md) (115 features, including the
+Also: [`04-Features.md`](docs/04-Features.md) (117 features, including the
 rejected ones), [`05-Options-Decisions.md`](docs/05-Options-Decisions.md)
 (architecture decisions with the discarded alternatives),
 [`10-Roadmap.md`](docs/10-Roadmap.md).
