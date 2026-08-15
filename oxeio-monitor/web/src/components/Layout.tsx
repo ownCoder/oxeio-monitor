@@ -16,6 +16,14 @@ import { ThemeToggle } from './ThemeToggle';
  */
 const ALERT_BADGE_MS = 120_000;
 
+/**
+ * উপরের বারে পাতা-নির্দিষ্ট জিনিস বসানোর ঘরের id।
+ * ⚠️ `Layout` ও `LiveBoardPage` দুটোই এটা ব্যবহার করে, তাই ধ্রুবকটা
+ *    এখানেই রপ্তানি — দু-জায়গায় স্ট্রিং লিখলে একদিন একটা বদলে অন্যটা
+ *    থেকে যেত, আর ঘরটা নীরবে খালি থাকত।
+ */
+export const TOPBAR_SLOT_ID = 'oxeio-topbar-slot';
+
 interface NavItem {
   to: string;
   label: string;
@@ -206,6 +214,21 @@ export function Layout() {
         <div className="hidden text-[11.5px] text-white/55 sm:block">
           Dhaka · <span className="num">{dhakaStamp()}</span>
         </div>
+
+        {/*
+          ⭐⭐ **পাতার নিজস্ব জিনিস উপরের বারে বসানোর ঘর** — মকআপ ক-এ
+          `LIVE` ব্যাজ ও বোতামগুলো এই সারিতেই ছিল।
+
+          ⚠️⚠️ ঘরটা **খালি**, আর ভরে দেয় পাতা নিজে (`TOPBAR_SLOT_ID`-তে
+          portal করে)। এটাই একমাত্র উপায় যাতে মকআপের বিন্যাসটা পাওয়া যায়
+          অথচ বারটা মিথ্যা না বলে: বারটা **সব পাতায়** থাকে, তাই এখানে
+          সরাসরি `LIVE` লিখে দিলে Settings বা Reports পাতায় বসেও সবুজ
+          বিন্দু জ্বলত — এমন একটা তাজা-ভাব দাবি করত যা ওই পাতার নেই।
+
+          ⭐ Live Board ছাড়া অন্য পাতায় কেউ কিছু বসায় না, তাই ঘরটা তখন
+          শূন্য প্রস্থ নেয় — কোনো ফাঁকা জায়গাও দেখা যায় না।
+        */}
+        <div id={TOPBAR_SLOT_ID} className="flex items-center gap-2" />
 
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right leading-tight">

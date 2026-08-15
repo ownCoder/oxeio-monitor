@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 
 import { getTopUsage } from '../api/activity';
@@ -13,7 +14,8 @@ import {
 import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Card, Stat, StatRow } from '../components/Card';
-import { Button, Page, SectionHead } from '../components/Page';
+import { Page, SectionHead } from '../components/Page';
+import { TOPBAR_SLOT_ID } from '../components/Layout';
 import { Caveat, Empty, ErrorBox, Loading } from '../components/States';
 import { StatusLegend } from '../components/StatusDot';
 import { Tabs } from '../components/Tabs';
@@ -88,9 +90,52 @@ const LEADER_WINDOWS = [
 
 type LeaderWindow = (typeof LEADER_WINDOWS)[number]['id'];
 
+/**
+ * ⭐ উপরের **গাঢ়** বারের বোতাম।
+ *
+ * ⚠️⚠️ সাধারণ `<Button>` এখানে চলে না: ওটার রং কাগজের পটভূমি ধরে লেখা
+ * (`text-ink`, `border-line`), আর উপরের বারটা **দুই থিমেই গাঢ়**
+ * (`bg-chrome` — লোগোটা কালোর উপর আঁকা বলে ফিল্ডটা কখনো হালকা হয় না)।
+ * লাইট থিমে ওই বোতামগুলো গাঢ় ফিল্ডে গাঢ় লেখা হয়ে কার্যত অদৃশ্য হতো।
+ *
+ * ⭐ ক্লাসগুলো পাশের `Sign out` বোতামের হুবহু এক — একই সারিতে দু-রকম
+ * বোতাম থাকলে চোখে ধরা পড়ত।
+ */
+function BarButton({
+  onClick,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="tap rounded-md border border-white/20 px-2.5 py-1.5 text-xs text-white/85 transition hover:border-brand hover:text-white"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function LiveBoardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  /**
+   * ⭐⭐ উপরের বারের ঘরটা — মকআপ ক-এ `LIVE` ব্যাজ ও বোতামগুলো লোগোর
+   * সারিতেই থাকে।
+   *
+   * ⚠️ `useState` + `useEffect` দিয়ে নেওয়া হয়, সরাসরি `getElementById`
+   *    দিয়ে নয়: প্রথম render-এ `Layout`-এর div-টা এখনো DOM-এ বসেনি, তাই
+   *    ওই মুহূর্তে খুঁজলে `null` পেত আর ব্যাজটা কোনোদিন উঠত না।
+   */
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setSlot(document.getElementById(TOPBAR_SLOT_ID)), []);
 
   /**
    * ⚠️ `/live` শুধু owner ও manager-এর (live.controller.ts-এ ক্লাস-লেভেল
@@ -708,220 +753,230 @@ export function LiveBoardPage() {
   }
 
   return (
-    <Page
-      title={
-        <span className="flex items-center gap-2">
-          Live Board
-          {/*
-            ⭐ মকআপ ক-এর `LIVE` ব্যাজ — এই পাতাটা নিজে থেকেই নতুন হয়, সেটা
-               বলার জন্য। বাকি পাতাগুলো হয় না, তাই পার্থক্যটা বলার মতো।
+    <>
+      {/*
+        ⭐⭐ **মকআপ ক-এর উপরের বার** — `LIVE` ব্যাজ ও বোতামগুলো লোগোর
+        সারিতে, পাতার শিরোনামে নয় *(মালিক দুবার লাল দাগ দিয়েছেন)*।
 
-            ⚠️⚠️ **শেষ রিফ্রেশ ব্যর্থ হলে ব্যাজটা নেভে**, আর এটাই এর একমাত্র
-               শর্ত। সবুজ বিন্দু জ্বলতে থাকলে ওটা দাবি করে "যা দেখছেন তা
-               এইমাত্রকার" — অথচ নিচের সংখ্যাগুলো তখন কয়েক মিনিটের পুরোনো।
-               ঠিক ওই মুহূর্তে ব্যাজটাই হতো পর্দার সবচেয়ে বড় মিথ্যা।
-          */}
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${
-              board.error
-                ? 'bg-line/60 text-ink-3'
-                : 'bg-ok/10 text-ok-ink'
-            }`}
-            title={
-              board.error
-                ? 'The last refresh failed — the numbers below are older'
-                : 'This page refreshes itself every 30 seconds'
-            }
-          >
+        ⚠️⚠️ portal দিয়ে বসানো হয় বলেই বারটা মিথ্যা বলে না: ঘরটা `Layout`-এ
+        খালি থাকে, আর কেবল **এই পাতাটা খোলা থাকলেই** ভরে। Settings বা
+        Reports-এ গেলে ব্যাজটা সাথে সাথে উধাও — নইলে সবুজ বিন্দু ওখানেও
+        জ্বলত আর এমন একটা তাজা-ভাব দাবি করত যা ওই পাতার নেই।
+      */}
+      {slot &&
+        createPortal(
+          <>
+            {/*
+              ⭐ মকআপ ক-এর `LIVE` ব্যাজ — এই পাতাটা নিজে থেকেই নতুন হয়, সেটা
+                 বলার জন্য। বাকি পাতাগুলো হয় না, তাই পার্থক্যটা বলার মতো।
+  
+              ⚠️⚠️ **শেষ রিফ্রেশ ব্যর্থ হলে ব্যাজটা নেভে**, আর এটাই এর একমাত্র
+                 শর্ত। সবুজ বিন্দু জ্বলতে থাকলে ওটা দাবি করে "যা দেখছেন তা
+                 এইমাত্রকার" — অথচ নিচের সংখ্যাগুলো তখন কয়েক মিনিটের পুরোনো।
+                 ঠিক ওই মুহূর্তে ব্যাজটাই হতো পর্দার সবচেয়ে বড় মিথ্যা।
+            */}
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                board.error ? 'bg-ink-3' : 'animate-pulse bg-ok'
+              className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${
+                board.error
+                  ? 'bg-white/10 text-white/55'
+                  : 'bg-ok/15 text-ok'
               }`}
-              aria-hidden
-            />
-            {board.error ? 'STALE' : 'LIVE'}
-          </span>
-        </span>
-      }
-      subtitle={data ? `${formatDate(data.workDate)} · Dhaka time` : 'Right now'}
-      actions={
-        <div className="flex items-center gap-2">
-          {board.updatedAt && (
-            <span className="text-[11.5px] text-ink-3">
-              Updated{' '}
-              <span className="num">{formatTime(isoOf(board.updatedAt))}</span>
-            </span>
-          )}
-          <Button
-            onClick={() => {
-              /**
-               * ⚠️ **তিনটেই** — এখানে `pulse` বাদ পড়েছিল, আর ফাঁকটা নীরব:
-               * বোতামের নাম "Refresh", কিন্তু দিনের ছন্দের চার্টটা নিজের
-               * দু-মিনিটের তালেই থাকত। কেউ চার্ট বাসি দেখে Refresh চেপে
-               * একই ছবি পেতেন আর ভাবতেন ডেটাই আসছে না।
-               *
-               * ⭐ নিয়মটা সাধারণ: **যে বোতাম "সব নতুন করে আনো" বলে, তাকে
-               * পর্দার প্রতিটা উৎস ছুঁতে হয়** — নইলে নামটাই মিথ্যা।
-               */
-              board.reload();
-              shots.reload();
-              pulse.reload();
-              trend.reload();
-            }}
-            title="Now, without waiting 30 seconds"
-          >
-            Refresh
-          </Button>
-          {/*
-            ⭐ মকআপ ক-এর তৃতীয় বোতাম। ⚠️ মকআপে একটা "আজ" বোতামও ছিল —
-               সেটা বসানো হয়নি, কারণ বোর্ড **কেবল আজকেরই** দেখায়, অন্য
-               তারিখ বাছার পথ নেই। যে বোতাম কিছু বদলায় না, সেটা পর্দায়
-               থাকলে ব্যবহারকারী ধরে নিতেন অন্য তারিখও দেখা যায়।
-          */}
-          {canViewBoard && (
-            <Button
-              onClick={() => navigate('/reports')}
-              title="Excel and PDF for any date range"
+              title={
+                board.error
+                  ? 'The last refresh failed — the numbers below are older'
+                  : 'This page refreshes itself every 30 seconds'
+              }
             >
-              Reports
-            </Button>
-          )}
-        </div>
-      }
-    >
-      {body}
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  board.error ? 'bg-white/40' : 'animate-pulse bg-ok'
+                }`}
+                aria-hidden
+              />
+              {board.error ? 'STALE' : 'LIVE'}
+            </span>
+            {board.updatedAt && (
+              <span className="text-[11.5px] text-white/55">
+                Updated{' '}
+                <span className="num">{formatTime(isoOf(board.updatedAt))}</span>
+              </span>
+            )}
+            <BarButton
+              onClick={() => {
+                /**
+                 * ⚠️ **তিনটেই** — এখানে `pulse` বাদ পড়েছিল, আর ফাঁকটা নীরব:
+                 * বোতামের নাম "Refresh", কিন্তু দিনের ছন্দের চার্টটা নিজের
+                 * দু-মিনিটের তালেই থাকত। কেউ চার্ট বাসি দেখে Refresh চেপে
+                 * একই ছবি পেতেন আর ভাবতেন ডেটাই আসছে না।
+                 *
+                 * ⭐ নিয়মটা সাধারণ: **যে বোতাম "সব নতুন করে আনো" বলে, তাকে
+                 * পর্দার প্রতিটা উৎস ছুঁতে হয়** — নইলে নামটাই মিথ্যা।
+                 */
+                board.reload();
+                shots.reload();
+                pulse.reload();
+                trend.reload();
+              }}
+              title="Now, without waiting 30 seconds"
+            >
+              Refresh
+            </BarButton>
+            {/*
+              ⭐ মকআপ ক-এর তৃতীয় বোতাম। ⚠️ মকআপে একটা "আজ" বোতামও ছিল —
+                 সেটা বসানো হয়নি, কারণ বোর্ড **কেবল আজকেরই** দেখায়, অন্য
+                 তারিখ বাছার পথ নেই। যে বোতাম কিছু বদলায় না, সেটা পর্দায়
+                 থাকলে ব্যবহারকারী ধরে নিতেন অন্য তারিখও দেখা যায়।
+            */}
+            {canViewBoard && (
+              <BarButton
+                onClick={() => navigate('/reports')}
+                title="Excel and PDF for any date range"
+              >
+                Reports
+              </BarButton>
+            )}
+          </>,
+          slot,
+        )}
 
-      {openCard && (
-        <ShotLightbox
-          card={openCard}
-          shot={openShot}
-          onClose={() => setOpenFor(null)}
-          onRefresh={shots.reload}
-        />
-      )}
-    </Page>
-  );
-}
+      <Page
+        title="Live Board"
+        subtitle={data ? `${formatDate(data.workDate)} · Dhaka time` : 'Right now'}
+      >
+        {body}
 
-/**
- * ⭐ "▲ গতকালের চেয়ে ২ঘ ১০মি" — মকআপ ক-এর টাইলে যা ছিল।
- *
- * ⚠️⚠️ **গতকাল ট্র্যাক করা না থাকলে `undefined`**, শূন্য নয়। ওই দিনের
- * `workedSec` তখনো ০ আসে, আর সেটাকে তুলনায় বসালে টাইল বলত "▲ ১৮ঘ বেশি" —
- * সরাসরি মিথ্যা: কাল কেউ কম কাজ করেনি, কাল **আমরা দেখিইনি**। এটাই এই
- * ফাইলের সবচেয়ে পুরোনো নিয়ম (`tracked` ঘরটার জন্মই এই কারণে)।
- *
- * ⚠️ শেষ সারিটা আজকের, তাই গতকাল **শেষ থেকে দ্বিতীয়**।
- */
-function yesterdayDelta(
-  days: readonly TrendDay[] | undefined,
-  todaySec: number,
-): string | undefined {
-  if (!days || days.length < 2) return undefined;
-
-  const yesterday = days[days.length - 2];
-  if (!yesterday.tracked) return undefined;
-
-  /**
-   * ⚠️⚠️ **গতকাল সবার ছুটি হলে তুলনাই হয় না** — আর এটা মাঠে ধরা পড়েছে,
-   * বসানোর কয়েক মিনিট পরেই। শনিবারের বোর্ডে টাইলটা বলছিল
-   * *"▲ ৭১ঘ ৭মি vs yesterday"*, কারণ গতকাল শুক্রবার ছিল: `tracked` সত্যি
-   * (সার্ভার দিনটা দেখেছে), কিন্তু `workedSec` শূন্য (কারো টার্গেটই ছিল না)।
-   *
-   * ⭐ সংখ্যাটা মিথ্যা ছিল না, **তুলনাটা** ছিল — কেউ গতকাল ৭১ ঘণ্টা কম
-   * কাজ করেনি, গতকাল কাজের দিনই ছিল না। `expectedStaff === 0` মানে ঠিক
-   * সেটাই, আর ঘরটা এই কারণেই আছে।
-   */
-  if (yesterday.expectedStaff === 0) return 'yesterday was a day off';
-
-  const delta = todaySec - yesterday.workedSec;
-  // ⚠️ ৫ মিনিটের কম ফারাক দেখানো হয় না — "▲ ২মি" কোনো খবর নয়, কেবল কালি
-  if (Math.abs(delta) < 300) return 'about the same as yesterday';
-
-  return `${delta > 0 ? '▲' : '▼'} ${formatDuration(Math.abs(delta))} vs yesterday`;
-}
-
-/**
- * সবার দৈনিক টার্গেট এক হলে সেই সংখ্যাটা, নইলে `null`।
- *
- * ⚠️ আলাদা নীতিতে থাকা দল হলে একটা সংখ্যা বেছে দেখানো যেত না — তখন টাইল
- * এমন একটা "টার্গেট" দাবি করত যা কারো কারো ক্ষেত্রে ভুল। ⭐ আর ছুটির দিনে
- * সবার টার্গেট ০, তাই তখনো কিছু দেখানো হয় না।
- */
-function commonDailyTarget(cards: readonly LiveCard[]): number | null {
-  const withTarget = cards.filter((c) => c.dailyTargetSec > 0);
-  if (withTarget.length === 0) return null;
-
-  const first = withTarget[0].dailyTargetSec;
-  return withTarget.every((c) => c.dailyTargetSec === first) ? first : null;
-}
-
-interface BoardStats {
-  total: number;
-  active: number;
-  /** আজ যাদের কিছু না কিছু গোনা হয়েছে — গড়ের **হর** */
-  workedToday: number;
-  todaySec: number;
-  /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
-  withTarget: number;
-  metTarget: number;
-  agentDown: number;
-}
-
-/**
- * মকআপের `.summary` টাইলগুলো।
- *
- * ⭐ আগে এখানে "Behind target" টাইল **ইচ্ছাকৃতভাবে ছিল না**: কে পিছিয়ে
- *    সেটা বলতে মাসের কত ভাগ কর্মদিবস পেরিয়েছে জানতে হয়, আর `GET /live` ওই
- *    তথ্য পাঠাত না। এখন সার্ভার `dailyTargetSec` ও `todayIsWorkday` পাঠায়,
- *    তাই **আজকের** প্রশ্নটার উত্তর আর আন্দাজ নয় — "Met today's target"
- *    গোনা যায়।
- *
- * ⚠️ তবু **মাসের** "পিছিয়ে/এগিয়ে" এখানে নেই, আর কারণটা আগের মতোই: তার
- *    জন্য মাসের কতগুলো কর্মদিবস পেরিয়েছে জানা দরকার, যেটা `/live`-এ আসে
- *    না। ক্যালেন্ডারের দিন গুনে আন্দাজ করলে ছুটির পরদিন গোটা টিমকে
- *    "পিছিয়ে" দেখাত, আর সেই সংখ্যা দিয়েই কেউ কারো জবাবদিহি চাইত।
- *    আন্দাজ করা সংখ্যার চেয়ে না থাকা ভালো।
- */
-function summarize(cards: LiveCard[]): BoardStats {
-  let active = 0;
-  let workedToday = 0;
-  let todaySec = 0;
-  let agentDown = 0;
-  let withTarget = 0;
-  let metTarget = 0;
-
-  for (const card of cards) {
-    // ⚠️ ট্যাবের ভাগের সাথে **একই** শর্ত — দুই জায়গায় দুবার লিখলে
-    //    একদিন একটা বদলাত আর অন্যটা নয়, আর বোর্ড নিজেই নিজেকে কাটত।
-    if (isWorking(card.status)) active += 1;
-    if (card.status === 'agent_down') agentDown += 1;
-    if (card.todayWorkedSec > 0) workedToday += 1;
-    todaySec += card.todayWorkedSec;
-
-    /**
-     * ⚠️ `dailyTargetSec > 0`-ও দেখা হয়: পুরো মাস ছুটি হলে সার্ভার ০
-     *    পাঠায়, আর তখন "০ সেকেন্ড ≥ ০ টার্গেট" সত্যি হয়ে সবাই টার্গেট
-     *    ছুঁয়ে ফেলত — কেউ এক মিনিটও কাজ না করে।
-     */
-    if (card.todayIsWorkday && card.dailyTargetSec > 0) {
-      withTarget += 1;
-      if (card.todayWorkedSec >= card.dailyTargetSec) metTarget += 1;
-    }
+        {openCard && (
+          <ShotLightbox
+            card={openCard}
+            shot={openShot}
+            onClose={() => setOpenFor(null)}
+            onRefresh={shots.reload}
+          />
+        )}
+      </Page>
+    </>
+    );
   }
 
-  return {
-    total: cards.length,
-    active,
-    workedToday,
-    todaySec,
-    withTarget,
-    metTarget,
-    agentDown,
-  };
-}
+  /**
+   * ⭐ "▲ গতকালের চেয়ে ২ঘ ১০মি" — মকআপ ক-এর টাইলে যা ছিল।
+   *
+   * ⚠️⚠️ **গতকাল ট্র্যাক করা না থাকলে `undefined`**, শূন্য নয়। ওই দিনের
+   * `workedSec` তখনো ০ আসে, আর সেটাকে তুলনায় বসালে টাইল বলত "▲ ১৮ঘ বেশি" —
+   * সরাসরি মিথ্যা: কাল কেউ কম কাজ করেনি, কাল **আমরা দেখিইনি**। এটাই এই
+   * ফাইলের সবচেয়ে পুরোনো নিয়ম (`tracked` ঘরটার জন্মই এই কারণে)।
+   *
+   * ⚠️ শেষ সারিটা আজকের, তাই গতকাল **শেষ থেকে দ্বিতীয়**।
+   */
+  function yesterdayDelta(
+    days: readonly TrendDay[] | undefined,
+    todaySec: number,
+  ): string | undefined {
+    if (!days || days.length < 2) return undefined;
 
-/** ⚠️ `formatTime` ISO স্ট্রিং চায়, `updatedAt` একটা `Date` */
-function isoOf(at: Date | null): string | null {
-  return at ? at.toISOString() : null;
-}
+    const yesterday = days[days.length - 2];
+    if (!yesterday.tracked) return undefined;
+
+    /**
+     * ⚠️⚠️ **গতকাল সবার ছুটি হলে তুলনাই হয় না** — আর এটা মাঠে ধরা পড়েছে,
+     * বসানোর কয়েক মিনিট পরেই। শনিবারের বোর্ডে টাইলটা বলছিল
+     * *"▲ ৭১ঘ ৭মি vs yesterday"*, কারণ গতকাল শুক্রবার ছিল: `tracked` সত্যি
+     * (সার্ভার দিনটা দেখেছে), কিন্তু `workedSec` শূন্য (কারো টার্গেটই ছিল না)।
+     *
+     * ⭐ সংখ্যাটা মিথ্যা ছিল না, **তুলনাটা** ছিল — কেউ গতকাল ৭১ ঘণ্টা কম
+     * কাজ করেনি, গতকাল কাজের দিনই ছিল না। `expectedStaff === 0` মানে ঠিক
+     * সেটাই, আর ঘরটা এই কারণেই আছে।
+     */
+    if (yesterday.expectedStaff === 0) return 'yesterday was a day off';
+
+    const delta = todaySec - yesterday.workedSec;
+    // ⚠️ ৫ মিনিটের কম ফারাক দেখানো হয় না — "▲ ২মি" কোনো খবর নয়, কেবল কালি
+    if (Math.abs(delta) < 300) return 'about the same as yesterday';
+
+    return `${delta > 0 ? '▲' : '▼'} ${formatDuration(Math.abs(delta))} vs yesterday`;
+  }
+
+  /**
+   * সবার দৈনিক টার্গেট এক হলে সেই সংখ্যাটা, নইলে `null`।
+   *
+   * ⚠️ আলাদা নীতিতে থাকা দল হলে একটা সংখ্যা বেছে দেখানো যেত না — তখন টাইল
+   * এমন একটা "টার্গেট" দাবি করত যা কারো কারো ক্ষেত্রে ভুল। ⭐ আর ছুটির দিনে
+   * সবার টার্গেট ০, তাই তখনো কিছু দেখানো হয় না।
+   */
+  function commonDailyTarget(cards: readonly LiveCard[]): number | null {
+    const withTarget = cards.filter((c) => c.dailyTargetSec > 0);
+    if (withTarget.length === 0) return null;
+
+    const first = withTarget[0].dailyTargetSec;
+    return withTarget.every((c) => c.dailyTargetSec === first) ? first : null;
+  }
+
+  interface BoardStats {
+    total: number;
+    active: number;
+    /** আজ যাদের কিছু না কিছু গোনা হয়েছে — গড়ের **হর** */
+    workedToday: number;
+    todaySec: number;
+    /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
+    withTarget: number;
+    metTarget: number;
+    agentDown: number;
+  }
+
+  /**
+   * মকআপের `.summary` টাইলগুলো।
+   *
+   * ⭐ আগে এখানে "Behind target" টাইল **ইচ্ছাকৃতভাবে ছিল না**: কে পিছিয়ে
+   *    সেটা বলতে মাসের কত ভাগ কর্মদিবস পেরিয়েছে জানতে হয়, আর `GET /live` ওই
+   *    তথ্য পাঠাত না। এখন সার্ভার `dailyTargetSec` ও `todayIsWorkday` পাঠায়,
+   *    তাই **আজকের** প্রশ্নটার উত্তর আর আন্দাজ নয় — "Met today's target"
+   *    গোনা যায়।
+   *
+   * ⚠️ তবু **মাসের** "পিছিয়ে/এগিয়ে" এখানে নেই, আর কারণটা আগের মতোই: তার
+   *    জন্য মাসের কতগুলো কর্মদিবস পেরিয়েছে জানা দরকার, যেটা `/live`-এ আসে
+   *    না। ক্যালেন্ডারের দিন গুনে আন্দাজ করলে ছুটির পরদিন গোটা টিমকে
+   *    "পিছিয়ে" দেখাত, আর সেই সংখ্যা দিয়েই কেউ কারো জবাবদিহি চাইত।
+   *    আন্দাজ করা সংখ্যার চেয়ে না থাকা ভালো।
+   */
+  function summarize(cards: LiveCard[]): BoardStats {
+    let active = 0;
+    let workedToday = 0;
+    let todaySec = 0;
+    let agentDown = 0;
+    let withTarget = 0;
+    let metTarget = 0;
+
+    for (const card of cards) {
+      // ⚠️ ট্যাবের ভাগের সাথে **একই** শর্ত — দুই জায়গায় দুবার লিখলে
+      //    একদিন একটা বদলাত আর অন্যটা নয়, আর বোর্ড নিজেই নিজেকে কাটত।
+      if (isWorking(card.status)) active += 1;
+      if (card.status === 'agent_down') agentDown += 1;
+      if (card.todayWorkedSec > 0) workedToday += 1;
+      todaySec += card.todayWorkedSec;
+
+      /**
+       * ⚠️ `dailyTargetSec > 0`-ও দেখা হয়: পুরো মাস ছুটি হলে সার্ভার ০
+       *    পাঠায়, আর তখন "০ সেকেন্ড ≥ ০ টার্গেট" সত্যি হয়ে সবাই টার্গেট
+       *    ছুঁয়ে ফেলত — কেউ এক মিনিটও কাজ না করে।
+       */
+      if (card.todayIsWorkday && card.dailyTargetSec > 0) {
+        withTarget += 1;
+        if (card.todayWorkedSec >= card.dailyTargetSec) metTarget += 1;
+      }
+    }
+
+    return {
+      total: cards.length,
+      active,
+      workedToday,
+      todaySec,
+      withTarget,
+      metTarget,
+      agentDown,
+    };
+  }
+
+  /** ⚠️ `formatTime` ISO স্ট্রিং চায়, `updatedAt` একটা `Date` */
+  function isoOf(at: Date | null): string | null {
+    return at ? at.toISOString() : null;
+  }
