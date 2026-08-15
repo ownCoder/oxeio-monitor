@@ -371,7 +371,20 @@ describe('POST /agent/enroll-login — 2FA', () => {
  * ক্লোনে হুবহু কপি হয়** — অর্থাৎ অফিসে একটা PC সাজিয়ে বাকিগুলোয় ইমেজ
  * বসালেই সবার GUID এক।
  */
-describe('POST /agent/enroll-login — ডিভাইস কারো নামে বসলে', () => {
+/**
+ * ⭐⭐ **ডিভাইসের পরিচয়: মেশিন + যিনি বসেছেন।**
+ *
+ * ⚠️⚠️ আসল অফিসে ধরা পড়া বাগ: দুজন কর্মীর ট্র্যাকিং পালা করে "হঠাৎ
+ * offline" হয়ে যেত, আর Staff পর্দায় তাঁদের সারি ফিরে যেত "Ready to
+ * install"-এ। কারণ `upsert`-এর চাবি ছিল কেবল `machineGuid`, আর সংঘাতে
+ * `employeeId` ও `tokenHash` দুটোই লিখে দেওয়া হতো — তাই একই GUID পাঠানো
+ * দুটো এজেন্টের মধ্যে একটাই সারি হাতবদল করত।
+ *
+ * ⚠️ `machineGuid` **মেশিনের, ব্যবহারকারীর নয়** — তাই একই PC-তে দুজন
+ * স্টাফ আলাদা Windows অ্যাকাউন্টে কাজ করলেও ওটা এক। অফিসের লগেই ধরা
+ * পড়েছে: `DESKTOP-BJNQ6OF`-এ "Intern" ও "Intern 2"।
+ */
+describe('POST /agent/enroll-login — ডিভাইসের পরিচয়', () => {
   const OTHER_EMAIL = 'sadia@test.local';
   const OTHER_PASSWORD = 'other-password-123';
 
@@ -397,56 +410,110 @@ describe('POST /agent/enroll-login — ডিভাইস কারো নাম
   };
 
   /**
-   * ⭐ এটাই মূল দাবি: **দ্বিতীয়জন সারিটা কেড়ে নিতে পারে না**, আর
-   * প্রথমজনের ডিভাইস অক্ষত থাকে।
+   * ⭐⭐ **এটাই আসল দাবি** — অফিসে ঠিক এটাই ঘটছে: এক PC, দুজন স্টাফ,
+   * আলাদা Windows অ্যাকাউন্ট। দুজনেরই আলাদা সারি হওয়া চাই।
    */
-  it('অন্য কর্মী একই machineGuid নিয়ে এলে ৪০৯, আর প্রথমজনের ডিভাইস অটুট', async () => {
+  it('এক PC, দুই Windows অ্যাকাউন্ট → দুজনেরই আলাদা ডিভাইস', async () => {
     const otherId = await addOtherStaff();
     const guid = randomUUID();
 
     const first = await enrollLogin({
-      ...facts({ machineGuid: guid }),
+      ...facts({ machineGuid: guid, hostname: 'PC-07', windowsUsername: 'Intern' }),
       email: STAFF_EMAIL,
       password: STAFF_PASSWORD,
     });
     expect(first.status).toBe(200);
 
-    // ⚠️ hostname আলাদা — অর্থাৎ **অন্য একটা PC**, একই GUID নিয়ে (ক্লোন)
     const second = await enrollLogin({
+      ...facts({ machineGuid: guid, hostname: 'PC-07', windowsUsername: 'Intern 2' }),
+      email: OTHER_EMAIL,
+      password: OTHER_PASSWORD,
+    });
+
+    expect(second.status).toBe(200);
+    expect(second.body.deviceId).not.toBe(first.body.deviceId);
+    expect(await h.prisma.device.count()).toBe(2);
+
+    // ⭐ দুজনের ঘণ্টা আলাদা সারিতে — কেউ কারোটা কাড়ে না
+    expect(await h.prisma.device.count({ where: { employeeId } })).toBe(1);
+    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(1);
+  });
+
+  /**
+   * ⭐ ক্লোন করা ডিস্ক-ইমেজ — দুটো আলাদা PC, একই `MachineGuid`।
+   * hostname আলাদা বলে দুটো সারি, দুজনেই চলেন।
+   */
+  it('একই GUID কিন্তু আলাদা PC → দুটো সারি', async () => {
+    const otherId = await addOtherStaff();
+    const guid = randomUUID();
+
+    await enrollLogin({
+      ...facts({ machineGuid: guid, hostname: 'PC-07' }),
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    }).expect(200);
+
+    await enrollLogin({
       ...facts({ machineGuid: guid, hostname: 'PC-09', windowsUsername: 'sadia' }),
+      email: OTHER_EMAIL,
+      password: OTHER_PASSWORD,
+    }).expect(200);
+
+    expect(await h.prisma.device.count()).toBe(2);
+    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(1);
+  });
+
+  /**
+   * ⚠️ যেটা এখনো আটকানো: **একই Windows অ্যাকাউন্ট** দুজন ভাগ করে নিলে।
+   * তখন দুজনের ঘণ্টা এক সারিতে মিশে যেত আর আলাদা করা যেত না।
+   */
+  it('একই Windows অ্যাকাউন্টে দ্বিতীয় কর্মী এলে ৪০৯, প্রথমজনের সব অটুট', async () => {
+    const otherId = await addOtherStaff();
+    const same = facts({ hostname: 'PC-07', windowsUsername: 'shared' });
+
+    const first = await enrollLogin({
+      ...same,
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
+    expect(first.status).toBe(200);
+
+    const before = await h.prisma.device.findUniqueOrThrow({
+      where: { id: first.body.deviceId },
+    });
+
+    const second = await enrollLogin({
+      ...same,
+      machineGuid: randomUUID(),
       email: OTHER_EMAIL,
       password: OTHER_PASSWORD,
     });
 
     expect(second.status).toBe(409);
 
-    const device = await h.prisma.device.findUniqueOrThrow({
-      where: { machineGuid: guid },
+    const after = await h.prisma.device.findUniqueOrThrow({
+      where: { id: first.body.deviceId },
     });
-    expect(device.employeeId).toBe(employeeId);
-    // ⭐ টোকেনও বদলায়নি — প্রথম PC-র এজেন্ট চলতেই থাকে
-    expect(device.tokenHash).toBe(
-      (await h.prisma.device.findUniqueOrThrow({ where: { id: first.body.deviceId } }))
-        .tokenHash,
-    );
-
-    // ⚠️ দ্বিতীয়জনের কোনো ডিভাইস তৈরি হয়নি — "Ready to install"-ই থাকবে
+    expect(after.employeeId).toBe(employeeId);
+    // ⭐ টোকেনও বদলায়নি — প্রথমজনের এজেন্ট চলতেই থাকে
+    expect(after.tokenHash).toBe(before.tokenHash);
     expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(0);
   });
 
   /** ⭐ একই কর্মী আবার বসালে আগের মতোই চলে — এটা ভাঙা যাবে না */
   it('একই কর্মী আবার ইনস্টল করলে সারিটাই হালনাগাদ হয়', async () => {
-    const guid = randomUUID();
+    const same = facts({ monitors: 2 });
 
     const first = await enrollLogin({
-      ...facts({ machineGuid: guid }),
+      ...same,
       email: STAFF_EMAIL,
       password: STAFF_PASSWORD,
     });
     expect(first.status).toBe(200);
 
     const again = await enrollLogin({
-      ...facts({ machineGuid: guid, monitors: 3 }),
+      ...same,
+      monitors: 3,
       email: STAFF_EMAIL,
       password: STAFF_PASSWORD,
     });
@@ -456,32 +523,33 @@ describe('POST /agent/enroll-login — ডিভাইস কারো নাম
     expect(await h.prisma.device.count()).toBe(1);
 
     const device = await h.prisma.device.findUniqueOrThrow({
-      where: { machineGuid: guid },
+      where: { id: first.body.deviceId },
     });
     expect(device.monitors).toBe(3);
   });
 
   /**
-   * ⭐ বৈধ হস্তান্তরের পথ — PC হাতবদল হলে মালিক revoke করেন, তারপর নতুন
-   * কর্মী নিতে পারেন। সচেতন একটা ধাপ, নীরব চুরি নয়।
+   * ⭐ বৈধ হস্তান্তর — একই Windows অ্যাকাউন্ট অন্য কেউ পেলে মালিক আগে
+   * revoke করবেন, তারপর নতুন কর্মী নিতে পারেন।
    */
   it('revoke করা ডিভাইস নতুন কর্মী নিতে পারেন', async () => {
     const otherId = await addOtherStaff();
-    const guid = randomUUID();
+    const same = facts({ hostname: 'PC-07', windowsUsername: 'shared' });
 
-    await enrollLogin({
-      ...facts({ machineGuid: guid }),
+    const first = await enrollLogin({
+      ...same,
       email: STAFF_EMAIL,
       password: STAFF_PASSWORD,
-    }).expect(200);
+    });
+    expect(first.status).toBe(200);
 
     await h.prisma.device.update({
-      where: { machineGuid: guid },
+      where: { id: first.body.deviceId },
       data: { status: 'revoked' },
     });
 
     const handover = await enrollLogin({
-      ...facts({ machineGuid: guid, windowsUsername: 'sadia' }),
+      ...same,
       email: OTHER_EMAIL,
       password: OTHER_PASSWORD,
     });
@@ -489,7 +557,7 @@ describe('POST /agent/enroll-login — ডিভাইস কারো নাম
     expect(handover.status).toBe(200);
 
     const device = await h.prisma.device.findUniqueOrThrow({
-      where: { machineGuid: guid },
+      where: { id: first.body.deviceId },
     });
     expect(device.employeeId).toBe(otherId);
     expect(device.status).toBe('active');

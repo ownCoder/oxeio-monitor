@@ -19,6 +19,20 @@ import type { EnrollDto, EnrollLoginDto } from './dto';
 /** দুটো পথেরই সাধারণ অংশ — মেশিনটা কে, কোথায় */
 type EnrollFacts = Omit<EnrollDto, 'enrollmentCode'>;
 
+/**
+ * ⭐⭐ **ডিভাইসের পরিচয়: মেশিন + যিনি বসেছেন।**
+ *
+ * ⚠️ `machineGuid` একা নয় — ওটা **মেশিনের**, ব্যবহারকারীর নয়। একই PC-তে
+ * দুজন স্টাফ আলাদা Windows অ্যাকাউন্টে কাজ করলে দুজনের আলাদা সারি দরকার,
+ * অথচ তাঁদের GUID হুবহু এক। schema-তে `@@unique([hostname,
+ * windowsUsername])` আগে থেকেই ছিল; এটাই আসল পরিচয় ছিল, শুধু enroll
+ * ওটা ব্যবহার করত না।
+ */
+const identityOf = (dto: EnrollFacts) => ({
+  hostname: dto.hostname,
+  windowsUsername: dto.windowsUsername,
+});
+
 export interface EnrollResult {
   deviceId: number;
   /** ⚠️ এই একবারই যাবে — সার্ভারে শুধু sha256 জমা থাকে */
@@ -124,10 +138,10 @@ export class EnrollmentService {
    *
    * ⚠️⚠️ যে বাগটা এটা সারায়: `upsert`-এর চাবি ছিল কেবল `machineGuid`, আর
    * সংঘাত হলে `employeeId` ও `tokenHash` **দুটোই লিখে দেওয়া হতো**। ফলে
-   * দুটো মেশিন একই `machineGuid` পাঠালে একটাই সারি দুজনের মধ্যে হাতবদল
-   * করত, আর প্রতিবার:
+   * একই `machineGuid` পাঠানো দুটো এজেন্টের মধ্যে একটাই সারি হাতবদল করত,
+   * আর প্রতিবার:
    *
-   *   · আগের PC-র টোকেন অচল হয়ে যেত → তার এজেন্ট চুপচাপ ৪০১ খেয়ে
+   *   · আগের সেশনের টোকেন অচল হয়ে যেত → তার এজেন্ট চুপচাপ ৪০১ খেয়ে
    *     **কিছুই পাঠাতে পারত না** (মালিকের চোখে "হঠাৎ offline")
    *   · আগের কর্মীর ডিভাইস-সংখ্যা **শূন্য** হয়ে যেত → Staff পর্দায়
    *     "Ready to install", Live Board-এ "No agent yet"
@@ -135,14 +149,17 @@ export class EnrollmentService {
    * ⚠️ পুরো ব্যাপারটা **নীরব** ছিল: কোনো এরর নয়, কোনো লগ নয়। ধরা পড়ত
    *    কেবল ওই কর্মীর হারানো ঘণ্টা দিয়ে, দিন পেরিয়ে যাওয়ার পর।
    *
-   * ⭐ `machineGuid` আসে `HKLM\SOFTWARE\Microsoft\Cryptography\MachineGuid`
-   *    থেকে, আর সেটা **ডিস্ক-ইমেজ ক্লোনে হুবহু কপি হয়** (এজেন্টের নিজের
-   *    `DeviceTokenStore`-এ কথাটা লেখাই আছে)। একই PC-তে দুজন সাইন ইন
-   *    করলেও একই দশা।
+   * ⭐⭐ পরিচয়টা এখন **(hostname, windowsUsername)** — মেশিন **ও** যিনি
+   *    বসেছেন, দুটো মিলে। `machineGuid` একা যথেষ্ট নয়, কারণ ওটা
+   *    **মেশিনের, ব্যবহারকারীর নয়**: একই PC-তে দুজন স্টাফ আলাদা Windows
+   *    অ্যাকাউন্টে কাজ করলে দুজনের আলাদা সারি দরকার, অথচ GUID এক।
+   *
+   * ⚠️ এই দাবিটা অনুমান নয় — অফিসের লগেই ধরা পড়েছে: `DESKTOP-BJNQ6OF`-এ
+   *    "Intern" ও "Intern 2", আর `DESKTOP-KP1DT93`-এ "Sumaiya" ও "user"।
    *
    * ⭐ **বৈধ হস্তান্তরের পথ খোলা:** ডিভাইসটা `revoked` হলে নতুন কর্মী
-   *    নিতে পারেন। অর্থাৎ PC হাতবদল হলে মালিক Settings → Devices-এ
-   *    একবার revoke করবেন — সচেতন একটা ধাপ, নীরব চুরি নয়।
+   *    নিতে পারেন। অর্থাৎ একই Windows অ্যাকাউন্ট হাতবদল হলে মালিক
+   *    Settings → Devices-এ একবার revoke করবেন — সচেতন একটা ধাপ।
    */
   private async assertNotSomeoneElses(
     tx: Prisma.TransactionClient,
@@ -150,7 +167,7 @@ export class EnrollmentService {
     employeeId: number,
   ): Promise<void> {
     const existing = await tx.device.findUnique({
-      where: { machineGuid: dto.machineGuid },
+      where: { hostname_windowsUsername: identityOf(dto) },
       select: {
         status: true,
         hostname: true,
@@ -174,20 +191,17 @@ export class EnrollmentService {
     if (existing.status !== 'active') return;
 
     /**
-     * ⚠️ লগে **পুরো ছবিটা** — কারণ দুটো সম্পূর্ণ আলাদা ঘটনা এখানে এসে
-     * মেলে, আর পার্থক্যটা কেবল hostname দেখেই বোঝা যায়:
-     *   · hostname **এক** → একই PC-তে দুজন সাইন ইন করছেন
-     *   · hostname **আলাদা** → দুটো PC একই MachineGuid পাঠাচ্ছে, অর্থাৎ
-     *     ক্লোন করা ডিস্ক-ইমেজ। তখন ওই মেশিনের GUID বদলাতে হবে।
+     * ⚠️ এখানে পৌঁছানো মানে **একই মেশিনের একই Windows অ্যাকাউন্টে** দুজন
+     * ভিন্ন স্টাফ সাইন ইন করছেন — অর্থাৎ তাঁরা একটা লগইন ভাগ করে নিচ্ছেন।
+     * সেটা নীরবে মেনে নেওয়া যায় না: তখন দুজনের ঘণ্টা এক সারিতে মিশে যেত
+     * আর কোনটা কার তা আর আলাদা করা যেত না।
      */
     this.logger.warn(
-      `enrol refused: machineGuid ${dto.machineGuid} already belongs to ` +
-        `${existing.employee?.empCode ?? `employee #${existing.employeeId}`} ` +
-        `as "${existing.hostname}\\${existing.windowsUsername}" — ` +
-        `attempt from "${dto.hostname}\\${dto.windowsUsername}" for employee #${employeeId}. ` +
-        (existing.hostname === dto.hostname
-          ? 'Same hostname: two people are signing in on one PC.'
-          : 'Different hostname: these two PCs share a Windows MachineGuid (cloned disk image).'),
+      `enrol refused: "${existing.hostname}\\${existing.windowsUsername}" ` +
+        `already belongs to ${existing.employee?.empCode ?? `employee #${existing.employeeId}`} — ` +
+        `attempt for employee #${employeeId} (machineGuid ${dto.machineGuid}). ` +
+        'Two staff are sharing one Windows account: give the second person their own Windows login, ' +
+        'or revoke the device first (Settings → Devices).',
     );
 
     /**
@@ -196,8 +210,8 @@ export class EnrollmentService {
      * যথেষ্ট, আর তিনিই পরের ধাপটা করবেন।
      */
     throw new ConflictException(
-      `This PC is already registered to ${existing.employee?.empCode ?? 'another staff member'}. ` +
-        'If it was handed over, the owner must revoke it first: Settings → Devices.',
+      `This Windows account is already registered to ${existing.employee?.empCode ?? 'another staff member'}. ` +
+        'Sign in to your own Windows account on this PC, or ask the owner to revoke it first (Settings → Devices).',
     );
   }
 
@@ -221,13 +235,16 @@ export class EnrollmentService {
       return await this.prisma.$transaction(async (tx) => {
         await this.assertNotSomeoneElses(tx, dto, employeeId);
 
-        // একই PC-তে এজেন্ট আবার ইনস্টল করলে নতুন সারি নয়, আগেরটাই হালনাগাদ
+        // ⭐ একই মেশিনের একই Windows অ্যাকাউন্টে আবার ইনস্টল করলে নতুন সারি
+        //    নয়, আগেরটাই হালনাগাদ। অন্য অ্যাকাউন্ট = অন্য সারি।
+        // ⚠️ `machineGuid` **update-এও** বসে: Windows রিইনস্টল বা GUID
+        //    বদলালে মানটা পুরোনো থেকে যেত, আর H04-এর rollout bucket ভুল
+        //    মেশিনের হিসাব করত।
         const device = await tx.device.upsert({
-          where: { machineGuid: dto.machineGuid },
+          where: { hostname_windowsUsername: identityOf(dto) },
           update: {
-            hostname: dto.hostname,
-            windowsUsername: dto.windowsUsername,
             employeeId,
+            machineGuid: dto.machineGuid,
             osVersion: dto.osVersion ?? null,
             agentVersion: dto.agentVersion ?? null,
             tokenHash: hashToken(deviceToken),
