@@ -43,3 +43,6 @@ desktop.ini
 **/.env.old*
 **/.env.save*
 **/*.env.bak*
+
+# Syncthing-এর অস্থায়ী ফাইল — দুবার ভুল করে কমিট হয়ে গেছে
+~syncthing~*
