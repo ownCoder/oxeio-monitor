@@ -33,7 +33,7 @@ items — they were considered and **rejected**, and the reasons are in
 | **Keystroke logging** | Passwords and private messages would pass through it. There is no version of this that is safe to store. |
 | **Reading screen content** | Screenshots are stored and shown, never OCR'd, classified, or searched. |
 | **Webcam or microphone** | Not requested, not implemented, not wanted. |
-| **Silent installation** | Staff sign a monitoring policy first ([template](docs/monitoring-policy-template.md)). The agent shows a tray icon and a "My data" window. |
+| **Silent installation** | Staff agree to monitoring when they join, and the agent never hides: it shows a tray icon and a "My data" window. A policy [template](docs/monitoring-policy-template.md) ships with the repo for deployments that need a signed document. |
 | **Hiding hours from the person who worked them** | Every employee can open their own page and see exactly what was recorded, including any manual correction the owner made and the reason for it. |
 | **Screenshots outside 07:00–23:00** | Capture is time-boxed, and images auto-delete after 90 days. |
 | **Approval workflows** | The owner can correct hours, but nobody has to ask permission to work. |
@@ -158,12 +158,15 @@ rejected ones), [`05-Options-Decisions.md`](docs/05-Options-Decisions.md)
 Employee monitoring is regulated differently in every jurisdiction, and in many
 places it requires disclosure, consent, or a works-council agreement. This
 repository ships a
-[monitoring policy template](docs/monitoring-policy-template.md) because the
-original deployment required signatures before a single agent was installed.
+[monitoring policy template](docs/monitoring-policy-template.md) so you have
+somewhere to start. In the original deployment, staff agree to monitoring as
+part of joining, alongside the other terms of employment.
 
-**Do that.** Deploying this without telling the people being monitored is
-both wrong and, in many countries, illegal. The software cannot enforce that
-for you.
+**Tell people.** Deploying this without the knowledge of those being monitored
+is both wrong and, in many countries, illegal. Work out what your own
+jurisdiction requires — written notice, a signature, a works council — and do
+that. The software cannot enforce any of it for you, and it deliberately
+does not try: `policy_signed_at` is a place to record a date, never a gate.
 
 ---
 
