@@ -610,3 +610,61 @@ export function reopenMonth(
     method: 'DELETE',
   });
 }
+
+// ── R2 · ছুটির খাতা ──────────────────────────────────────────────────────────
+
+export interface LeaveView {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  /** 'YYYY-MM-DD' */
+  leaveDate: string;
+  /** `casual` · `sick` · `annual` — ⚠️ তিনটেই সবেতন */
+  type: string;
+  note: string | null;
+  createdBy: string;
+  /**
+   * ⭐⭐ ওই দিনটা ওই কর্মীর কর্মদিবস ছিল কি না।
+   *
+   * ⚠️ `false` মানে সারিটা খাতায় আছে কিন্তু **টার্গেটের কিছুই কমায়নি** —
+   *    শুক্রবার বা সরকারি ছুটির দিনে লেখা ছুটি। পর্দায় এটা আলাদা করে না
+   *    দেখালে খাতাটা একটা ছাড়ের দাবি করত যা সে দেয়নি।
+   */
+  countsTowardTarget: boolean;
+}
+
+/** R2 — `GET /api/v1/leaves?month=YYYY-MM` · ⚠️ মাস বাধ্যতামূলক */
+export function listLeaves(
+  month: string,
+  signal?: AbortSignal,
+): Promise<{ rows: LeaveView[] }> {
+  return api<{ rows: LeaveView[] }>(`/leaves${qs({ month })}`, { signal });
+}
+
+export interface CreateLeaveBody {
+  employeeId: number;
+  /** 'YYYY-MM-DD' */
+  from: string;
+  to: string;
+  type: string;
+  note?: string;
+}
+
+/**
+ * ⭐ রেঞ্জ ধরে — মানুষ "১০ থেকে ১৪" ছুটি নেয়, "১০" পাঁচবার নয়।
+ *
+ * ⚠️ `skipped` খালি না হলে **সেটা দেখাতেই হবে**: ওই দিনগুলো আগে থেকেই
+ *    খাতায় ছিল, তাই যোগ হয়নি। "৫টা যোগ হয়েছে" বলাটা তখন মিথ্যা হতো।
+ */
+export function createLeave(
+  body: CreateLeaveBody,
+): Promise<{ created: number; skipped: string[] }> {
+  return api<{ created: number; skipped: string[] }>('/leaves', {
+    method: 'POST',
+    body,
+  });
+}
+
+export function deleteLeave(id: number): Promise<void> {
+  return api<void>(`/leaves/${id}`, { method: 'DELETE' });
+}

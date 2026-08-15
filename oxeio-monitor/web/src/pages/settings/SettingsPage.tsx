@@ -8,6 +8,7 @@ import { Tabs } from '../../components/Tabs';
 import { AgentVersionsTab } from './AgentVersionsTab';
 import { AuditTab } from './AuditTab';
 import { CategoriesTab } from './CategoriesTab';
+import { LeaveTab } from './LeaveTab';
 import { MonthsTab } from './MonthsTab';
 import { PoliciesTab } from './PoliciesTab';
 import { StaffTab } from './StaffTab';
@@ -34,6 +35,7 @@ const TABS = [
   { id: 'policies', label: 'Policies & holidays' },
   // ⭐ Policies-এর ঠিক পরে: ছুটির তালিকা মাসের সংখ্যা **বদলায়**, আর এই
   //    ট্যাবটা সেগুলো **থামায়** — একই প্রশ্নের দুই দিক, তাই পাশাপাশি।
+  { id: 'leave', label: 'Leave' },
   { id: 'months', label: 'Months' },
   // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
   //    সবার শেষে থাকাটা প্রতিষ্ঠিত (বছরে দু-একবার খোলা হয়)
@@ -55,6 +57,7 @@ const SUBTITLE: Record<TabKey, string> = {
   staff: 'Add, edit and deactivate people — nothing is ever deleted',
   categories: 'Which apps and sites fall into which category',
   policies: 'Monthly target, screenshot window and days off',
+  leave: 'Agreed days off — the hours target drops, the salary does not',
   months: 'Freeze a finished month so its hours and pay stop moving',
   agent: 'Which build each PC is offered — and how widely',
   audit: 'Who looked at what, and who changed what',
@@ -101,6 +104,7 @@ export function SettingsPage() {
       {active === 'staff' && <StaffTab />}
       {active === 'categories' && <CategoriesTab />}
       {active === 'policies' && <PoliciesTab />}
+      {active === 'leave' && <LeaveTab />}
       {active === 'months' && <MonthsTab />}
       {active === 'agent' && <AgentVersionsTab />}
       {active === 'audit' && <AuditTab />}

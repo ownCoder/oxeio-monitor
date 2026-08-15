@@ -376,6 +376,34 @@ export class SetStageDto {
  *    দেওয়া হয়েছে")। ছয় মাস পরে কেউ audit ঘাঁটলে তারিখটার চেয়ে কারণটাই
  *    বেশি কাজে দেয়।
  */
+/**
+ * R2 — ছুটি লেখা।
+ *
+ * ⚠️ `from`/`to` **তারিখ, সময় নয়** — `@IsISO8601` একা `2026-09-10T14:00Z`-ও
+ *    মেনে নিত, আর তখন `new Date(...T00:00Z)`-এর সাথে তুলনা করে দিনটা এক
+ *    দিন সরে যেত। তাই `Matches` দিয়ে আকারটাও বাঁধা।
+ */
+export class CreateLeaveDto {
+  @IsInt()
+  @Min(1)
+  employeeId!: number;
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'from must be YYYY-MM-DD' })
+  from!: string;
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'to must be YYYY-MM-DD' })
+  to!: string;
+
+  /** ⚠️ তিনটেই সবেতন — `unpaid` কেন নেই, `schema.prisma`-র নোট দেখুন */
+  @IsIn(['casual', 'sick', 'annual'])
+  type!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  note?: string;
+}
+
 export class CloseMonthDto {
   @IsOptional()
   @IsString()

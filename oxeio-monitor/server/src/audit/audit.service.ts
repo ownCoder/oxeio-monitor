@@ -48,6 +48,9 @@ export type AuditAction =
    */
   | 'month_closed'
   | 'month_reopened'
+  /** ⭐ R2 — ছুটি টার্গেট কমায়, তাই কে লিখল/মুছল তা রেকর্ড থাকা দরকার */
+  | 'leave_added'
+  | 'leave_removed'
   /** ⭐ বেতন **বদলানো** — দেখার (`payroll_view`) চেয়েও ভারী, কারণ এটা
    *  কারো আয় বদলে দেয়। মান বদলালে meta-তে আগে/পরে দুটোই রাখা হয়। */
   | 'salary_change'

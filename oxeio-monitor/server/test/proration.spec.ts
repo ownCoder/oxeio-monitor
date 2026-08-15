@@ -193,3 +193,81 @@ describe('⭐ ঘণ্টাপ্রতি হার সবার এক — �
     expect(rateOf(null)).toBeCloseTo(20000 / (26 * 8), 10);
   });
 });
+
+/**
+ * ⭐⭐ **R2 — ছুটির খাতা।**
+ *
+ * ⚠️⚠️ এখানকার সবচেয়ে জরুরি টেস্টটা কোনো সংখ্যার নয়, একটা **বিচ্ছেদের**:
+ * ছুটি `targetSec` কমায়, কিন্তু `employeeWorkdays` (d) ও `monthWorkdays`
+ * (D) **ছোঁয় না**। ওই দুটোই পে-রোলের ভগ্নাংশ `d ÷ D` — অর্থাৎ ছুটি
+ * **সবেতন**। এই বিচ্ছেদ ভাঙলে ছুটি নেওয়া মানেই নীরবে বেতন কাটা হতো, আর
+ * সংখ্যাগুলো দেখতে যুক্তিসঙ্গতই লাগত।
+ */
+describe('prorate — ছুটি (R2)', () => {
+  /** সেপ্টেম্বর ২০২৬-এর কর্মদিবস: ১, ২, ৩ (শুক্র ৪), ৭, ৮ … */
+  const day = (n: number) => d(2026, 9, n).getTime();
+
+  it('⭐⭐ ছুটি টার্গেট কমায়, কিন্তু d ও D অটুট — অর্থাৎ বেতন কাটে না', () => {
+    const base = prorate(SEPT);
+    const withLeave = prorate({
+      ...SEPT,
+      leaveDates: new Set([day(1), day(2), day(3)]),
+    });
+
+    // ঘণ্টার টার্গেট তিন দিন কমেছে
+    expect(withLeave.leaveWorkdays).toBe(3);
+    expect(withLeave.targetSec).toBe(base.targetSec - 3 * 8 * HOURS);
+
+    // ⭐ কিন্তু পে-রোলের দুটো সংখ্যা এক চুলও নড়েনি
+    expect(withLeave.employeeWorkdays).toBe(base.employeeWorkdays);
+    expect(withLeave.monthWorkdays).toBe(base.monthWorkdays);
+    expect(salaryFraction(withLeave.employeeWorkdays, withLeave.monthWorkdays)).toBe(
+      salaryFraction(base.employeeWorkdays, base.monthWorkdays),
+    );
+  });
+
+  /**
+   * ⚠️ শুক্রবারে "ছুটি" লেখা হলে সেদিন এমনিতেই টার্গেট ছিল না — বাদ দিলে
+   *    আট ঘণ্টা দুবার কাটা যেত, আর কেউ কারণ খুঁজে পেত না।
+   */
+  it('সাপ্তাহিক ছুটির দিনে লেখা ছুটি গোনা হয় না', () => {
+    const base = prorate(SEPT);
+    const onFriday = prorate({ ...SEPT, leaveDates: new Set([day(4)]) });
+
+    expect(onFriday.leaveWorkdays).toBe(0);
+    expect(onFriday.targetSec).toBe(base.targetSec);
+  });
+
+  it('সরকারি ছুটির দিনে লেখা ছুটিও গোনা হয় না', () => {
+    const withHoliday = { ...SEPT, holidays: new Set([day(7)]) };
+    const base = prorate(withHoliday);
+    const both = prorate({ ...withHoliday, leaveDates: new Set([day(7)]) });
+
+    expect(both.leaveWorkdays).toBe(0);
+    expect(both.targetSec).toBe(base.targetSec);
+  });
+
+  /** ⚠️ যোগ দেওয়ার আগের ছুটি d-তেই নেই, তাই বাদ দেওয়ারও কিছু নেই */
+  it('কর্মকালের বাইরের ছুটি গোনা হয় না', () => {
+    const joinedMid = { ...SEPT, joinedOn: d(2026, 9, 15) };
+    const base = prorate(joinedMid);
+    const before = prorate({ ...joinedMid, leaveDates: new Set([day(1), day(2)]) });
+
+    expect(before.leaveWorkdays).toBe(0);
+    expect(before.targetSec).toBe(base.targetSec);
+  });
+
+  it('⚠️ সব কর্মদিবস ছুটি হলে টার্গেট শূন্য, ঋণাত্মক নয়', () => {
+    const all = new Set<number>();
+    for (let n = 1; n <= 30; n++) all.add(day(n));
+
+    const p = prorate({ ...SEPT, leaveDates: all });
+    expect(p.targetSec).toBe(0);
+    // ⭐ তবু d ও D আগের মতোই — মাসভর ছুটি নিলেও বেতনের ভগ্নাংশ পুরো
+    expect(p.employeeWorkdays).toBe(p.monthWorkdays);
+  });
+
+  it('ছুটি না দিলে আগের মতোই আচরণ', () => {
+    expect(prorate(SEPT)).toEqual(prorate({ ...SEPT, leaveDates: new Set() }));
+  });
+});

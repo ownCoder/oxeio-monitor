@@ -10,6 +10,8 @@ import { EmployeesReadController } from './employees-read.controller';
 import { EmployeesController } from './employees.controller';
 import { EmployeesService } from './employees.service';
 import { HolidaysController } from './holidays.controller';
+import { LeaveController } from './leave.controller';
+import { LeaveService } from './leave.service';
 import { MonthCloseController } from './month-close.controller';
 import { MonthCloseService } from './month-close.service';
 import { HolidaysService } from './holidays.service';
@@ -34,6 +36,7 @@ import { WorkPoliciesService } from './work-policies.service';
     WorkPoliciesController,
     HolidaysController,
     MonthCloseController,
+    LeaveController,
     AuditLogController,
     AgentVersionsController,
   ],
@@ -43,6 +46,7 @@ import { WorkPoliciesService } from './work-policies.service';
     WorkPoliciesService,
     HolidaysService,
     MonthCloseService,
+    LeaveService,
     AuditLogService,
     AgentVersionsService,
   ],

@@ -211,7 +211,7 @@ export class SummaryService {
       return;
     }
 
-    const [days, holidayRows, existing, firstSeen] = await Promise.all([
+    const [days, holidayRows, leaveRows, existing, firstSeen] = await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { employeeId: { in: ids }, workDate: { gte: start, lte: end } },
         select: {
@@ -223,6 +223,17 @@ export class SummaryService {
       this.prisma.holiday.findMany({
         where: { holidayDate: { gte: start, lte: end } },
         select: { holidayDate: true },
+      }),
+      /**
+       * ⭐⭐ R2 — **এই মাসে এই কর্মীদের ছুটি**, কর্মীপ্রতি।
+       *
+       * ⚠️⚠️ `holidays`-এর সাথে এক সেটে মেশানো হয় **না**। `holidays`
+       *    সংস্থার, আর ওটা দিয়েই D গোনা হয় — একজনের ছুটি ওখানে ঢুকলে
+       *    গোটা দলের বেতনের হর বদলে যেত।
+       */
+      this.prisma.leave.findMany({
+        where: { employeeId: { in: ids }, leaveDate: { gte: start, lte: end } },
+        select: { employeeId: true, leaveDate: true },
       }),
       this.prisma.monthlySummary.findMany({
         where: { employeeId: { in: ids }, yearMonth },
@@ -266,6 +277,13 @@ export class SummaryService {
     ]);
 
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
+
+    const leaveBy = new Map<number, Set<number>>();
+    for (const l of leaveRows) {
+      let set = leaveBy.get(l.employeeId);
+      if (!set) leaveBy.set(l.employeeId, (set = new Set()));
+      set.add(l.leaveDate.getTime());
+    }
     const daysBy = groupBy(days, (d) => d.employeeId);
     const metAtBy = new Map(existing.map((m) => [m.employeeId, m.targetMetAt]));
 
@@ -284,6 +302,7 @@ export class SummaryService {
 
     for (const e of employees) {
       const rows = daysBy.get(e.id) ?? [];
+      const leaveDates = leaveBy.get(e.id);
 
       /**
        * ⭐⭐ **G37 · ADR-025** — টার্গেট আর ফ্ল্যাট ২০৮ নয়, **তার কর্মদিবস
@@ -302,6 +321,7 @@ export class SummaryService {
         holidays,
         monthlyTargetSec: e.targetSec,
         policyWorkdays: e.policyWorkdays,
+        leaveDates,
       });
 
       /**
@@ -322,6 +342,13 @@ export class SummaryService {
         targetSec: p.targetSec,
         expectedWorkdays: p.employeeWorkdays,
         monthWorkdays: p.monthWorkdays,
+        /**
+         * ⭐⭐ R2 — ছুটি **তিন জায়গায় একসাথে** যেতে হয়, নয়তো সংখ্যাগুলো
+         * পরস্পরবিরোধী হয়: টার্গেটে (`prorate` — কমে), প্রত্যাশার হরে
+         * (এখানে — কমে), আর প্রত্যাশার লবে (`elapsedWorkdays`-এর দ্বিতীয়
+         * আর্গুমেন্ট — কমে)। **d ও D-তে যায় না** — ছুটি সবেতন।
+         */
+        leaveWorkdays: p.leaveWorkdays,
         workdaysElapsed: elapsedWorkdays({
           periodStart: start,
           periodEnd: end,
@@ -331,7 +358,7 @@ export class SummaryService {
           trackingStartedOn: trackedFromBy.get(e.id) ?? null,
           weeklyOffDay: e.weeklyOffDay,
           holidays,
-        }),
+        }, leaveDates),
         daysWithWork: rows.filter((r) => r.workedSec > 0).length,
       });
 

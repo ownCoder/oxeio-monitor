@@ -155,6 +155,7 @@ model Employee {
   alerts          Alert[]
 
   @@map("employees")
+  leaves           Leave[]
 }
 
 /// ড্যাশবোর্ডে লগইন করা ইউজার — owner, manager, আর স্টাফের self-view
@@ -558,6 +559,8 @@ model MonthlySummary {
   /// ⚠️ আলাদা করে রাখা হয়, পে-রোলের সময় আবার গোনা হয় না: ছুটির তালিকা
   /// বদলালে d আর D দুই আলাদা সময়ের হিসাব হয়ে যেত, আর ভগ্নাংশটা ভুল হতো।
   monthWorkdays    Int       @default(0) @map("month_workdays")
+  /// ⭐ R2 — অনুমোদিত ছুটির কর্মদিবস। টার্গেট কমায়, `d ÷ D` ছোঁয় না।
+  leaveWorkdays    Int       @default(0) @map("leave_workdays")
   /// ⭐ আজ পর্যন্ত কত কর্মদিবস গেছে
   workdaysElapsed  Int       @default(0) @map("workdays_elapsed")
   daysWithWork     Int       @default(0) @map("days_with_work")
@@ -606,4 +609,50 @@ model MonthClosure {
   note      String?
 
   @@map("month_closures")
+}
+
+/**
+ * R2 — **ছুটির খাতা।**
+ *
+ * ⚠️⚠️ **কোনো আবেদন-অনুমোদন প্রবাহ নয়** — "স্টাফের চাপার মতো কোনো বোতাম
+ * নেই" এই সিস্টেমের ঘোষিত নিয়ম। স্টাফ মুখে বলেন, owner লিখে রাখেন।
+ * তাই এখানে `status`/`approvedBy` জাতীয় কোনো ঘর নেই, আর থাকা উচিতও নয়।
+ *
+ * ⭐⭐ **এক সারি = এক দিন**, তারিখের সীমা নয়। পর্দা সীমা নেয় ("৩–৭ আগস্ট")
+ * আর সেটাকে দিনে ভেঙে বসায়। কারণ গোনা, বাদ দেওয়া আর একটা দিন মুছে ফেলা —
+ * তিনটেই তখন তুচ্ছ; সীমা রাখলে প্রতিটা হিসাবে ওভারল্যাপ ও আংশিক-ছেদ
+ * সামলাতে হতো, আর ওখানেই বাগ জন্মাত।
+ *
+ * ⭐⭐ **ছুটি ঘণ্টার টার্গেট কমায়, বেতন নয়** — অর্থাৎ **সবেতন**।
+ * `monthly_summary.expected_workdays` (d) অপরিবর্তিত থাকে, তাই পে-রোলের
+ * `d ÷ D` ভগ্নাংশও অটুট। কমে কেবল `target_sec` ও `expected_sec`।
+ * ⚠️ উল্টোটা (d কমানো) মানে ছুটি নিলেই নীরবে বেতন কাটা — সেটা মালিকের
+ * সজ্ঞান সিদ্ধান্ত ছাড়া করা যায় না।
+ *
+ * ⚠️ ছুটির দিনে কেউ কাজ করলে ঘণ্টা **গোনা হবেই** — ছুটি মানে টার্গেট মাফ,
+ * কাজ নিষেধ নয় (§ ২.১-খ-এর নিয়ম ছুটিতেও এক)।
+ */
+model Leave {
+  id         Int      @id @default(autoincrement())
+  employeeId Int      @map("employee_id")
+  /// ঢাকার কর্মদিবস — `holidays.holiday_date`-এর মতোই UTC-মধ্যরাত
+  leaveDate  DateTime @map("leave_date") @db.Date
+  /// `casual` · `sick` · `annual` — **তিনটেই সবেতন**
+  ///
+  /// ⚠️⚠️ `unpaid` ইচ্ছাকৃতভাবে **নেই**। বিনা-বেতনের ছুটি d (`d ÷ D`-র লব)
+  /// কমাত, অথচ এখানকার সব কোড ছুটিকে সবেতন ধরে। নামটা রেখে দিলে খাতায়
+  /// `unpaid` লেখা থাকত আর বেতন কাটত না — সংখ্যাটা এমন কিছু দাবি করত যা
+  /// সে জানে না। দরকার হলে সেটা পে-রোলের আলাদা সিদ্ধান্ত।
+  type       String   @default("casual")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  /// ⚠️ ইমেইল, `user_id` নয় — ইউজার মুছে গেলেও "কে লিখেছিল" টিকে থাকা দরকার
+  createdBy  String   @map("created_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  /// ⭐ একই দিনে দুবার ছুটি লেখা যায় না — নইলে গোনায় দুবার বাদ যেত
+  @@unique([employeeId, leaveDate])
+  @@index([leaveDate])
+  @@map("leaves")
 }

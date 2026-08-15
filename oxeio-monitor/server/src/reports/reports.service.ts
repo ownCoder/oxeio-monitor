@@ -20,7 +20,7 @@ import {
 import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { elapsedWindow } from '../summary/summary.math';
+import { countLeaveWorkdays, elapsedWindow } from '../summary/summary.math';
 import type { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
 import {
   MIME_OF,
@@ -746,6 +746,31 @@ export class ReportsService {
     });
 
     /**
+     * ⭐⭐ R2 — **ছুটি, কর্মীপ্রতি।**
+     *
+     * ⚠️ ছুটির দিনগুলো `holidays` সেটে ঢালা হয় **না**, যদিও তাতে নিচের
+     *    দুটো ফাংশনই এমনিতেই ঠিক হয়ে যেত। কারণ ওই একই সেট দিয়ে
+     *    `approximateHolidayDates()` চলে — অর্থাৎ একজনের ব্যক্তিগত ছুটি
+     *    রিপোর্টের পাদটীকায় "সরকারি ছুটি" হয়ে সবার চোখে পড়ত।
+     */
+    const leaveRows = await this.prisma.leave.findMany({
+      where: {
+        employeeId: { in: employees.map((e) => e.id) },
+        leaveDate: {
+          gte: months[0].first,
+          lte: months[months.length - 1].last,
+        },
+      },
+      select: { employeeId: true, leaveDate: true },
+    });
+    const leaveBy = new Map<number, Set<number>>();
+    for (const l of leaveRows) {
+      let set = leaveBy.get(l.employeeId);
+      if (!set) leaveBy.set(l.employeeId, (set = new Set()));
+      set.add(l.leaveDate.getTime());
+    }
+
+    /**
      * ⭐⭐ **এক হার।** দিনটা কর্মদিবস হলে তার টার্গেট কর্মীর নিজের
      * `dailyTargetSec` — মাস যাই হোক, ওই মাসে কটা ছুটি থাকুক না কেন।
      *
@@ -756,8 +781,12 @@ export class ReportsService {
      *    **বাড়ত** — অর্থাৎ ছুটি দিয়ে কর্মীর কোনো লাভই হতো না।
      *    কেন পলিসির ধ্রুবকই সঠিক, তা `dailyTargetSec()`-এর নোটে।
      */
-    const targetSecOf = (employee: ResolvedEmployee, date: Date): number =>
-      isWorkday(date, ruleOf(employee)) ? employee.dailyTargetSec : 0;
+    const targetSecOf = (employee: ResolvedEmployee, date: Date): number => {
+      if (!isWorkday(date, ruleOf(employee))) return 0;
+      // ⭐ R2 — ছুটির দিনে টার্গেট ০, ঠিক সাপ্তাহিক ছুটির দিনের মতোই
+      if (leaveBy.get(employee.id)?.has(date.getTime())) return 0;
+      return employee.dailyTargetSec;
+    };
 
     /**
      * ⭐⭐ **"এ পর্যন্ত কত হওয়ার কথা ছিল" — এখানেই, একবারই।**
@@ -828,9 +857,25 @@ export class ReportsService {
       if (window === null) return 0;
 
       const seen = overlapOf(window, span);
-      return seen === null
-        ? 0
-        : targetSecIn(seen, ruleOf(employee), employee.dailyTargetSec);
+      if (seen === null) return 0;
+
+      /**
+       * ⚠️ R2 — গুণফল থেকে ছুটির দিনগুলো বাদ। `targetSecIn()` গুণ করে
+       *    (দিনে-দিনে যোগ করে না), তাই ছুটি এখানে আলাদা করে না কাটলে
+       *    meta-র প্রত্যাশা আর সারিগুলোর যোগফল আর মিলত না — অথচ ওই
+       *    সমতাটাই `test/reports.target.spec.ts` পাহারা দেয়।
+       */
+      const onLeave = countLeaveWorkdays(
+        leaveBy.get(employee.id),
+        seen.from,
+        seen.to,
+        employee.weeklyOffDay,
+        holidays,
+      );
+      return (
+        targetSecIn(seen, ruleOf(employee), employee.dailyTargetSec) -
+        onLeave * employee.dailyTargetSec
+      );
     };
 
     const expectedHours: Record<number, number> = {};

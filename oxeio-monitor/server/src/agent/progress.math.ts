@@ -38,6 +38,14 @@ export interface PaceInput {
    * ফলে tray আর Monthly পাতা ~৮৯ ঘণ্টা আলাদা বলত।
    */
   workdaysElapsed: number;
+  /**
+   * ⭐ R2 — ওই মাসে তার অনুমোদিত ছুটির কর্মদিবস।
+   *
+   * ⚠️ tray-তেও এটা লাগে, নইলে ছুটি থেকে ফিরে কেউ tray-তে "পিছিয়ে"
+   *    দেখতেন আর Live Board-এ "ঠিক আছে" — আর tray-ই সেই পর্দা যেটা তিনি
+   *    সারাদিন দেখেন।
+   */
+  leaveWorkdays?: number;
 }
 
 /**
@@ -54,6 +62,7 @@ export function expectedSecOf(input: PaceInput): number {
   return proratedExpectedSec({
     targetSec: input.monthlyTargetHours * SEC_PER_HOUR,
     expectedWorkdays: input.expectedWorkdays,
+    leaveWorkdays: input.leaveWorkdays,
     workdaysElapsed: input.workdaysElapsed,
   });
 }

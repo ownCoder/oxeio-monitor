@@ -335,6 +335,22 @@ export class DashboardService {
 
     const ids = employees.map((e) => e.id);
 
+    /**
+     * ⭐ R2 — কার্ডের টার্গেটও ছুটি বাদ দিয়ে। ⚠️ না দিলে ছুটিতে থাকা
+     *    কর্মীর কার্ড মাসিক টার্গেট দেখাত পুরোটা, অথচ Monthly পাতা কম —
+     *    আর ঠিক এই ধরনের অমিলের নিন্দাই নিচের `prorate()`-এর নোটে লেখা।
+     */
+    const leaveRows = await this.prisma.leave.findMany({
+      where: { employeeId: { in: ids }, leaveDate: { gte: monthFirst, lte: monthLast } },
+      select: { employeeId: true, leaveDate: true },
+    });
+    const leaveBy = new Map<number, Set<number>>();
+    for (const l of leaveRows) {
+      let set = leaveBy.get(l.employeeId);
+      if (!set) leaveBy.set(l.employeeId, (set = new Set()));
+      set.add(l.leaveDate.getTime());
+    }
+
     const [devices, todaySums, monthSums, recentSegments] = await Promise.all([
       // ⚠️ revoked ডিভাইস বাদ — ওগুলোর lastSeenAt চিরকাল পুরোনো হয়ে
       //    আটকে থাকে, ফলে PC বদলে দেওয়া কর্মীও চিরকাল 🔴 দেখাত।
@@ -451,6 +467,7 @@ export class DashboardService {
         holidays,
         monthlyTargetSec: targetHours * HOUR,
         policyWorkdays: e.policy?.expectedWorkdays ?? DEFAULT_POLICY_WORKDAYS,
+        leaveDates: leaveBy.get(e.id),
       });
 
       return {

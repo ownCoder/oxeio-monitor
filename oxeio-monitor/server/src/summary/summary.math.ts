@@ -471,10 +471,70 @@ export function elapsedWindow(input: ElapsedWindowInput): ElapsedWindow | null {
  *    দিনটাকে `worked` লেখে, তাই ওই ছুটির দিনটাই একটা পুরো ৮ ঘণ্টার
  *    **প্রত্যাশা** হয়ে যেত — অর্থাৎ ছুটির দিনে কাজ করার শাস্তি।
  */
-export function elapsedWorkdays(input: ElapsedInput): number {
+export function elapsedWorkdays(
+  input: ElapsedInput,
+  /**
+   * ⭐⭐ R2 — **ওই কর্মীর ছুটির দিন**, ঐচ্ছিক।
+   *
+   * ⚠️⚠️ কেন `holidays`-এর সাথে মেশানো যায় না: `holidays` সংস্থার, আর
+   *    ওটা দিয়ে D-ও গোনা হয় (`prorate`)। একজনের ছুটি ওখানে ঢুকলে গোটা
+   *    দলের হর বদলে যেত। তাই আলাদা আর্গুমেন্ট।
+   *
+   * ⚠️ প্রত্যাশা গোনায় ছুটি বাদ **দিতেই হবে**, নইলে যিনি ছুটিতে ছিলেন
+   *    তিনি ঠিক ওই দিনগুলোর জন্য "পিছিয়ে" দেখাতেন — অথচ টার্গেট থেকে
+   *    দিনগুলো ইতিমধ্যেই বাদ। লব বাদ দিয়ে হর না দিলে ভগ্নাংশটাই মিথ্যা হতো।
+   */
+  leaveDates?: ReadonlySet<number>,
+): number {
   const window = elapsedWindow(input);
   if (window === null) return 0;
-  return countWorkdays(window.from, window.to, input.weeklyOffDay, input.holidays);
+
+  const days = countWorkdays(
+    window.from,
+    window.to,
+    input.weeklyOffDay,
+    input.holidays,
+  );
+  const onLeave = countLeaveWorkdays(
+    leaveDates,
+    window.from,
+    window.to,
+    input.weeklyOffDay,
+    input.holidays,
+  );
+  // ⚠️ ঋণাত্মক নয় — জানালার সব দিনই ছুটি হলে শূন্য
+  return Math.max(0, days - onLeave);
+}
+
+
+/**
+ * ⭐⭐ R2 — একটা জানালায় কত **কর্মদিবস** ছুটিতে কাটল।
+ *
+ * ⚠️⚠️ `isWorkday` দিয়ে ছেঁকে নেওয়াই এই ফাংশনটার গোটা কারণ। শুক্রবার বা
+ * সরকারি ছুটির দিনে লেখা একটা ছুটি না ছাঁকলে টার্গেট থেকে আট ঘণ্টা কেটে
+ * নিত — অথচ ওই দিনে কোনো টার্গেটই ছিল না। ব্যর্থতাটা হতো নীরব: সংখ্যা
+ * কমত, কারণ কেউ খুঁজে পেত না।
+ *
+ * ⭐ তিন জায়গা এটাকেই ডাকে — টার্গেট (`prorate`), প্রত্যাশার লব
+ * (`elapsedWorkdays`) আর tray-র সাত দিনের টার্গেট। আলাদা করে লেখা তিনটে
+ * লুপ থেকে একটা ছেঁকে অন্যটা না ছাঁকা — ঠিক এই প্রকল্পের সবচেয়ে চেনা পাপ।
+ */
+export function countLeaveWorkdays(
+  leaveDates: ReadonlySet<number> | undefined,
+  from: Date,
+  to: Date,
+  weeklyOffDay: number | null,
+  holidays: ReadonlySet<number>,
+): number {
+  if (!leaveDates || leaveDates.size === 0) return 0;
+  if (from.getTime() > to.getTime()) return 0;
+
+  let count = 0;
+  for (const ms of leaveDates) {
+    if (ms < from.getTime() || ms > to.getTime()) continue;
+    if (isWorkday(new Date(ms), weeklyOffDay, holidays)) count += 1;
+  }
+  return count;
 }
 
 /** `proratedExpectedSec()`-এর তিনটে সংখ্যা */
@@ -485,6 +545,19 @@ export interface ExpectedInput {
   expectedWorkdays: number;
   /** `elapsedWorkdays()` থেকে — নিজে বানিয়ে নিলে জানালাটাই আবার আলাদা হয়ে যেত */
   workdaysElapsed: number;
+  /**
+   * ⭐⭐ R2 — ওই মাসে তার **অনুমোদিত ছুটির কর্মদিবস**।
+   *
+   * ⚠️⚠️ এটা **হর থেকে বাদ যায়**, `expectedWorkdays` থেকে নয়। কারণ
+   *    `expectedWorkdays` (d) পে-রোলের ভগ্নাংশ `d ÷ D`-র লব — ছুটি ওটা
+   *    ছুঁলে সবেতন ছুটি নীরবে বেতন-কাটা ছুটি হয়ে যেত।
+   *
+   * ⚠️⚠️ আর লব (`workdaysElapsed`)-ও ছুটি বাদ দিয়েই আসে
+   *    (`elapsedWorkdays()`-এর দ্বিতীয় আর্গুমেন্ট)। **দুই দিকেই বাদ
+   *    দিতে হয়, নয়তো কোনোটাতেই নয়** — একদিকে দিলে ভগ্নাংশটা ইচ্ছাকৃত
+   *    সিদ্ধান্ত নয়, বাগ।
+   */
+  leaveWorkdays?: number;
 }
 
 /**
@@ -514,9 +587,21 @@ export function proratedExpectedSec(input: ExpectedInput): number {
   if (!Number.isFinite(targetSec) || targetSec <= 0) return 0;
   if (!Number.isFinite(expectedWorkdays) || expectedWorkdays <= 0) return 0;
 
-  // ⚠️ ০ ও `expectedWorkdays`-এর মধ্যে আটকানো — নইলে পুরোনো তারিখ দিয়ে
-  //    ডাকলে প্রত্যাশা টার্গেট ছাড়িয়ে যেত আর তখন সবাই "পিছিয়ে" দেখাত।
-  return Math.round((targetSec * clamp(workdaysElapsed, 0, expectedWorkdays)) / expectedWorkdays);
+  /**
+   * ⭐⭐ R2 — হর হলো **বিল-যোগ্য** কর্মদিবস, d নয়।
+   *
+   * `targetSec`-ও ঠিক এই দিনগুলোর জন্যই গোনা (`prorate()`), তাই ভাগফলটা
+   * "একটা বিল-যোগ্য দিনের টার্গেট" — ছুটি থাক বা না থাক একই।
+   *
+   * ⚠️ মাসের সব দিন ছুটি হলে হর ০ হয়ে যেত; তখন প্রত্যাশাও ০ — এবং
+   *    সেটাই সৎ, কারণ টার্গেটও ০।
+   */
+  const billable = Math.max(0, expectedWorkdays - (input.leaveWorkdays ?? 0));
+  if (billable <= 0) return 0;
+
+  // ⚠️ ০ ও হরের মধ্যে আটকানো — নইলে পুরোনো তারিখ দিয়ে ডাকলে প্রত্যাশা
+  //    টার্গেট ছাড়িয়ে যেত আর তখন সবাই "পিছিয়ে" দেখাত।
+  return Math.round((targetSec * clamp(workdaysElapsed, 0, billable)) / billable);
 }
 
 /** ⚠️ `null` মানে "এই সীমাটা নেই", তাই সে কখনো জেতে না। */
@@ -546,6 +631,8 @@ export interface MonthInput {
   expectedWorkdays: number;
   /** ⭐ G37 — ওই মাসের মোট কর্মদিবস (D), বেতনের ভগ্নাংশের হর */
   monthWorkdays: number;
+  /** ⭐ R2 — অনুমোদিত ছুটির কর্মদিবস; d ও D কেউই ছোঁয় না, শুধু টার্গেট কমায় */
+  leaveWorkdays?: number;
   /**
    * কত কর্মদিবস **শেষ হয়ে গেছে** — `elapsedWorkdays()` থেকে।
    *
@@ -567,6 +654,7 @@ export interface MonthNumbers {
   paceSec: number;
   expectedWorkdays: number;
   monthWorkdays: number;
+  leaveWorkdays: number;
   workdaysElapsed: number;
   daysWithWork: number;
   avgDailySec: number;
@@ -596,6 +684,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     targetSec,
     expectedWorkdays,
     monthWorkdays,
+    leaveWorkdays = 0,
     workdaysElapsed,
     daysWithWork,
   } = input;
@@ -612,7 +701,18 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
   if (!Number.isFinite(targetSec) || targetSec < 0) {
     throw new RangeError('Monthly target cannot be negative');
   }
-  if (targetSec === 0 && expectedWorkdays > 0) {
+  /**
+   * ⚠️⚠️ শর্তটা **বিল-যোগ্য** দিন ধরে, d ধরে নয় — R2-তে এটাই ছিল একটা
+   *    সত্যিকারের ক্র্যাশ। কেউ গোটা মাস ছুটিতে থাকলে `targetSec` ঠিকই ০
+   *    (ছুটি টার্গেট কমায়) অথচ `expectedWorkdays` (d) অটুট (ছুটি সবেতন) —
+   *    অর্থাৎ দুটো শর্তই সত্যি হয়ে মাসিক rollup-টাই `RangeError`-এ পড়ত,
+   *    আর তাতে **ওই একজনের নয়, গোটা দলের** মাসিক সারি লেখা বন্ধ হতো।
+   *
+   * ⭐ যা ধরার জন্য এটা এখানে ছিল — নীতিতে কর্মদিবস আছে অথচ টার্গেট ০ —
+   *    সেটা এখনো ধরা পড়ে: ছুটি বাদ দেওয়ার পরও দিন থাকলে টার্গেট ০ হতে পারে না।
+   */
+  const billableWorkdays = Math.max(0, expectedWorkdays - leaveWorkdays);
+  if (targetSec === 0 && billableWorkdays > 0) {
     throw new RangeError('Monthly target cannot be zero when there are workdays');
   }
 
@@ -627,6 +727,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
   // ⭐ সূত্রটা এখানে আর লেখা নেই — `proratedExpectedSec()`-এ, কারণ tray-ও
   //    ঠিক এই সূত্রই ডাকে। দুবার লিখলে একদিন একটা বদলাত আর অন্যটা নয়।
   const expectedSec = proratedExpectedSec({
+    leaveWorkdays,
     targetSec,
     expectedWorkdays,
     workdaysElapsed,
@@ -641,6 +742,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     paceSec: creditedSec - expectedSec,
     expectedWorkdays,
     monthWorkdays,
+    leaveWorkdays,
     workdaysElapsed,
     daysWithWork,
     // ⚠️ শূন্য দিয়ে ভাগ — কেউ সারা মাসে একদিনও কাজ না করলে Infinity বসত

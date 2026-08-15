@@ -1,4 +1,4 @@
-import { countWorkdays } from './summary.math';
+import { countLeaveWorkdays, countWorkdays } from './summary.math';
 
 /**
  * **G37 · ADR-025** — মাঝপথে যোগ দিলে বা চলে গেলে টার্গেট ও বেতন কতটা।
@@ -39,6 +39,19 @@ export interface ProrationInput {
   /** ওই মাসের ছুটির দিনগুলো, `getTime()` মিলিয়ে */
   holidays: ReadonlySet<number>;
 
+  /**
+   * ⭐⭐ R2 — **ওই কর্মীর ছুটির দিনগুলো** (`getTime()`), সংস্থার ছুটি নয়।
+   *
+   * ⚠️⚠️ `holidays`-এর সাথে **মেশানো হয়নি**, আর সেটাই এখানকার মূল সিদ্ধান্ত।
+   *    `holidays` দিয়ে **D** গোনা হয়, আর D হলো পে-রোলের `d ÷ D`-এর হর —
+   *    সবার জন্য এক। একজনের ছুটি ওখানে ঢুকলে **তার ছুটির কারণে গোটা দলের
+   *    হর বদলে যেত**।
+   *
+   * ⭐ ছুটি কমায় কেবল **ঘণ্টার টার্গেট**, লব **d নয়** — অর্থাৎ **সবেতন**।
+   *    d কমালে ছুটি নেওয়া মানেই নীরবে বেতন কাটা হতো।
+   */
+  leaveDates?: ReadonlySet<number>;
+
   /** পলিসির মাসিক টার্গেট, সেকেন্ডে (২০৮ ঘণ্টা) */
   monthlyTargetSec: number;
   /**
@@ -58,7 +71,13 @@ export interface Proration {
   employeeWorkdays: number;
   /** এক কর্মদিবসের টার্গেট, সেকেন্ডে (round করা হয়নি — নিচের নোট) */
   dailyTargetSec: number;
-  /** d × দৈনিক টার্গেট — `monthly_summary.target_sec`-এ যাবে */
+  /**
+   * ⭐ R2 — d-এর মধ্যে যতগুলো দিন সে ছুটিতে ছিল।
+   * ⚠️ কেবল **কর্মদিবসে পড়া** ছুটি — শুক্রবারে বা সরকারি ছুটিতে কেউ
+   *    "ছুটি" লিখলেও সেদিন এমনিতেই টার্গেট ছিল না।
+   */
+  leaveWorkdays: number;
+  /** (d − ছুটি) × দৈনিক টার্গেট — `monthly_summary.target_sec`-এ যাবে */
   targetSec: number;
   /** ⭐ পুরো মাস আছে কি না। `false` হলে ওয়েবে "prorated" লেখা দেখানো হয় */
   partial: boolean;
@@ -94,6 +113,7 @@ export function prorate(input: ProrationInput): Proration {
     holidays,
     monthlyTargetSec,
     policyWorkdays,
+    leaveDates,
   } = input;
 
   if (!Number.isFinite(monthlyTargetSec) || monthlyTargetSec < 0) {
@@ -123,11 +143,29 @@ export function prorate(input: ProrationInput): Proration {
 
   const dailyTargetSec = monthlyTargetSec / policyWorkdays;
 
+  /**
+   * ⭐ R2 — কর্মকালের ভেতরে, **কর্মদিবসে পড়া** ছুটির দিন কটা।
+   *
+   * ⚠️ `isWorkday` দিয়ে ছেঁকে নেওয়া হয়, নইলে শুক্রবারে লেখা একটা ছুটি
+   *    টার্গেট থেকে আট ঘণ্টা কেটে নিত — অথচ ওই দিনে কোনো টার্গেটই ছিল না।
+   *    ব্যর্থতাটা হতো নীরব: সংখ্যা কমত, কারণ কেউ খুঁজে পেত না।
+   */
+  const leaveWorkdays = countLeaveWorkdays(
+    leaveDates,
+    from,
+    to,
+    weeklyOffDay,
+    holidays,
+  );
+
+  const billableWorkdays = Math.max(0, employeeWorkdays - leaveWorkdays);
+
   return {
     monthWorkdays,
     employeeWorkdays,
+    leaveWorkdays,
     dailyTargetSec,
-    targetSec: Math.round(employeeWorkdays * dailyTargetSec),
+    targetSec: Math.round(billableWorkdays * dailyTargetSec),
     partial: employeeWorkdays < monthWorkdays,
   };
 }

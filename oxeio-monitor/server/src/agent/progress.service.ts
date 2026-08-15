@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
 import { prorate } from '../summary/proration';
-import { countWorkdays, elapsedWorkdays } from '../summary/summary.math';
+import {
+  countLeaveWorkdays,
+  countWorkdays,
+  elapsedWorkdays,
+} from '../summary/summary.math';
 import { PrismaService } from '../prisma/prisma.service';
 import { paceSecOf } from './progress.math';
 import { workDateOf } from './util/dhaka-time';
@@ -112,6 +116,7 @@ export class ProgressService {
       employee,
       adjustmentRow,
       holidayRows,
+      leaveRows,
       firstSeen,
     ] = await Promise.all([
         this.prisma.activitySegment.aggregate({
@@ -173,6 +178,15 @@ export class ProgressService {
           select: { holidayDate: true },
         }),
         /**
+         * ⭐ R2 — তার নিজের ছুটি। ⚠️ `holidayFrom` থেকেই আনা হয় (মাসের ১
+         *    তারিখ নয়), কারণ নিচে সাত দিনের টার্গেটেও এটা লাগে আর ওই
+         *    জানালা মাসের সীমা পেরোতে পারে।
+         */
+        this.prisma.leave.findMany({
+          where: { employeeId, leaveDate: { gte: holidayFrom, lte: monthEnd } },
+          select: { leaveDate: true },
+        }),
+        /**
          * ⭐⭐ **সার্ভার কবে থেকে এই কর্মীকে নিয়ে হিসাব করছে** — তার
          * সবচেয়ে পুরোনো `daily_summary` সারি। প্রত্যাশার জানালা এর আগে
          * শুরু হয় না।
@@ -207,6 +221,7 @@ export class ProgressService {
 
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
     const off = employee?.policy?.weeklyOffDay ?? null;
+    const leaveDates = new Set(leaveRows.map((l) => l.leaveDate.getTime()));
 
     /**
      * ⭐⭐ **G37 · ADR-025 — tray-র টার্গেটও prorate হয়।**
@@ -225,6 +240,7 @@ export class ProgressService {
       holidays,
       monthlyTargetSec: monthlyTargetHours * 3600,
       policyWorkdays: employee?.policy?.expectedWorkdays ?? 26,
+      leaveDates,
     });
 
     const expectedWorkdays = p.employeeWorkdays;
@@ -252,7 +268,7 @@ export class ProgressService {
       trackingStartedOn: firstSeen?.workDate ?? null,
       weeklyOffDay: off,
       holidays,
-    });
+    }, leaveDates);
 
     /**
      * এক কর্মদিবসের ভাগ। ⚠️ পলিসি থেকে সরাসরি, তার কর্মদিবস দিয়ে ভাগ করে
@@ -270,8 +286,18 @@ export class ProgressService {
       monthlyTargetHours: p.targetSec / 3600,
       dailyTargetSec: todayIsWorkday ? perWorkdayTargetSec : 0,
       week7ActiveSec: week7Row._sum.durationSec ?? 0,
+      /**
+       * ⚠️ R2 — সাত দিনের টার্গেট থেকেও ছুটি বাদ। নইলে ছুটি কাটিয়ে ফেরা
+       *    কেউ tray-তে "এই সপ্তাহে অনেক পিছিয়ে" দেখতেন — অথচ মাসিক
+       *    সংখ্যাটা তাঁকে ঠিকই ছাড় দিয়েছে। দুটো একসাথে দেখা যায়।
+       */
       week7TargetSec:
-        perWorkdayTargetSec * countWorkdays(week7Start, today, off, holidays),
+        perWorkdayTargetSec *
+        Math.max(
+          0,
+          countWorkdays(week7Start, today, off, holidays) -
+            countLeaveWorkdays(leaveDates, week7Start, today, off, holidays),
+        ),
       paceSec: paceSecOf({
         /**
          * ⚠️ `credited`, `worked` নয় — § ২.১-ঙ (G35)। সার্ভারের দোষে ঘণ্টা
@@ -282,6 +308,7 @@ export class ProgressService {
         creditedSec: monthActiveSec + (adjustmentRow._sum.deltaSec ?? 0),
         monthlyTargetHours: p.targetSec / 3600,
         expectedWorkdays,
+        leaveWorkdays: p.leaveWorkdays,
         workdaysElapsed,
       }),
     };
