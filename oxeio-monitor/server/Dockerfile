@@ -51,8 +51,18 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/dist ./dist
 
-# স্ক্রিনশট এখানে mount হয় — node ইউজারের লেখার অধিকার লাগবে
-RUN mkdir -p /data/storage && chown -R node:node /data/storage
+# স্ক্রিনশট ও রাতের ডাম্প এখানে mount হয় — node ইউজারের লেখার অধিকার লাগবে
+#
+# ⚠️⚠️ **ইমেজের এই `chown` bind mount-এ কাজে আসে না** — হোস্টের ফোল্ডারের
+# মালিকানাই জেতে (`deploy/README.md § ১০.৪-এ পুরো গল্পটা)। এটা কেবল
+# named volume ও প্রথমবার তৈরি হওয়া ফোল্ডারের জন্য।
+#
+# ⚠️ `/data/backups`-এ ঠিক এই ফাঁদেই পড়া হয়েছে (১৫ আগস্ট): docker
+# ফোল্ডারটা **root-এর নামে** বানিয়েছিল, আর api চলে uid ১০০০-এ, তাই
+# `EACCES`। storage-এর বেলায় একই ঘটনা আগেই ঘটেছিল — তাই দুটোই এখানে,
+# পাশাপাশি, যাতে পরেরজন একটা করে ভুলে না যায়।
+RUN mkdir -p /data/storage /data/backups \
+ && chown -R node:node /data/storage /data/backups
 USER node
 
 EXPOSE 3000
