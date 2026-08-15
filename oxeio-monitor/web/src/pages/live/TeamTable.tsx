@@ -1,6 +1,6 @@
 import type { LiveCard } from '../../api/dashboard';
 import { ProgressBar } from '../../components/ProgressRing';
-import { StatusDot, STATUS_LABEL } from '../../components/StatusDot';
+import { StatusChip } from '../../components/StatusDot';
 import { PersonCell, Table, type Column } from '../../components/Table';
 import { formatDuration, pctOf } from '../../lib/format';
 
@@ -104,14 +104,19 @@ export function TeamTable({ cards }: { cards: LiveCard[] }) {
     {
       key: 'status',
       header: 'Status',
-      render: (c) => (
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <StatusDot status={c.status} />
-          <span className="text-[12px] text-ink-2">
-            {STATUS_LABEL[c.status]}
-          </span>
-        </span>
-      ),
+      /*
+        ⭐ মকআপের রঙিন পিল — আর সেটা নতুন করে লেখা হয়নি, `StatusChip`
+           আগে থেকেই ছিল (কার্ডের মাথায় ব্যবহৃত)। ⚠️ নিজে বানালে চারটে
+           অবস্থার রং দ্বিতীয়বার সংজ্ঞায়িত হতো, আর একদিন একটা বদলে অন্যটা
+           থেকে যেত — এই ফাইলেই তার নাম G88।
+
+        ⚠️ মকআপে পিলের ভেতর সময়ও ছিল ("অফলাইন ৪০মি")। বসানো হয়নি:
+           `LiveCard`-এ কেবল `lastHeartbeatAt` আছে, আর ওটা **এজেন্ট শেষ
+           কবে কথা বলেছে** — "কতক্ষণ ধরে নিষ্ক্রিয়" নয়। দুটো এক নয়, আর
+           heartbeat-এর সময়টাকে নিষ্ক্রিয়তার দৈর্ঘ্য বলে দেখালে পিলটা
+           এমন কিছু দাবি করত যা সে জানে না।
+      */
+      render: (c) => <StatusChip status={c.status} />,
     },
   ];
 
