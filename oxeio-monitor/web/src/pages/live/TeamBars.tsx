@@ -54,46 +54,62 @@ export function StatusStrip({ cards }: { cards: LiveCard[] }) {
 
   if (total === 0) return null;
 
-  const present = counts.filter((c) => c.n > 0);
-
   return (
-    <div className="px-4 pt-1 pb-3">
-      <div className="flex h-2.5 gap-[2px] overflow-hidden rounded-full">
-        {present.map((c) => (
-          <span
-            key={c.status}
-            className="transition-[flex-grow] duration-500"
-            style={{ flexGrow: c.n, backgroundColor: FILL[c.status] }}
-            title={`${c.label} — ${c.n} of ${total}`}
-            // ⚠️ পুরো স্ট্রিপটা একটাই ছবি — প্রতিটা ভাগ আলাদা করে স্ক্রিন
-            //    রিডারে পড়ালে "৩ ৪ ২ ১" শোনা যেত, কোনো প্রসঙ্গ ছাড়া।
-            //    নিচের তালিকাটাই স্ক্রিন রিডারের আসল পথ।
-            aria-hidden
-          />
-        ))}
-      </div>
+    /*
+      ⭐⭐ **মকআপ ক-এর বিন্যাস — চারটে আলাদা সারি, একটা স্ট্রিপ নয়।**
 
-      <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1">
-        {counts.map((c) => (
-          <li
-            key={c.status}
-            className={`flex items-center gap-1.5 text-xs ${
-              c.n === 0 ? 'text-ink-3' : 'text-ink-2'
+      ⚠️⚠️ এখানে আগে একটাই স্তরে-ভাগ করা বার ছিল আর নিচে লেজেন্ড। বারটা
+      "অংশ-থেকে-পূর্ণ" ভালো দেখাত, কিন্তু **কোন ভাগ কতটুকু** পড়তে হলে চোখকে
+      রঙ ধরে লেজেন্ডে গিয়ে ফিরে আসতে হতো — দুবার তাকানো। মকআপে প্রতিটা
+      অবস্থার নিজের সারি, নিজের বার, ডানে নিজের সংখ্যা: **একবার তাকালেই হয়**।
+
+      ⭐ আর বারগুলো একই মাপে (`total`-এর বিপরীতে) আঁকা, তাই পাশাপাশি
+      দৈর্ঘ্য তুলনা করাই যথেষ্ট — রঙের উপর নির্ভর করতে হয় না। ⚠️ ওই
+      নির্ভরতাটা এখানে আসল ঝুঁকি ছিল: সবুজ (`ok`) আর হলুদ (`idle`)
+      protanopia-তে ΔE মাত্র ৩.২, অথচ স্বাভাবিক দৃষ্টিতে ১৭.৮ — খালি চোখে
+      সমস্যাটা কোনোদিন ধরা পড়ত না।
+    */
+    <ul className="divide-y divide-line">
+      {counts.map((c) => (
+        <li
+          key={c.status}
+          className="flex items-center gap-3 px-4 py-2"
+          title={`${c.label} — ${c.n} of ${total}`}
+        >
+          <span className="flex min-w-24 shrink-0 items-center gap-1.5 text-[12.5px] text-ink-2">
+            <StatusDot status={c.status} />
+            {c.label}
+          </span>
+
+          {/*
+            ⚠️ শূন্য হলে বার আঁকা হয় **না** — এক পিক্সেলের একটা রেখাও
+               "সামান্য কিছু আছে" বলে পড়া যায়, অথচ সংখ্যাটা ঠিক শূন্য।
+          */}
+          <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line/50">
+            {c.n > 0 && (
+              <span
+                className="block h-full rounded-full transition-[width] duration-500"
+                style={{
+                  width: `${(c.n / total) * 100}%`,
+                  backgroundColor: FILL[c.status],
+                }}
+              />
+            )}
+          </span>
+
+          <span
+            className={`num w-6 shrink-0 text-right text-[13px] font-semibold ${
+              c.n === 0 ? 'text-ink-3' : 'text-ink'
             }`}
           >
-            <StatusDot status={c.status} />
-            <span>{c.label}</span>
-            <span
-              className={`num font-semibold ${c.n === 0 ? 'text-ink-3' : 'text-ink'}`}
-            >
-              {c.n}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+            {c.n}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
+
 
 /**
  * ⭐ **আজকের টার্গেটের বিপরীতে সবাই, এক নজরে** — সবচেয়ে এগিয়ে থাকা উপরে।

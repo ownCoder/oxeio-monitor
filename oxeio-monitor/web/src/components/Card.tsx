@@ -95,7 +95,7 @@ export function Stat({
           : 'text-ink';
 
   return (
-    <div className="bg-surface px-3.5 py-2.5">
+    <div className="px-3.5 py-2.5">
       <div className="text-[11.5px] text-ink-3">{label}</div>
       <div className={`num mt-0.5 text-xl leading-tight font-semibold ${color}`}>
         {value}
@@ -120,8 +120,19 @@ export function Stat({
  * E12 — ফোনে নিজে থেকেই কম কলামে নেমে আসে।
  */
 export function StatRow({ children }: { children: ReactNode }) {
+  /*
+    ⭐⭐ **মকআপ ক-এর KPI সারি — টাইলের মাঝে শুধু খাড়া রেখা, বাক্স নয়।**
+
+    ⚠️ এখানে আগে গোটা সারিটার চারপাশে বর্ডার + `rounded-xl` ছিল, অর্থাৎ
+    দেখতে আরেকটা কার্ড। মকআপে ওটা কার্ড নয় — পাতার **মাথা**, আর তাই
+    নিচের আসল কার্ডগুলোর সাথে প্রতিযোগিতা করে না।
+
+    ⭐ `divide-x` — ভাগগুলো আলাদা করতে যতটুকু কালি দরকার ঠিক ততটুকু।
+    ⚠️ `divide-y` **ও** দেওয়া হয়েছে: ফোনে গ্রিডটা কয়েক সারিতে নামে, আর
+    তখন কেবল খাড়া রেখা থাকলে সারিগুলো একটার গায়ে আরেকটা লেপ্টে যেত।
+  */
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-px overflow-hidden rounded-xl border border-line bg-line">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] divide-x divide-y divide-line border-y border-line">
       {children}
     </div>
   );

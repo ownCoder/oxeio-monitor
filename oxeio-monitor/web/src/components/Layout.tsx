@@ -110,6 +110,22 @@ const NAV: NavItem[] = [
  * ⚠️ ভূমিকার নাম **সার্ভারের `role` মান নয়**, পর্দার লেখা। `employee` →
  *    "Staff", কারণ পুরো ড্যাশবোর্ডে মানুষগুলোকে Staff বলা হয় (অভিধান § ১)।
  */
+/**
+ * ঢাকার তারিখ ও ঘড়ি — `15 Aug 2026 · 18:40`।
+ *
+ * ⚠️ UTC+৬ যোগ করে ISO থেকে কাটা হয়, `toLocaleString` দিয়ে নয় — মেশিনের
+ *    টাইমজোন বা লোকেল যাই হোক ফলটা এক থাকে।
+ * ⚠️ সেকেন্ড নেই: প্রতি সেকেন্ডে বদলানো একটা সংখ্যা চোখ টানে, অথচ বোর্ড
+ *    রিফ্রেশ হয় ৩০ সেকেন্ডে — ঘড়িটা তখন ডেটার চেয়ে তাজা দেখাত।
+ */
+function dhakaStamp(): string {
+  const d = new Date(Date.now() + 6 * 3600_000);
+  const iso = d.toISOString();
+  const [y, m, day] = iso.slice(0, 10).split('-');
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${Number(day)} ${MONTHS[Number(m) - 1]} ${y} · ${iso.slice(11, 16)}`;
+}
+
 const ROLE_LABEL: Record<string, string> = {
   owner: 'Owner',
   manager: 'Manager',
@@ -169,6 +185,26 @@ export function Layout() {
             <Wordmark className="text-[15px]" />
             <div className="text-[11px] text-white/55">Workforce Monitor</div>
           </div>
+        </div>
+
+        {/*
+          ⭐ মকআপ ক-এর উপরের বারে **ঢাকার তারিখ ও ঘড়ি**, লোগোর পাশেই।
+
+          ⚠️⚠️ ঘড়িটা **ঢাকার**, ব্রাউজারের নয় — গোটা অ্যাপের প্রতিটা সংখ্যা
+          ঢাকার কর্মদিবস ধরে, তাই এখানে স্থানীয় সময় দেখালে বিদেশ থেকে
+          দেখা কারো কাছে বার আর কার্ড দুটো আলাদা দিনের কথা বলত।
+
+          ⚠️ `LIVE` ব্যাজ ও Refresh/Reports বোতাম এখানে **আনা হয়নি**,
+          যদিও মকআপে ওগুলোও এই সারিতে। কারণ এই বারটা **সব পাতায়** থাকে,
+          আর ওই তিনটে জিনিস কেবল Live Board-এর: Settings বা Reports
+          পাতায় বসে "LIVE" জ্বললে সেটা এমন একটা তাজা-ভাব দাবি করত যা
+          ওই পাতার নেই। তাই ওগুলো বোর্ডের নিজের শিরোনামেই থাকল।
+
+          ⚠️ ফোনে লুকানো (`hidden sm:block`) — ৩৭৫px-এ নাম, ভূমিকা, থিম
+          আর সাইন-আউট এমনিতেই সারিটা ভরে ফেলে।
+        */}
+        <div className="hidden text-[11.5px] text-white/55 sm:block">
+          Dhaka · <span className="num">{dhakaStamp()}</span>
         </div>
 
         <div className="ml-auto flex items-center gap-3">
