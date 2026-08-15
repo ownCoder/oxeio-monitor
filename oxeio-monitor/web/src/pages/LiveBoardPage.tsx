@@ -425,7 +425,21 @@ export function LiveBoardPage() {
              পরের প্রশ্নটার** উত্তর দেয়। উল্টো সাজালে বোর্ড খুলেই দশটা মুখ
              দেখা যেত, আর "আজ দিনটা কেমন" জানতে নিচে স্ক্রল করতে হতো।
         */}
-        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
+        {/*
+          ⭐⭐ **মকআপ ক-এর বিন্যাস — হুবহু দুটো সারি।**
+
+          ⚠️⚠️ এখানে আগে **চারটে** সারি ছিল, প্রতিটাই `3fr 2fr`। কার্ডগুলো একই
+          ছিল, শুধু পাতাটা প্রায় দ্বিগুণ লম্বা — আর তাতে মকআপ ক-এর গোটা
+          যুক্তিটাই ("সবচেয়ে বেশি তথ্য এক পর্দায়") মিথ্যা হয়ে যেত।
+
+          ⚠️ মালিক দুটো পাশাপাশি রেখে ধরিয়ে দিয়েছেন। আমি ছ-টা ফারাক গুনে
+          "মিলে গেছে" বলেছিলাম — রং, কলাম আর লেবেল মিলিয়ে। **গ্রিডটা মিলিয়ে
+          দেখিনি**, অথচ পর্দার আকৃতি ওটাই ঠিক করে।
+
+          ⭐ মকআপের `.r-2-1-1` ও `.r-3-2`: সারি ১ `2fr 1fr 1fr`, সারি ২
+          `3fr 2fr` — যার ডান কলামে দুটো কার্ড **খাড়াখাড়ি**।
+        */}
+        <div className="mt-3 grid gap-3 lg:grid-cols-[2fr_1fr_1fr]">
           <Card
             title="Shape of the day"
             hint="Hours the whole team put in, by hour · Dhaka time"
@@ -456,13 +470,6 @@ export function LiveBoardPage() {
           >
             <StatusStrip cards={cards} />
           </Card>
-        </div>
-
-        {/*
-          ⭐ পেছন-ফিরে-দেখা স্তরটা — "আজ" শেষ হওয়ার পর মাথায় আসা পরের দুটো
-             প্রশ্ন: **"এই সপ্তাহটা কেমন যাচ্ছে?"** আর **"মাসটা?"**
-        */}
-        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
           <Card
             title="Last 7 days"
             hint="Counted hours per day · dashed = before tracking started"
@@ -470,20 +477,6 @@ export function LiveBoardPage() {
           >
             {trend.data ? (
               <WeekBars days={trend.data.days} />
-            ) : (
-              <div className="px-4 pt-1 pb-3">
-                <div className="h-24 rounded bg-line/40" />
-              </div>
-            )}
-          </Card>
-
-          <Card
-            title="This month"
-            hint="Counted against the team target"
-            padded={false}
-          >
-            {trend.data ? (
-              <MonthCard month={trend.data.month} />
             ) : (
               <div className="px-4 pt-1 pb-3">
                 <div className="h-24 rounded bg-line/40" />
@@ -512,7 +505,52 @@ export function LiveBoardPage() {
           >
             <TeamTable cards={cards} />
           </Card>
+          {/*
+            ⭐ মকআপের ডান কলাম — দুটো কার্ড **খাড়াখাড়ি**, পাশাপাশি নয়।
+            ⚠️ owner ছাড়া "Needs attention" নেই, তখন কলামে একটাই কার্ড থাকে।
+               গ্রিডটা তবু `3fr 2fr` — নইলে ম্যানেজারের পর্দায় টেবিলটা হঠাৎ
+               পুরো চওড়া হয়ে যেত, আর একই বোর্ড দুই ভূমিকায় দু-রকম দেখাত।
+          */}
+          <div className="grid content-start gap-3">
+          <Card
+            title="Where today went"
+            hint="Whole team · counted app time only"
+            padded={false}
+          >
+            {apps.data ? (
+              <TopApps usage={apps.data.apps} />
+            ) : (
+              <div className="px-4 py-8">
+                <div className="h-24 rounded bg-line/40" />
+              </div>
+            )}
+          </Card>
+          {isOwner && (
+            <Card
+              title="Needs attention"
+              hint="Not acknowledged yet"
+              padded={false}
+            >
+              {alerts.data ? (
+                <OpenAlerts page={alerts.data} />
+              ) : (
+                <div className="px-4 py-8">
+                  <div className="h-24 rounded bg-line/40" />
+                </div>
+              )}
+            </Card>
+          )}
+          </div>
+        </div>
 
+        {/*
+          ⚠️⚠️ **এই সারিটা মকআপ ক-এ নেই।** দুটোই পরে যোগ হওয়া, আর দুটোই
+          মালিকের নিজের চাওয়া: "This month", আর "Top performers" (⭐ শেষ ৩০
+          দিনের জানালা — ওটাও তাঁরই সংশোধন)।
+          ⭐ মুছে ফেললে মকআপের সাথে অক্ষরে অক্ষরে মিলত, কিন্তু তিনি নিজে যা
+          চেয়েছেন তা-ই হারাত। তাই মকআপের দুটো সারির **পরে**, আগে নয়।
+        */}
+        <div className="mt-3 grid gap-3 lg:grid-cols-[3fr_2fr]">
           {/*
             ⭐⭐ **দুটো জানালা, একটাই কার্ড।**
 
@@ -557,47 +595,19 @@ export function LiveBoardPage() {
               </div>
             )}
           </Card>
-        </div>
-
-        {/*
-          ⭐ **অভ্যাস ও মনোযোগের স্তর** — "কে কতদূর" জানার পর মাথায় আসা পরের
-             দুটো প্রশ্ন: **"সময়টা কোথায় গেল?"** আর **"কিছু কি আটকে আছে?"**
-
-          ⚠️ অ্যালার্টের কার্ডটা owner ছাড়া বসেই না, তাই ম্যানেজারের পর্দায়
-             গ্রিডটা এক কলামে নামে — খালি একটা বাক্স রেখে দেওয়ার চেয়ে ভালো।
-        */}
-        <div
-          className={`mt-3 grid gap-3 ${isOwner ? 'lg:grid-cols-[3fr_2fr]' : ''}`}
-        >
           <Card
-            title="Where today went"
-            hint="Whole team · counted app time only"
+            title="This month"
+            hint="Counted against the team target"
             padded={false}
           >
-            {apps.data ? (
-              <TopApps usage={apps.data.apps} />
+            {trend.data ? (
+              <MonthCard month={trend.data.month} />
             ) : (
-              <div className="px-4 py-8">
+              <div className="px-4 pt-1 pb-3">
                 <div className="h-24 rounded bg-line/40" />
               </div>
             )}
           </Card>
-
-          {isOwner && (
-            <Card
-              title="Needs attention"
-              hint="Not acknowledged yet"
-              padded={false}
-            >
-              {alerts.data ? (
-                <OpenAlerts page={alerts.data} />
-              ) : (
-                <div className="px-4 py-8">
-                  <div className="h-24 rounded bg-line/40" />
-                </div>
-              )}
-            </Card>
-          )}
         </div>
 
         {/* ⚠️ `order-first` কেবল `lg`-এর নিচে — উপরের নোট দেখুন */}
