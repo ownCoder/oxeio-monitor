@@ -127,6 +127,22 @@ export function TargetBars({ cards }: { cards: LiveCard[] }) {
 
   if (rows.length === 0) return null;
 
+  /**
+   * ⭐⭐ **আজ কারো টার্গেট না থাকলে তুলনার কলামটাই থাকে না** *(১৫ আগস্ট)*।
+   *
+   * ⚠️ সাপ্তাহিক ছুটি বা সরকারি ছুটির দিনে আগে যা দেখা যেত: বারো জনের
+   *    বারো লাইন, প্রত্যেকের পাশে একটা **খালি ধূসর রেল** আর ডানে "off" —
+   *    অথচ সবাই ৩ ঘণ্টা, ২ ঘণ্টা করে কাজ করেছেন। খালি রেলটা দেখতে
+   *    "শূন্য শতাংশ"-এর মতো, তাই সংখ্যাটা কাজের কথা বলত আর ছবিটা ঠিক
+   *    উল্টোটা — ছুটির দিনে কাজ করাটাকেই ব্যর্থতার মতো দেখাত।
+   *
+   * ⭐ "off" লেখাটাও তখন কিছুই আলাদা করে না — সবাই off। লেবেল তখনই
+   *    দরকার যখন সে **কাউকে অন্যদের থেকে আলাদা করে**; তাই মিশ্র দিনে
+   *    (কেউ ছুটিতে, কেউ নয়) ওটা থাকে, আর সবার ছুটির দিনে কার্ডের
+   *    হেডিং একবার কথাটা বলে দেয়।
+   */
+  const anyTarget = rows.some(hasTarget);
+
   return (
     <ul className="divide-y divide-line">
       {rows.map((card) => {
@@ -138,7 +154,9 @@ export function TargetBars({ cards }: { cards: LiveCard[] }) {
         return (
           <li
             key={card.employeeId}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-4 py-2.5 sm:grid-cols-[minmax(120px,1.1fr)_minmax(0,2fr)_auto]"
+            className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-4 py-2.5 ${
+              anyTarget ? 'sm:grid-cols-[minmax(120px,1.1fr)_minmax(0,2fr)_auto]' : ''
+            }`}
           >
             <div className="flex min-w-0 items-center gap-2">
               <StatusDot status={card.status} />
@@ -152,28 +170,38 @@ export function TargetBars({ cards }: { cards: LiveCard[] }) {
                  আর সংখ্যার মাঝে চেপে গিয়ে বারটা কয়েক পিক্সেল চওড়া হতো —
                  আর অত সরু বার কোনো তুলনাই বোঝাত না।
             */}
-            <div className="order-last col-span-2 sm:order-none sm:col-span-1">
-              {targeted ? (
-                <ProgressBar
-                  value={card.todayWorkedSec}
-                  max={card.dailyTargetSec}
-                  ariaLabel={`${card.fullName} — today's target`}
-                />
-              ) : (
-                <div
-                  className="h-1.5 rounded-full bg-line/60"
-                  title="Weekly off or holiday — nothing is expected today"
-                />
-              )}
-            </div>
+            {anyTarget && (
+              <div className="order-last col-span-2 sm:order-none sm:col-span-1">
+                {targeted ? (
+                  <ProgressBar
+                    value={card.todayWorkedSec}
+                    max={card.dailyTargetSec}
+                    ariaLabel={`${card.fullName} — today's target`}
+                  />
+                ) : (
+                  <div
+                    className="h-1.5 rounded-full bg-line/60"
+                    title="Weekly off or holiday — nothing is expected today"
+                  />
+                )}
+              </div>
+            )}
 
             <div className="flex items-baseline justify-end gap-1.5 text-right">
               <span className="num text-[13px] font-semibold">
                 {formatDuration(card.todayWorkedSec)}
               </span>
-              <span className="num w-9 text-[11px] text-ink-3">
-                {pct === null ? 'off' : `${pct}%`}
-              </span>
+              {/*
+                ⚠️ `w-9` ঘরটা **শুধু তুলনার দিনে** — শতাংশগুলো ডানদিকে এক
+                   রেখায় বসানোর জন্য ওটা দরকার। ছুটির দিনে ওই ঘরটা রেখে
+                   দিলে প্রতিটা সারির ডানে ন-পিক্সেল ফাঁকা থাকত, আর
+                   সংখ্যাগুলো কিনারা থেকে ঝুলে থাকত।
+              */}
+              {anyTarget && (
+                <span className="num w-9 text-[11px] text-ink-3">
+                  {pct === null ? 'off' : `${pct}%`}
+                </span>
+              )}
             </div>
           </li>
         );
