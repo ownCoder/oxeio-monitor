@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -213,6 +214,7 @@ export class EmployeesService {
     dto: CreateEmployeeDto,
     ip: string,
   ): Promise<EmployeeView> {
+    this.assertMaySetSalary(actor, dto.monthlySalary);
     await this.assertPolicyExists(dto.policyId);
 
     const row = await this.createWithGeneratedCode(dto);
@@ -239,6 +241,8 @@ export class EmployeesService {
     dto: UpdateEmployeeDto,
     ip: string,
   ): Promise<EmployeeView> {
+    this.assertMaySetSalary(actor, dto.monthlySalary);
+
     const before = await this.prisma.employee.findUnique({
       where: { id },
       select: { id: true, empCode: true, monthlySalary: true },
@@ -756,6 +760,34 @@ export class EmployeesService {
     //    চুপ করে না থেকে স্পষ্ট বার্তা।
     throw new ConflictException(
       'Could not assign an employee code — too many staff were added at the same moment. Please try again.',
+    );
+  }
+
+  /**
+   * ⭐⭐ **বেতন একমাত্র owner-এর** ([ADR-023](../../../docs/05-Options-Decisions.md),
+   * স্পেক § ৪.৩) — ম্যানেজার কর্মী যোগ ও এডিট করতে পারেন, বেতন নয়।
+   *
+   * ⚠️⚠️ এই পাহারাটা ছাড়া অবস্থাটা দুটোর চেয়েও খারাপ হতো: `redact.ts`
+   * ম্যানেজারের **রেসপন্স থেকে** বেতন ছেঁকে ফেলে, কিন্তু কেউ তো
+   * `monthlySalary` **পাঠাতে** পারে। ফলে ম্যানেজার এমন একটা ঘরে লিখতে
+   * পারতেন যেটা তিনি পড়তেও পারেন না — আর ভুল বসালে সেটা নিজে দেখেও
+   * ধরতে পারতেন না।
+   *
+   * ⚠️ ৪০৩, নীরবে বাদ দেওয়া নয়। ফিল্ডটা চুপচাপ ফেলে দিলে ম্যানেজার
+   * ভাবতেন বেতন বসে গেছে, আর ভুলটা ধরা পড়ত মাসের শেষে পে-রোলে।
+   *
+   * ⚠️ `undefined` আর `null` আলাদা: ফিল্ড **না পাঠানো** স্বাভাবিক (হাত
+   * দিচ্ছেন না), কিন্তু `null` পাঠানো মানে "বেতন মুছে দাও" — সেটাও বেতনে
+   * হাত দেওয়া, তাই সমান নিষিদ্ধ।
+   */
+  private assertMaySetSalary(
+    actor: SessionUser,
+    monthlySalary: string | null | undefined,
+  ): void {
+    if (monthlySalary === undefined || canSeeSalary(actor.role)) return;
+
+    throw new ForbiddenException(
+      'Only the owner can set or clear salary. Save the rest without the salary field.',
     );
   }
 

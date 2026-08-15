@@ -28,6 +28,11 @@ import type { EmployeeView } from './redact';
  * মেথড-লেভেলে নয় — পরে কেউ নতুন endpoint যোগ করলে সেটাও আপনাআপনি
  * owner-only থাকবে (স্পেক § ৪.৩)।
  *
+ * ⭐ **ব্যতিক্রম দুটো** — `create` ও `update`-এ ম্যানেজারও আছেন
+ * *(১৫ আগস্ট)*। ⚠️ ওগুলোতে role **মেথডেই** শিথিল করা হয়েছে, ক্লাসে নয়:
+ * তাহলে `deactivate` · `reactivate` · `policy-signed` · `agent/turn-on`
+ * আগের মতোই owner-only থাকে, আর ভবিষ্যতের নতুন রুটও তাই থাকবে।
+ *
  * ⚠️ পড়ার রুট (`GET /employees`) এখানে **নেই** — সেগুলো
  * `employees-read.controller.ts`-এ, কারণ ম্যানেজারেরও তালিকা দেখা লাগে।
  * এই ফাইলে `@Get` লিখলে ম্যানেজার স্টাফের নামও দেখতে পেত না।
@@ -41,7 +46,19 @@ import type { EmployeeView } from './redact';
 export class EmployeesController {
   constructor(private readonly employees: EmployeesService) {}
 
-  /** `POST /api/v1/employees` */
+  /**
+   * `POST /api/v1/employees`
+   *
+   * ⭐ **ম্যানেজারও পারেন** *(মালিকের সিদ্ধান্ত, ১৫ আগস্ট)* — নতুন কর্মী
+   * যোগ করা রোজকার কাজ, আর ওটার জন্য owner-কে ডাকতে হলে রোলআউটের দিন
+   * সবাই আটকে থাকত।
+   *
+   * ⚠️ **বেতন তবু owner-এরই** — `EmployeesService` সেটা আলাদা করে আটকায়
+   * ([ADR-023](../../../docs/05-Options-Decisions.md))। এখানে role
+   * শিথিল করা আর ওখানে না আটকানো হলে ম্যানেজার এমন একটা ঘরে **লিখতে**
+   * পারতেন যেটা তিনি **পড়তেও** পারেন না — দুটোর চেয়েও খারাপ।
+   */
+  @Roles(UserRole.owner, UserRole.manager)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   create(
@@ -52,7 +69,12 @@ export class EmployeesController {
     return this.employees.create(actor, dto, ip);
   }
 
-  /** `PATCH /api/v1/employees/:id` — শুধু পাঠানো ফিল্ডগুলোই বদলায় */
+  /**
+   * `PATCH /api/v1/employees/:id` — শুধু পাঠানো ফিল্ডগুলোই বদলায়।
+   *
+   * ⭐ ম্যানেজারও পারেন; ⚠️ বেতন বাদে (উপরে `create`-এর নোট)।
+   */
+  @Roles(UserRole.owner, UserRole.manager)
   @Patch(':id')
   update(
     @CurrentUser() actor: SessionUser,

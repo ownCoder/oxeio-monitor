@@ -323,3 +323,117 @@ describe('GET /employees — সেটআপের অবস্থা', () => {
     expect(raw).not.toContain('_count');
   });
 });
+
+/**
+ * ⭐⭐ **ম্যানেজারের অ্যাক্সেস** *(মালিকের সিদ্ধান্ত, ১৫ আগস্ট)।*
+ *
+ * ম্যানেজার কর্মী **যোগ ও এডিট** করতে পারেন, আর Holidays ও Categories
+ * পুরোপুরি চালাতে পারেন। ⚠️ কিন্তু **বেতন নয়** ([ADR-023](../../../docs/05-Options-Decisions.md))।
+ *
+ * ⚠️⚠️ শেষ দুটো টেস্টই আসল: `redact.ts` ম্যানেজারের **রেসপন্স থেকে**
+ * বেতন ছেঁকে ফেলে, কিন্তু সেটা তাঁকে বেতন **পাঠানো** থেকে আটকায় না।
+ * ওই ফাঁকটা বন্ধ না করলে ম্যানেজার এমন একটা ঘরে লিখতে পারতেন যেটা তিনি
+ * পড়তেও পারেন না — আর ভুল বসালে নিজে দেখেও ধরতে পারতেন না।
+ */
+describe('ম্যানেজারের অ্যাক্সেস', () => {
+  let manager: Session;
+
+  beforeEach(async () => {
+    manager = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
+  });
+
+  it('কর্মী যোগ করতে পারেন', async () => {
+    const res = await manager.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ fullName: 'Manager Joge Korlen' });
+
+    expect(res.status).toBe(201);
+    // ⭐ বেতনের ঘরটা রেসপন্সেই নেই — redact.ts
+    expect(res.body.monthlySalary).toBeUndefined();
+  });
+
+  it('কর্মী এডিট করতে পারেন', async () => {
+    const created = await manager.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ fullName: 'Age Naam' })
+      .expect(201);
+
+    await manager.http
+      .patch(`/api/v1/employees/${created.body.id}`)
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ fullName: 'Pore Naam', department: 'Design' })
+      .expect(200);
+  });
+
+  it('holidays ও categories দুটোই পড়তে ও লিখতে পারেন', async () => {
+    await manager.http.get('/api/v1/holidays').expect(200);
+    await manager.http.get('/api/v1/categories').expect(200);
+
+    await manager.http
+      .post('/api/v1/holidays')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ date: '2026-12-25', name: 'Boro Din' })
+      .expect(201);
+  });
+
+  /** ⚠️ deactivate · portal account · audit — এগুলো owner-এরই */
+  it('deactivate করতে পারেন না', async () => {
+    const created = await manager.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ fullName: 'Keu Ekjon' })
+      .expect(201);
+
+    await manager.http
+      .post(`/api/v1/employees/${created.body.id}/deactivate`)
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ reason: 'cheshta korchi' })
+      .expect(403);
+
+    await manager.http.get('/api/v1/audit-log').expect(403);
+  });
+
+  it('⭐ কর্মী যোগ করার সময় বেতন পাঠালে ৪০৩', async () => {
+    const res = await manager.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ fullName: 'Beton Soho', monthlySalary: '99000' });
+
+    expect(res.status).toBe(403);
+    // ⚠️ কর্মীটাও তৈরি হয়নি — নীরবে বেতন বাদ দিয়ে সেভ করা হয় না
+    const list = await owner.http.get('/api/v1/employees').expect(200);
+    expect(
+      (list.body.rows as { fullName: string }[]).some(
+        (r) => r.fullName === 'Beton Soho',
+      ),
+    ).toBe(false);
+  });
+
+  it('⭐ এডিটে বেতন পাঠালে ৪০৩, আর বেতন অটুট থাকে', async () => {
+    const created = await owner.http
+      .post('/api/v1/employees')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ fullName: 'Beton Ache', monthlySalary: '15000' })
+      .expect(201);
+
+    await manager.http
+      .patch(`/api/v1/employees/${created.body.id}`)
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ monthlySalary: '99000' })
+      .expect(403);
+
+    // ⚠️ `null` পাঠিয়ে মুছে ফেলাও বেতনে হাত দেওয়া — সেটাও নিষিদ্ধ
+    await manager.http
+      .patch(`/api/v1/employees/${created.body.id}`)
+      .set('X-CSRF-Token', manager.csrf)
+      .send({ monthlySalary: null })
+      .expect(403);
+
+    const after = await owner.http
+      .get(`/api/v1/employees/${created.body.id}`)
+      .expect(200);
+    expect(after.body.monthlySalary).toBe('15000.00');
+  });
+});
