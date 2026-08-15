@@ -177,7 +177,8 @@ oxeio-monitor/
 │   │   #    ⚠️ `APPROX_SUFFIX` স্ট্রিংটার **যমজ কপি** `src/reports/reports.range.ts`-এ —
 │   │   #       `prisma/` ↔ `src/` import দুই দিকেই ভাঙে, তাই দুটো এক আছে কি না
 │   │   #       `test/holidays.spec.ts` পাহারা দেয়
-│   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · ছুটি · audit (E10, E11)
+│   │   ├── admin/                      ✅ স্টাফ · ডিভাইস · policy · সরকারি ছুটি · audit (E10, E11)
+│   │   │                                  ✅ ⭐ R1 `month-close.*` · R2 `leave.*`
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
 │   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
@@ -267,6 +268,12 @@ oxeio-monitor/
 │       ├── api/useApi.ts                   ✅ useApi · usePolling (ট্যাব লুকোলে থামে)
 │       ├── lib/format.ts                   ✅ ⚠️ তারিখ সবসময় ঢাকার কর্মদিবস
 │       │                                      ⭐ **ফরম্যাটের একমাত্র জায়গা** — পেজে নয়
+│       ├── pages/settings/LeaveTab.tsx     ✅ ⭐⭐ R2 — ছুটির খাতা (owner-only)।
+│       │                                      ⭐⭐ ছুটি **টার্গেট** কমায়, বেতনের `d ÷ D`
+│       │                                      নয় — সবেতন। ⚠️ শুক্রবার/সরকারি ছুটির দিনে
+│       │                                      লেখা সারি কিছুই বদলায় না, আর সেটা **নিজেই
+│       │                                      বলে দেয়** — নইলে খাতা এমন ছাড়ের দাবি করত
+│       │                                      যা সে দেয়নি
 │       ├── pages/settings/MonthsTab.tsx    ✅ ⭐ R1 — মাস বন্ধ/খোলা।
 │       │                                      ⚠️ তালিকা **মাস ধরে**, বন্ধ-রেকর্ড ধরে নয় —
 │       │                                      প্রশ্নটা "কোনটা এখনো বাকি", আর অনুপস্থিতি
@@ -411,8 +418,10 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
 | অফলাইন কাজ → dedupe | `LocalQueue` `SyncClient` | `agent/util/derive-uuid` ✅ | — |
 | মাসিক টার্গেট + pace (কর্মদিবস × ৮ঘ, ফ্ল্যাট ২০৮ নয়) | `TrayIcon` · `TodayForm` | `summary/proration.ts` · `reports/reports.range.ts` (`dailyTargetSec`) · `agent/progress.service` ✅ | `components/ProgressRing.tsx` |
-| ⚠️ **একই টার্গেট, দুই হার** | — | tray · `/me` · `reports/` পলিসির `expected_workdays` ভাগ করে; কিন্তু `dashboard.service.ts`-এর লাইভ কার্ড এখনো **ক্যালেন্ডার কর্মদিবস** ভাগ করে আর `monthTargetSec`-এ ফ্ল্যাট ২০৮ঘ পাঠায় — মেলানো বাকি | `LiveBoardPage` · `api/dashboard.ts` |
+| ✅ ~~একই টার্গেট, দুই হার~~ **মিলেছে** | — | চারটে পথই এখন **একই `prorate()` ডাকে**, একই সূত্র দু'জায়গায় লেখা নয়: tray · `/me` · `reports/` · `dashboard.service.ts`-এর লাইভ কার্ড। ⚠️ আগে কার্ড **ক্যালেন্ডার কর্মদিবস** ভাগ করত (২৭ কর্মদিবসের আগস্টে ৭ঘ ৪২মি/দিন) আর tray পলিসির ধ্রুবক (৮.০০ঘ) — একই কর্মী, একই মাস, দুই সংখ্যা (G88)। মাঠে যাচাই: কার্ড এখন ৮.০০ঘ/দিন · ২০৮ঘ/মাস | `LiveBoardPage` · `api/dashboard.ts` |
 | **R7** ছুটির ক্যালেন্ডার (২০২৬–২৭) | — | `prisma/holidays.data.ts` → `seed.ts` ✅ · `admin/holidays.service` ✅ | `settings/HolidaysSection.tsx` |
+| **R1** মাস বন্ধ করা (payroll lock) | — | `admin/month-close.{service,controller}.ts` ✅ · `month_closure` টেবিল · `summary.service.ts`-এর গার্ড · `adjustments`-এ `assertMonthOpen()` | `settings/MonthsTab.tsx` ✅ |
+| **R2** ছুটির খাতা | — | `admin/leave.{service,controller}.ts` ✅ · `leaves` টেবিল · `countLeaveWorkdays()` → `prorate()` · `elapsedWorkdays()` · `proratedExpectedSec()`। ⭐⭐ ছুটি **টার্গেট** কমায়, `d ÷ D` নয় — অর্থাৎ সবেতন | `settings/LeaveTab.tsx` ✅ |
 | **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি | — |
 | ট্র্যাকিং শুরুর জানালা | — | `summary/summary.math.ts` → `elapsedWindow()` ✅ — tray · Monthly · ডাইজেস্ট · রিপোর্ট **এক সংজ্ঞা** (এজেন্ট বসার আগের না-দেখা দিন কারো ঘাটতি নয়)। ⚠️ ৭ দিনের ফিতে (`trendDayExpectation`) **ইচ্ছাকৃতভাবে আজকের দিনটা রাখে** — ভিন্ন প্রশ্ন, ফাংশনের নোটে লেখা | `MonthlyPage` · `live/WeekAndMonth.tsx` |
 | অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
