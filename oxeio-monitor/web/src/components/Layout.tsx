@@ -242,7 +242,7 @@ export function Layout() {
           {nav.map((item) => (
             <div key={item.to}>
               {item.section && (
-                <div className="mt-3 mb-1 px-2.5 text-[10.5px] font-semibold tracking-wider text-ink-3 uppercase">
+                <div className="mt-3 mb-1 px-2.5 text-[11px] text-ink-3">
                   {item.section}
                 </div>
               )}
@@ -257,7 +257,25 @@ export function Layout() {
                   }`
                 }
               >
-                <span>{item.label}</span>
+                {({ isActive }) => (
+                  <>
+                {/*
+                  ⭐ মকআপ ক-এর বিন্দু। ⚠️ এটা **সাজসজ্জা নয়, প্রান্তিককরণ**:
+                     বিন্দুগুলো এক খাড়া রেখায় বসে বলে চোখ তালিকাটা এক নজরে
+                     পড়তে পারে, আর সক্রিয় আইটেমটা রং বদলালে সেটা লেখার
+                     আগেই ধরা পড়ে।
+                  ⚠️ `aria-hidden` — স্ক্রিন রিডারের কাছে বিন্দুটার কোনো
+                     মানে নেই, নামটাই যথেষ্ট।
+                */}
+                <span className="flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden
+                    className={`size-1.5 shrink-0 rounded-full ${
+                      isActive ? 'bg-ok' : 'bg-ink-3/45'
+                    }`}
+                  />
+                  <span className="truncate">{item.label}</span>
+                </span>
                 {/*
                   ⚠️ `> 0` — শূন্য হলে ব্যাজ **বসেই না**। "0" লেখা একটা ব্যাজ
                      চোখ টানে ঠিক যতটা "3" লেখাটা টানে, অথচ বলার মতো কিছু নেই।
@@ -268,9 +286,11 @@ export function Layout() {
                      রঙে সেটা আর কারো চোখেই পড়ত না।
                 */}
                 {item.badge != null && item.badge > 0 && (
-                  <span className="num rounded-full bg-brand-bg px-1.5 py-px text-[10.5px] font-semibold text-brand-ink">
-                    {item.badge}
-                  </span>
+                      <span className="num rounded-full bg-brand-bg px-1.5 py-px text-[10.5px] font-semibold text-brand-ink">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
               </NavLink>
             </div>
