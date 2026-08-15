@@ -185,20 +185,20 @@ export function WeekBars({ days }: { days: TeamTrend['days'] }) {
         ))}
       </div>
 
-      <ul className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-2">
-        <li>
-          <i className="mr-1.5 inline-block size-2 rounded-[2px] bg-ok align-[-1px]" />
-          Counted
-        </li>
-        <li>
-          <i className="mr-1.5 inline-block size-2 rounded-[2px] bg-line align-[-1px]" />
-          Day off
-        </li>
-        <li>
-          <i className="mr-1.5 inline-block size-2 rounded-[2px] border border-dashed border-line align-[-1px]" />
-          Before tracking
-        </li>
-      </ul>
+      {/*
+        ⚠️⚠️ **লেজেন্ডটা তুলে দেওয়া হয়েছে** *(মকআপ ক-এ ওটা নেই, ১৫ আগস্ট)*।
+
+        ⭐ হারানোর কিছু নেই: কার্ডের `hint`-এ ইতিমধ্যেই লেখা আছে
+        *"dashed = before tracking started"*, আর ছুটির দিনের ধূসর বার
+        নিজের `title`-এ কারণটা বলে। অর্থাৎ তিনটে লাইন **একই কথা দ্বিতীয়বার**
+        বলছিল, আর তার দাম দিচ্ছিল চার্টটা — সারির অন্য দুটো কার্ডের
+        সমান উচ্চতায় বসে বারগুলো চেপে গিয়ে প্রায় অপঠ্য হয়ে যাচ্ছিল।
+
+        ⚠️ রঙের ব্যাখ্যা মুছে ফেলা এই প্রকল্পে সাধারণত নিষিদ্ধ
+        (`StatusLegend`-এর নোট দেখুন) — কিন্তু ওই নিয়মটা **অবস্থার চার রঙের**,
+        যেগুলো অনুমান করা যায় না। এখানে ভরাট-বনাম-ডটেড পার্থক্যটা hint-এ
+        বাক্যে লেখা, রঙে নয়।
+      */}
     </div>
   );
 }

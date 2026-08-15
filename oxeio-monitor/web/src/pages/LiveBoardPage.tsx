@@ -472,7 +472,7 @@ export function LiveBoardPage() {
           </Card>
           <Card
             title="Last 7 days"
-            hint="Counted hours per day · dashed = before tracking started"
+            hint="Per day · dashed = before tracking"
             padded={false}
           >
             {trend.data ? (
