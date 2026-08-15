@@ -68,14 +68,18 @@ const SHARED_READS = (id: number): string[] => [
   `/api/v1/activity/productivity?employeeId=${id}&from=${TODAY}&to=${TODAY}`,
   `/api/v1/activity/top?employeeId=${id}&from=${TODAY}&to=${TODAY}`,
   `/api/v1/activity/team?from=${TODAY}&to=${TODAY}`,
+  // ⭐ ১৫ আগস্ট থেকে ম্যানেজারেরও — মালিকের সিদ্ধান্ত। দুটোই তিনি
+  //    **বদলাতেও** পারেন; সেই লেখার দিকটা `staff-setup.e2e.spec.ts`-এ।
+  '/api/v1/categories',
+  '/api/v1/holidays',
 ];
 
 /** শুধু owner (§ ৪.৩) */
 const OWNER_ONLY_READS = [
-  '/api/v1/categories',
   '/api/v1/devices',
+  // ⚠️ ছুটি ম্যানেজারের, কিন্তু work policy নয় — মাসিক টার্গেট ও ছবির
+  //    উইন্ডো বদলালে প্রতিটা PC-র আচরণ বদলায়, সেটা owner-এরই থাকল।
   '/api/v1/work-policies',
-  '/api/v1/holidays',
   '/api/v1/audit-log',
   '/api/v1/alerts',
   `/api/v1/payroll?month=${MONTH}`,
