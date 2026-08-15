@@ -71,6 +71,20 @@ const SHOT_REFRESH_MS = 4 * 60_000;
  */
 const PULSE_REFRESH_MS = 2 * 60_000;
 
+/**
+ * ⭐ Top performers-এর জানালা। **৩০ দিন আগে**, কারণ ওটাই ডিফল্ট — আর
+ * `Tabs` প্রথম আইটেমটাকেই সবার বাঁয়ে বসায়।
+ *
+ * ⚠️ লেবেলে "30 days"/"All time" — সংখ্যাটা নয়, **জানালাটা** বোঝাতে।
+ *    "Total"/"Recent" লিখলে কোনটা কত লম্বা তা পর্দা থেকে বোঝা যেত না।
+ */
+const LEADER_WINDOWS = [
+  { id: '30d', label: '30 days' },
+  { id: 'all', label: 'All time' },
+] as const;
+
+type LeaderWindow = (typeof LEADER_WINDOWS)[number]['id'];
+
 export function LiveBoardPage() {
   const { user } = useAuth();
 
@@ -178,6 +192,13 @@ export function LiveBoardPage() {
    * অন্য ট্যাবে দাঁড়িয়ে আছেন।
    */
   const [who, setWho] = useState<'working' | 'resting'>('working');
+
+  /**
+   * ⚠️ পছন্দটা মনে রাখা হয় না — উপরের `who`-এর মতোই একই কারণে। বোর্ড
+   *    সারাদিন খোলা থাকে; কেউ একবার "All time" রেখে ভুলে গেলে পরদিন
+   *    খুলে দেখতেন ক্রমটা বদলায়নি, আর ভাবতেন কেউ কাজ করেনি।
+   */
+  const [leaderWindow, setLeaderWindow] = useState<LeaderWindow>('30d');
 
   const data = board.data;
   const cards = data?.cards ?? [];
@@ -398,13 +419,44 @@ export function LiveBoardPage() {
             <TargetBars cards={cards} />
           </Card>
 
+          {/*
+            ⭐⭐ **দুটো জানালা, একটাই কার্ড।**
+
+            ⚠️ মালিক আগে "আজীবন মোট ঘণ্টা" বেছেছিলেন, পরে ৩০ দিন চেয়েছেন।
+               দুটো আলাদা কার্ড বসালে পাশাপাশি প্রায় একই পাঁচটা নাম দুবার
+               দেখা যেত — জঞ্জাল। তাই একটাই কার্ড, ভেতরে জানালা বদলানোর সুইচ,
+               আর আগের পছন্দটাও কেড়ে নেওয়া হয়নি।
+
+            ⭐ ডিফল্ট **৩০ দিন**, কারণ আজীবনের ক্রমে ঘণ্টা কেবল জমে —
+               যিনি আগে যোগ দিয়েছেন তিনি স্থায়ীভাবে উপরে, আর নতুন কেউ যত
+               ভালোই করুন ধরতে পারেন না। ওই তালিকা "কে ভালো করছে" নয়,
+               "কে বেশিদিন আছে" বলে।
+          */}
           <Card
             title="Top performers"
-            hint="Most hours counted, all time"
+            hint={
+              leaderWindow === '30d'
+                ? 'Most hours counted in the last 30 days'
+                : 'Most hours counted, all time'
+            }
             padded={false}
+            actions={
+              <Tabs
+                items={LEADER_WINDOWS}
+                active={leaderWindow}
+                onChange={setLeaderWindow}
+                label="Top performers window"
+              />
+            }
           >
             {trend.data ? (
-              <TopPerformers leaders={trend.data.leaders} />
+              <TopPerformers
+                leaders={
+                  leaderWindow === '30d'
+                    ? trend.data.leaders30
+                    : trend.data.leaders
+                }
+              />
             ) : (
               <div className="px-4 py-8">
                 <div className="h-24 rounded bg-line/40" />

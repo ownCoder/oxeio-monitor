@@ -563,3 +563,50 @@ export function setAgentRollout(
     { method: 'POST', body: { rolloutStage } },
   );
 }
+
+// ── R1 · মাস বন্ধ করা ────────────────────────────────────────────────────────
+
+export interface MonthClosureView {
+  /** '2026-08' */
+  yearMonth: string;
+  /** ISO instant */
+  closedAt: string;
+  /** ⚠️ ইমেইল — ইউজার মুছে গেলেও "কে বন্ধ করেছিল" টিকে থাকা দরকার */
+  closedBy: string;
+  note: string | null;
+}
+
+/**
+ * R1 — `GET /api/v1/months` · owner-only।
+ *
+ * ⭐ শুধু **বন্ধ** মাসগুলোই ফেরে, সব মাস নয় — খোলা মাস মানে "এখনো নড়তে
+ * পারে", আর সেটা অনুপস্থিতি দিয়েই বোঝা যায়।
+ */
+export function listMonthClosures(
+  signal?: AbortSignal,
+): Promise<{ rows: MonthClosureView[] }> {
+  return api<{ rows: MonthClosureView[] }>('/months', { signal });
+}
+
+export function closeMonth(
+  yearMonth: string,
+  note?: string,
+): Promise<MonthClosureView> {
+  return api<MonthClosureView>(`/months/${yearMonth}/close`, {
+    method: 'POST',
+    body: { note },
+  });
+}
+
+/**
+ * ⚠️ খোলা মানে বন্ধের রেকর্ডটা তুলে নেওয়া — তাই `DELETE`।
+ * ⭐ audit-এ দুটো সারিই (`month_closed`, `month_reopened`) থেকে যায়,
+ *    অর্থাৎ ইতিহাস মোছে না।
+ */
+export function reopenMonth(
+  yearMonth: string,
+): Promise<{ yearMonth: string; reopened: true }> {
+  return api<{ yearMonth: string; reopened: true }>(`/months/${yearMonth}`, {
+    method: 'DELETE',
+  });
+}

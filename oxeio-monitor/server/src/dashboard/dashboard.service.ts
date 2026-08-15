@@ -203,6 +203,21 @@ export interface TeamTrend {
    *    তালিকার মাথায় বসে থাকলে সেটা বিভ্রান্তিকর হতো।
    */
   leaders: TrendLeader[];
+  /**
+   * ⭐⭐ **শেষ ৩০ দিনের ক্রম — বোর্ডে এটাই ডিফল্ট।**
+   *
+   * ⚠️ উপরের আজীবন তালিকায় একটা গঠনগত অন্যায় আছে যা কখনো সারে না: ঘণ্টা
+   *    কেবল জমে, কমে না — তাই **যিনি আগে যোগ দিয়েছেন তিনি স্থায়ীভাবে
+   *    উপরে**। তালিকাটা তখন "কে ভালো করছে" নয়, "কে বেশিদিন আছে" বলে।
+   *    ৩০ দিনের জানালা সবাইকে একই মাপে আনে, আর নতুন কেউও উঠে আসতে পারেন।
+   *
+   * ⚠️ `daily_summary` থেকে গোনা, `monthly_summary` থেকে নয় — জানালাটা
+   *    মাসের সীমানা পেরোয় (আজ ১৫ তারিখ হলে অর্ধেক গত মাসে)।
+   *
+   * ⭐ দুটো তালিকাই পাঠানো হয়, একটা নয় — মালিক আগে আজীবনেরটা বেছেছিলেন,
+   *    আর সেই পছন্দটা কেড়ে না নিয়ে নতুন জানালাটা যোগ করা হয়েছে।
+   */
+  leaders30: TrendLeader[];
 }
 
 /** E01 — লাইভ বোর্ডের দিনের-ছন্দ চার্ট (`GET /live/pulse`) */
@@ -762,24 +777,58 @@ export class DashboardService {
      * ⭐ যোগফলটা ডাটাবেসে (`groupBy`), কোডে নয় — কর্মী ও মাস দুটোই বাড়ে,
      *    তাই সব সারি টেনে এনে যোগ করাটা সময়ের সাথে ভারী হতো।
      */
-    const lifetime = await this.prisma.monthlySummary.groupBy({
-      by: ['employeeId'],
-      _sum: { creditedSec: true },
-    });
+    /**
+     * ⭐⭐ **শেষ ৩০ দিন — আর এটাই ডিফল্ট।**
+     *
+     * ⚠️⚠️ আজীবনের ক্রমে একটা গঠনগত অন্যায় আছে, আর সেটা কখনো সারে না:
+     *    **যিনি আগে যোগ দিয়েছেন তিনি স্থায়ীভাবে উপরে**, কারণ ঘণ্টা কেবল
+     *    জমে, কমে না। নতুন কেউ যত ভালোই করুন, ছ-মাসের পুরোনো কাউকে
+     *    ধরতে তাঁর ছ-মাস লাগবে — অর্থাৎ তালিকাটা "কে ভালো করছে" নয়,
+     *    "কে বেশিদিন আছে" বলে। ৩০ দিনের জানালা সবাইকে একই মাপে আনে।
+     *
+     * ⚠️ `daily_summary` থেকে, `monthly_summary` থেকে নয় — মাসিক সারি
+     *    গোটা মাস ধরে, তাই "শেষ ৩০ দিন" মাসের সীমানা পেরোলে ওটা দিয়ে
+     *    গোনা যেত না (আজ ১৫ তারিখ হলে জানালার অর্ধেক গত মাসে)।
+     *
+     * ⭐ ৩০ **ক্যালেন্ডার** দিন, ৩০ কর্মদিবস নয় — জানালাটা সবার জন্য
+     *    একই দৈর্ঘ্যের রাখতে। কর্মদিবস ধরলে যাঁর সাপ্তাহিক ছুটি আলাদা
+     *    তাঁর জানালা অন্য তারিখে শুরু হতো, আর তুলনাটাই অসম হতো।
+     */
+    // ⚠️ ২৯, ৩০ নয় — আজ **সহ** ৩০ দিন। ৩০ বিয়োগ করলে জানালাটা ৩১ দিনের হতো।
+    const since = new Date(today.getTime() - 29 * 24 * 3600_000);
+    const [lifetime, recent] = await Promise.all([
+      this.prisma.monthlySummary.groupBy({
+        by: ['employeeId'],
+        _sum: { creditedSec: true },
+      }),
+      this.prisma.dailySummary.groupBy({
+        by: ['employeeId'],
+        where: { workDate: { gte: since, lte: today } },
+        _sum: { creditedSec: true },
+      }),
+    ]);
 
-    const leaders: TrendLeader[] = lifetime
-      .map((row) => ({
-        employeeId: row.employeeId,
-        fullName: nameOf.get(row.employeeId) ?? '',
-        creditedSec: row._sum.creditedSec ?? 0,
-      }))
-      .filter((l) => nameOf.has(l.employeeId) && l.creditedSec > 0)
-      .sort((a, b) => b.creditedSec - a.creditedSec)
-      .slice(0, 5);
+    /** ⚠️ একই ছাঁকনি ও ক্রম দুটোতেই — নইলে টগল করলে নিয়মও বদলে যেত */
+    const rank = (
+      rows: { employeeId: number; _sum: { creditedSec: number | null } }[],
+    ): TrendLeader[] =>
+      rows
+        .map((row) => ({
+          employeeId: row.employeeId,
+          fullName: nameOf.get(row.employeeId) ?? '',
+          creditedSec: row._sum.creditedSec ?? 0,
+        }))
+        .filter((l) => nameOf.has(l.employeeId) && l.creditedSec > 0)
+        .sort((a, b) => b.creditedSec - a.creditedSec)
+        .slice(0, 5);
+
+    const leaders = rank(lifetime);
+    const leaders30 = rank(recent);
 
     return {
       days,
       leaders,
+      leaders30,
       month: {
         yearMonth: monthKey,
         creditedSec,
