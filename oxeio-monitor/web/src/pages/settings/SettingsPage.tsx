@@ -8,6 +8,7 @@ import { Tabs } from '../../components/Tabs';
 import { AgentVersionsTab } from './AgentVersionsTab';
 import { AuditTab } from './AuditTab';
 import { CategoriesTab } from './CategoriesTab';
+import { DepositsTab } from './DepositsTab';
 import { LeaveTab } from './LeaveTab';
 import { MonthsTab } from './MonthsTab';
 import { PoliciesTab } from './PoliciesTab';
@@ -58,6 +59,9 @@ const TABS = [
   //    ট্যাবটা সেগুলো **থামায়** — একই প্রশ্নের দুই দিক, তাই পাশাপাশি।
   // ⚠️ Leave ও Months owner-এর: দুটোই সরাসরি টাকার হিসাব নাড়ায়।
   { id: 'leave', label: 'Leave', manager: false },
+  // ⚠️ R21 — জামানত সরাসরি বেতনের অংশ, তাই ম্যানেজারও নয় (ADR-023 · ADR-027)।
+  //    ⭐ Leave-এর ঠিক পরে: দুটোই "টাকার দিক", আর দুটোই owner-এরই।
+  { id: 'deposits', label: 'Deposits', manager: false },
   { id: 'months', label: 'Months', manager: false },
   // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
   //    সবার শেষে থাকাটা প্রতিষ্ঠিত (বছরে দু-একবার খোলা হয়)
@@ -81,6 +85,8 @@ const SUBTITLE: Record<TabKey, string> = {
   categories: 'Which apps and sites fall into which category',
   policies: 'Monthly target, screenshot window and days off',
   leave: 'Agreed days off — the hours target drops, the salary does not',
+  deposits:
+    'Security money held from salary, and what happens when someone leaves',
   months: 'Freeze a finished month so its hours and pay stop moving',
   agent: 'Which build each PC is offered — and how widely',
   audit: 'Who looked at what, and who changed what',
@@ -147,6 +153,7 @@ export function SettingsPage() {
       {active === 'categories' && <CategoriesTab />}
       {active === 'policies' && <PoliciesTab />}
       {active === 'leave' && <LeaveTab />}
+      {active === 'deposits' && <DepositsTab />}
       {active === 'months' && <MonthsTab />}
       {active === 'agent' && <AgentVersionsTab />}
       {active === 'audit' && <AuditTab />}

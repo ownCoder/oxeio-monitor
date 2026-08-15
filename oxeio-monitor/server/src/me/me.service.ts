@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 
 import { ProgressService, type EmployeeProgress } from '../agent/progress.service';
 import { workDateOf } from '../agent/util/dhaka-time';
+import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseWorkDate, toIsoDate } from '../reports/reports.range';
 import { SCREENSHOT_RETENTION_DAYS } from '../summary/retention.job';
@@ -63,7 +64,23 @@ export class MeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly progress: ProgressService,
+    private readonly deposits: DepositsService,
   ) {}
+
+  /**
+   * ⭐⭐ **R21 — নিজের জামানত কত জমল।**
+   *
+   * ⚠️ কর্মীর পাতায় বেতনের কোনো সংখ্যা নেই, আর এটা সেই নিয়ম ভাঙে না:
+   * জমার অঙ্কটা **তাঁর নিজের টাকা**, বেতনের হিসাব নয়। মালিক কত বেতন
+   * দেন সেটা এখান থেকে বের করা যায় না।
+   *
+   * ⭐ মাস ধরে তালিকাটাও যায়, শুধু মোট নয় — "কোন মাসে কাটা হয়েছে"
+   * প্রশ্নের উত্তর নিজের পাতাতেই থাকা দরকার, নইলে মিলিয়ে দেখতে হলে
+   * মালিকের কাছে যেতে হতো, আর তখন ফিচারটার উদ্দেশ্যই ব্যর্থ।
+   */
+  myDeposit(actor: SessionUser) {
+    return this.deposits.forEmployee(this.employeeIdOf(actor));
+  }
 
   /**
    * ⚠️ owner ও manager-এর `employeeId` সাধারণত `null` — তাঁরা কর্মীর

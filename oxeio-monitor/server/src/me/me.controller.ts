@@ -34,6 +34,16 @@ export class MeController {
    * ⚠️ ছুটির দিনগুলোও তালিকায় থাকে (`isOffDay: true`) — বাদ দিলে
    * "শুক্রবারটা কই" প্রশ্নের উত্তর পাতা দেখে পাওয়া যেত না।
    */
+  /**
+   * ⭐ `GET /api/v1/me/deposit` — **R21**, নিজের জামানত কত জমেছে।
+   *
+   * ⚠️ পথে `:id` নেই, বাকি সবের মতোই — কর্মী আসে সেশন থেকে।
+   */
+  @Get('deposit')
+  deposit(@CurrentUser() actor: SessionUser) {
+    return this.me.myDeposit(actor);
+  }
+
   @Get('days')
   days(
     @CurrentUser() actor: SessionUser,

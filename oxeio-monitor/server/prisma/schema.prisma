@@ -140,22 +140,24 @@ model Employee {
   policyDocPath  String?        @map("policy_doc_path")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  policy          WorkPolicy?       @relation(fields: [policyId], references: [id])
-  devices         Device[]
-  portalUsers     User[]
-  workSessions    WorkSession[]
-  segments        ActivitySegment[]
-  screenshots     Screenshot[]
-  appUsage        AppUsage[]
-  events          Event[]
-  dailySummaries  DailySummary[]
-  monthlySummary  MonthlySummary[]
-  timeAdjustments TimeAdjustment[]
-  enrollmentCodes EnrollmentCode[]
-  alerts          Alert[]
+  policy            WorkPolicy?        @relation(fields: [policyId], references: [id])
+  devices           Device[]
+  portalUsers       User[]
+  workSessions      WorkSession[]
+  segments          ActivitySegment[]
+  screenshots       Screenshot[]
+  appUsage          AppUsage[]
+  events            Event[]
+  dailySummaries    DailySummary[]
+  monthlySummary    MonthlySummary[]
+  timeAdjustments   TimeAdjustment[]
+  enrollmentCodes   EnrollmentCode[]
+  alerts            Alert[]
+  leaves            Leave[]
+  deposits          SecurityDeposit[]
+  depositSettlement DepositSettlement?
 
   @@map("employees")
-  leaves           Leave[]
 }
 
 /// ড্যাশবোর্ডে লগইন করা ইউজার — owner, manager, আর স্টাফের self-view
@@ -187,10 +189,10 @@ model User {
 }
 
 model Device {
-  id              Int          @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   hostname        String
-  windowsUsername String       @map("windows_username")
-  employeeId      Int?         @map("employee_id")
+  windowsUsername String        @map("windows_username")
+  employeeId      Int?          @map("employee_id")
   /// হার্ডওয়্যার-ভিত্তিক স্থায়ী আইডি
   /// ⚠️⚠️ **আর UNIQUE নয়** — একই PC-তে দুজন স্টাফ আলাদা Windows
   /// অ্যাকাউন্টে কাজ করলে দুটো সারি লাগে, অথচ `MachineGuid` মেশিনের,
@@ -198,22 +200,22 @@ model Device {
   /// windowsUsername])` (নিচে) — মেশিন **ও** যিনি বসেছেন, দুটো মিলে।
   /// ⭐ মানটা রাখা আছে: H04-এর rollout bucket এটা দিয়েই গোনা হয়, আর
   /// এজেন্ট নিজের `device.dat` এর সাথে মিলিয়ে ক্লোন ধরে।
-  machineGuid     String       @map("machine_guid")
-  osVersion       String?      @map("os_version")
-  agentVersion    String?      @map("agent_version")
+  machineGuid     String        @map("machine_guid")
+  osVersion       String?       @map("os_version")
+  agentVersion    String?       @map("agent_version")
   /// device token-এর sha256 — plaintext কখনো জমা হয় না
-  tokenHash       String       @map("token_hash")
-  monitors        Int          @default(1)
-  status          DeviceStatus @default(active)
-  lastSeenAt      DateTime?    @map("last_seen_at") @db.Timestamptz(3)
+  tokenHash       String        @map("token_hash")
+  monitors        Int           @default(1)
+  status          DeviceStatus  @default(active)
+  lastSeenAt      DateTime?     @map("last_seen_at") @db.Timestamptz(3)
   /// ⭐ শেষ heartbeat-এ এজেন্ট কী বলেছিল। এটা ছাড়া Live Board শেষ
   /// activity_segments সারি থেকে **অনুমান** করত, আর এজেন্ট সেগমেন্ট
   /// ব্যাচে পাঠায় বলে বোর্ডের স্ট্যাটাস কয়েক মিনিট পুরোনো দেখাত।
   lastState       SegmentState? @map("last_state")
-  lastStateAt     DateTime?    @map("last_state_at") @db.Timestamptz(3)
-  lastDriftSec    Int          @default(0) @map("last_drift_sec")
-  maxDriftSec     Int          @default(0) @map("max_drift_sec")
-  enrolledAt      DateTime     @default(now()) @map("enrolled_at") @db.Timestamptz(3)
+  lastStateAt     DateTime?     @map("last_state_at") @db.Timestamptz(3)
+  lastDriftSec    Int           @default(0) @map("last_drift_sec")
+  maxDriftSec     Int           @default(0) @map("max_drift_sec")
+  enrolledAt      DateTime      @default(now()) @map("enrolled_at") @db.Timestamptz(3)
 
   employee        Employee?         @relation(fields: [employeeId], references: [id])
   workSessions    WorkSession[]
@@ -585,7 +587,6 @@ model MonthlySummary {
 
 /**
  * R1 — **মাস বন্ধ করা।**
- *
  * ⚠️⚠️ যে সমস্যাটা এটা সারায়: `monthly_summary`-র প্রতিটা সংখ্যা
  * `refreshMonth()` **প্রতিবার নতুন করে গোনে**, আর গোনার সময় ওই মুহূর্তের
  * `holidays` টেবিল পড়ে। তাই ছুটির একটা তারিখ নড়লে — বা পুরোনো মাসের কোনো
@@ -593,14 +594,12 @@ model MonthlySummary {
  * `expected_workdays` (d) · `month_workdays` (D) চারটেই পিছন ফিরে বদলায়**।
  * পে-রোল ওই সারি থেকেই d ও D পড়ে, অর্থাৎ বেতন দিয়ে দেওয়ার পরেও হিসাব
  * নড়তে পারত, আর কোন সংখ্যায় বেতন হয়েছিল তা প্রমাণ করার উপায় থাকত না।
- *
  * ⭐⭐ **সারি এখানে, সংখ্যা নয়।** রোডম্যাপে "স্ন্যাপশট টেবিল" লেখা ছিল,
  * কিন্তু তাতে একই মাসের **দুটো** সংখ্যা তৈরি হতো — লাইভ আর জমাট — আর
  * "দুই পর্দায় দুই সংখ্যা" এই রিপোর সবচেয়ে বড় পাপ (G88)। বদলে সংখ্যাগুলো
  * `monthly_summary`-তেই **জায়গামতো জমাট** হয়: মাস বন্ধ থাকলে
  * `refreshMonth()` ওই মাস আর ছোঁয় না, আর সংশোধন ঢুকতে চাইলে ৪০৯।
  * এই টেবিলটা কেবল **কে কখন বন্ধ করল** তার রেকর্ড।
- *
  * ⭐ চাবি শুধু `year_month` — মাস সবার জন্য একসাথে বন্ধ হয়, একজন-একজন করে
  * নয়। কর্মীপ্রতি বন্ধ করা গেলে "আগস্ট বন্ধ কি না" প্রশ্নের উত্তর হতো
  * "কার জন্য?" — আর পে-রোল চলে পুরো মাস ধরে।
@@ -619,22 +618,18 @@ model MonthClosure {
 
 /**
  * R2 — **ছুটির খাতা।**
- *
  * ⚠️⚠️ **কোনো আবেদন-অনুমোদন প্রবাহ নয়** — "স্টাফের চাপার মতো কোনো বোতাম
  * নেই" এই সিস্টেমের ঘোষিত নিয়ম। স্টাফ মুখে বলেন, owner লিখে রাখেন।
  * তাই এখানে `status`/`approvedBy` জাতীয় কোনো ঘর নেই, আর থাকা উচিতও নয়।
- *
  * ⭐⭐ **এক সারি = এক দিন**, তারিখের সীমা নয়। পর্দা সীমা নেয় ("৩–৭ আগস্ট")
  * আর সেটাকে দিনে ভেঙে বসায়। কারণ গোনা, বাদ দেওয়া আর একটা দিন মুছে ফেলা —
  * তিনটেই তখন তুচ্ছ; সীমা রাখলে প্রতিটা হিসাবে ওভারল্যাপ ও আংশিক-ছেদ
  * সামলাতে হতো, আর ওখানেই বাগ জন্মাত।
- *
  * ⭐⭐ **ছুটি ঘণ্টার টার্গেট কমায়, বেতন নয়** — অর্থাৎ **সবেতন**।
  * `monthly_summary.expected_workdays` (d) অপরিবর্তিত থাকে, তাই পে-রোলের
  * `d ÷ D` ভগ্নাংশও অটুট। কমে কেবল `target_sec` ও `expected_sec`।
  * ⚠️ উল্টোটা (d কমানো) মানে ছুটি নিলেই নীরবে বেতন কাটা — সেটা মালিকের
  * সজ্ঞান সিদ্ধান্ত ছাড়া করা যায় না।
- *
  * ⚠️ ছুটির দিনে কেউ কাজ করলে ঘণ্টা **গোনা হবেই** — ছুটি মানে টার্গেট মাফ,
  * কাজ নিষেধ নয় (§ ২.১-খ-এর নিয়ম ছুটিতেও এক)।
  */
@@ -661,4 +656,98 @@ model Leave {
   @@unique([employeeId, leaveDate])
   @@index([leaveDate])
   @@map("leaves")
+}
+
+/**
+ * R21 — **সিকিউরিটি মানি (জামানত): নিয়মটা।**
+ * ⭐⭐ **একটাই সারি** (`id = 1`)। অঙ্কটা সবার জন্য এক — মালিকের সিদ্ধান্ত,
+ * ১৫ আগস্ট। কর্মীভেদে আলাদা করা গেলে `employees`-এ একটা কলামই যথেষ্ট হতো,
+ * কিন্তু তখন "কার কত" প্রশ্নের উত্তর ১২ জায়গায় ছড়িয়ে থাকত, আর একজনের ঘর
+ * ফাঁকা থাকলে সেটা "শূন্য" না "ডিফল্ট" তা বোঝার উপায় থাকত না।
+ * ⚠️⚠️ **এখানকার অঙ্ক বদলালে পুরোনো কিস্তি বদলায় না** — কারণ প্রতিটা মাসের
+ * কিস্তি `security_deposits`-এ **লিখে রাখা** হয়, প্রতিবার নতুন করে গোনা
+ * হয় না। উল্টোটা করলে আজ ৫০০ থেকে ৬০০ করলে গত ছ-মাসের জমাও পিছন ফিরে
+ * বেড়ে যেত — আর কর্মী যে টাকাটা কখনো দেননি, খাতা সেটা দাবি করত।
+ */
+model DepositPolicy {
+  /// ⚠️ সবসময় ১ — একাধিক সারি হওয়ার পথ বন্ধ (`@default(1)` নয়, কোড বসায়)
+  id             Int      @id
+  /// প্রতি মাসে কত, **পয়সায়** — ৫০০ টাকা = ৫০০০০
+  amountPaisa    Int      @map("amount_paisa")
+  /// কোন মাস থেকে কাটা শুরু — '2026-08'
+  startYearMonth String   @map("start_year_month") @db.Char(7)
+  /// ⭐ ছাড়ার কত দিন আগে জানাতে হয় — কম হলে জমা টাকা বাজেয়াপ্ত
+  noticeDays     Int      @default(30) @map("notice_days")
+  /// ⚠️ বন্ধ করলে নতুন কিস্তি বসা থামে, **পুরোনো জমা অটুট থাকে**
+  active         Boolean  @default(true)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  /// ⚠️ ইমেইল, `user_id` নয় — ইউজার মুছে গেলেও "কে বদলেছিল" টিকে থাকে
+  updatedBy      String   @map("updated_by")
+
+  @@map("deposit_policy")
+}
+
+/**
+ * R21 — **জামানতের খাতা: এক সারি = এক কর্মীর এক মাসের কিস্তি।**
+ * ⭐⭐ কেন হিসাব করে বের না করে **লিখে রাখা হয়**: জমা টাকা একটা **ঘটনার
+ * ইতিহাস**, আজকের নিয়মের ফল নয়। কেউ ছয় মাস পরে অঙ্ক বদলালে, কেউ মাঝপথে
+ * যোগ দিলে, বা কারো মাস বাদ গেলে — গোনা-ভিত্তিক খাতা প্রতিবার অন্য উত্তর
+ * দিত, আর কোনটা সত্যি তা বলার উপায় থাকত না।
+ * ⭐ `amount_paisa` **প্রতিটা সারিতেই** — নিয়মের দিকে তাকিয়ে নেই। ওটাই
+ * ইতিহাস ধরে রাখার আসল কৌশল।
+ * ⚠️ সারি বসে **শুরুর মাস থেকে চলতি মাস পর্যন্ত**, আর কর্মী যোগ দেওয়ার
+ * আগের কোনো মাসে নয় (`joined_on`)। নিষ্ক্রিয় হলে তার পরে আর বসে না।
+ */
+model SecurityDeposit {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int      @map("employee_id")
+  /// '2026-08'
+  yearMonth   String   @map("year_month") @db.Char(7)
+  /// ওই মাসে কত কাটা হয়েছে, পয়সায় — ⚠️ নিয়ম বদলালেও এটা বদলায় না
+  amountPaisa Int      @map("amount_paisa")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  /// ⭐ একই মাসে দুবার কিস্তি বসতে পারে না — খাতা তৈরি হয় idempotent-ভাবে
+  @@unique([employeeId, yearMonth])
+  @@index([yearMonth])
+  @@map("security_deposits")
+}
+
+/**
+ * R21 — **নিষ্পত্তি: ফেরত না বাজেয়াপ্ত।**
+ * ⚠️⚠️ সিদ্ধান্তটা **সিস্টেম নেয় না, মালিক নেন** (তাঁর সিদ্ধান্ত, ১৫ আগস্ট)।
+ * সিস্টেম শুধু হিসাব দেয়: কত দিন আগে জানানো হয়েছে, নিয়ম কত দিনের, আর
+ * কত টাকা জমেছে। ⭐ কারণ ব্যতিক্রম সবসময়ই থাকে — হাসপাতাল, পারিবারিক
+ * কারণ — আর সেগুলো কোনো `if`-এ ধরা যায় না। স্বয়ংক্রিয় করলে মালিককে
+ * নিয়মটা **ভাঙতে** হতো, আর ভাঙার কোনো পথ থাকত না।
+ * ⭐ `notice_days` **এখানেও লেখা থাকে** — নিয়ম পরে বদলালেও এই নিষ্পত্তি
+ * কোন নিয়মে হয়েছিল তা যেন পড়া যায়।
+ */
+model DepositSettlement {
+  id              Int       @id @default(autoincrement())
+  employeeId      Int       @map("employee_id")
+  /// `refunded` · `forfeited`
+  outcome         String
+  /// নিষ্পত্তির সময় জমার অঙ্ক, পয়সায় — ⚠️ পরে খাতা বদলালেও এটা অটুট
+  amountPaisa     Int       @map("amount_paisa")
+  /// কবে জানিয়েছিলেন
+  noticeGivenOn   DateTime? @map("notice_given_on") @db.Date
+  /// শেষ কর্মদিবস
+  lastWorkingDay  DateTime? @map("last_working_day") @db.Date
+  /// ⭐ কত দিনের নোটিশ হয়েছিল (হিসাব করা), আর নিয়ম কত দিনের ছিল
+  noticeDaysGiven Int?      @map("notice_days_given")
+  noticeDaysRule  Int       @map("notice_days_rule")
+  note            String?
+  settledAt       DateTime  @default(now()) @map("settled_at") @db.Timestamptz(3)
+  /// ⚠️ ইমেইল, `user_id` নয়
+  settledBy       String    @map("settled_by")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  /// ⭐ একজনের একটাই নিষ্পত্তি — ফিরে এলে খাতা নতুন করে শুরু হবে, আর
+  /// সেই সিদ্ধান্তটা তখনকার, আজকের নয়
+  @@unique([employeeId])
+  @@map("deposit_settlements")
 }

@@ -60,3 +60,42 @@ export function getMyDays(
     { signal },
   );
 }
+
+/**
+ * **R21 — নিজের জামানত (সিকিউরিটি মানি)।**
+ *
+ * ⚠️ টাকার অঙ্ক **স্ট্রিং হিসেবে** আসে (`"500.00"`), সংখ্যা নয় — সার্ভারে
+ * সব হিসাব পয়সায় (integer), আর JSON-এ number করে পাঠালে সেটা ভাসমান
+ * দশমিকে গিয়ে কোনো কোনো অঙ্কে এক পয়সা এদিক-ওদিক হতো।
+ */
+export interface MyDepositMonth {
+  /** '2026-08' */
+  yearMonth: string;
+  amount: string;
+}
+
+export interface MyDepositSettlement {
+  outcome: 'refunded' | 'forfeited';
+  amount: string;
+  noticeGivenOn: string | null;
+  lastWorkingDay: string | null;
+  noticeDaysGiven: number | null;
+  noticeDaysRule: number;
+  note: string | null;
+  settledAt: string;
+  settledBy: string;
+}
+
+export interface MyDeposit {
+  months: MyDepositMonth[];
+  total: string;
+  totalPaisa: number;
+  /** নিষ্পত্তি হয়ে গেলে খাতা বন্ধ — তখন `total` কেবল ইতিহাস */
+  settlement: MyDepositSettlement | null;
+  /** ছাড়ার কত দিন আগে জানাতে হয় — পর্দায় শর্তটা লেখা থাকে */
+  noticeDays: number;
+}
+
+export function getMyDeposit(signal?: AbortSignal): Promise<MyDeposit> {
+  return api<MyDeposit>('/me/deposit', { signal });
+}

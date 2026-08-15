@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 
 import { AuditService } from '../audit/audit.service';
+import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { computePayroll, paisaToTaka } from './payroll.math';
 
@@ -27,6 +28,26 @@ export interface PayrollRow {
   hourlyRate: string | null;
   deduction: string | null;
   payable: string | null;
+
+  /**
+   * ⭐ **R21 — ওই মাসের জামানতের কিস্তি** (`security_deposits` থেকে)।
+   *
+   * ⚠️ শূন্য নয়, `null` — যদি ওই মাসে কোনো কিস্তিই না বসে থাকে (নিয়ম
+   * শুরুর আগের মাস, বা তিনি তখন যোগই দেননি)। শূন্য লিখলে "৳০ কাটা
+   * হয়েছে" আর "কাটার কথাই ছিল না" এক দেখাত।
+   */
+  securityDeposit: string | null;
+
+  /**
+   * ⭐ হাতে যা যাবে — `payable − securityDeposit`।
+   *
+   * ⚠️⚠️ শিটে **দুটো সংখ্যাই** থাকে, কারণ ওরা দুটো আলাদা প্রশ্নের উত্তর:
+   * `payable` = ঘণ্টার হিসাবে তাঁর প্রাপ্য, `netPayable` = এই মাসে হাতে
+   * দেওয়া হবে। জামানত বেতন **কমায় না**, শুধু জমা থাকে — একটাই সংখ্যা
+   * দেখালে ওই পার্থক্যটা হারিয়ে যেত, আর ছেড়ে দেওয়ার সময় ফেরতের হিসাবও
+   * ব্যাখ্যা করা যেত না।
+   */
+  netPayable: string | null;
 }
 
 export interface PayrollSheet {
@@ -36,6 +57,16 @@ export interface PayrollSheet {
   missingSalary: string[];
   /** যাদের ওই মাসের rollup এখনো হয়নি */
   missingSummary: string[];
+
+  /**
+   * ⚠️⚠️ **R21** — যাঁদের ওই মাসের প্রদেয় জামানতের কিস্তির চেয়ে কম।
+   *
+   * এমনটা হয় কেউ পুরো মাস অনুপস্থিত থাকলে। তখন `netPayable` ঋণাত্মক হতো,
+   * আর ঋণাত্মক বেতন কোনো অর্থ বহন করে না — তাই ওটা শূন্যে থামানো হয়, আর
+   * নামটা এখানে **আলাদা করে বলা হয়**। ⭐ নীরবে থামালে খাতায় ৫০০ টাকা
+   * জমা দেখাত অথচ টাকাটা কোনোদিন কাটাই যেত না।
+   */
+  depositExceedsPayable: string[];
 }
 
 const HOUR = 3600;
@@ -54,6 +85,12 @@ export class PayrollService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    /**
+     * ⭐ R21 — শিট খোলার সময় জামানতের খাতাটাও আজকের দিন পর্যন্ত পূর্ণ হয়ে
+     * যায় (`ledgerFor`)। ⚠️ নিজে গুনে নেওয়া হয় না: হিসাবটা এক জায়গাতেই
+     * থাকা দরকার, নইলে কর্মীর পাতা আর শিট দুই সংখ্যা দেখাত।
+     */
+    private readonly deposits: DepositsService,
   ) {}
 
   async sheet(
@@ -82,9 +119,16 @@ export class PayrollService {
     });
     const byEmployee = new Map(summaries.map((s) => [s.employeeId, s]));
 
+    /**
+     * ⭐ R21 — ওই মাসের জামানতের কিস্তি। `depositsFor()` খাতাটা আগে আজকের
+     * দিন পর্যন্ত পূর্ণ করে নেয়, তাই শিট খুললেই খাতাও হালনাগাদ।
+     */
+    const depositOf = await this.deposits.instalmentsFor(yearMonth);
+
     const rows: PayrollRow[] = [];
     const missingSalary: string[] = [];
     const missingSummary: string[] = [];
+    const depositExceedsPayable: string[] = [];
 
     for (const e of employees) {
       const summary = byEmployee.get(e.id);
@@ -116,6 +160,11 @@ export class PayrollService {
           hourlyRate: null,
           deduction: null,
           payable: null,
+          // ⚠️ কিস্তিটা তবু দেখানো হয় — টাকাটা কাটার কথা ছিল কি না সেটা
+          //    বেতন বসানো আছে কি না তার উপর নির্ভর করে না। কিন্তু নিট
+          //    হিসাব করা যায় না, তাই `netPayable` null।
+          securityDeposit: takaOrNull(depositOf.get(e.id)),
+          netPayable: null,
         });
         continue;
       }
@@ -130,12 +179,29 @@ export class PayrollService {
         monthWorkdays: summary.monthWorkdays,
       });
 
+      const depositPaisa = depositOf.get(e.id) ?? null;
+
+      /**
+       * ⚠️⚠️ ঋণাত্মক বেতন বলে কিছু নেই। কেউ পুরো মাস অনুপস্থিত থাকলে
+       * `payable` ০ হয়ে যায়, আর তখন ৫০০ টাকা কাটার জায়গাই থাকে না।
+       * সংখ্যাটা শূন্যে থামানো হয়, ⭐ কিন্তু নামটা `depositExceedsPayable`-এ
+       * আলাদা করে বলা হয় — নীরবে থামালে খাতায় জমা দেখাত অথচ টাকাটা
+       * কোনোদিন কাটাই যেত না।
+       */
+      if (depositPaisa !== null && depositPaisa > line.payablePaisa) {
+        depositExceedsPayable.push(e.fullName);
+      }
+
       rows.push({
         ...base,
         monthlySalary: e.monthlySalary.toFixed(2),
         hourlyRate: paisaToTaka(line.hourlyRatePaisa),
         deduction: paisaToTaka(line.deductionPaisa),
         payable: paisaToTaka(line.payablePaisa),
+        securityDeposit: takaOrNull(depositPaisa),
+        netPayable: paisaToTaka(
+          Math.max(0, line.payablePaisa - (depositPaisa ?? 0)),
+        ),
       });
     }
 
@@ -155,10 +221,21 @@ export class PayrollService {
       );
     }
 
-    return { yearMonth, rows, missingSalary, missingSummary };
+    return {
+      yearMonth,
+      rows,
+      missingSalary,
+      missingSummary,
+      depositExceedsPayable,
+    };
   }
 }
 
 function hours(sec: number): string {
   return (sec / HOUR).toFixed(2);
+}
+
+/** ⚠️ `null` মানে "ওই মাসে কিস্তিই বসেনি" — ০ টাকা নয় */
+function takaOrNull(paisa: number | null | undefined): string | null {
+  return paisa === null || paisa === undefined ? null : paisaToTaka(paisa);
 }
