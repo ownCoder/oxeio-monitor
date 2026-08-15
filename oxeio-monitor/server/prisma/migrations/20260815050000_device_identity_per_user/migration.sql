@@ -1,0 +1,14 @@
+-- ডিভাইসের পরিচয় এখন (hostname, windows_username), শুধু machine_guid নয়।
+--
+-- ⚠️⚠️ কেন: একই PC-তে দুজন স্টাফ আলাদা Windows অ্যাকাউন্টে কাজ করেন —
+--    অফিসে সেটাই ঘটছে (DESKTOP-BJNQ6OF-এ "Intern" ও "Intern 2",
+--    DESKTOP-KP1DT93-এ "Sumaiya" ও "user")। কিন্তু `MachineGuid`
+--    মেশিনের, ব্যবহারকারীর নয়, তাই UNIQUE থাকায় দ্বিতীয়জনের সারিই
+--    বসতে পারত না।
+--
+-- ⭐ (hostname, windows_username)-এর UNIQUE আগে থেকেই আছে — সেটাই আসল
+--    পরিচয় ছিল, শুধু enroll ওটা ব্যবহার করত না।
+--
+-- ⚠️ কলামটা থাকছে: H04-এর rollout bucket ওটা দিয়ে গোনা হয়, আর এজেন্ট
+--    নিজের device.dat মিলিয়ে ক্লোন ধরে।
+DROP INDEX IF EXISTS "devices_machine_guid_key";

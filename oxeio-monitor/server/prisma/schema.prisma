@@ -192,7 +192,13 @@ model Device {
   windowsUsername String       @map("windows_username")
   employeeId      Int?         @map("employee_id")
   /// হার্ডওয়্যার-ভিত্তিক স্থায়ী আইডি
-  machineGuid     String       @unique @map("machine_guid")
+  /// ⚠️⚠️ **আর UNIQUE নয়** — একই PC-তে দুজন স্টাফ আলাদা Windows
+  /// অ্যাকাউন্টে কাজ করলে দুটো সারি লাগে, অথচ `MachineGuid` মেশিনের,
+  /// ব্যবহারকারীর নয়। ডিভাইসের পরিচয় এখন `@@unique([hostname,
+  /// windowsUsername])` (নিচে) — মেশিন **ও** যিনি বসেছেন, দুটো মিলে।
+  /// ⭐ মানটা রাখা আছে: H04-এর rollout bucket এটা দিয়েই গোনা হয়, আর
+  /// এজেন্ট নিজের `device.dat` এর সাথে মিলিয়ে ক্লোন ধরে।
+  machineGuid     String       @map("machine_guid")
   osVersion       String?      @map("os_version")
   agentVersion    String?      @map("agent_version")
   /// device token-এর sha256 — plaintext কখনো জমা হয় না
