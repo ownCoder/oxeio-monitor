@@ -1432,6 +1432,119 @@ ssh -i "$env:USERPROFILE\.ssh\oxeio" root@<VPS_IP>
 ফেললে **সাথে সাথে `passwd` দিয়ে বদলান** — ওই বার্তা মুছে ফেললেও কপি
 কোথায় কোথায় রয়ে গেছে তা আর জানা যায় না।
 
+---
+
+## R5 · অফসাইট ব্যাকআপ (G39)
+
+রাতের ডাম্প (K02) এনক্রিপটেড হয়ে `.data/backups`-এ বসে — কিন্তু **সবই এক
+মেশিনে**। ⚠️ ওই ডিস্ক মরলে বা VPS হারালে ব্যাকআপও সাথেই যায়, অর্থাৎ
+ব্যাকআপ **থাকা** আর ব্যাকআপ **কাজে লাগা** এক নয়। `deploy/offsite-backup.sh`
+সেই ফাঁকটা বন্ধ করে।
+
+⭐⭐ **ফাইলগুলো আগে থেকেই এনক্রিপটেড** (`BACKUP_PASSPHRASE`, `openssl enc`)।
+তাই Drive/S3 যেখানেই তুলুন, প্রোভাইডার ঘণ্টা, বেতন বা স্ক্রিনশটের কিছুই
+পড়তে পারে না — "ডেটা দেশের বাইরে যাবে না" নীতির সাথে সাংঘর্ষিক নয়।
+
+⚠️⚠️ **কিন্তু পাসফ্রেজ হারালে ব্যাকআপও হারাল।** ওটা VPS-এর বাইরে আলাদা
+করে রাখা মালিকের কাজ — পাসওয়ার্ড ম্যানেজারে, বা কাগজে। এই স্ক্রিপ্ট
+সেটা করতে পারে না, আর করার চেষ্টাও করে না।
+
+### ধাপ ১ — rclone বসানো ও রিমোট বাঁধা *(এক-বারের কাজ, ~১০ মিনিট)*
+
+```bash
+curl https://rclone.org/install.sh | sudo bash
+rclone config
+```
+
+⚠️ `rclone config` **ইন্টারঅ্যাকটিভ**, আর Google/Dropbox-এর ক্ষেত্রে
+ব্রাউজারে লগইন লাগে — এটা মালিকের নিজের অ্যাকাউন্ট, তাই তাঁকেই করতে হবে।
+
+ধাপগুলো: `n` (new remote) → নাম দিন `gdrive` → স্টোরেজ বাছুন (Google
+Drive হলে `drive`) → client id/secret **ফাঁকা রাখুন** → scope `1`
+(full access) → `y` অটো কনফিগ → ব্রাউজারে লগইন → `q`।
+
+⭐ হেডলেস সার্ভারে ব্রাউজার নেই, তাই `rclone authorize` নিজের ল্যাপটপে
+চালিয়ে টোকেনটা পেস্ট করতে হবে — `rclone config` নিজেই ধাপগুলো বলে দেয়।
+
+যাচাই:
+
+```bash
+rclone lsd gdrive:
+```
+
+### ধাপ ২ — চালিয়ে দেখা
+
+```bash
+cd /opt/oxeio
+RCLONE_REMOTE=gdrive:oxeio-backups bash oxeio-monitor/deploy/offsite-backup.sh
+```
+
+⭐ স্ক্রিপ্টটা **থামে** যদি rclone না থাকে, রিমোট সেট না থাকে, রিমোটে
+পৌঁছানো না যায়, বা **ফোল্ডারে একটাও ডাম্প না থাকে**। ⚠️ শেষেরটা আলাদা
+করে দেখা হয়, কারণ খালি ফোল্ডার পেয়ে "সফল" বলে বেরিয়ে যাওয়াটাই এই
+প্রকল্পের সবচেয়ে চেনা নীরব ব্যর্থতা (G129, G133)।
+
+### ধাপ ৩ — সাপ্তাহিক করা
+
+```bash
+cat >/etc/systemd/system/oxeio-offsite.service <<'EOF'
+[Unit]
+Description=oXeio — offsite backup (R5)
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/oxeio-offsite.env
+WorkingDirectory=/opt/oxeio
+ExecStart=/usr/bin/env bash oxeio-monitor/deploy/offsite-backup.sh
+EOF
+
+cat >/etc/systemd/system/oxeio-offsite.timer <<'EOF'
+[Unit]
+Description=oXeio — offsite backup, weekly
+
+[Timer]
+OnCalendar=Sat 04:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+echo 'RCLONE_REMOTE=gdrive:oxeio-backups' >/etc/oxeio-offsite.env
+
+systemctl daemon-reload && systemctl enable --now oxeio-offsite.timer
+systemctl list-timers oxeio-offsite.timer
+```
+
+⭐ রিমোটের নামটা `/etc/oxeio-offsite.env`-এ, unit ফাইলে নয় — বদলাতে হলে
+`daemon-reload` লাগে না, আর গোপন কিছু হলে unit ফাইলে (যা সবাই পড়তে পারে)
+বসে না। ⚠️ `EnvironmentFile=-` -এর হাইফেনটা ইচ্ছাকৃত: ফাইল না থাকলেও
+সার্ভিস চালু হয়, আর তখন স্ক্রিপ্ট নিজেই পরিষ্কার করে বলে কী নেই।
+
+**⚠️⚠️ ১৫ আগস্ট ২০২৬-এর অবস্থা:** টাইমারটা VPS-এ **বসানো ও চালু**
+(পরের রান ২২ আগস্ট ০৪:০০)। স্ক্রিপ্টের গোটা পথ একটা স্থানীয় ফোল্ডারকে
+রিমোট ধরে মাঠে চালিয়ে যাচাই করা হয়েছে — ৩টে ফাইল গেছে, ছাঁটাই চলেছে,
+টেলিগ্রামে খবর গেছে। ⏳ **বাকি কেবল `rclone config`** — ওটা মালিকের
+নিজের Google অ্যাকাউন্টের লগইন, তাই তাঁকেই করতে হবে। ততক্ষণ পর্যন্ত
+টাইমার প্রতি শনিবার চলবে আর **পরিষ্কার করে ব্যর্থ হবে**
+("RCLONE_REMOTE সেট করা নেই"), নীরবে নয়।
+
+⭐ `Persistent=true` — সার্ভার ওই সময় বন্ধ থাকলে চালু হওয়ার পর জবটা
+চালায়। নইলে একটা রিবুট মানে একটা সপ্তাহ নীরবে বাদ।
+
+⚠️ শনিবার ভোর ৪টা: রাতের ডাম্প (০২:৩০) হয়ে যাওয়ার পর, আর অফিস শুরুর আগে।
+
+### যা এখনো এই স্ক্রিপ্টে **নেই**
+
+- ⚠️ **রিস্টোর মহড়া।** তোলা হয়েছে মানে ফেরানো যাবে — এই দুটো এক নয়, আর
+  এই প্রকল্প নিজেই একবার সেটা মাঠে শিখেছে। ত্রৈমাসিক মহড়াটা এখনো হাতে
+  (§ ১০ দেখুন)।
+- ⚠️ **স্ক্রিনশটের ফাইল যায় না** — কেবল ডাটাবেস ডাম্প। ছবিগুলো
+  `.data/storage`-এ, আর ওগুলো ৯০ দিনে এমনিতেই মুছে যায়; অফসাইটে তোলা
+  মানে ওই মেয়াদটাকেই অকেজো করা।
+
+
 ## স্ক্রিপ্ট সম্পর্কে দুটো কথা
 
 - **তিনটে** `.ps1` ফাইলই (`make-cert` · `defender-exclusions` ·
