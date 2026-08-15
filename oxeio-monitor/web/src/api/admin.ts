@@ -455,7 +455,9 @@ export function resetUserPassword(
  * ⚠️ এটা **পরামর্শ**, নিশ্চয়তা নয় — ঘরটা সম্পাদনযোগ্যই থাকে, আর দুজন
  * একসাথে যোগ করলে দ্বিতীয়জন সার্ভার থেকে ৪০৯ পাবে।
  */
-export function nextEmployeeCode(signal?: AbortSignal): Promise<{ code: string }> {
+export function nextEmployeeCode(
+  signal?: AbortSignal,
+): Promise<{ code: string }> {
   return api<{ code: string }>('/employees/next-code', { signal });
 }
 
@@ -670,4 +672,86 @@ export function createLeave(
 
 export function deleteLeave(id: number): Promise<void> {
   return api<void>(`/leaves/${id}`, { method: 'DELETE' });
+}
+
+// ── R21 · সিকিউরিটি মানি (জামানত) ────────────────────────────────────────
+
+/**
+ * ⚠️ পুরো পথটা **owner-only** — জামানত সরাসরি বেতনের অংশ, আর বেতনের কোনো
+ * সংখ্যা ম্যানেজারের নাগালে নেই (ADR-023 · ADR-027)।
+ */
+export interface DepositPolicyView {
+  /** '500.00' */
+  amount: string;
+  /** ⭐ পাঠানোর সময় **পয়সায়** যায় — ৫০০ টাকা = ৫০০০০ */
+  amountPaisa: number;
+  startYearMonth: string;
+  noticeDays: number;
+  active: boolean;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface DepositSettlementView {
+  outcome: 'refunded' | 'forfeited';
+  amount: string;
+  noticeGivenOn: string | null;
+  lastWorkingDay: string | null;
+  noticeDaysGiven: number | null;
+  noticeDaysRule: number;
+  note: string | null;
+  settledAt: string;
+  settledBy: string;
+}
+
+export interface DepositBalance {
+  employeeId: number;
+  empCode: string;
+  fullName: string;
+  status: string;
+  /** কত মাসের কিস্তি বসেছে */
+  months: number;
+  balance: string;
+  balancePaisa: number;
+  settlement: DepositSettlementView | null;
+}
+
+export function listDeposits(
+  signal?: AbortSignal,
+): Promise<{ rows: DepositBalance[]; policy: DepositPolicyView }> {
+  return api<{ rows: DepositBalance[]; policy: DepositPolicyView }>(
+    '/deposits',
+    { signal },
+  );
+}
+
+export interface DepositPolicyBody {
+  amountPaisa?: number;
+  startYearMonth?: string;
+  noticeDays?: number;
+  active?: boolean;
+}
+
+export function updateDepositPolicy(
+  body: DepositPolicyBody,
+): Promise<DepositPolicyView> {
+  return api<DepositPolicyView>('/deposits/policy', { method: 'PATCH', body });
+}
+
+export interface SettleDepositBody {
+  outcome: 'refunded' | 'forfeited';
+  /** 'YYYY-MM-DD' — ⚠️ দুটোই ঐচ্ছিক, "জানা নেই" আর "শূন্য দিন" এক নয় */
+  noticeGivenOn?: string;
+  lastWorkingDay?: string;
+  note?: string;
+}
+
+export function settleDeposit(
+  employeeId: number,
+  body: SettleDepositBody,
+): Promise<DepositSettlementView> {
+  return api<DepositSettlementView>(`/deposits/${employeeId}/settle`, {
+    method: 'POST',
+    body,
+  });
 }

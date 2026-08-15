@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AgentModule } from '../agent/agent.module';
+import { DepositsModule } from '../deposits/deposits.module';
 import { MeController } from './me.controller';
 import { MeService } from './me.service';
 
@@ -14,7 +15,7 @@ import { MeService } from './me.service';
  * ⚠️ `PrismaModule` `@Global`, তাই আলাদা import লাগে না।
  */
 @Module({
-  imports: [AgentModule],
+  imports: [AgentModule, DepositsModule],
   controllers: [MeController],
   providers: [MeService],
 })

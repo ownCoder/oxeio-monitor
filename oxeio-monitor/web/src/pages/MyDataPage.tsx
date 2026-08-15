@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { getMyDays, getMySummary, type MyDay } from '../api/me';
+import { getMyDays, getMyDeposit, getMySummary, type MyDay } from '../api/me';
 import { useApi } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Card, Stat, StatRow } from '../components/Card';
@@ -69,6 +69,19 @@ export function MyDataPage() {
     [linked, from, today],
   );
 
+  /**
+   * ⭐⭐ **R21 — নিজের জামানত।** মালিকের চাওয়া ছিল ঠিক এটাই: *"প্রতিটা
+   * স্টাফ তার ড্যাশবোর্ডে তার কত টাকা জমল সেটাও দেখতে পাবে"*।
+   *
+   * ⚠️ আলাদা কল, `summary`-র সাথে জোড়া নয় — জামানত না থাকলেও (নিয়ম বন্ধ,
+   * বা তিনি নতুন) বাকি পাতাটা যেন দিব্যি চলে। এক কলে মিশিয়ে দিলে একটার
+   * ব্যর্থতা অন্যটাকেও ফাঁকা করে দিত।
+   */
+  const deposit = useApi(
+    (signal) => (linked ? getMyDeposit(signal) : Promise.resolve(null)),
+    [linked],
+  );
+
   const p = summary.data?.progress;
 
   return (
@@ -95,13 +108,19 @@ export function MyDataPage() {
       {p && summary.data && (
         <div className="space-y-4">
           <StatRow>
-            <Stat label="Today" value={<Duration seconds={p.todayActiveSec} />} />
+            <Stat
+              label="Today"
+              value={<Duration seconds={p.todayActiveSec} />}
+            />
             <Stat
               label="This month"
               value={<Duration seconds={p.monthActiveSec} />}
               unit={`/ ${p.monthlyTargetHours}h`}
             />
-            <Stat label="Last 7 days" value={<Duration seconds={p.week7ActiveSec} />} />
+            <Stat
+              label="Last 7 days"
+              value={<Duration seconds={p.week7ActiveSec} />}
+            />
             {/*
               ⭐ পুরো পাতায় **একটাই** সম্ভাব্য লাল টাইল — পিছিয়ে থাকা।
               ⚠️ এগিয়ে থাকলে লাল নয়; সব টাইল লাল করলে লালের মানেই হারায়।
@@ -169,6 +188,69 @@ export function MyDataPage() {
               ⚠️ ছবির মেয়াদ সার্ভার থেকে আসে, হাতে লেখা নয়; নীতি বদলালে
                  পাতাটা পুরোনো প্রতিশ্রুতি দেখাত।
             */}
+            {/*
+              ⭐⭐ **R21 — জমা কত।** ⚠️ কার্ডটা তখনই দেখা যায় যখন সত্যিই
+                 কিছু জমেছে (বা নিষ্পত্তি হয়েছে) — শূন্য নিয়ে একটা কার্ড
+                 বসিয়ে রাখলে সেটা কেবল প্রশ্ন তৈরি করত।
+              ⚠️ এখানে বেতনের কোনো সংখ্যা নেই, আর সেটা নিয়ম ভাঙে না:
+                 অঙ্কটা তাঁর নিজের টাকা, বেতনের হিসাব নয়। এটা থেকে কারো
+                 বেতন বের করা যায় না।
+            */}
+            {deposit.data &&
+              (deposit.data.totalPaisa > 0 || deposit.data.settlement) && (
+                <Card
+                  title="Security deposit"
+                  hint={
+                    deposit.data.settlement
+                      ? 'Settled — this is the record'
+                      : `Held from your salary · ${deposit.data.months.length} ${
+                          deposit.data.months.length === 1 ? 'month' : 'months'
+                        }`
+                  }
+                >
+                  <div className="num text-[26px] font-semibold">
+                    {deposit.data.settlement
+                      ? deposit.data.settlement.amount
+                      : deposit.data.total}
+                  </div>
+
+                  {deposit.data.settlement ? (
+                    <p className="mt-1 text-[13px] text-ink-2">
+                      {deposit.data.settlement.outcome === 'refunded'
+                        ? 'Refunded to you'
+                        : 'Not refunded — the notice period was short'}
+                      {deposit.data.settlement.note &&
+                        ` · ${deposit.data.settlement.note}`}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[13px] text-ink-2">
+                      This is your money, held back each month. You get all of
+                      it when you leave, as long as you give at least{' '}
+                      {deposit.data.noticeDays} days&apos; notice.
+                    </p>
+                  )}
+
+                  {/*
+                    ⭐ মাস ধরে তালিকাটাও থাকে — "কোন মাসে কাটা হয়েছে"
+                       প্রশ্নের উত্তর নিজের পাতাতেই থাকা দরকার, নইলে
+                       মিলিয়ে দেখতে মালিকের কাছে যেতে হতো।
+                  */}
+                  {deposit.data.months.length > 0 && (
+                    <ul className="mt-3 divide-y divide-line border-t border-line text-[13px]">
+                      {deposit.data.months.map((m) => (
+                        <li
+                          key={m.yearMonth}
+                          className="flex items-baseline justify-between py-1.5"
+                        >
+                          <span className="num text-ink-2">{m.yearMonth}</span>
+                          <span className="num">{m.amount}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              )}
+
             <Card title="What is recorded" hint="And for how long">
               <dl className="space-y-2.5 text-[13px]">
                 <Row term="Screenshots">
@@ -199,28 +281,28 @@ export function MyDataPage() {
       )}
 
       {linked && (
-      <div className="mt-4 space-y-4">
-        <Card
-          title="Day by day"
-          hint="Last 30 days · days off and empty days are shown too"
-          padded={false}
-        >
-          {days.loading && <Loading />}
-          {days.error && <ErrorBox error={days.error} retry={days.reload} />}
-          {days.data?.length === 0 && <Empty title="Nothing recorded yet" />}
-          {days.data && days.data.length > 0 && <DayTable rows={days.data} />}
-        </Card>
+        <div className="mt-4 space-y-4">
+          <Card
+            title="Day by day"
+            hint="Last 30 days · days off and empty days are shown too"
+            padded={false}
+          >
+            {days.loading && <Loading />}
+            {days.error && <ErrorBox error={days.error} retry={days.reload} />}
+            {days.data?.length === 0 && <Empty title="Nothing recorded yet" />}
+            {days.data && days.data.length > 0 && <DayTable rows={days.data} />}
+          </Card>
 
-        {/*
+          {/*
           ⭐ J08 — নিজের সংশোধন, কারণসহ। কম্পোনেন্টটা owner-এর পাতার
           সাথে **ভাগ করা**: owner ওখানে যোগ করার বোতামও পান, স্টাফ শুধু
           তালিকাটা দেখেন (`isOwner` ভেতরেই যাচাই হয়)। দুটো আলাদা
           কম্পোনেন্ট লিখলে একদিন দুই পাতায় দুই রকম কারণ দেখাত।
         */}
-        {user?.employeeId != null && (
-          <Adjustments employeeId={user.employeeId} nonce={0} />
-        )}
-      </div>
+          {user?.employeeId != null && (
+            <Adjustments employeeId={user.employeeId} nonce={0} />
+          )}
+        </div>
       )}
     </Page>
   );
@@ -298,7 +380,9 @@ function DayTable({ rows }: { rows: MyDay[] }) {
             r.adjustmentSec === 0 ? (
               <span className="text-ink-3">—</span>
             ) : (
-              <span className="num">{formatSignedDuration(r.adjustmentSec)}</span>
+              <span className="num">
+                {formatSignedDuration(r.adjustmentSec)}
+              </span>
             ),
         },
         {

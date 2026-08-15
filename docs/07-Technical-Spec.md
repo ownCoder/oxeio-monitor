@@ -877,6 +877,8 @@ heartbeat-এ ভার্সন মিলে যেত, তাই সার্�
 | GET | `/reports/summary?from=&to=&groupBy=week\|month&format=json\|xlsx\|pdf` | ⭐ *নতুন* — সাপ্তাহিক/মাসিক সারাংশ |
 | GET | `/reports/productivity?from=&to=&limit=` | অ্যাপ/সাইট ভিত্তিক productivity। ⚠️ এখানে `format=pdf` **নেই** — DTO-তেই আটকানো, তাই পরিষ্কার ৪০০ আসে, চুপচাপ JSON নয় |
 | GET | `/payroll?month=` | পে-রোল ঘণ্টার হিসাব। ⚠️ `/reports/`-এর নিচে **নয়**, আলাদা মডিউল — কারণ reports কন্ট্রোলার owner+manager, আর এটা **owner only**। এক ক্লাসে এনে ফেললে ম্যানেজারও বেতনের শিট পেতেন |
+| GET·PATCH·POST | `/deposits` · `/deposits/policy` · `/deposits/:employeeId/settle` | ⭐ **owner only** (R21) — সিকিউরিটি মানি। ⚠️ ম্যানেজারও নয়: জামানত সরাসরি বেতনের অংশ। ⭐⭐ খাতা **লিখে রাখা** হয়, গোনা হয় না — অঙ্ক বদলালে পুরোনো কিস্তি নড়ে না। ⚠️ `settle` দ্বিতীয়বার ডাকলে **৪০৯**; সিদ্ধান্ত মালিকের, সিস্টেম কেবল নোটিশের দিন গুনে সারিতে লেখে ([ADR-028](05-Options-Decisions.md)) |
+| GET | `/me/deposit` | ⭐ কর্মীর **নিজের** জমা — মোট ও মাস ধরে তালিকা। ⚠️ পথে `:id` নেই, কর্মী আসে সেশন থেকে (বাকি `/me/*`-এর মতোই) |
 | POST | `/devices/:id/revoke` · `/devices/:id/restore` | ⭐ *নতুন* (restore) — H06। ডিভাইস বন্ধ করা ও ফেরানো, ডিলিট নয় |
 | POST | `/employees/:id/deactivate` · `/employees/:id/reactivate` | ⭐ *নতুন* (reactivate) — ⚠️ `DELETE` ইচ্ছাকৃতভাবে নেই: সারি মুছলে ওই কর্মীর মাসের হিসাব, স্ক্রিনশট ও audit trail অনাথ হয়ে যেত |
 | POST | `/work-policies/:id/deactivate` | ⭐ *নতুন* — পলিসিও মোছা যায় না, ওর দিকে employees আর পুরোনো মাসের হিসাব তাকিয়ে আছে |
@@ -924,6 +926,7 @@ heartbeat-এ ভার্সন মিলে যেত, তাই সার্�
 | Work policy (মাসিক টার্গেট, ছবির উইন্ডো, idle, retention) | ✅ | ❌ |
 | **ঘণ্টা সংশোধন** (`time_adjustments`) বসানো / revoke | ✅ | ❌ *(দেখতে পাবে)* |
 | ছুটির খাতা (`leaves`) · মাস বন্ধ করা · এজেন্ট আপডেট বিলি | ✅ | ❌ |
+| ⭐ **সিকিউরিটি মানি** — জমা দেখা, নিয়ম বদলানো, ফেরত/বাজেয়াপ্ত | ✅ | ❌ |
 | Device revoke / audit log / অ্যালার্ট | ✅ | ❌ |
 
 ⚠️⚠️ **বেতনের সারিটা দু-দিকেই বন্ধ, আর সেটাই আসল কথা।** `redact.ts`

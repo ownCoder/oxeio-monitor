@@ -1,4 +1,11 @@
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -6,7 +13,10 @@ import type { ConfigService } from '@nestjs/config';
 import { Prisma, type Device } from '@prisma/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClockDriftService, Drift } from '../src/agent/clock-drift.service';
+import type {
+  ClockDriftService,
+  Drift,
+} from '../src/agent/clock-drift.service';
 import type { ScreenshotMetaDto } from '../src/agent/dto';
 import { ScreenshotIngestService } from '../src/agent/screenshot-ingest.service';
 import type { PrismaService } from '../src/prisma/prisma.service';
@@ -80,11 +90,7 @@ function makeService(prisma: Partial<PrismaService>): ScreenshotIngestService {
     correct: (value: string) => new Date(value),
   } as unknown as ClockDriftService;
 
-  return new ScreenshotIngestService(
-    prisma as PrismaService,
-    clock,
-    config,
-  );
+  return new ScreenshotIngestService(prisma as PrismaService, clock, config);
 }
 
 describe('G81 · চালুর সময় storage-এ লেখা যায় কি না', () => {
@@ -116,28 +122,36 @@ describe('G81 · চালুর সময় storage-এ লেখা যায
    * `access(W_OK)` সফল বলেও পরে লেখা আটকাতে পারে, আর সেই ফাঁকটাই তো
    * সারাতে বসা।
    */
-  it('লেখা না গেলে জোরে থামে, আর বার্তায় সারানোর পথ থাকে', async () => {
-    const locked = join(root, 'locked');
-    await mkdir(locked, { recursive: true });
-    // dr-xr-xr-x — ঢোকা যায়, লেখা যায় না
-    await import('node:fs/promises').then((fs) => fs.chmod(locked, 0o555));
+  // ⚠️ Windows-এ **বাদ**, আর কারণটা টেস্টের নয়, OS-এর: `chmod 0o555` ওখানে
+  //    ফোল্ডারকে read-only করে না (POSIX বিট বলে কিছু নেই), তাই লেখা সফল
+  //    হয় আর টেস্ট লাল দেখায়। ⭐ CI Linux-এ চলে, সেখানে এটা আসল পাহারা।
+  //    না বাদ দিলে উইন্ডোজে `npm run test:nodb` সবসময় একটা লাল দেখাত, আর
+  //    "একটা তো সবসময় লাল থাকেই" — এভাবেই আসল লাল চোখ এড়িয়ে যায়।
+  it.skipIf(process.platform === 'win32')(
+    'লেখা না গেলে জোরে থামে, আর বার্তায় সারানোর পথ থাকে',
+    async () => {
+      const locked = join(root, 'locked');
+      await mkdir(locked, { recursive: true });
+      // dr-xr-xr-x — ঢোকা যায়, লেখা যায় না
+      await import('node:fs/promises').then((fs) => fs.chmod(locked, 0o555));
 
-    const config = {
-      get: (key: string) => (key === 'STORAGE_ROOT' ? locked : undefined),
-    } as unknown as ConfigService;
-    const svc = new ScreenshotIngestService(
-      {} as PrismaService,
-      {} as ClockDriftService,
-      config,
-    );
+      const config = {
+        get: (key: string) => (key === 'STORAGE_ROOT' ? locked : undefined),
+      } as unknown as ConfigService;
+      const svc = new ScreenshotIngestService(
+        {} as PrismaService,
+        {} as ClockDriftService,
+        config,
+      );
 
-    await expect(svc.onModuleInit()).rejects.toThrow(
-      /Screenshot storage is not writable/,
-    );
-    // ⭐ বার্তাটা শুধু "ভেঙেছে" নয়, **কী করতে হবে** বলে — নইলে ডকারের
-    //    uid-এর ফাঁদটা কেউ ধরতে পারত না
-    await expect(svc.onModuleInit()).rejects.toThrow(/chown -R 1000:1000/);
-  });
+      await expect(svc.onModuleInit()).rejects.toThrow(
+        /Screenshot storage is not writable/,
+      );
+      // ⭐ বার্তাটা শুধু "ভেঙেছে" নয়, **কী করতে হবে** বলে — নইলে ডকারের
+      //    uid-এর ফাঁদটা কেউ ধরতে পারত না
+      await expect(svc.onModuleInit()).rejects.toThrow(/chown -R 1000:1000/);
+    },
+  );
 });
 
 describe('G81 · duplicate পথ — সারি আছে, ফাইল নেই', () => {

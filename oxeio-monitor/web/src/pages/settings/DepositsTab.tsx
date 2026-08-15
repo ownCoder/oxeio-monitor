@@ -1,0 +1,426 @@
+import { useState } from 'react';
+
+import {
+  listDeposits,
+  settleDeposit,
+  updateDepositPolicy,
+  type DepositBalance,
+} from '../../api/admin';
+import { useApi } from '../../api/useApi';
+import { Card } from '../../components/Card';
+import { Caveat, Empty, ErrorBox, Loading } from '../../components/States';
+import {
+  FormGrid,
+  FullWidth,
+  MiniButton,
+  Modal,
+  Notice,
+  RowActions,
+  SelectField,
+  ServerError,
+  TextField,
+  orUndefined,
+  useMutation,
+} from './ui';
+
+/**
+ * ⭐⭐ **R21 — সিকিউরিটি মানি (জামানত)।**
+ *
+ * মালিকের কথা *(১৫ আগস্ট)*: প্রতি মাসে বেতন থেকে ৫০০ টাকা কেটে রাখা হয়,
+ * আর কেউ ৩০ দিন আগে জানিয়ে চাকরি ছাড়লে পুরো জমাটা ফেরত পান।
+ *
+ * ⚠️⚠️ এই পর্দাটা **owner-only**, ম্যানেজারও নয় — জামানত সরাসরি বেতনের
+ * অংশ (ADR-023 · ADR-027)।
+ *
+ * ⭐ কর্মী নিজের জমাটা নিজের পাতায় দেখেন (`/me`), তাই "কত জমল" প্রশ্নের
+ * উত্তর জানতে তাঁকে মালিকের কাছে আসতে হয় না — ফিচারটার আসল উদ্দেশ্যই
+ * সেটা।
+ */
+export function DepositsTab() {
+  const { data, error, loading, reload } = useApi(
+    (signal) => listDeposits(signal),
+    [],
+  );
+  const mutation = useMutation();
+
+  const [editingRule, setEditingRule] = useState(false);
+  const [settling, setSettling] = useState<DepositBalance | null>(null);
+
+  const rows = data?.rows ?? [];
+  const open = rows.filter((r) => !r.settlement);
+
+  /**
+   * ⚠️ মোট জমা **পয়সা থেকে** যোগ হয়, `balance` স্ট্রিং পার্স করে নয় —
+   *    `Number("500.00")` কাজ করে বটে, কিন্তু বারোটা সারিতে ভাসমান দশমিক
+   *    যোগ করলে শেষে এক পয়সা এদিক-ওদিক হতো, আর সেটা মালিকের চোখে পড়ত।
+   */
+  const heldPaisa = open.reduce((sum, r) => sum + r.balancePaisa, 0);
+
+  return (
+    <>
+      <ServerError error={mutation.error} />
+
+      <Card
+        title="Security deposit"
+        hint={
+          data
+            ? `${data.policy.amount} a month · refundable with ${data.policy.noticeDays} days' notice`
+            : 'Held from salary each month, refunded when someone leaves'
+        }
+        padded={false}
+        actions={
+          <RowActions>
+            <MiniButton disabled={!data} onClick={() => setEditingRule(true)}>
+              Edit rule
+            </MiniButton>
+          </RowActions>
+        }
+      >
+        {loading && !data ? (
+          <Loading label="Loading deposits…" />
+        ) : !data ? (
+          <ErrorBox error={error} retry={reload} />
+        ) : rows.length === 0 ? (
+          <Empty title="No staff yet" />
+        ) : (
+          <>
+            {/*
+              ⭐ মোটটা উপরে, একবার। মালিকের প্রথম প্রশ্নটা "সব মিলিয়ে কত
+                 টাকা আমার হাতে জমা আছে" — সারি গুনে যোগ করতে হলে ওই
+                 উত্তরটা কেউ কোনোদিন বের করত না।
+              ⚠️ নিষ্পত্তি হয়ে যাওয়া কর্মীদের বাদ দিয়ে — ওই টাকা আর
+                 হাতে নেই, ফেরত (বা বাজেয়াপ্ত) হয়ে গেছে।
+            */}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line px-4 py-3">
+              <span className="num text-[19px] font-semibold">
+                {takaOf(heldPaisa)}
+              </span>
+              <span className="text-[12px] text-ink-2">
+                held from {open.length}{' '}
+                {open.length === 1 ? 'person' : 'people'}
+              </span>
+            </div>
+
+            <ul className="divide-y divide-line">
+              {rows.map((row) => (
+                <li
+                  key={row.employeeId}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
+                >
+                  <span className="min-w-0 flex-1 text-[13px]">
+                    <span className="font-medium">{row.fullName}</span>
+                    <span className="num ml-2 text-[12px] text-ink-3">
+                      {row.empCode}
+                    </span>
+
+                    {row.settlement ? (
+                      <span className="block text-[12px] text-ink-2">
+                        {row.settlement.outcome === 'refunded'
+                          ? 'Refunded'
+                          : 'Forfeited'}{' '}
+                        {row.settlement.amount} ·{' '}
+                        {row.settlement.noticeDaysGiven === null
+                          ? 'notice dates were not recorded'
+                          : `${row.settlement.noticeDaysGiven} days' notice, rule is ${row.settlement.noticeDaysRule}`}
+                        {row.settlement.note && ` · ${row.settlement.note}`}
+                      </span>
+                    ) : (
+                      <span className="block text-[12px] text-ink-3">
+                        {row.months} {row.months === 1 ? 'month' : 'months'}{' '}
+                        held
+                      </span>
+                    )}
+                  </span>
+
+                  <span
+                    className={`num text-[13px] font-semibold ${
+                      row.settlement ? 'text-ink-3 line-through' : ''
+                    }`}
+                  >
+                    {row.balance}
+                  </span>
+
+                  <RowActions>
+                    {/*
+                      ⚠️ নিষ্পত্তি হয়ে গেলে বোতামটা **থাকেই না** — সার্ভার
+                         দ্বিতীয়বার ৪০৯ দেয়, তাই বোতাম রাখলে সেটা শুধু
+                         একটা এরর বাক্সে নিয়ে যেত।
+                    */}
+                    {!row.settlement && row.balancePaisa > 0 && (
+                      <MiniButton onClick={() => setSettling(row)}>
+                        Settle
+                      </MiniButton>
+                    )}
+                  </RowActions>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        <Caveat>
+          The instalment is written into the ledger month by month, so changing
+          the amount later never rewrites what was already held. The payroll
+          sheet shows it as its own line: the salary earned stays the same, and
+          only the amount handed over that month goes down.
+        </Caveat>
+      </Card>
+
+      {editingRule && data && (
+        <EditRule
+          policy={data.policy}
+          busy={mutation.busy}
+          onClose={() => setEditingRule(false)}
+          onSubmit={(body) =>
+            mutation.run(async () => {
+              await updateDepositPolicy(body);
+              setEditingRule(false);
+              reload();
+            })
+          }
+        />
+      )}
+
+      {settling && (
+        <SettleDialog
+          row={settling}
+          noticeDays={data?.policy.noticeDays ?? 30}
+          busy={mutation.busy}
+          onClose={() => setSettling(null)}
+          onSubmit={(body) =>
+            mutation.run(async () => {
+              await settleDeposit(settling.employeeId, body);
+              setSettling(null);
+              reload();
+            })
+          }
+        />
+      )}
+    </>
+  );
+}
+
+/** পয়সা → '৳' ছাড়া দুই-দশমিকের সংখ্যা, সার্ভারের `paisaToTaka`-র মতোই */
+function takaOf(paisa: number): string {
+  return (paisa / 100).toFixed(2);
+}
+
+function EditRule({
+  policy,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  policy: {
+    amount: string;
+    startYearMonth: string;
+    noticeDays: number;
+    active: boolean;
+  };
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (body: {
+    amountPaisa?: number;
+    startYearMonth?: string;
+    noticeDays?: number;
+    active?: boolean;
+  }) => void;
+}) {
+  const [amount, setAmount] = useState(policy.amount);
+  const [startYearMonth, setStart] = useState(policy.startYearMonth);
+  const [noticeDays, setNotice] = useState(String(policy.noticeDays));
+  const [active, setActive] = useState(policy.active ? 'yes' : 'no');
+
+  /**
+   * ⚠️ ফাঁকা বা অসংখ্যা ঘরে বোতামটা নিষ্ক্রিয় — সার্ভার ৪০০ দিত ঠিকই,
+   *    কিন্তু দেয়ালে পাঠানোর চেয়ে দেখিয়ে দেওয়াই ভালো। ⚠️ `Number('')`
+   *    শূন্য হয়, তাই খালি ঘরটা আলাদা করে দেখা দরকার।
+   */
+  const badAmount = amount.trim() === '' || !(Number(amount) > 0);
+  const badNotice =
+    noticeDays.trim() === '' || !Number.isInteger(Number(noticeDays));
+
+  return (
+    <Modal
+      title="Security deposit rule"
+      onClose={onClose}
+      footer={
+        <RowActions>
+          <MiniButton onClick={onClose}>Cancel</MiniButton>
+          <MiniButton
+            disabled={busy || badAmount || badNotice}
+            onClick={() =>
+              onSubmit({
+                // ⭐ পর্দা টাকায় নেয়, API পয়সায় — রূপান্তরটা এই এক জায়গায়
+                amountPaisa: Math.round(Number(amount) * 100),
+                startYearMonth: orUndefined(startYearMonth),
+                noticeDays: Number(noticeDays),
+                active: active === 'yes',
+              })
+            }
+          >
+            Save
+          </MiniButton>
+        </RowActions>
+      }
+    >
+      <FormGrid>
+        <TextField label="Amount a month" value={amount} onChange={setAmount} />
+        <TextField
+          label="Notice required (days)"
+          value={noticeDays}
+          onChange={setNotice}
+        />
+        <TextField
+          label="Collect from"
+          value={startYearMonth}
+          onChange={setStart}
+          placeholder="2026-08"
+        />
+        <SelectField
+          label="Collecting"
+          value={active}
+          onChange={setActive}
+          options={[
+            { value: 'yes', label: 'Yes — add an instalment each month' },
+            { value: 'no', label: 'No — stop adding new instalments' },
+          ]}
+        />
+
+        <FullWidth>
+          <Notice>
+            Changing the amount only affects months that have not been recorded
+            yet. Everything already held keeps the amount it was held at, so
+            nobody&apos;s balance moves because a rule changed today. Turning
+            collection off leaves every balance untouched.
+          </Notice>
+        </FullWidth>
+      </FormGrid>
+    </Modal>
+  );
+}
+
+/**
+ * ⭐⭐ নিষ্পত্তির মোডাল — **সিদ্ধান্তটা মালিকের, হিসাবটা পর্দার।**
+ *
+ * ⚠️ তারিখ দুটো বসালে পর্দা সাথে সাথে বলে দেয় কত দিনের নোটিশ হলো আর নিয়ম
+ * কী বলে, কিন্তু বোতাম দুটোর কোনোটাই লুকায় না। ব্যতিক্রম সবসময়ই থাকে
+ * (হাসপাতাল, পারিবারিক কারণ), আর স্বয়ংক্রিয় করলে মালিককে নিয়মটা
+ * **ভাঙতে** হতো — অথচ ভাঙার কোনো পথ থাকত না।
+ */
+function SettleDialog({
+  row,
+  noticeDays,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  row: DepositBalance;
+  noticeDays: number;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (body: {
+    outcome: 'refunded' | 'forfeited';
+    noticeGivenOn?: string;
+    lastWorkingDay?: string;
+    note?: string;
+  }) => void;
+}) {
+  const [noticeGivenOn, setNoticeGiven] = useState('');
+  const [lastWorkingDay, setLastDay] = useState('');
+  const [outcome, setOutcome] = useState<'refunded' | 'forfeited'>('refunded');
+  const [note, setNote] = useState('');
+
+  /** দুটো তারিখই থাকলে কত দিন — সার্ভারের `daysBetween`-এর মতোই, শেষ দিনসহ */
+  const daysGiven =
+    noticeGivenOn && lastWorkingDay
+      ? Math.round(
+          (new Date(lastWorkingDay).getTime() -
+            new Date(noticeGivenOn).getTime()) /
+            86_400_000,
+        )
+      : null;
+
+  return (
+    <Modal
+      title={`Settle ${row.fullName}'s deposit`}
+      onClose={onClose}
+      footer={
+        <RowActions>
+          <MiniButton onClick={onClose}>Cancel</MiniButton>
+          <MiniButton
+            tone={outcome === 'forfeited' ? 'danger' : undefined}
+            disabled={busy}
+            onClick={() =>
+              onSubmit({
+                outcome,
+                noticeGivenOn: orUndefined(noticeGivenOn),
+                lastWorkingDay: orUndefined(lastWorkingDay),
+                note: orUndefined(note),
+              })
+            }
+          >
+            {outcome === 'refunded' ? 'Refund' : 'Forfeit'}
+          </MiniButton>
+        </RowActions>
+      }
+    >
+      <FormGrid>
+        <FullWidth>
+          <Notice>
+            {row.balance} held over {row.months}{' '}
+            {row.months === 1 ? 'month' : 'months'}. This closes the ledger — no
+            further instalments are added, and it cannot be settled twice.
+          </Notice>
+        </FullWidth>
+
+        <TextField
+          label="Notice given on"
+          value={noticeGivenOn}
+          onChange={setNoticeGiven}
+          type="date"
+        />
+        <TextField
+          label="Last working day"
+          value={lastWorkingDay}
+          onChange={setLastDay}
+          type="date"
+        />
+
+        <SelectField
+          label="Outcome"
+          value={outcome}
+          onChange={(v) => setOutcome(v as 'refunded' | 'forfeited')}
+          options={[
+            { value: 'refunded', label: 'Refund the full amount' },
+            { value: 'forfeited', label: 'Forfeit — notice was too short' },
+          ]}
+        />
+        <TextField label="Note" value={note} onChange={setNote} />
+
+        {/*
+          ⭐ হিসাবটা দেখানো হয়, কিন্তু বোতাম বদলানো হয় না — মালিক নিয়ম
+             জেনে সিদ্ধান্ত নেন, নিয়ম তাঁর হয়ে সিদ্ধান্ত নেয় না।
+          ⚠️ তারিখ না দিলে কিছুই দাবি করা হয় না: "জানা নেই" আর "শর্ত
+             মেলেনি" এক কথা নয়।
+        */}
+        <FullWidth>
+          {daysGiven === null ? (
+            <Notice>
+              Without both dates the notice period is not recorded — the
+              settlement still goes through, and the ledger simply says the
+              dates were not known.
+            </Notice>
+          ) : (
+            <Notice>
+              {daysGiven} days&apos; notice · the rule asks for {noticeDays}.{' '}
+              {daysGiven >= noticeDays
+                ? 'This meets the rule.'
+                : 'This is short of the rule — refunding anyway is your call, and the note is a good place to say why.'}
+            </Notice>
+          )}
+        </FullWidth>
+      </FormGrid>
+    </Modal>
+  );
+}
