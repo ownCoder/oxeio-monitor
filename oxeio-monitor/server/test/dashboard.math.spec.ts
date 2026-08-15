@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   agentPresence,
-  AGENT_DOWN_AFTER_SEC,
   decideLiveStatus,
   formatWorkDate,
   HOURS_PER_DAY,
@@ -57,37 +56,94 @@ describe('decideLiveStatus — কার্ডের রঙ', () => {
     expect(statusOf([device({ lastState: 'locked' })])).toBe('idle');
   });
 
-  it('৯০ সেকেন্ড পেরোলে offline, ১০ মিনিট পেরোলে agent_down', () => {
-    expect(statusOf([device({ lastSeenAt: secondsAgo(120) })])).toBe('offline');
-    expect(statusOf([device({ lastSeenAt: secondsAgo(700) })])).toBe(
-      'agent_down',
-    );
-  });
-
   /**
-   * ⭐ সবচেয়ে দরকারি টেস্ট। শর্ত দুটোর ক্রম উল্টে গেলে (আগে ৯০ সে., পরে
-   * ৬০০ সে.) তিন ঘণ্টা ধরে মরে থাকা এজেন্টও নিরীহ ⚪ offline দেখাত —
-   * 🔴 কোনোদিন উঠত না, অথচ ওটাই ধরার জন্য ফিচারটা।
+   * ⭐⭐⭐ **এই describe-টার সবচেয়ে দরকারি অংশ, আর এটা মাঠ থেকে এসেছে।**
+   *
+   * ⚠️⚠️ আগে নিয়মটা ছিল কেবল ঘড়ির: `> ৬০০ সে.` → agent_down, নইলে
+   * offline। ফলে `offline` কেবল ৯০ সে.–১০ মিনিটের **সরু জানালাতেই** সম্ভব
+   * ছিল, আর তারপর সবাই চিরকালের জন্য লাল। ১৫ আগস্ট সন্ধ্যায় বোর্ড
+   * দেখাচ্ছিল `Agent down 12 · Offline 0` — বারোজনের বারোজনই, অথচ কিছুই
+   * ভাঙেনি: অফিস ছুটি হয়েছিল।
+   *
+   * ⭐ এখন প্রশ্নটা **শেষ কথাটার**, ঘড়ির নয়।
    */
-  it('অনেকক্ষণ চুপ থাকা এজেন্ট offline নয়, agent_down', () => {
-    expect(statusOf([device({ lastSeenAt: secondsAgo(3 * 3600) })])).toBe(
-      'agent_down',
-    );
+  describe('চুপ হয়ে যাওয়া এজেন্ট — মরেছে, না বাড়ি গেছে?', () => {
+    it('⭐⭐ idle বলে চুপ হলে offline — কেউ উঠে গিয়ে PC বন্ধ করেছে', () => {
+      expect(
+        statusOf([device({ lastSeenAt: secondsAgo(120), lastState: 'idle' })]),
+      ).toBe('offline');
+      expect(
+        statusOf([
+          device({ lastSeenAt: secondsAgo(3 * 3600), lastState: 'idle' }),
+        ]),
+      ).toBe('offline');
+    });
+
+    it('locked বলে চুপ হলেও offline — Win+L চেপে চলে যাওয়া', () => {
+      expect(
+        statusOf([
+          device({ lastSeenAt: secondsAgo(3 * 3600), lastState: 'locked' }),
+        ]),
+      ).toBe('offline');
+    });
+
+    it('⭐⭐ active বলে হঠাৎ চুপ হলে agent_down — কাজের মাঝপথে থেমেছে', () => {
+      expect(
+        statusOf([
+          device({ lastSeenAt: secondsAgo(120), lastState: 'active' }),
+        ]),
+      ).toBe('agent_down');
+    });
+
+    /**
+     * ⚠️ "জানি না"-কে নিরীহ ধরা যাবে না — ইনস্টল হয়েও কোনোদিন চালু না
+     *    হওয়া এজেন্ট তখন চুপচাপ ⚪ হয়ে থাকত, আর ঠিক ওই কেসটা ধরার জন্যই
+     *    ফিচারটা।
+     */
+    it('শেষ কথা জানা না থাকলে agent_down', () => {
+      expect(
+        statusOf([
+          device({ lastSeenAt: secondsAgo(3 * 3600), lastState: null }),
+        ]),
+      ).toBe('agent_down');
+    });
+
+    /**
+     * ⚠️ একজনের দুটো PC: ডেস্কটপ সকালে `active` বলে বন্ধ হয়েছে, ল্যাপটপ
+     *    সন্ধ্যায় `idle` বলে। **শেষ কথাটা ল্যাপটপের**, তাই offline।
+     *    সবচেয়ে পুরোনোটা ধরলে তিনি রোজ সন্ধ্যায় ভুল করে লাল দেখাতেন।
+     */
+    it('একাধিক ডিভাইসে — যেটা সবচেয়ে পরে সাড়া দিয়েছে তারই শেষ কথা', () => {
+      expect(
+        statusOf([
+          device({ lastSeenAt: secondsAgo(9 * 3600), lastState: 'active' }),
+          device({ lastSeenAt: secondsAgo(2 * 3600), lastState: 'idle' }),
+        ]),
+      ).toBe('offline');
+    });
   });
 
   it('সীমানার ঠিক উপরে — "বেশি হলে" মানে কঠোরভাবে বেশি', () => {
     expect(
       statusOf([device({ lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC) })]),
     ).toBe('active');
+    // ⚠️ ডিফল্ট ডিভাইসের শেষ কথা `active`, তাই সীমা পেরোলেই agent_down
     expect(
       statusOf([device({ lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC + 1) })]),
-    ).toBe('offline');
-    expect(
-      statusOf([device({ lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC) })]),
-    ).toBe('offline');
-    expect(
-      statusOf([device({ lastSeenAt: secondsAgo(AGENT_DOWN_AFTER_SEC + 1) })]),
     ).toBe('agent_down');
+    expect(
+      statusOf([
+        device({ lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC), lastState: 'idle' }),
+      ]),
+    ).toBe('idle');
+    expect(
+      statusOf([
+        device({
+          lastSeenAt: secondsAgo(OFFLINE_AFTER_SEC + 1),
+          lastState: 'idle',
+        }),
+      ]),
+    ).toBe('offline');
   });
 
   it('ডিভাইসই না থাকলে offline — লাল অ্যালার্ম নয়', () => {
