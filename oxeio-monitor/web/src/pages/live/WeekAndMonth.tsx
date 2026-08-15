@@ -309,9 +309,21 @@ export function TopPerformers({ leaders }: { leaders: TeamTrend['leaders'] }) {
           <span className="num text-[11px] text-ink-3">{i + 1}</span>
           <div className="min-w-0">
             <div className="truncate text-[13px] font-medium">{p.fullName}</div>
+            {/*
+              ⭐ বারটা **সবুজ** (`ok`), সাদা (`ink`) নয় — বোর্ডের বাকি সব
+                 চার্টে "গোনা হওয়া ঘণ্টা" ইতিমধ্যেই এই রঙেই আঁকা হয়
+                 (দিনের ছন্দ, শেষ ৭ দিন)। এখানে সাদা থাকায় একই জিনিস একই
+                 পর্দায় দুই রঙে দেখাত।
+
+              ⚠️ এটা "টার্গেট পূরণ" বোঝায় না — ওই মানেটা `TargetBars`-এর,
+                 যেখানে নিরপেক্ষ বার সবুজ **হয়ে যায়** টার্গেট ছুঁলে। এখানে
+                 বারটা কেবল **অনুপাত**: শীর্ষজনের তুলনায় কে কতটা। তাই
+                 লম্বাটা "ভালো" নয়, শুধু "বেশি" — আর সংখ্যাটা পাশেই লেখা
+                 থাকে বলে ক্রমটা কীসের উপর দাঁড়ানো তা পর্দাতেই দেখা যায়।
+            */}
             <div className="mt-1 h-1 overflow-hidden rounded-full bg-line">
               <div
-                className="h-full rounded-full bg-ink transition-[width] duration-700"
+                className="h-full rounded-full bg-ok transition-[width] duration-700"
                 style={{
                   width: `${top > 0 ? (p.creditedSec / top) * 100 : 0}%`,
                 }}
