@@ -40,17 +40,14 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 // ── employees ───────────────────────────────────────────────────────────────
 
+/**
+ * ⭐⭐ **`empCode` ইচ্ছাকৃতভাবে এখানে নেই — সার্ভার নিজে বানায়।**
+ *
+ * ⚠️ `forbidNonWhitelisted: true` (app.setup.ts) বলে কেউ পাঠালে ৪০০ পাবে,
+ *    নীরবে উপেক্ষা নয়। এটাই চাওয়া: "পাঠালাম অথচ বসল না" অবস্থাটা এই
+ *    ফিল্ডে সবচেয়ে বিপজ্জনক, কারণ কোডটা মানুষ চোখে চেনে।
+ */
 export class CreateEmployeeDto {
-  /** ⚠️ ফাইলের পাথে employee **id** ব্যবহার হয়, empCode নয় — তাই পরে বদলানো নিরাপদ */
-  @IsString()
-  @MinLength(1)
-  @MaxLength(32)
-  @Matches(/^[A-Za-z0-9_-]+$/, {
-    message:
-      'empCode may contain only letters, digits, hyphens and underscores',
-  })
-  empCode!: string;
-
   @IsString() @MinLength(1) @MaxLength(120)
   fullName!: string;
 
@@ -80,13 +77,16 @@ export class CreateEmployeeDto {
  * দেখে দুটোকে আলাদা করে।
  */
 export class UpdateEmployeeDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(32)
-  @Matches(/^[A-Za-z0-9_-]+$/)
-  empCode?: string;
-
+  /**
+   * ⭐⭐ **`empCode` এখানেও নেই — একবার বসলে আর বদলায় না।**
+   *
+   * ⚠️ কোডটা কেবল একটা লেবেল নয়, মানুষের **পরিচয়**: রিপোর্ট, Excel,
+   *    পে-রোল শিট, টেলিগ্রামের সারাংশ, এমনকি ছাপানো কাগজেও ওটাই লেখা
+   *    থাকে। মাঝপথে বদলে গেলে পুরোনো কাগজ আর নতুন পর্দা দুই কথা বলত,
+   *    অথচ কোথাও কোনো ভুল দেখা যেত না।
+   * ⚠️ ডেটার দিক থেকেও বদলানোর দরকার নেই — ফাইলের পাথ ও সব foreign key
+   *    employee **id** ধরে চলে, `empCode` ধরে নয়।
+   */
   @IsOptional() @IsString() @MinLength(1) @MaxLength(120)
   fullName?: string;
 

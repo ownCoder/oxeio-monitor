@@ -102,9 +102,12 @@ export function getEmployee(
   return api<EmployeeView>(`/employees/${id}`, { signal });
 }
 
+/**
+ * ⚠️ `empCode` **নেই, ইচ্ছাকৃতভাবে** — সার্ভার নিজে বসায়।
+ *
+ * ⚠️ পাঠালে ৪০০ আসবে (`forbidNonWhitelisted`), চুপচাপ উপেক্ষা নয়।
+ */
 export interface CreateEmployeeBody {
-  /** ⚠️ শুধু অক্ষর, সংখ্যা, হাইফেন, আন্ডারস্কোর */
-  empCode: string;
   fullName: string;
   email?: string;
   designation?: string;
@@ -123,8 +126,8 @@ export interface CreateEmployeeBody {
  * ⚠️ `undefined` = "হাত দিও না", `null` = "মুছে দাও" — সার্ভার দুটোকে
  *    আলাদা করে। ফাঁকা ইনপুট বাক্স থেকে `''` না পাঠিয়ে `null` পাঠান।
  */
+/** ⚠️ `empCode` এখানেও নেই — একবার বসলে আর বদলায় না। */
 export type UpdateEmployeeBody = Partial<{
-  empCode: string;
   fullName: string;
   email: string | null;
   designation: string | null;

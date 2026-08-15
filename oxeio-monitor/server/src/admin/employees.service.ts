@@ -24,8 +24,39 @@ import {
   canSeeSalary,
   toEmployeeView,
   toEmployeeViews,
+  type EmployeeRow,
   type EmployeeView,
 } from './redact';
+
+/**
+ * কর্মী-কোড বসাতে সর্বোচ্চ কতবার চেষ্টা (§ `createWithGeneratedCode`)।
+ *
+ * ⚠️ পাঁচ — কারণ প্রতিটা ব্যর্থতার মানে ঠিক ওই মুহূর্তে আরেকজন মালিক
+ *    কর্মী যোগ করেছেন। পরপর পাঁচবার সেটা ঘটা ১৫ জনের অফিসে কার্যত অসম্ভব;
+ *    বেশি রাখলে আসল কোনো গোলমাল ঢাকা পড়ত।
+ */
+const CODE_ATTEMPTS = 5;
+
+/**
+ * P2002-টা কি **কোডের** সংঘাত, নাকি ইমেইলের?
+ *
+ * ⚠️ দুটো UNIQUE কলামই একই এরর কোড দেয়। আলাদা না করলে ইমেইল ডুপ্লিকেট
+ *    হলেও পাঁচবার নতুন কোড বানানোর চেষ্টা হতো — একই ৪০৯, শুধু পাঁচগুণ
+ *    দেরিতে।
+ */
+function isEmpCodeConflict(err: unknown): boolean {
+  if (
+    !(err instanceof Prisma.PrismaClientKnownRequestError) ||
+    err.code !== 'P2002'
+  ) {
+    return false;
+  }
+
+  const raw: unknown = err.meta?.target;
+  const target = Array.isArray(raw) ? raw.join(',') : String(raw ?? '');
+
+  return target.includes('emp_code') || target.includes('empCode');
+}
 
 /**
  * ⚠️ একটাই select, সব জায়গায় একই। আলাদা আলাদা জায়গায় কলাম বাছলে কোথাও
@@ -105,7 +136,11 @@ export class EmployeesService {
   // ── পড়া (owner + manager) ─────────────────────────────────────────────────
 
   /**
-   * পরের কর্মী-কোডের **পরামর্শ** — নতুন কর্মীর ফর্মে আগে থেকে বসানোর জন্য।
+   * পরের কর্মী-কোডটা **আগেভাগে দেখানোর** জন্য — নতুন কর্মীর ফর্মে।
+   *
+   * ⚠️ এটা প্রতিশ্রুতি নয়, **পূর্বাভাস**। আসল কোড বসে `create()`-এ, সেভ
+   * করার মুহূর্তে; দুজন মালিক একসাথে যোগ করলে একজন পরেরটা পাবেন। তাই
+   * পর্দায় লেখাটাও "next" — "your code will be" নয়।
    *
    * ⚠️⚠️ `where` ইচ্ছাকৃতভাবে **নেই** — active ও inactive, দুটোই লাগে।
    * শুধু active নিলে ছাঁটাই হওয়া কারো কোড আবার পরামর্শ হতো, আর সেভ করতে
@@ -180,26 +215,7 @@ export class EmployeesService {
   ): Promise<EmployeeView> {
     await this.assertPolicyExists(dto.policyId);
 
-    const row = await this.prisma.employee
-      .create({
-        data: {
-          empCode: dto.empCode,
-          fullName: dto.fullName,
-          email: dto.email ?? null,
-          designation: dto.designation ?? null,
-          department: dto.department ?? null,
-          policyId: dto.policyId ?? null,
-          // ⭐ স্ট্রিং সরাসরি Decimal-এ — মাঝপথে কোনো float নেই
-          monthlySalary: dto.monthlySalary ?? null,
-          joinedOn: dto.joinedOn
-            ? this.calendarDate(dto.joinedOn, 'joinedOn')
-            : null,
-        },
-        select: EMPLOYEE_SELECT,
-      })
-      .catch((err: unknown) => {
-        throw this.translateUniqueViolation(err, dto.empCode, dto.email);
-      });
+    const row = await this.createWithGeneratedCode(dto);
 
     await this.audit.record({
       userId: actor.userId,
@@ -235,8 +251,8 @@ export class EmployeesService {
 
     // ⚠️ `undefined` = "হাত দিও না", `null` = "মুছে দাও" — দুটো আলাদা।
     //    সব ফিল্ড একসাথে বসিয়ে দিলে না-পাঠানো ফিল্ডগুলো null হয়ে যেত।
+    // ⚠️ `empCode` ইচ্ছাকৃতভাবে নেই — কোড বসে একবার, `create()`-এ।
     const data: Prisma.EmployeeUpdateInput = {};
-    if (dto.empCode !== undefined) data.empCode = dto.empCode;
     if (dto.fullName !== undefined) data.fullName = dto.fullName;
     if (dto.email !== undefined) data.email = dto.email;
     if (dto.designation !== undefined) data.designation = dto.designation;
@@ -253,12 +269,14 @@ export class EmployeesService {
           : { connect: { id: dto.policyId } };
     }
 
+    // ⚠️ `empCode` আর এখানে আসতে পারে না (DTO-তে ঘরটাই নেই), তাই বাকি
+    //    একমাত্র UNIQUE হলো ইমেইল।
     const row = await this.prisma.employee
       .update({ where: { id }, data, select: EMPLOYEE_SELECT })
       .catch((err: unknown) => {
         throw this.translateUniqueViolation(
           err,
-          dto.empCode,
+          undefined,
           dto.email ?? undefined,
         );
       });
@@ -684,6 +702,61 @@ export class EmployeesService {
     const parsed = parseCalendarDate(value);
     if (!parsed) throw new BadRequestException(`${field} is not a valid date`);
     return parsed;
+  }
+
+  /**
+   * ⭐⭐ কর্মী-কোড **এখানেই** বসে — ক্লায়েন্ট কিছু বলে না, বলতেও পারে না
+   * (`CreateEmployeeDto`-তে ঘরটাই নেই)।
+   *
+   * ⚠️⚠️ "সর্বোচ্চ কোড পড়া" আর "নতুন সারি বসানো" — দুটো আলাদা কল, আর
+   * মাঝের ফাঁকটা আসল। দুজন মালিক একসাথে যোগ করলে দুজনেই একই `OX-13`
+   * পড়তে পারেন; দ্বিতীয় INSERT-এ `emp_code` UNIQUE ভেঙে P2002 আসে।
+   * তখন **আবার গুনে আবার চেষ্টা** — সংঘাতটাই সংকেত।
+   *
+   * ⚠️ ট্রানজেকশনে মুড়লে সমস্যাটা যেত না: Postgres-এর ডিফল্ট
+   * READ COMMITTED-এ দুটো ট্রানজেকশন একই সর্বোচ্চ মান পড়তে পারে, আর
+   * সংঘাত ধরা পড়ত COMMIT-এ — অর্থাৎ ঠিক এখানেই, শুধু আরও দেরিতে।
+   *
+   * ⚠️ চেষ্টার সীমা আছে। অসীম লুপ একটা ভাঙা UNIQUE বা অদ্ভুত কোড-ধাঁচকে
+   * হ্যাং-এ বদলে দিত, আর মালিক শুধু ঘুরন্ত চাকা দেখতেন।
+   */
+  private async createWithGeneratedCode(
+    dto: CreateEmployeeDto,
+  ): Promise<EmployeeRow> {
+    const base = {
+      fullName: dto.fullName,
+      email: dto.email ?? null,
+      designation: dto.designation ?? null,
+      department: dto.department ?? null,
+      policyId: dto.policyId ?? null,
+      // ⭐ স্ট্রিং সরাসরি Decimal-এ — মাঝপথে কোনো float নেই
+      monthlySalary: dto.monthlySalary ?? null,
+      joinedOn: dto.joinedOn
+        ? this.calendarDate(dto.joinedOn, 'joinedOn')
+        : null,
+    };
+
+    for (let attempt = 1; attempt <= CODE_ATTEMPTS; attempt++) {
+      const { code: empCode } = await this.nextCode();
+
+      try {
+        return await this.prisma.employee.create({
+          data: { ...base, empCode },
+          select: EMPLOYEE_SELECT,
+        });
+      } catch (err: unknown) {
+        // ⚠️ কেবল **কোডের** সংঘাতে আবার চেষ্টা। ইমেইলের সংঘাতে বারবার
+        //    চেষ্টা করলে একই ৪০৯ পাঁচবার আসত, শুধু পাঁচগুণ দেরিতে।
+        if (attempt < CODE_ATTEMPTS && isEmpCodeConflict(err)) continue;
+        throw this.translateUniqueViolation(err, empCode, dto.email);
+      }
+    }
+
+    // ⚠️ এখানে পৌঁছানো মানে পরপর কয়েকবার হেরে যাওয়া — অস্বাভাবিক, তাই
+    //    চুপ করে না থেকে স্পষ্ট বার্তা।
+    throw new ConflictException(
+      'Could not assign an employee code — too many staff were added at the same moment. Please try again.',
+    );
   }
 
   private translateUniqueViolation(
