@@ -210,6 +210,12 @@ oxeio-monitor/
 │   │   │   ├── payroll.math.ts             #   খাঁটি হিসাব, সব পয়সায়
 │   │   │   ├── payroll.service.ts          #   monthly_salary পড়ে **শুধু এখানেই**
 │   │   │   └── payroll.controller.ts       #   @Roles(owner) ক্লাস-লেভেলে
+│   │   ├── deposits/                       ✅ ⭐⭐ **R21** — সিকিউরিটি মানি (ADR-028)
+│   │   │   ├── deposit.math.ts             #   খাঁটি হিসাব — মাসের ক্রম, নোটিশের দিন
+│   │   │   ├── deposits.service.ts         #   ⭐ খাতা **লিখে রাখে**, গোনে না
+│   │   │   └── deposits.controller.ts      #   @Roles(owner) ক্লাস-লেভেলে
+│   │   │   #  ⚠️ ম্যানেজারও নয় — জামানত সরাসরি বেতনের অংশ
+│   │   │   #  ⭐ কর্মী নিজেরটা `/me/deposit`-এ দেখেন
 │   │   ├── me/                             ✅ ⭐ **J05** — কর্মীর নিজের ডেটা
 │   │   │   #  ⚠️ পথে কোনো `:id` নেই — আইডি আসে **সেশন থেকে**, তাই ওয়েব
 │   │   │   #     থেকে সহকর্মীর ডেটা চাওয়ার উপায়ই নেই
@@ -274,6 +280,10 @@ oxeio-monitor/
 │       │                                      লেখা সারি কিছুই বদলায় না, আর সেটা **নিজেই
 │       │                                      বলে দেয়** — নইলে খাতা এমন ছাড়ের দাবি করত
 │       │                                      যা সে দেয়নি
+│       ├── pages/settings/DepositsTab.tsx  ✅ ⭐⭐ R21 — জামানত (owner-only)।
+│       │   #  মোট জমা উপরে একবার · সারি ধরে তালিকা · নিয়মের মোডাল
+│       │   #  ⚠️ নিষ্পত্তির ডায়ালগে নোটিশের হিসাব **দেখানো হয়**, কিন্তু
+│       │   #     বোতাম বদলানো হয় না — সিদ্ধান্তটা মালিকের (ADR-028)
 │       ├── pages/settings/MonthsTab.tsx    ✅ ⭐ R1 — মাস বন্ধ/খোলা।
 │       │                                      ⚠️ তালিকা **মাস ধরে**, বন্ধ-রেকর্ড ধরে নয় —
 │       │                                      প্রশ্নটা "কোনটা এখনো বাকি", আর অনুপস্থিতি
@@ -422,6 +432,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | **R7** ছুটির ক্যালেন্ডার (২০২৬–২৭) | — | `prisma/holidays.data.ts` → `seed.ts` ✅ · `admin/holidays.service` ✅ | `settings/HolidaysSection.tsx` |
 | **R1** মাস বন্ধ করা (payroll lock) | — | `admin/month-close.{service,controller}.ts` ✅ · `month_closure` টেবিল · `summary.service.ts`-এর গার্ড · `adjustments`-এ `assertMonthOpen()` | `settings/MonthsTab.tsx` ✅ |
 | **R2** ছুটির খাতা | — | `admin/leave.{service,controller}.ts` ✅ · `leaves` টেবিল · `countLeaveWorkdays()` → `prorate()` · `elapsedWorkdays()` · `proratedExpectedSec()`। ⭐⭐ ছুটি **টার্গেট** কমায়, `d ÷ D` নয় — অর্থাৎ সবেতন | `settings/LeaveTab.tsx` ✅ |
+| **R21** সিকিউরিটি মানি (জামানত) | — | `deposits/` ✅ · তিনটে টেবিল (`deposit_policy` · `security_deposits` · `deposit_settlements`) · `payroll.service`-এ `securityDeposit`/`netPayable` · `GET /me/deposit`। ⭐⭐ খাতা **লিখে রাখা** হয়, গোনা হয় না — অঙ্ক বদলালে পুরোনো কিস্তি নড়ে না | `settings/DepositsTab.tsx` ✅ · `MyDataPage.tsx`-এ কর্মীর নিজের কার্ড ✅ |
 | **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি | — |
 | ট্র্যাকিং শুরুর জানালা | — | `summary/summary.math.ts` → `elapsedWindow()` ✅ — tray · Monthly · ডাইজেস্ট · রিপোর্ট **এক সংজ্ঞা** (এজেন্ট বসার আগের না-দেখা দিন কারো ঘাটতি নয়)। ⚠️ ৭ দিনের ফিতে (`trendDayExpectation`) **ইচ্ছাকৃতভাবে আজকের দিনটা রাখে** — ভিন্ন প্রশ্ন, ফাংশনের নোটে লেখা | `MonthlyPage` · `live/WeekAndMonth.tsx` |
 | অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
