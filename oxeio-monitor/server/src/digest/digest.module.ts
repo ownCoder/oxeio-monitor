@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AlertMailer } from '../alerts/alerts.mailer';
 import { TelegramChannel } from '../alerts/telegram.channel';
+import { TeamsChannel } from '../alerts/teams.channel';
 import { ReportsModule } from '../reports/reports.module';
 import { DigestJob } from './digest.job';
 import { DigestService } from './digest.service';
@@ -46,6 +47,8 @@ import { WeeklyDigestService } from './weekly.service';
     WeeklyDigestService,
     WeeklyDigestJob,
     TelegramChannel,
+    // ⭐ Teams — টেলিগ্রামের পাশাপাশি, বিকল্প নয়
+    TeamsChannel,
   ],
   // টেস্ট বা ভবিষ্যতের কোনো admin endpoint যেন `runOnce()` ইচ্ছে করে
   // ডাকতে পারে — সন্ধ্যা ৬:৩০ (বা শুক্রবার) পর্যন্ত অপেক্ষা করে SMTP বা

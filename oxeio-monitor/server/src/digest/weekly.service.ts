@@ -5,6 +5,7 @@ import {
   TelegramChannel,
   type TelegramOutcome,
 } from '../alerts/telegram.channel';
+import { TeamsChannel } from '../alerts/teams.channel';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseWorkDate, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
@@ -104,6 +105,7 @@ export class WeeklyDigestService {
     private readonly reports: ReportsService,
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramChannel,
+    private readonly teams: TeamsChannel,
     config: ConfigService,
   ) {
     this.orgName = config.get<string>('ORG_NAME')?.trim() || DEFAULT_ORG_NAME;
@@ -131,9 +133,37 @@ export class WeeklyDigestService {
      * অবরুদ্ধ সপ্তাহেই ওটা সবচেয়ে বেশি দরকার: বার্তাটা তখন **কেবল** লগে
      * থাকে, আর সপ্তাহে একবারের হিসাব হারিয়ে গেলে ফেরত পাওয়ার পথ নেই।
      */
+    /**
+     * ⭐⭐ **Teams টেলিগ্রামের বিকল্প নয়, পাশাপাশি।** যেটা কনফিগ করা আছে
+     * সেটাই পায়; দুটোই থাকলে দুটোই পায়।
+     *
+     * ⚠️⚠️ **Teams-এর নিজস্ব প্রহরী নেই — ইচ্ছাকৃত।** টেলিগ্রামের প্রহরীটা
+     * (`weeklyGateOf`) আছে কারণ ওখানে ভুল করে **গ্রুপ চ্যাটে** কর্মীর নাম ও
+     * ঘণ্টা চলে যেতে পারত। Teams-এর webhook একটা নির্দিষ্ট চ্যানেলে বাঁধা —
+     * মালিক নিজে যেটা বেছে বসিয়েছেন, আর সেটা বদলাতে হলে `.env` ছুঁতে হয়।
+     *
+     * ⚠️ তাই টেলিগ্রাম অবরুদ্ধ থাকলেও Teams পাঠানো হয়: দুটো আলাদা ঝুঁকি,
+     * একটার শাস্তি অন্যটার উপর চাপানো যায় না।
+     */
+    const teamsOutcome = await this.teams.send(
+      `${this.orgName} — weekly summary`,
+      message.text,
+    );
+
     const outcome: WeeklyOutcome = this.gate.send
       ? await this.telegram.send(message.text)
       : 'chat_not_private';
+
+    /**
+     * ⚠️ Teams-এ গেছে অথচ টেলিগ্রাম অবরুদ্ধ — এই অবস্থায় নিচের "পুরো
+     * বার্তাটা লগে" শাখাটা আর দরকার নেই, কারণ সারাংশটা হারায়নি। কিন্তু
+     * খবরটা লেখা থাকা দরকার, নইলে লগ পড়ে মনে হতো কিছুই পাঠানো হয়নি।
+     */
+    if (teamsOutcome === 'sent') {
+      this.logger.log(`Weekly summary also sent to Teams · ${weekly.from} → ${weekly.to}`);
+    } else if (teamsOutcome === 'failed') {
+      this.logger.warn('Weekly summary could not be sent to Teams — see the message below');
+    }
 
     if (outcome === 'chat_not_private') {
       this.logger.warn(

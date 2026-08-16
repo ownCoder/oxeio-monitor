@@ -1,3 +1,4 @@
+import { TeamsChannel } from '../src/alerts/teams.channel';
 import type { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
 
@@ -1057,12 +1058,22 @@ function makeService(
     //    ইনস্ট্যান্স অ্যালার্টের sweep চালালে প্রতিটা অ্যালার্ট দুবার যেত।
   } as unknown as TelegramChannel;
 
+  /**
+   * ⚠️ Teams কনফিগ করা নেই ধরে নেওয়া — এই ফাইলের সব টেস্ট টেলিগ্রামের
+   *    আচরণ নিয়ে, আর Teams-কে সেখানে টেনে আনলে প্রতিটা দাবির অর্থ
+   *    ঘোলাটে হতো। Teams-এর নিজের গড়ন `teams-card.spec.ts`-এ বাঁধা।
+   */
+  const teams = {
+    configured: false,
+    send: () => Promise.resolve('not_configured' as const),
+  } as unknown as TeamsChannel;
+
   const config = {
     get: (key: string) => over.env?.[key],
   } as unknown as ConfigService;
 
   return {
-    service: new WeeklyDigestService(reports, prisma, telegram, config),
+    service: new WeeklyDigestService(reports, prisma, telegram, teams, config),
     sent,
     calls,
     observedQueries,
