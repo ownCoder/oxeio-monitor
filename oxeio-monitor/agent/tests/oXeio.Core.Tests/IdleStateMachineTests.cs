@@ -26,7 +26,7 @@ public class IdleStateMachineTests
     {
         var all = new List<ActivitySegment>();
         for (var i = 1; i <= seconds; i++)
-            all.AddRange(sm.Tick(from.AddSeconds(i), sinceLastInput(i), locked));
+            all.AddRange(sm.Tick(from.AddSeconds(i), sinceLastInput(i), locked, screenFrozen: false));
         return all;
     }
 
@@ -88,7 +88,7 @@ public class IdleStateMachineTests
         // ১০ মিনিট কেউ নেই (৩০১ থেকে ৯০০ সেকেন্ড পর্যন্ত টিক)
         all.AddRange(Run(sm, Start.AddSeconds(300), 600, i => TimeSpan.FromSeconds(i)));
         // ঠিক ৯০০ সেকেন্ডের মাথায় ফিরে এসে মাউস নাড়ল
-        all.AddRange(sm.Tick(Start.AddSeconds(900), TimeSpan.Zero, locked: false));
+        all.AddRange(sm.Tick(Start.AddSeconds(900), TimeSpan.Zero, locked: false, screenFrozen: false));
 
         // ⚠️ এখন লম্বা সেগমেন্ট ৫ মিনিটেও ভাগ হয়, তাই সংখ্যা নয় — **যোগফল**
         //    যাচাই করা হয়। নিয়মটা একই: ১০ মিনিট দূরে থাকলে ঠিক ১০ মিনিটই বাদ।
@@ -108,7 +108,7 @@ public class IdleStateMachineTests
         Assert.Equal(SegmentState.Idle, sm.State);
 
         // এক টিকেই ফিরে আসা — কোনো অপেক্ষা নেই (B03)
-        sm.Tick(Start.AddSeconds(421), TimeSpan.Zero, locked: false);
+        sm.Tick(Start.AddSeconds(421), TimeSpan.Zero, locked: false, screenFrozen: false);
         Assert.Equal(SegmentState.Active, sm.State);
     }
 
@@ -118,7 +118,7 @@ public class IdleStateMachineTests
         var sm = New();
         Run(sm, Start, 60, _ => TimeSpan.Zero);
 
-        var closed = sm.Tick(Start.AddSeconds(61), TimeSpan.Zero, locked: true);
+        var closed = sm.Tick(Start.AddSeconds(61), TimeSpan.Zero, locked: true, screenFrozen: false);
         Assert.Single(closed);
         Assert.Equal(SegmentState.Locked, sm.State);
 
@@ -126,7 +126,7 @@ public class IdleStateMachineTests
         Run(sm, Start.AddSeconds(61), 300, _ => TimeSpan.Zero, locked: true);
         Assert.Equal(SegmentState.Locked, sm.State);
 
-        closed = sm.Tick(Start.AddSeconds(362), TimeSpan.Zero, locked: false);
+        closed = sm.Tick(Start.AddSeconds(362), TimeSpan.Zero, locked: false, screenFrozen: false);
         var locked = Assert.Single(closed);
         Assert.Equal(SegmentState.Locked, locked.State);
         Assert.False(locked.CountsAsWork);
@@ -137,10 +137,10 @@ public class IdleStateMachineTests
     public void আনলকের_পর_কেউ_না_ছুঁলে_IDLE_হয়_ACTIVE_নয়()
     {
         var sm = New();
-        sm.Tick(Start.AddSeconds(1), TimeSpan.Zero, locked: true);
+        sm.Tick(Start.AddSeconds(1), TimeSpan.Zero, locked: true, screenFrozen: false);
 
         // আনলক হলো, কিন্তু শেষ ইনপুট অনেক আগের
-        sm.Tick(Start.AddSeconds(400), TimeSpan.FromSeconds(300), locked: false);
+        sm.Tick(Start.AddSeconds(400), TimeSpan.FromSeconds(300), locked: false, screenFrozen: false);
 
         Assert.Equal(SegmentState.Idle, sm.State);
     }
@@ -220,7 +220,7 @@ public class IdleStateMachineTests
         // ৩০০ → ৬০০ নিষ্ক্রিয় · এখানেই প্রথম ACTIVE সেগমেন্টটা বন্ধ হয়
         closed.AddRange(Run(sm, Start.AddSeconds(300), 300, i => TimeSpan.FromSeconds(i)));
 
-        closed.AddRange(sm.Tick(Start.AddSeconds(600), TimeSpan.Zero, locked: false));
+        closed.AddRange(sm.Tick(Start.AddSeconds(600), TimeSpan.Zero, locked: false, screenFrozen: false));
         closed.AddRange(sm.CloseAll(Start.AddSeconds(700)));    // ৬০০ → ৭০০ কাজ
 
         var worked = closed.Where(s => s.CountsAsWork).Sum(s => s.DurationSec);
@@ -242,5 +242,71 @@ public class IdleStateMachineTests
         Assert.NotNull(seg.InputScore);
         Assert.InRange(seg.InputScore!.Value, 0, 100);
         Assert.Equal(50, seg.InputScore);
+    }
+
+    // ── G46 · নকল ইনপুট: পর্দা জমে থাকলে গোনা বন্ধ ────────────────────────
+
+    /// <summary>
+    /// ⭐⭐⭐ <b>এই ফিচারের গোটা উদ্দেশ্য।</b>
+    ///
+    /// জিগলার চললে <c>sinceLastInput</c> সবসময় শূন্যের কাছাকাছি থাকে —
+    /// অর্থাৎ পুরোনো নিয়মে চিরকাল ACTIVE। পর্দা জমে আছে জানলে সেটা আর
+    /// বিশ্বাস করা হয় না।
+    /// </summary>
+    [Fact]
+    public void Frozen_screen_stops_counting_even_with_fresh_input()
+    {
+        var sm = new IdleStateMachine(Threshold, Start);
+
+        // ইনপুট একদম তাজা, তবু পর্দা জমা
+        sm.Tick(Start.AddSeconds(1), TimeSpan.Zero, locked: false, screenFrozen: true);
+
+        Assert.Equal(SegmentState.Idle, sm.State);
+    }
+
+    /// <summary>⭐ পর্দা আবার বদলালে সাথে সাথেই গোনা ফেরে — অপেক্ষা নেই</summary>
+    [Fact]
+    public void Screen_moving_again_resumes_counting()
+    {
+        var sm = new IdleStateMachine(Threshold, Start);
+
+        sm.Tick(Start.AddSeconds(1), TimeSpan.Zero, locked: false, screenFrozen: true);
+        Assert.Equal(SegmentState.Idle, sm.State);
+
+        sm.Tick(Start.AddSeconds(2), TimeSpan.Zero, locked: false, screenFrozen: false);
+
+        Assert.Equal(SegmentState.Active, sm.State);
+    }
+
+    /// <summary>
+    /// ⚠️⚠️ পর্দা জমার কারণে থামলে <b>পিছিয়ে কাটা হয় না</b>।
+    ///
+    /// আসল idle-এ retro-adjust হয় (threshold-টা আগে থেকেই idle ছিল), কিন্তু
+    /// এখানে নয়: পর্দা দশ মিনিট ধরে জমে ছিল, আর ওই দশ মিনিট পিছিয়ে কেটে
+    /// দিলে <b>লম্বা নথি পড়া সৎ কর্মীর সময়ও কেটে যেত</b>। ⭐ ভুল করলে
+    /// কর্মীর পক্ষে — সেগমেন্টটা <b>এখন</b> বন্ধ হয়, আগে নয়।
+    /// </summary>
+    [Fact]
+    public void Frozen_screen_does_not_retro_adjust()
+    {
+        var sm = new IdleStateMachine(Threshold, Start);
+        var at = Start.AddSeconds(120);
+
+        var closed = sm.Tick(at, TimeSpan.Zero, locked: false, screenFrozen: true);
+
+        var active = Assert.Single(closed);
+        Assert.Equal(SegmentState.Active, active.State);
+        Assert.Equal(at, active.EndedAt);
+    }
+
+    /// <summary>⚠️ লক থাকলে পর্দার প্রশ্নই ওঠে না — LOCKED আগে</summary>
+    [Fact]
+    public void Locked_wins_over_frozen()
+    {
+        var sm = new IdleStateMachine(Threshold, Start);
+
+        sm.Tick(Start.AddSeconds(1), TimeSpan.Zero, locked: true, screenFrozen: true);
+
+        Assert.Equal(SegmentState.Locked, sm.State);
     }
 }

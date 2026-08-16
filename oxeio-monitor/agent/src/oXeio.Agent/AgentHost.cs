@@ -359,7 +359,10 @@ internal sealed class AgentHost : IAsyncDisposable
                     Record(_machine!.OnResume(gap.ResumedAt));
                 }
 
-                Record(_machine!.Tick(now, sample.SinceLastInput, _sessionSuspended));
+                // ⭐ G46 — পর্দা জমে থাকলে ইনপুট টাইমারকে আর বিশ্বাস করা হয় না
+                Record(_machine!.Tick(
+                    now, sample.SinceLastInput, _sessionSuspended,
+                    screenFrozen: _screen.IsFrozen(now)));
             }
             catch (Exception ex)
             {
@@ -397,6 +400,16 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    /**
+     * ⭐⭐ <b>G46</b> — পর্দা সত্যিই বদলাচ্ছে কি না।
+     *
+     * ⚠️ নমুনা আসে ক্যাপচারের স্লট থেকে (৫ মিনিট পরপর), তাই ক্যাপচার বন্ধ
+     *    থাকলে (রাতে, § ৪.২-এর জানালার বাইরে) কোনো নমুনাই আসে না — আর তখন
+     *    <see cref="ScreenActivity.IsFrozen"/> সবসময় false, অর্থাৎ গোনা
+     *    স্বাভাবিকভাবেই চলে। "জানি না"-কে অভিযোগ ধরা হয় না।
+     */
+    private readonly ScreenActivity _screen = new();
+
     private async Task CaptureSlotAsync(SlotScheduler.Slot slot, CancellationToken ct)
     {
         // A04 · A04b · H06 — শর্তগুলো সব CaptureGate-এ, কারণ guard clause
@@ -424,6 +437,21 @@ internal sealed class AgentHost : IAsyncDisposable
         if (_outbox is null) return;
 
         var results = _capture!.CaptureAll();
+
+        /**
+         * ⭐ শুধু <b>প্রথম</b> মনিটরের ছাপ — সাধারণত ওখানেই কাজ হয়, আর সব
+         *    পর্দার ছাপ মেলালে একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই "জমেছে" বলে
+         *    সৎ কর্মীর গোনা বন্ধ করে দিত।
+         *
+         * ⚠️ ছাপ বানাতে ব্যর্থ হলে চুপচাপ এগোনো — তখন ওই স্লটে জিগলার ধরা
+         *    পড়ল না, কিন্তু স্ক্রিনশটটা অক্ষত থাকল। ছবিটাই বেশি মূল্যবান।
+         */
+        var first = results.MinBy(r => r.MonitorIndex);
+        if (first is not null)
+        {
+            var fingerprint = ScreenFingerprint.From(first.Webp);
+            if (fingerprint is not null) _screen.Observe(fingerprint, _clock.Now);
+        }
 
         // A07 — ছবির সাথে ওই মুহূর্তের অ্যাপ ও উইন্ডো টাইটেল।
         //

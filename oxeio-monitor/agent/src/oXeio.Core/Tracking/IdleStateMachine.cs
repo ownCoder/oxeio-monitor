@@ -73,11 +73,22 @@ public sealed class IdleStateMachine
     /// <param name="now">monotonic ঘড়ির সময় (<see cref="MonotonicClock"/>)।</param>
     /// <param name="sinceLastInput">শেষ কি-বোর্ড/মাউস ইনপুটের পর কত সময় গেছে।</param>
     /// <param name="locked">স্ক্রিন লক করা আছে কি না (Win+L)।</param>
+    /// <param name="screenFrozen">
+    /// ⭐⭐ <b>G46</b> — পর্দা অনেকক্ষণ এক চুলও বদলায়নি
+    /// (<see cref="ScreenActivity"/>)। ইনপুট টাইমার "সচল" বললেও এটা সত্যি
+    /// হলে সময় গোনা হয় না।
+    ///
+    /// ⚠️⚠️ ঘরটা <b>ঐচ্ছিক নয়</b> — ইচ্ছাকৃত। ডিফল্ট থাকলে কেউ একদিন
+    /// নতুন কলার লিখে ঘরটা দিতে ভুলে যেত, আর পাহারাটা <b>নীরবে</b> বন্ধ
+    /// হয়ে থাকত। এই প্রকল্পে "চুক্তি লেখা আছে, কলার লেখা হয়নি" ভুলটা
+    /// নয়বার ঘটেছে; কম্পাইলারকে পাহারায় বসানোই একমাত্র সত্যিকারের প্রতিকার।
+    /// </param>
     /// <returns>এই টিকে যেসব সেগমেন্ট বন্ধ হলো।</returns>
     public IReadOnlyList<ActivitySegment> Tick(
         DateTimeOffset now,
         TimeSpan sinceLastInput,
-        bool locked)
+        bool locked,
+        bool screenFrozen)
     {
         var closed = new List<ActivitySegment>();
 
@@ -94,13 +105,35 @@ public sealed class IdleStateMachine
             return closed;
         }
 
-        if (sinceLastInput >= _idleThreshold)
+        /**
+         * ⭐⭐ <b>G46 — নকল ইনপুট।</b> পর্দা জমে থাকলে ইনপুট টাইমারকে আর
+         * বিশ্বাস করা হয় না।
+         *
+         * ⚠️ এটা <b>idle-এর শর্তের সাথেই</b> মেলানো হয়েছে, আলাদা কোনো
+         * state বানানো হয়নি। কারণ ফলটা এক: সময়টা কাজের হিসাবে যাবে না।
+         * নতুন state বানালে সার্ভার, পর্দা, রিপোর্ট — সবখানে একটা করে
+         * নতুন ঘর যোগ করতে হতো, আর কোথাও না কোথাও বাদ পড়ত।
+         *
+         * ⚠️⚠️ কিন্তু retro-adjust <b>করা হয় না</b> এখানে। পর্দা জমেছে
+         * বলে ধরা পড়ল এখন, অথচ জমে ছিল দশ মিনিট ধরে — ওই দশ মিনিট
+         * পিছিয়ে কেটে দিলে সৎ কর্মীর পড়ার সময়টাও কেটে যেত। তাই কাটা
+         * শুরু হয় <b>এখন থেকে</b>, আগেরটুকু ছেড়ে দেওয়া হয়। ⭐ ভুল করলে
+         * কর্মীর পক্ষে ভুল করাই নিয়ম (ADR-023-এর একই যুক্তি)।
+         */
+        var untrusted = sinceLastInput >= _idleThreshold || screenFrozen;
+
+        if (untrusted)
         {
             if (_state == SegmentState.Active)
             {
                 // ⭐ retro-adjust (B04): idle আসলে শুরু হয়েছিল threshold-টা আগেই।
                 // তাই ওই সময়টুকুও কাজের হিসাব থেকে বাদ — এক সেকেন্ড বেশিও নয়, কমও নয়।
-                var startedIdleAt = now - _idleThreshold;
+                //
+                // ⚠️ শুধু **আসল** idle-এ। পর্দা জমার কারণে হলে পিছিয়ে কাটা
+                //    হয় না — উপরের মন্তব্য দেখুন।
+                var startedIdleAt = sinceLastInput >= _idleThreshold
+                    ? now - _idleThreshold
+                    : now;
                 if (startedIdleAt < _openedAt) startedIdleAt = _openedAt;
                 Transition(closed, SegmentState.Idle, startedIdleAt);
             }

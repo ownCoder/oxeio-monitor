@@ -19,7 +19,7 @@ public class SegmentDurabilityTests
     {
         var all = new List<ActivitySegment>();
         for (var s = 1; s <= (int)span.TotalSeconds; s++)
-            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.Zero, locked: false));
+            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.Zero, locked: false, screenFrozen: false));
         return all;
     }
 
@@ -70,7 +70,7 @@ public class SegmentDurabilityTests
 
         // ৪ মিনিট কাজ, তারপর idle-এ যাওয়া
         RunBusy(m, TimeSpan.FromMinutes(4));
-        var closed = m.Tick(T0.AddMinutes(5), TimeSpan.FromSeconds(61), locked: false);
+        var closed = m.Tick(T0.AddMinutes(5), TimeSpan.FromSeconds(61), locked: false, screenFrozen: false);
 
         Assert.Single(closed);
         Assert.Equal(SegmentState.Active, closed[0].State);
@@ -85,7 +85,7 @@ public class SegmentDurabilityTests
         var all = new List<ActivitySegment>();
 
         for (var s = 1; s <= 20 * 60; s++)
-            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.FromMinutes(30), locked: false));
+            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.FromMinutes(30), locked: false, screenFrozen: false));
 
         Assert.Contains(all, s => s.State == SegmentState.Idle);
         Assert.All(all.Where(s => s.State == SegmentState.Idle),
@@ -113,13 +113,13 @@ public class SegmentDurabilityTests
 
         // ঠিক ভাগের সীমানা পেরিয়ে আরও কিছুক্ষণ কাজ, তারপর হাত সরিয়ে নেওয়া
         for (var s = 1; s <= 7 * 60; s++)
-            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.Zero, locked: false));
+            all.AddRange(m.Tick(T0.AddSeconds(s), TimeSpan.Zero, locked: false, screenFrozen: false));
 
         // এবার ৬০ সেকেন্ড নিষ্ক্রিয়
         for (var s = 7 * 60 + 1; s <= 8 * 60; s++)
         {
             var idleFor = TimeSpan.FromSeconds(s - 7 * 60);
-            all.AddRange(m.Tick(T0.AddSeconds(s), idleFor, locked: false));
+            all.AddRange(m.Tick(T0.AddSeconds(s), idleFor, locked: false, screenFrozen: false));
         }
 
         all.AddRange(m.CloseAll(T0.AddSeconds(8 * 60)));

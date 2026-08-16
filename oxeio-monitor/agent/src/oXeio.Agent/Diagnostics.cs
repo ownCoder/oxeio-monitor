@@ -319,7 +319,15 @@ internal static class Diagnostics
             if (sample.ClampedFuture)
                 Line("⚠️  Last input time looked like it was in the future — clamped to zero");
 
-            Record(_machine.Tick(now, sample.SinceLastInput, _sessionSuspended));
+            /**
+             * ⚠️ ডায়াগনস্টিক মোডে <c>screenFrozen: false</c> — ইচ্ছাকৃত।
+             *
+             * এই মোডটা কয়েক মিনিটের, আর এখানে ক্যাপচার চলে না, তাই পর্দার
+             * কোনো নমুনাই থাকে না। "জমেছে" ধরে নিলে ডায়াগনস্টিক নিজেই
+             * ভুল ছবি দেখাত — অথচ এটার পুরো কাজই সত্যিটা দেখানো।
+             */
+            Record(_machine.Tick(
+                now, sample.SinceLastInput, _sessionSuspended, screenFrozen: false));
 
             if (now - lastPrint >= TimeSpan.FromSeconds(5))
             {
