@@ -424,6 +424,46 @@ export function turnAgentOn(employeeId: number): Promise<{ restored: number }> {
  * ⚠️⚠️ মাস এগিয়ে দিলে তার আগের কিস্তি **মুছে যায়**, আর কতগুলো গেল সেটা
  * রেসপন্সে আসে — পর্দা যেন নীরবে সারি মুছে না ফেলে।
  */
+/**
+ * ⚠️⚠️ **`tokenHint` — পুরো টোকেন কখনো আসে না।** সার্ভার শেষ চার অক্ষর
+ * ছাড়া কিছু পাঠায় না, কারণ ব্রাউজারে গেলে সেটা DevTools, প্রক্সি লগ বা
+ * স্ক্রিন শেয়ারে দেখা যেত।
+ */
+export interface TelegramSettingsView {
+  configured: boolean;
+  tokenHint: string | null;
+  chatId: string;
+  /** ⚠️ কোনটা খাটছে — ডাটাবেস না `.env`। না জানালে মালিক ভাবতেন সেভ হয়নি */
+  source: 'database' | 'env' | 'none';
+}
+
+export function getTelegramSettings(
+  signal?: AbortSignal,
+): Promise<TelegramSettingsView> {
+  return api<TelegramSettingsView>('/settings/telegram', { signal });
+}
+
+/**
+ * ⚠️ খালি স্ট্রিং পাঠানো **বৈধ** — মানে "মুছে দাও, `.env`-এ ফেরত যাও"।
+ */
+export function saveTelegramSettings(
+  botToken: string,
+  chatId: string,
+): Promise<TelegramSettingsView> {
+  return api<TelegramSettingsView>('/settings/telegram', {
+    method: 'PATCH',
+    body: { botToken, chatId },
+  });
+}
+
+/**
+ * ⭐ পরীক্ষামূলক বার্তা — নইলে মালিক সেভ করে **শুক্রবার পর্যন্ত** অপেক্ষা
+ * করতেন, আর কিছু না এলে বুঝতেন ভুল ছিল, কিন্তু কী ভুল তা জানতেন না।
+ */
+export function testTelegram(): Promise<{ outcome: string }> {
+  return api<{ outcome: string }>('/settings/telegram/test', { method: 'PATCH' });
+}
+
 export function setDepositStart(
   employeeId: number,
   yearMonth: string | null,

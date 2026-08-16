@@ -12,6 +12,11 @@ import {
 } from '../ops/ops.constants';
 import { telegramMessage, type TelegramAlertFacts } from '../ops/ops.rules';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  resolveTelegram,
+  TELEGRAM_SETTING_KEY,
+  type TelegramSettings,
+} from './telegram.settings';
 
 /**
  * ⚠️ ইচ্ছাকৃতভাবে **কম** কলাম। `title` বা `detail` এখানে আনাই হয় না —
@@ -56,8 +61,16 @@ export type TelegramOutcome = 'sent' | 'not_configured' | 'failed';
 @Injectable()
 export class TelegramChannel {
   private readonly logger = new Logger(TelegramChannel.name);
-  private readonly token: string;
-  private readonly chatId: string;
+  /**
+   * ⚠️⚠️ `.env`-এর মান **fallback**, চূড়ান্ত নয়। আসল মান আসে ডাটাবেস
+   * থেকে (`settings` টেবিল), কারণ মালিক পর্দা থেকে বদলাতে পারেন।
+   *
+   * ⚠️ তাই মানটা আর কনস্ট্রাক্টরে **জমিয়ে রাখা যায় না** — বদলালে
+   * সার্ভার রিস্টার্ট না করা পর্যন্ত পুরোনোটাই চলত, আর মালিক ভাবতেন
+   * সেভ হয়নি। প্রতিবার পাঠানোর আগে পড়া হয়।
+   */
+  private readonly envToken: string;
+  private readonly envChatId: string;
   /** ⚠️ ইন-মেমরি, dispatcher-এর মতোই — রিস্টার্ট মানে কনফিগ ঠিক করা হয়েছে */
   private readonly attempts = new Map<string, number>();
 
@@ -65,18 +78,46 @@ export class TelegramChannel {
     private readonly prisma: PrismaService,
     config: ConfigService,
   ) {
-    this.token = config.get<string>('TELEGRAM_BOT_TOKEN')?.trim() ?? '';
-    this.chatId = config.get<string>('TELEGRAM_CHAT_ID')?.trim() ?? '';
+    this.envToken = config.get<string>('TELEGRAM_BOT_TOKEN')?.trim() ?? '';
+    this.envChatId = config.get<string>('TELEGRAM_CHAT_ID')?.trim() ?? '';
 
-    if (!this.configured) {
+    // ⚠️ এখানে আর "বন্ধ" বলা যায় না — ডাটাবেসে মান থাকতে পারে, আর
+    //    কনস্ট্রাক্টরে await করা যায় না। ভুল করে "বন্ধ" লিখলে মালিক
+    //    পর্দায় বসানো কনফিগ থাকা সত্ত্বেও লগ দেখে বিভ্রান্ত হতেন।
+    if (this.envToken.length === 0 || this.envChatId.length === 0) {
       this.logger.log(
-        'No TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID — Telegram channel disabled (G08)',
+        'No TELEGRAM_* in .env — the Telegram channel will use whatever is set on the Settings page (G08)',
       );
     }
   }
 
-  get configured(): boolean {
-    return this.token.length > 0 && this.chatId.length > 0;
+  /**
+   * ⚠️ এখন এটা **async** — ডাটাবেস দেখতে হয়। পুরোনো সমার্থক getter রাখা
+   * হয়নি ইচ্ছাকৃতভাবে: থাকলে কেউ ভুল করে সেটাই ডাকত আর `.env`-এর বাসি
+   * উত্তর পেত, নীরবে।
+   */
+  async resolve(): Promise<TelegramSettings | null> {
+    let stored: Partial<TelegramSettings> | null = null;
+
+    try {
+      const row = await this.prisma.setting.findUnique({
+        where: { key: TELEGRAM_SETTING_KEY },
+      });
+      stored = (row?.value as Partial<TelegramSettings> | undefined) ?? null;
+    } catch (err) {
+      // ⚠️ ডাটাবেস পড়া না গেলে `.env`-এ ফেরা — টেলিগ্রাম বন্ধ হয়ে
+      //    যাওয়ার চেয়ে পুরোনো কনফিগে চলা ভালো।
+      this.logger.warn(
+        `Could not read the Telegram setting, using .env: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    return resolveTelegram(stored, {
+      botToken: this.envToken,
+      chatId: this.envChatId,
+    }).settings;
   }
 
   /**
@@ -84,7 +125,8 @@ export class TelegramChannel {
    * ⚠️ কখনো throw করে না।
    */
   async runOnce(now = new Date()): Promise<number> {
-    if (!this.configured) return 0;
+    const settings = await this.resolve();
+    if (settings === null) return 0;
 
     const pending = await this.prisma.alert.findMany({
       where: {
@@ -131,16 +173,17 @@ export class TelegramChannel {
    *    তাই বার্তাটা থেকেও টোকেনটা ছেঁকে ফেলা হয়।
    */
   async send(text: string): Promise<TelegramOutcome> {
-    if (!this.configured) return 'not_configured';
+    const settings = await this.resolve();
+    if (settings === null) return 'not_configured';
 
     try {
       const res = await fetch(
-        `https://api.telegram.org/bot${this.token}/sendMessage`,
+        `https://api.telegram.org/bot${settings.botToken}/sendMessage`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            chat_id: this.chatId,
+            chat_id: settings.chatId,
             text,
             // ⚠️ কোনো parse_mode নেই — প্লেইন টেক্সট। Markdown দিলে
             //    হোস্টনেমের একটা `_` গোটা বার্তাটা ৪০০ করে দিত।
@@ -153,7 +196,7 @@ export class TelegramChannel {
       if (!res.ok) {
         const body = await res.text().catch(() => '');
         this.logger.error(
-          `Could not send to Telegram (HTTP ${res.status}): ${this.scrub(body).slice(0, 200)}`,
+          `Could not send to Telegram (HTTP ${res.status}): ${TelegramChannel.scrub(body, settings.botToken).slice(0, 200)}`,
         );
         return 'failed';
       }
@@ -161,7 +204,7 @@ export class TelegramChannel {
       return 'sent';
     } catch (err) {
       this.logger.error(
-        `Could not send to Telegram: ${this.scrub(err instanceof Error ? err.message : 'unknown error')}`,
+        `Could not send to Telegram: ${TelegramChannel.scrub(err instanceof Error ? err.message : 'unknown error', settings.botToken)}`,
       );
       return 'failed';
     }
@@ -204,8 +247,14 @@ export class TelegramChannel {
     return exhausted.length;
   }
 
-  /** টোকেনটা যেন কোনো লগ লাইনে না থাকে */
-  private scrub(text: string): string {
-    return this.token ? text.split(this.token).join('***') : text;
+  /**
+   * টোকেনটা যেন কোনো লগ লাইনে না থাকে।
+   *
+   * ⚠️ টোকেন এখন **প্যারামিটার**, ফিল্ড নয় — মানটা আর জমিয়ে রাখা হয় না
+   * (পর্দা থেকে বদলাতে পারে)। কলার যেখানে টোকেন জানে, ঠিক সেখান থেকেই
+   * দিতে হবে।
+   */
+  private static scrub(text: string, token: string): string {
+    return token ? text.split(token).join('***') : text;
   }
 }

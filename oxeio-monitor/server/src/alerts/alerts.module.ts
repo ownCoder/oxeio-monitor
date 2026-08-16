@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import { AgentDownCheck } from './agent-down.check';
 import { AgentTamperCheck } from './agent-tamper.check';
 import { AlertsController } from './alerts.controller';
+import { TelegramChannel } from './telegram.channel';
+import { TelegramSettingsController } from './telegram.controller';
 import { AlertDispatcher } from './alerts.dispatcher';
 import { AlertMailer } from './alerts.mailer';
 import { AlertsScheduler } from './alerts.scheduler';
@@ -22,10 +24,13 @@ import { NoActivityCheck } from './no-activity.check';
  * ⚠️ PrismaModule `@Global`, তাই এখানে আলাদা করে import করার দরকার নেই।
  */
 @Module({
-  controllers: [AlertsController],
+  controllers: [AlertsController, TelegramSettingsController],
   providers: [
     AlertsService,
     AlertMailer,
+    // ⭐ কন্ট্রোলারের `test` রুটটা এটা ডাকে — ops-এর ইনস্ট্যান্স নয়,
+    //    কারণ ওটা অন্য মডিউলে আর sweep চালায়
+    TelegramChannel,
     AlertDispatcher,
     AgentDownCheck,
     AgentTamperCheck,

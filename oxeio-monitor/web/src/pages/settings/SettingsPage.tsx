@@ -6,6 +6,7 @@ import { Page } from '../../components/Page';
 import { ErrorBox } from '../../components/States';
 import { Tabs } from '../../components/Tabs';
 import { AgentVersionsTab } from './AgentVersionsTab';
+import { NotificationsTab } from './NotificationsTab';
 import { AuditTab } from './AuditTab';
 import { CategoriesTab } from './CategoriesTab';
 import { LeaveTab } from './LeaveTab';
@@ -67,6 +68,9 @@ const TABS = [
   { id: 'months', label: 'Months', manager: false },
   // ⚠️ audit-এর **আগে**: এটা রোজকার কাজের ট্যাব নয়, কিন্তু audit log
   //    সবার শেষে থাকাটা প্রতিষ্ঠিত (বছরে দু-একবার খোলা হয়)
+  // ⭐ G08 — টেলিগ্রামের টোকেন ও চ্যাট আইডি। owner-only, কারণ ওই চ্যাটে
+  //    কর্মীর নাম ও ঘণ্টা যায়; কে সেটা পাবে তা ম্যানেজারের সিদ্ধান্ত নয়।
+  { id: 'notifications', label: 'Notifications', manager: false },
   { id: 'agent', label: 'Agent updates', manager: false },
   // ⚠️ audit log-এ কে কার স্ক্রিনশট দেখেছে সেটাও থাকে — owner-এরই
   { id: 'audit', label: 'Audit log', manager: false },
@@ -88,6 +92,7 @@ const SUBTITLE: Record<TabKey, string> = {
   policies: 'Monthly target, screenshot window and days off',
   leave: 'Agreed days off — the hours target drops, the salary does not',
   months: 'Freeze a finished month so its hours and pay stop moving',
+  notifications: 'Where the weekly summary and alerts are sent',
   agent: 'Which build each PC is offered — and how widely',
   audit: 'Who looked at what, and who changed what',
 };
@@ -154,6 +159,7 @@ export function SettingsPage() {
       {active === 'policies' && <PoliciesTab />}
       {active === 'leave' && <LeaveTab />}
       {active === 'months' && <MonthsTab />}
+      {active === 'notifications' && <NotificationsTab />}
       {active === 'agent' && <AgentVersionsTab />}
       {active === 'audit' && <AuditTab />}
     </Page>

@@ -44,16 +44,22 @@ export class OpsScheduler implements OnApplicationBootstrap, OnModuleDestroy {
       this.backupCheck.runOnce(now),
     );
 
-    if (this.telegram.configured) {
-      this.schedule('telegram', TELEGRAM_TICK_MS, (now) =>
-        this.telegram.runOnce(now),
-      );
-    }
+    /**
+     * ⚠️⚠️ **শর্ত ছাড়াই বসানো হয় — ইচ্ছাকৃত।**
+     *
+     * আগে `configured` দেখে বসানো হতো, কিন্তু এখন মালিক **চলতে চলতে**
+     * পর্দা থেকে টোকেন বসাতে পারেন। চালুর সময়ের শর্ত রাখলে তিনি সেভ
+     * করতেন, কিছুই ঘটত না, আর সার্ভার রিস্টার্ট না করা পর্যন্ত কারণটা
+     * জানার উপায় থাকত না।
+     *
+     * ⭐ কনফিগ না থাকলে `runOnce()` এমনিতেই শূন্য ফেরত দেয় — খরচ নগণ্য।
+     */
+    this.schedule('telegram', TELEGRAM_TICK_MS, (now) =>
+      this.telegram.runOnce(now),
+    );
 
     this.logger.log(
-      'ops checks started (G04' +
-        (this.telegram.configured ? ' · G08' : '') +
-        ')',
+      'ops checks started (G04 · G08)',
     );
   }
 
