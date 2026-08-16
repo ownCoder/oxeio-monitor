@@ -19,6 +19,7 @@ public class TrayTooltipTests
         int queued = 0) => new()
     {
         State = SegmentState.Active,
+            Update = UpdateStatus.Idle,
         ActiveToday = TimeSpan.FromHours(3),
         ActiveThisMonth = TimeSpan.FromHours(40),
         MonthlyTargetHours = 208,

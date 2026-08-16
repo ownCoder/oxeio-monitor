@@ -44,6 +44,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
     private readonly NotifyIcon _notify;
     private readonly ContextMenuStrip _menu;
+    private readonly ToolStripMenuItem _updateItem;
     private readonly ToolStripMenuItem _signInItem;
     private readonly ToolStripMenuItem _signOutItem;
     private readonly ToolStripMenuItem _todayItem;
@@ -80,6 +81,13 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
         // ⭐ সবার উপরে, আর সাইন ইন না থাকলে **বোল্ড** — এই অবস্থায় জানালার
         //    আর সব কিছু (ঘণ্টা, ছবি, সিঙ্ক) অর্থহীন, একটাই কাজ বাকি।
+        /**
+         * ⭐⭐ H04 — নতুন ভার্সন বসানোর একমাত্র পথ, আর সেটা **স্টাফের হাতে**।
+         *
+         * ⚠️ নামের শেষে "…" আছে: চাপলে UAC জানালা উঠবে, অর্থাৎ তখনো
+         *    ভাবার সময় থাকে। নীরবে কিছু ঘটে না।
+         */
+        _updateItem = new ToolStripMenuItem("Install update…") { Visible = false };
         _signInItem = new ToolStripMenuItem("Sign in…") { Visible = false };
 
         // ⚠️ নামের শেষে "…" নেই, ইচ্ছাকৃতভাবে। "…" মানে "আরেকটা জানালা
@@ -92,6 +100,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         _syncItem = new ToolStripMenuItem(SyncNowText);
         _aboutItem = new ToolStripMenuItem("About");
 
+        _updateItem.Click += (_, _) => Guarded(() => _options.InstallUpdate?.Invoke());
         _signInItem.Click += (_, _) => Guarded(() => _options.RequestSignIn?.Invoke());
         _signOutItem.Click += (_, _) => Guarded(() => _options.RequestSignOut?.Invoke());
         _todayItem.Click += (_, _) => Guarded(ShowToday);
@@ -110,6 +119,8 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
         _menu.Items.AddRange(new ToolStripItem[]
         {
+            // ⭐ সবার উপরে — নতুন ভার্সন এলে সেটাই এখনকার সবচেয়ে জরুরি কাজ
+            _updateItem,
             _signInItem,
             _todayItem,
             _portalItem,
@@ -362,6 +373,20 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
     {
         // ⚠️ Visible, Enabled নয়। সাইন ইন হয়ে গেলে আইটেমটার আর কোনো মানে
         //    নেই — ধূসর হয়ে ঝুলে থাকলে স্টাফ ভাবত কিছু একটা ভেঙে আছে।
+        /**
+         * ⚠️⚠️ কেবল <c>Verified</c> ধাপে — নামানো বা যাচাই চলাকালীন নয়।
+         *
+         * <c>Offered</c>/<c>Downloaded</c>-এ ফাইলটা এখনো বিশ্বাসযোগ্য নয়,
+         * আর <c>Corrupt</c>-এ সেটা মুছেই ফেলা হয়েছে। ওই অবস্থায় বোতাম
+         * দেখালে স্টাফ চাপতেন, কিছু হতো না, আর তিনি ভাবতেন সিস্টেম ভাঙা।
+         */
+        _updateItem.Visible =
+            _status.Update.Stage == UpdateStage.Verified
+            && _options.InstallUpdate is not null;
+
+        if (_updateItem.Visible)
+            _updateItem.Text = $"Install update {_status.Update.Version}…";
+
         _signInItem.Visible = !_status.Enrolled && _options.RequestSignIn is not null;
 
         /*

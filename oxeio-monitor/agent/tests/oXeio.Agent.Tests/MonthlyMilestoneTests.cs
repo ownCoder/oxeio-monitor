@@ -21,6 +21,7 @@ public class MonthlyMilestoneTests
         double monthHours, double target = 208, bool known = true) => new()
     {
         State = SegmentState.Active,
+            Update = UpdateStatus.Idle,
         ActiveToday = TimeSpan.FromHours(6),
         ActiveThisMonth = TimeSpan.FromHours(monthHours),
         MonthlyTargetHours = target,

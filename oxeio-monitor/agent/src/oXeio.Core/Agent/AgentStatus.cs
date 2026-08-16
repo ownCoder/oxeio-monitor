@@ -35,6 +35,15 @@ public sealed record AgentStatus
 {
     public required SegmentState State { get; init; }
 
+    /// <summary>
+    /// ⭐ আপডেটের অবস্থা — tray-র "Install update" আইটেমটা এটার উপরেই দাঁড়ায়।
+    ///
+    /// ⚠️ <c>required</c>, ঐচ্ছিক নয়: ঘরটা না ভরলে আইটেমটা **কোনোদিন**
+    /// দেখা যেত না, আর কেউ টেরও পেত না — নতুন ভার্সন নামানো ও যাচাই হয়ে
+    /// ডিস্কে পড়ে থাকত, অথচ স্টাফের কাছে বসানোর কোনো পথ নেই।
+    /// </summary>
+    public required UpdateStatus Update { get; init; }
+
     /// <summary>ঢাকার আজকের দিনের ACTIVE সময়।</summary>
     public required TimeSpan ActiveToday { get; init; }
 
@@ -180,6 +189,8 @@ public sealed record AgentStatus
     public static AgentStatus Starting => new()
     {
         State = SegmentState.Idle,
+        // ⚠️ চালু হওয়ার মুহূর্তে আপডেটের খবরই নেই — `Idle` মানে "কিছু জানি না"
+        Update = UpdateStatus.Idle,
         ActiveToday = TimeSpan.Zero,
         ActiveThisMonth = TimeSpan.Zero,
         MonthlyTargetHours = 208,

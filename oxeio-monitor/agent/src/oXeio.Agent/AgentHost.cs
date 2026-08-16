@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Windows.Forms;
 
@@ -273,6 +274,7 @@ internal sealed class AgentHost : IAsyncDisposable
         RequestSyncNow = () => _ = SyncNowAsync(),
         RequestSignIn = () => _ = SignInOnDemandAsync(),
         RequestSignOut = () => _ = SignOutOnDemandAsync(),
+        InstallUpdate = InstallStagedUpdate,
         Milestone = _milestone,
         OnError = ex => _log.Error("tray", ex),
     };
@@ -911,6 +913,57 @@ internal sealed class AgentHost : IAsyncDisposable
         return await _outbox.EvictAsync(rowIds, "sign out", _stopping.Token);
     }
 
+    /**
+     * ⭐⭐ H04 — যাচাই হয়ে যাওয়া MSI-টা চালানো।
+     *
+     * ⚠️⚠️ <b>নীরবে নয়, আর নীরবে সম্ভবও নয়।</b> এজেন্ট চলে লগইন করা ইউজারের
+     * অধিকারে (installer-এ <c>Group=Users</c>), আর <c>msiexec</c> অ্যাডমিন
+     * চায় — তাই UAC জানালা উঠবেই। "ব্যাকগ্রাউন্ডে বসে যাবে" করতে হলে
+     * SYSTEM হিসেবে চলা একটা সার্ভিস লাগত, আর সেটা আলাদা ও বড় সিদ্ধান্ত।
+     *
+     * ⭐ আর এই বাধ্যতামূলক ক্লিকটা খারাপ নয় — G58 বলে খারাপ MSI একবার চললে
+     * ফেরানোর পথ নেই। একজন মানুষের সম্মতি ওই ঝুঁকির শেষ বাঁধ।
+     *
+     * ⚠️ <c>/qb</c> — নীরব (<c>/qn</c>) নয়। স্টাফ যেন দেখতে পান কিছু একটা
+     * ঘটছে; নীরবে চললে এজেন্ট কয়েক সেকেন্ড বন্ধ হয়ে যেত আর তিনি ভাবতেন
+     * কিছু ভেঙে গেছে।
+     */
+    private void InstallStagedUpdate()
+    {
+        var update = _updates?.Status;
+
+        // ⚠️ আবার যাচাই — মেনু আঁকার পর অবস্থা বদলে যেতে পারে (নতুন চেক
+        //    চলেছে, ফাইল মুছে গেছে)। tray-র শর্তের উপর ভরসা করা যাবে না।
+        if (update is null || update.Stage != UpdateStage.Verified) return;
+
+        var msi = update.MsiPath;
+        if (string.IsNullOrWhiteSpace(msi) || !File.Exists(msi))
+        {
+            _log.Warn("Update was ready but the file is gone — it will be downloaded again.");
+            return;
+        }
+
+        try
+        {
+            _log.Info($"Staff started the update to {update.Version}.");
+
+            // ⚠️ UseShellExecute = true — নইলে UAC-র elevation প্রম্পটই আসত না,
+            //    আর ইনস্টল নীরবে ব্যর্থ হতো।
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "msiexec.exe",
+                Arguments = $"/i \"{msi}\" /qb",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            // ⚠️ স্টাফ বাতিল করলেও এখানে আসে (UAC-তে "না")। সেটা ভুল নয়,
+            //    তাই Error নয় — শুধু লিখে রাখা।
+            _log.Warn($"The update did not start: {ex.Message}");
+        }
+    }
+
     private async Task SignInOnDemandAsync()
     {
         if (_credentials is null || _sync is null) return;
@@ -1475,6 +1528,9 @@ internal sealed class AgentHost : IAsyncDisposable
         return new AgentStatus
         {
             State = _machine?.State ?? SegmentState.Idle,
+
+            // ⭐ H04 — tray-র "Install update" আইটেমটা এটার উপরেই দাঁড়ায়
+            Update = _updates?.Status ?? UpdateStatus.Idle,
 
             // ⭐ আজকের হিসাব সার্ভারেরটাই — এজেন্টের নিজেরটা রিবুটে শূন্য হয়।
             //    সার্ভার এখনো কিছু না বললে (একবারও heartbeat হয়নি) নিজেরটা।
