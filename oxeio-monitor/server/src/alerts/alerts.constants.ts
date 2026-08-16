@@ -19,7 +19,8 @@ export type AlertType =
   | 'backup_failed'
   | 'clock_drift'
   | 'no_activity_today'
-  | 'device_overlap';
+  | 'device_overlap'
+  | 'synthetic_input';
 
 /** তালিকা আকারে — DTO-র `@IsIn()`-এ লাগে */
 export const ALERT_TYPE_VALUES: readonly AlertType[] = [
@@ -31,6 +32,7 @@ export const ALERT_TYPE_VALUES: readonly AlertType[] = [
   'clock_drift',
   'no_activity_today',
   'device_overlap',
+  'synthetic_input',
 ];
 
 /**
@@ -43,6 +45,15 @@ export const ALERT_TYPE_VALUES: readonly AlertType[] = [
  * কাজের রাখে।
  */
 export const THROTTLE_HOURS = 6;
+
+// ── G46 · নকল ইনপুট (মাউস-জিগলার) ──────────────────────────────────────────
+
+/**
+ * ⚠️ দিনে একবার যথেষ্ট — চেকটা **সারা দিনের** খণ্ড দেখে, তাই ঘন ঘন চালিয়ে
+ * লাভ নেই। ⭐ তবু দিনের মধ্যেই চলে (রাতে নয়), যাতে মালিক ঘটনাটা **সেদিনই**
+ * দেখতে পান আর স্ক্রিনশটগুলো তখনো তাজা থাকে।
+ */
+export const SYNTHETIC_INPUT_TICK_MS = 60 * 60_000;
 
 // ── G01 · এজেন্ট চুপ ────────────────────────────────────────────────────────
 

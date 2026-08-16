@@ -3,6 +3,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@ne
 import { AgentDownCheck } from './agent-down.check';
 import { AgentTamperCheck } from './agent-tamper.check';
 import {
+  SYNTHETIC_INPUT_TICK_MS,
   AGENT_DOWN_TICK_MS,
   DISK_TICK_MS,
   DISPATCH_TICK_MS,
@@ -16,6 +17,7 @@ import { isWithinStartupGrace } from './alerts.rules';
 import { DeviceOverlapCheck } from './device-overlap.check';
 import { DiskCheck } from './disk.check';
 import { NoActivityCheck } from './no-activity.check';
+import { SyntheticInputCheck } from './synthetic-input.check';
 
 /**
  * অ্যালার্টের সব শিডিউলড চেক এখান থেকে চলে।
@@ -43,6 +45,7 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     private readonly disk: DiskCheck,
     private readonly noActivity: NoActivityCheck,
     private readonly overlap: DeviceOverlapCheck,
+    private readonly synthetic: SyntheticInputCheck,
     private readonly dispatcher: AlertDispatcher,
   ) {}
 
@@ -76,11 +79,16 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
     this.schedule('device-overlap', OVERLAP_TICK_MS, (now) =>
       this.overlap.runOnce(now),
     );
+    // ⭐ G46 — নকল ইনপুট। সার্ভারে চলে, তাই যাঁকে নিয়ে সন্দেহ তাঁর
+    //    মেশিন থেকে এটা বন্ধ করা যায় না।
+    this.schedule('synthetic-input', SYNTHETIC_INPUT_TICK_MS, (now) =>
+      this.synthetic.runOnce(now),
+    );
     this.schedule('dispatch', DISPATCH_TICK_MS, (now) =>
       this.dispatcher.runOnce(now),
     );
 
-    this.logger.log('Alert checks started (G01 · G02 · G03 · G06 · G07 · G32)');
+    this.logger.log('Alert checks started (G01 · G02 · G03 · G06 · G07 · G32 · G46)');
   }
 
   onModuleDestroy(): void {

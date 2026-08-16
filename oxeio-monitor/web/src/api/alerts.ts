@@ -20,7 +20,8 @@ export type AlertType =
   | 'backup_failed'
   | 'clock_drift'
   | 'no_activity_today'
-  | 'device_overlap';
+  | 'device_overlap'
+  | 'synthetic_input';
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
 
@@ -45,6 +46,12 @@ export const ALERT_TYPE_LABEL: Record<AlertType, string> = {
   clock_drift: 'Clock drift',
   no_activity_today: 'No activity today',
   device_overlap: 'Two devices at once',
+  /**
+   * ⭐ **G46** — নাম ইচ্ছাকৃতভাবে নিরপেক্ষ: "Unbroken activity", "Fake
+   * input" নয়। অ্যালার্টটা সন্দেহ, প্রমাণ নয় — আর ফিল্টারের ড্রপডাউনে
+   * "Fake input" লেখা থাকলে মালিক তালিকাটা খুলেই সিদ্ধান্ত নিয়ে ফেলতেন।
+   */
+  synthetic_input: 'Unbroken activity',
 };
 
 export const ALERT_SEVERITY_LABEL: Record<AlertSeverity, string> = {
