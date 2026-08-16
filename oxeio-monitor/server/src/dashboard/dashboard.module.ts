@@ -13,5 +13,14 @@ import { LiveController } from './live.controller';
 @Module({
   controllers: [LiveController, EmployeeActivityController],
   providers: [DashboardService],
+  /**
+   * ⭐ ঘণ্টার স্ন্যাপশট (`SnapshotService`) এটাই ডাকে — Live Board যা
+   * দেখায়, টেলিগ্রামেও ঠিক সেটাই যায়।
+   *
+   * ⚠️⚠️ **আলাদা করে আবার হিসাব করা হয়নি, ইচ্ছাকৃতভাবে।** দুই জায়গায়
+   * দুই হিসাব হলে পর্দা এক কথা বলত আর টেলিগ্রাম অন্য কথা, আর কোনটা
+   * সত্যি তা বলার উপায় থাকত না।
+   */
+  exports: [DashboardService],
 })
 export class DashboardModule {}

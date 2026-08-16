@@ -3,6 +3,9 @@ import { Module } from '@nestjs/common';
 import { AlertMailer } from '../alerts/alerts.mailer';
 import { TelegramChannel } from '../alerts/telegram.channel';
 import { TeamsChannel } from '../alerts/teams.channel';
+import { DashboardModule } from '../dashboard/dashboard.module';
+import { SnapshotJob } from './snapshot.job';
+import { SnapshotService } from './snapshot.service';
 import { ReportsModule } from '../reports/reports.module';
 import { DigestJob } from './digest.job';
 import { DigestService } from './digest.service';
@@ -39,7 +42,7 @@ import { WeeklyDigestService } from './weekly.service';
  * তবে ⚠️ তখন খেয়াল রাখতে হবে বৃত্ত তৈরি না হয়।
  */
 @Module({
-  imports: [ReportsModule],
+  imports: [ReportsModule, DashboardModule],
   providers: [
     DigestService,
     DigestJob,
@@ -47,6 +50,9 @@ import { WeeklyDigestService } from './weekly.service';
     WeeklyDigestService,
     WeeklyDigestJob,
     TelegramChannel,
+    // ⭐ ঘণ্টায় একবার — এখন কে কাজ করছে (মালিকের ১০-মিনিট দাবির বদলে)
+    SnapshotService,
+    SnapshotJob,
     // ⭐ Teams — টেলিগ্রামের পাশাপাশি, বিকল্প নয়
     TeamsChannel,
   ],
