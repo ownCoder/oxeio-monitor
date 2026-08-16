@@ -1,3 +1,4 @@
+import { TelegramChannel } from '../src/alerts/telegram.channel';
 import type { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -143,7 +144,19 @@ function makeService(
     get: (key: string) => over.env?.[key],
   } as unknown as ConfigService;
 
-  return { service: new DigestService(prisma, reports, mailer, config), sent, calls };
+  /**
+   * ⚠️ টেলিগ্রাম কনফিগ করা নেই ধরে নেওয়া — এই ফাইলের টেস্টগুলো ইমেইলের
+   *    আচরণ নিয়ে। টেলিগ্রামকে টেনে আনলে প্রতিটা দাবির অর্থ ঘোলাটে হতো।
+   */
+  const telegram = {
+    send: () => Promise.resolve('not_configured' as const),
+  } as unknown as TelegramChannel;
+
+  return {
+    service: new DigestService(prisma, reports, mailer, telegram, config),
+    sent,
+    calls,
+  };
 }
 
 /** UTC ১২:৩০ = ঢাকার সন্ধ্যা ৬:৩০ — জবটা ঠিক এই সময়েই চলে */

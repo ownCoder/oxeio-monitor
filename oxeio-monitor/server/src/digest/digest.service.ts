@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { AlertMailer, type SendOutcome } from '../alerts/alerts.mailer';
+import { TelegramChannel } from '../alerts/telegram.channel';
 import { PrismaService } from '../prisma/prisma.service';
 import { monthBoundsOf, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
@@ -43,6 +44,7 @@ export class DigestService {
     private readonly prisma: PrismaService,
     private readonly reports: ReportsService,
     private readonly mailer: AlertMailer,
+    private readonly telegram: TelegramChannel,
     config: ConfigService,
   ) {
     this.orgName = config.get<string>('ORG_NAME')?.trim() || DEFAULT_ORG_NAME;
@@ -65,6 +67,29 @@ export class DigestService {
     const body = digestBody(digest, this.orgName);
 
     const outcome = await this.mailer.send(recipients, subject, body);
+
+    /**
+     * ⭐⭐ **টেলিগ্রামেও** — মালিকের চাওয়া: *"telegram e staff der daily
+     * kajer report cai, ke kaj korche ke kaj korche na."*
+     *
+     * ⚠️ ইমেইলের **বিকল্প নয়, পাশাপাশি**। যেটা কনফিগ করা আছে সেটাই পায়;
+     * SMTP না থাকলেও (এখন যেমন) টেলিগ্রামে চলে যাবে।
+     *
+     * ⚠️⚠️ **সাপ্তাহিকের গ্রুপ-প্রহরীটা এখানে নেই** — ইচ্ছাকৃত নয়,
+     * বরং এটাই সঠিক: `TelegramChannel.send()` নিজেই কনফিগ করা চ্যাটে
+     * পাঠায়, আর সেই চ্যাটটা মালিক নিজে বেছেছেন। সাপ্তাহিকে বাড়তি
+     * প্রহরীটা ছিল কারণ ওটা **অনেক বেশি বিস্তারিত** (প্রতিটা কর্মীর
+     * সপ্তাহভর ঘণ্টা); দৈনিকটা সংক্ষিপ্ত সারাংশ।
+     */
+    const telegramOutcome = await this.telegram.send(`${subject}
+
+${body}`);
+
+    if (telegramOutcome === 'sent') {
+      this.logger.log('Daily digest also sent to Telegram');
+    } else if (telegramOutcome === 'failed') {
+      this.logger.warn('Daily digest could not be sent to Telegram — see the body below');
+    }
 
     /**
      * ⚠️ SMTP না থাকলে (বা পাঠানো না গেলে) **ক্র্যাশ নয়, লগ** — আর পুরো
