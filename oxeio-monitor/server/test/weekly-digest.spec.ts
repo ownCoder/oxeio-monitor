@@ -1,3 +1,4 @@
+import { AlertMailer } from '../src/alerts/alerts.mailer';
 import { TeamsChannel } from '../src/alerts/teams.channel';
 import type { ConfigService } from '@nestjs/config';
 import { describe, expect, it } from 'vitest';
@@ -1068,12 +1069,22 @@ function makeService(
     send: () => Promise.resolve('not_configured' as const),
   } as unknown as TeamsChannel;
 
+  /**
+   * ⚠️ SMTP কনফিগ করা নেই ধরে নেওয়া — এই ফাইলের টেস্টগুলো টেলিগ্রামের
+   *    আচরণ নিয়ে। ইমেইলের প্রাপক বাছার নিয়মটা `digest-recipients.spec.ts`-এ
+   *    আলাদা করে বাঁধা, যেখানে সেটাই একমাত্র প্রশ্ন।
+   */
+  const mailer = {
+    configured: false,
+    send: () => Promise.resolve('not_configured' as const),
+  } as unknown as AlertMailer;
+
   const config = {
     get: (key: string) => over.env?.[key],
   } as unknown as ConfigService;
 
   return {
-    service: new WeeklyDigestService(reports, prisma, telegram, teams, config),
+    service: new WeeklyDigestService(reports, prisma, telegram, teams, mailer, config),
     sent,
     calls,
     observedQueries,

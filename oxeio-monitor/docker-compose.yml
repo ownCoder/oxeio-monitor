@@ -48,6 +48,7 @@ services:
       #    নিজে থেকে নেয় না, তাই লাইনটা না থাকলে `.env`-এ লিখলেও Teams
       #    চ্যানেল চুপচাপ বন্ধ থাকত।
       TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
+      DIGEST_EMAIL_TO: ${DIGEST_EMAIL_TO:-}
       LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
       LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-2}
       # ⚠️ G116 — IP-প্রতি সীমা। জোড়া-কাউন্টার এক IP থেকে বহু ইমেইল ধরত না

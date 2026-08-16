@@ -6,6 +6,8 @@ import {
   type TelegramOutcome,
 } from '../alerts/telegram.channel';
 import { TeamsChannel } from '../alerts/teams.channel';
+import { AlertMailer } from '../alerts/alerts.mailer';
+import { digestRecipients } from './digest.recipients';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseWorkDate, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
@@ -100,15 +102,18 @@ export class WeeklyDigestService {
    * প্রহরী নীরবে ভুল চ্যাট পাহারা দেবে।
    */
   private readonly gate: WeeklyGate;
+  private readonly digestEmailTo: string | undefined;
 
   constructor(
     private readonly reports: ReportsService,
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramChannel,
     private readonly teams: TeamsChannel,
+    private readonly mailer: AlertMailer,
     config: ConfigService,
   ) {
     this.orgName = config.get<string>('ORG_NAME')?.trim() || DEFAULT_ORG_NAME;
+    this.digestEmailTo = config.get<string>('DIGEST_EMAIL_TO');
     this.gate = weeklyGateOf(
       config.get<string>('TELEGRAM_CHAT_ID'),
       config.get<string>(WEEKLY_ALLOW_GROUP_ENV),
@@ -121,6 +126,30 @@ export class WeeklyDigestService {
         `Weekly summary is blocked — ${this.gate.blockedBecause}`,
       );
     }
+  }
+
+  /**
+   * ⚠️ কখনো throw করে না — `AlertMailer.send()`ও করে না। সাপ্তাহিক জবটা
+   * এর উপর দাঁড়িয়ে, আর SMTP বন্ধ থাকা মানে হিসাব হারানো নয়।
+   */
+  private async sendByEmail(text: string): Promise<'sent' | 'not_configured' | 'failed'> {
+    if (!this.mailer.configured) return 'not_configured';
+
+    const owners = await this.prisma.user.findMany({
+      where: { role: 'owner', isActive: true },
+      select: { email: true },
+    });
+
+    const to = digestRecipients({
+      explicit: this.digestEmailTo,
+      owners: owners.map((o) => o.email),
+    });
+
+    // ⚠️ ঠিকানা না থাকলে চুপচাপ ফেরা — `AlertMailer` এমনিতেও একবার লগে
+    //    লিখবে, দুবার লেখার মানে নেই।
+    if (to.length === 0) return 'not_configured';
+
+    return this.mailer.send(to, `${this.orgName} — weekly summary`, text);
   }
 
   async runOnce(now: Date = new Date()): Promise<WeeklyDigestResult> {
@@ -150,6 +179,19 @@ export class WeeklyDigestService {
       message.text,
     );
 
+    /**
+     * ⭐⭐ **ইমেইল — তৃতীয় চ্যানেল, আর এটাই একমাত্র যেটা সবসময় পাওয়া যায়।**
+     *
+     * ⚠️ মালিকের Teams **ফ্রি/ব্যক্তিগত অ্যাকাউন্ট** (Communities), আর
+     * সেখানে incoming webhook বলে কিছু নেই — Workflows কেবল work/school
+     * অ্যাকাউন্টে আসে। টেলিগ্রামও সবার থাকে না। কিন্তু SMTP এমনিতেই
+     * কনফিগ করা, কারণ অ্যালার্ট ওই পথেই যায়।
+     *
+     * ⚠️⚠️ প্রাপক ম্যানেজার **নন** — সারাংশে প্রতিটা কর্মীর নাম ও ঘণ্টা
+     * থাকে, আর সেটা owner-only পর্দার সমান জিনিস (`digest.recipients.ts`)।
+     */
+    const emailOutcome = await this.sendByEmail(message.text);
+
     const outcome: WeeklyOutcome = this.gate.send
       ? await this.telegram.send(message.text)
       : 'chat_not_private';
@@ -159,6 +201,12 @@ export class WeeklyDigestService {
      * বার্তাটা লগে" শাখাটা আর দরকার নেই, কারণ সারাংশটা হারায়নি। কিন্তু
      * খবরটা লেখা থাকা দরকার, নইলে লগ পড়ে মনে হতো কিছুই পাঠানো হয়নি।
      */
+    if (emailOutcome === 'sent') {
+      this.logger.log(`Weekly summary emailed · ${weekly.from} → ${weekly.to}`);
+    } else if (emailOutcome === 'failed') {
+      this.logger.warn('Weekly summary could not be emailed — see the message below');
+    }
+
     if (teamsOutcome === 'sent') {
       this.logger.log(`Weekly summary also sent to Teams · ${weekly.from} → ${weekly.to}`);
     } else if (teamsOutcome === 'failed') {
