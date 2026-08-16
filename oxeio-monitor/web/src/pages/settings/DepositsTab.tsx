@@ -519,7 +519,6 @@ function StartMonthDialog({
             </MiniButton>
           )}
           <MiniButton
-            tone="primary"
             disabled={busy || month === '' || month === row.startYearMonth}
             onClick={() => onSubmit(month)}
           >

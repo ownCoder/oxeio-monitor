@@ -298,7 +298,13 @@ export function TextField({
   onChange: (value: string) => void;
   hint?: ReactNode;
   placeholder?: string;
-  type?: 'text' | 'email' | 'date' | 'number' | 'time';
+  /**
+   * ⚠️ `'month'` যোগ করা হয়েছে জামানতের শুরুর মাসের জন্য — প্রশ্নটা
+   *    "কোন মাস", তাই দিন চাওয়া মানে মালিককে এমন সিদ্ধান্ত নিতে বাধ্য
+   *    করা যেটার কোনো অর্থই নেই। ব্রাউজার নিজেই `YYYY-MM` দেয়, তাই
+   *    হাতে ধাঁচ মেলানোর ঝুঁকিও থাকে না।
+   */
+  type?: 'text' | 'email' | 'date' | 'number' | 'time' | 'month';
   required?: boolean;
   disabled?: boolean;
   /** প্যাটার্ন, কোড, সংখ্যা — সমান প্রস্থের অক্ষরে পড়া সহজ */
