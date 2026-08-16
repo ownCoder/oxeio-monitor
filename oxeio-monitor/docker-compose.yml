@@ -44,11 +44,6 @@ services:
       #    পরিবেশ কনটেইনারে নিজে থেকে নেয় না, তাই লাইন দুটো না থাকলে
       #    `.env`-এ যা-ই লেখা হোক সার্ভার ডিফল্টই ব্যবহার করত — আর
       #    "সেটিং কাজ করছে না" বোঝার কোনো উপায় থাকত না।
-      # ⚠️ চলকটা এখানে **স্পষ্ট করে** পাস করতে হয় — compose হোস্টের পরিবেশ
-      #    নিজে থেকে নেয় না, তাই লাইনটা না থাকলে `.env`-এ লিখলেও Teams
-      #    চ্যানেল চুপচাপ বন্ধ থাকত।
-      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
-      DIGEST_EMAIL_TO: ${DIGEST_EMAIL_TO:-}
       LOGIN_MAX_FAILS: ${LOGIN_MAX_FAILS:-10}
       LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-2}
       # ⚠️ G116 — IP-প্রতি সীমা। জোড়া-কাউন্টার এক IP থেকে বহু ইমেইল ধরত না
@@ -102,6 +97,9 @@ services:
       ORG_NAME: ${ORG_NAME:-oXeio Monitoring}
       # খালি হলে সক্রিয় owner-দের ইমেইলে যায় (ALERT_EMAIL_TO-তে নয়)
       DIGEST_EMAIL_TO: ${DIGEST_EMAIL_TO:-}
+      # ⚠️ Teams — ফ্রি/ব্যক্তিগত অ্যাকাউন্টে webhook পাওয়া যায় না
+      #    (Workflows কেবল work/school-এ), তাই সাধারণত খালিই থাকে।
+      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
 
       # ── G08 · টেলিগ্রাম অ্যালার্ট (দুটোই না থাকলে চুপচাপ বন্ধ) ──────────
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
