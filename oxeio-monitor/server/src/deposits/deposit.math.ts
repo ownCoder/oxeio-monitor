@@ -97,3 +97,30 @@ export function checkNotice(
   const daysGiven = daysBetween(noticeGivenOn, lastWorkingDay);
   return { daysGiven, daysRule, meetsRule: daysGiven >= daysRule };
 }
+
+/**
+ * ⭐⭐ **এই কর্মীর জামানত কোন মাস থেকে কাটা শুরু** — একটাই সংজ্ঞা।
+ *
+ * ⚠️⚠️ প্রথমে এটা **দুই জায়গায় লেখা ছিল** — `ensureLedger()` খাতা ভরার
+ * সময় একবার, আর `balances()` পর্দায় দেখানোর সময় আরেকবার। দুটো আলাদা হয়ে
+ * গেলে পর্দা এক মাস দেখাত আর খাতায় বসত অন্যটা, আর পার্থক্যটা কেউ ধরতে
+ * পারত না — কারণ দুটোই "ঠিক" দেখাত, শুধু একে অন্যের সাথে মিলত না।
+ *
+ * ⚠️ ক্রমটাই নিয়ম:
+ *   ১· মালিকের বেছে দেওয়া মাস থাকলে **সেটাই চূড়ান্ত** — `joined_on`-এর
+ *      উপরেও। ওটা অনুমান, আর এটা বিবৃতি।
+ *   ২· নইলে যোগদানের মাস আর নিয়মের মাসের মধ্যে যেটা **পরে**।
+ */
+export function effectiveDepositStart(input: {
+  /** মালিকের বেছে দেওয়া, না দিলে `null` */
+  override: string | null;
+  /** `joined_on`-এর মাস, না জানলে `null` */
+  joinedMonth: string | null;
+  /** নিয়মের সাধারণ শুরুর মাস */
+  policyStart: string;
+}): string {
+  if (input.override) return input.override;
+
+  const joined = input.joinedMonth ?? input.policyStart;
+  return joined > input.policyStart ? joined : input.policyStart;
+}

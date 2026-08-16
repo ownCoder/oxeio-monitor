@@ -66,6 +66,14 @@ export async function resetDatabase(
    *
    * ⭐ নতুন টেবিল যোগ করলে এই তালিকাতেও বসাতে হয়। ভুলে গেলে ধরা পড়ে
    * অনেক দূরে, অন্য কারো টেস্টে — আর কারণটা খুঁজে পাওয়া কঠিন।
+   *
+   * ⚠️⚠️ **যেসব টেবিলে employees-এর FK নেই, সেগুলোই আসল ঝুঁকি** —
+   * CASCADE ওদের ছোঁয় না, তাই তালিকা থেকে বাদ পড়লে ওরা টেস্টের পর
+   * টেস্ট বেঁচে থাকে। এখন পর্যন্ত এমন দুটো: deposit_policy আর
+   * month_closures (একটা বন্ধ মাস পরের টেস্টে সম্পাদনা আটকে দিত)।
+   *
+   * মিলিয়ে দেখার উপায় — schema-র @@map-গুলোর সাথে এই তালিকা:
+   *   grep -o '@@map("[a-z_]*")' prisma/schema.prisma
    */
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
@@ -73,7 +81,8 @@ export async function resetDatabase(
       activity_segments, work_sessions, enrollment_codes, devices,
       daily_summary, monthly_summary, users, employees, work_policies,
       app_categories, holidays, agent_versions, settings,
-      deposit_policy, security_deposits, deposit_settlements
+      deposit_policy, security_deposits, deposit_settlements,
+      leaves, month_closures
     RESTART IDENTITY CASCADE
   `);
 

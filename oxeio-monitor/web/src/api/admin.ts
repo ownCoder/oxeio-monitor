@@ -174,29 +174,7 @@ export function reactivateEmployee(id: number): Promise<EmployeeView> {
   return api<EmployeeView>(`/employees/${id}/reactivate`, { method: 'POST' });
 }
 
-/**
- * ⭐ সই করা মনিটরিং পলিসি রেকর্ড করা — **রোলআউটের একমাত্র শর্ত**
- * ([01 § রোলআউট](../../../docs/01-Planning.md))।
- *
- * `signedOn` না দিলে সার্ভার আজকের ঢাকার তারিখ বসায়। তারিখ দেওয়ার সুযোগ
- * আছে কারণ কাগজ প্রায়ই আগে সই হয়, ড্যাশবোর্ডে বসানো হয় পরে।
- */
-export function setPolicySigned(
-  id: number,
-  signedOn?: string,
-): Promise<EmployeeView> {
-  return api<EmployeeView>(`/employees/${id}/policy-signed`, {
-    method: 'POST',
-    body: signedOn ? { signedOn } : {},
-  });
-}
 
-/** ভুল করে বসানো সই তোলা। ⚠️ কর্মী মোছে না, শুধু তারিখটা শূন্য করে। */
-export function clearPolicySigned(id: number): Promise<EmployeeView> {
-  return api<EmployeeView>(`/employees/${id}/policy-signed`, {
-    method: 'DELETE',
-  });
-}
 
 // ── ডিভাইস (owner-only) ─────────────────────────────────────────────────────
 
@@ -219,41 +197,9 @@ export interface DeviceView {
   employee: { id: number; empCode: string; fullName: string } | null;
 }
 
-export function listDevices(
-  query: { employeeId?: number; status?: DeviceStatus } = {},
-  signal?: AbortSignal,
-): Promise<{ rows: DeviceView[]; total: number }> {
-  return api<{ rows: DeviceView[]; total: number }>(
-    `/devices${qs({ ...query })}`,
-    { signal },
-  );
-}
 
-export function getDevice(
-  id: number,
-  signal?: AbortSignal,
-): Promise<DeviceView> {
-  return api<DeviceView>(`/devices/${id}`, { signal });
-}
 
-/** H06 — `reason` বাধ্যতামূলক (৩–৫০০ অক্ষর), audit-এ লেখা থাকে */
-export function revokeDevice(id: number, reason: string): Promise<DeviceView> {
-  return api<DeviceView>(`/devices/${id}/revoke`, {
-    method: 'POST',
-    body: { reason },
-  });
-}
 
-/**
- * ⚠️ restore করলে **পুরোনো টোকেনটাই আবার জেগে ওঠে**। ল্যাপটপ হারিয়ে গেলে
- * restore নয় — নতুন enrollment code দিতে হবে। UI-তে এটা লিখে দেওয়া দরকার।
- */
-export function restoreDevice(id: number, reason: string): Promise<DeviceView> {
-  return api<DeviceView>(`/devices/${id}/restore`, {
-    method: 'POST',
-    body: { reason },
-  });
-}
 
 export interface EnrollmentCodeResult {
   /** ⭐⚠️ **এই একবারই দেখা যাবে** — সার্ভারে শুধু sha256 জমা থাকে */
@@ -262,20 +208,6 @@ export interface EnrollmentCodeResult {
   employee: { id: number; empCode: string; fullName: string };
 }
 
-/**
- * H05 — নতুন PC-তে এজেন্ট বসানোর কোড।
- *
- * ⭐ কোডটা মোডালে বড় করে দেখান আর "কপি" বোতাম দিন — পাতা বদলালে এটা
- * আর কোথাও পাওয়া যাবে না। ⚠️ নতুন কোড দিলে আগেরগুলো তখনই বাতিল হয়।
- */
-export function createEnrollmentCode(
-  employeeId: number,
-): Promise<EnrollmentCodeResult> {
-  return api<EnrollmentCodeResult>('/devices/enrollment-code', {
-    method: 'POST',
-    body: { employeeId },
-  });
-}
 
 // ── work policy (owner-only) ────────────────────────────────────────────────
 
@@ -315,12 +247,6 @@ export function listWorkPolicies(
   return api<{ rows: WorkPolicyView[] }>('/work-policies', { signal });
 }
 
-export function getWorkPolicy(
-  id: number,
-  signal?: AbortSignal,
-): Promise<WorkPolicyView> {
-  return api<WorkPolicyView>(`/work-policies/${id}`, { signal });
-}
 
 /**
  * ⚠️ এখানে একটা সংখ্যা বদলালে পরের config sync-এ **প্রতিটা PC-র আচরণ**

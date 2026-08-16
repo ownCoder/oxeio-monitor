@@ -177,18 +177,6 @@ export function getTopUsage(
   return api<TopReport>(`/activity/top${qs({ ...query })}`, { signal });
 }
 
-/**
- * D09 — `GET /api/v1/activity/team?from=&to=&limit=`
- *
- * ⚠️ এখানে `employeeId` **নেই** — একজনের হিসাব চাইলে `getTopUsage()`।
- *    পাঠালে ৪০০ (forbidNonWhitelisted)।
- */
-export function getTeamSites(
-  query: RangeQuery & { limit?: number } = {},
-  signal?: AbortSignal,
-): Promise<TeamReport> {
-  return api<TeamReport>(`/activity/team${qs({ ...query })}`, { signal });
-}
 
 // ── D06 · ক্যাটাগরির নিয়ম (owner-only) ──────────────────────────────────────
 

@@ -13,6 +13,7 @@ import { paisaToTaka } from '../payroll/payroll.math';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   checkNotice,
+  effectiveDepositStart,
   isYearMonth,
   monthsBetween,
   type YearMonth,
@@ -216,25 +217,13 @@ export class DepositsService {
        * নিরাপদ, কারণ পিছিয়ে গেলে খাতা এমন টাকা দাবি করত যা তখন তিনি
        * এখানেই ছিলেন না।
        */
-      const joinedMonth = e.joinedOn
-        ? e.joinedOn.toISOString().slice(0, 7)
-        : policy.startYearMonth;
-
-      /**
-       * ⭐⭐ **কর্মীর নিজের শুরুর মাস থাকলে সেটাই চূড়ান্ত** — যোগদানের
-       * তারিখের উপরেও।
-       *
-       * ⚠️ এটা সচেতন সিদ্ধান্ত। `joined_on` প্রায়ই অনুমান বা ফাঁকা (আমাদের
-       * ১২ জনের কারোরই বসানো ছিল না), অথচ এই ঘরটা মালিক **নিজে হাতে** বেছে
-       * দেন — অর্থাৎ এটা অনুমান নয়, বিবৃতি। অনুমানকে বিবৃতির উপরে বসালে
-       * মালিক ভুল সংশোধন করতে গিয়ে দেখতেন কিছুই বদলায়নি, আর কেন — বোঝার
-       * উপায় থাকত না।
-       */
-      const from = e.depositStartYearMonth
-        ? e.depositStartYearMonth
-        : joinedMonth > policy.startYearMonth
-          ? joinedMonth
-          : policy.startYearMonth;
+      // ⭐ নিয়মটা `deposit.math.ts`-এ, একটাই সংজ্ঞা — পর্দা আর খাতা
+      //    যেন কোনোদিন আলাদা মাস না বলে
+      const from = effectiveDepositStart({
+        override: e.depositStartYearMonth,
+        joinedMonth: e.joinedOn ? e.joinedOn.toISOString().slice(0, 7) : null,
+        policyStart: policy.startYearMonth,
+      });
 
       // ⚠️ চলে গেলে তাঁর শেষ মাস পর্যন্তই — তার পরের মাসে বেতনই নেই।
       const leftMonth = e.leftOn ? e.leftOn.toISOString().slice(0, 7) : null;
@@ -444,19 +433,12 @@ export class DepositsService {
         const balancePaisa = agg?._sum.amountPaisa ?? 0;
         const settlement = settledOf.get(e.id);
 
-        /**
-         * ⚠️ `ensureLedger()`-এর হুবহু একই যুক্তি — কোন মাস থেকে সত্যিই
-         *    কাটা হচ্ছে। দুই জায়গায় দুই হিসাব হলে পর্দা এক মাস দেখাত আর
-         *    খাতায় বসত অন্যটা, আর পার্থক্যটা কেউ ধরতে পারত না।
-         */
-        const joinedMonth = e.joinedOn
-          ? e.joinedOn.toISOString().slice(0, 7)
-          : policy.startYearMonth;
-        const effectiveStart = e.depositStartYearMonth
-          ? e.depositStartYearMonth
-          : joinedMonth > policy.startYearMonth
-            ? joinedMonth
-            : policy.startYearMonth;
+        // ⭐ `ensureLedger()` যে ফাংশনটা ডাকে, এখানেও ঠিক সেটাই
+        const effectiveStart = effectiveDepositStart({
+          override: e.depositStartYearMonth,
+          joinedMonth: e.joinedOn ? e.joinedOn.toISOString().slice(0, 7) : null,
+          policyStart: policy.startYearMonth,
+        });
 
         return {
           startYearMonth: e.depositStartYearMonth,

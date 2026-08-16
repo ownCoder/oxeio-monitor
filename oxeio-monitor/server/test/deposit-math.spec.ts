@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  effectiveDepositStart,
   checkNotice,
   daysBetween,
   isYearMonth,
@@ -96,5 +97,57 @@ describe('নোটিশের হিসাব', () => {
     const check = checkNotice(d('2026-09-10'), d('2026-08-30'), 30);
     expect(check.daysGiven).toBe(-11);
     expect(check.meetsRule).toBe(false);
+  });
+});
+
+/**
+ * ⭐⭐ **এই কর্মীর জামানত কোন মাস থেকে** — একটাই সংজ্ঞা।
+ *
+ * ⚠️⚠️ নিয়মটা আগে **দুই জায়গায় লেখা ছিল**: খাতা ভরার সময় একবার, পর্দায়
+ * দেখানোর সময় আরেকবার। দুটো আলাদা হয়ে গেলে পর্দা এক মাস দেখাত আর খাতায়
+ * বসত অন্যটা — আর দুটোই "ঠিক" দেখাত বলে পার্থক্যটা কেউ ধরতে পারত না।
+ * এই টেস্টগুলো সেই একত্ব পাহারা দেয়।
+ */
+describe('effectiveDepositStart', () => {
+  const policyStart = '2026-01';
+
+  it('কিছু না থাকলে নিয়মের মাস', () => {
+    expect(
+      effectiveDepositStart({ override: null, joinedMonth: null, policyStart }),
+    ).toBe('2026-01');
+  });
+
+  it('পরে যোগ দিলে যোগদানের মাস', () => {
+    expect(
+      effectiveDepositStart({ override: null, joinedMonth: '2026-04', policyStart }),
+    ).toBe('2026-04');
+  });
+
+  /** ⚠️ নিয়ম চালুর আগে যোগ দিলে নিয়মের মাসই — তার আগে কাটার কথাই ছিল না */
+  it('আগে যোগ দিলেও নিয়মের মাস', () => {
+    expect(
+      effectiveDepositStart({ override: null, joinedMonth: '2025-03', policyStart }),
+    ).toBe('2026-01');
+  });
+
+  /**
+   * ⭐⭐ **মালিকের বেছে দেওয়া মাস যোগদানের তারিখকেও হারায়।** `joined_on`
+   * প্রায়ই অনুমান বা ফাঁকা; এই ঘরটা মালিক নিজে বসান — অনুমান বিবৃতিকে
+   * হারালে সংশোধন করেও কিছু বদলাত না।
+   */
+  it('override সবকিছুর উপরে', () => {
+    expect(
+      effectiveDepositStart({
+        override: '2026-03',
+        joinedMonth: '2026-07',
+        policyStart,
+      }),
+    ).toBe('2026-03');
+  });
+
+  it('override নিয়মের আগেও হতে পারে', () => {
+    expect(
+      effectiveDepositStart({ override: '2025-11', joinedMonth: null, policyStart }),
+    ).toBe('2025-11');
   });
 });
