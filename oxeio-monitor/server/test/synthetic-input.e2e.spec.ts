@@ -145,7 +145,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
       durationSec: 3 * 3600,
       windows: 1,
       scoreSpread: 0,
-      minStretchSec: 120 * 60,
+      minStretchSec: 60 * 60,
     });
   });
 
@@ -154,9 +154,10 @@ describe('G46 — নকল ইনপুট ধরা', () => {
    * ঠিক করে দেয় নির্দোষ কেউ সন্দেহে পড়বেন কি না।
    */
   it('মাঝে বিরতি থাকলে অ্যালার্ট ওঠে না', async () => {
-    await activeRun(at(10), at(11, 50), 98);
-    await activeRun(at(12, 10), at(14), 98);
-    await window(at(10), at(14), 'powershell.exe', 'Windows PowerShell');
+    // ⚠️ দুটো টুকরোই সীমার (১ ঘণ্টা) নিচে — একটা বিরতিই যথেষ্ট
+    await activeRun(at(10), at(10, 50), 98);
+    await activeRun(at(11, 10), at(12), 98);
+    await window(at(10), at(12), 'powershell.exe', 'Windows PowerShell');
 
     expect(await check.runOnce(now)).toBe(0);
     expect(await alerts()).toHaveLength(0);
@@ -187,10 +188,11 @@ describe('G46 — নকল ইনপুট ধরা', () => {
   it('দুই ডিভাইসের সময় মিলিয়ে ফেলা হয় না', async () => {
     const second = await makeDevice('PC-SI-2');
 
-    await activeRun(at(10), at(11, 30), 98);
-    await window(at(10), at(11, 30), 'powershell.exe', 'Windows PowerShell');
-    await activeRun(at(11, 30), at(13), 98, second);
-    await window(at(11, 30), at(13), 'powershell.exe', 'Windows PowerShell', second);
+    // ⚠️ আলাদা করে দেখলে দুটোই সীমার নিচে; মিলিয়ে ফেললে ১ ঘণ্টা ছাড়াত
+    await activeRun(at(10), at(10, 50), 98);
+    await window(at(10), at(10, 50), 'powershell.exe', 'Windows PowerShell');
+    await activeRun(at(10, 50), at(11, 40), 98, second);
+    await window(at(10, 50), at(11, 40), 'powershell.exe', 'Windows PowerShell', second);
 
     expect(await check.runOnce(now)).toBe(0);
   });

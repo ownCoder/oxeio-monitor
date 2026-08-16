@@ -174,9 +174,9 @@ describe('findSyntheticInput — যাকে ধরা যাবে না', ()
    * একটা বিরতিই স্ট্রেচ ভেঙে দেয়, আর দুটো টুকরোর কোনোটাই সীমা ছোঁয় না।
    */
   it('মাঝে একবার থামলে ধরা পড়ে না', () => {
-    const segments = [...run(0, 110, 99), ...run(125, 235, 99)];
+    const segments = [...run(0, 55, 99), ...run(70, 125, 99)];
 
-    expect(findSyntheticInput(segments, [win(0, 235, 'ps|x')])).toHaveLength(0);
+    expect(findSyntheticInput(segments, [win(0, 125, 'ps|x')])).toHaveLength(0);
   });
 
   /**
@@ -196,7 +196,7 @@ describe('findSyntheticInput — যাকে ধরা যাবে না', ()
   });
 
   it('সময় কম হলে ধরা পড়ে না', () => {
-    expect(findSyntheticInput(run(0, 90, 99), [win(0, 90, 'ps|x')])).toHaveLength(0);
+    expect(findSyntheticInput(run(0, 45, 99), [win(0, 45, 'ps|x')])).toHaveLength(0);
   });
 
   /**
@@ -235,7 +235,8 @@ describe('সীমাগুলো বদলানো যায়', () => {
     expect(found).toHaveLength(1);
   });
 
-  it('ডিফল্ট সীমা দুই ঘণ্টা', () => {
-    expect(DEFAULT_SYNTHETIC_LIMITS.minStretchSec).toBe(120 * 60);
+  /** ⚠️ ১৬ আগস্ট ২ → ১ ঘণ্টা — দেরিতে ধরা মানে ততক্ষণ ভুল ঘণ্টা জমা */
+  it('ডিফল্ট সীমা এক ঘণ্টা', () => {
+    expect(DEFAULT_SYNTHETIC_LIMITS.minStretchSec).toBe(60 * 60);
   });
 });
