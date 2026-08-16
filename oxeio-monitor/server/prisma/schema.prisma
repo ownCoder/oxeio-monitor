@@ -133,6 +133,17 @@ model Employee {
   /// ⚠️ Decimal, Float নয় — টাকা কখনো binary float-এ রাখা হয় না।
   monthlySalary  Decimal?       @map("monthly_salary") @db.Decimal(12, 2)
   joinedOn       DateTime?      @map("joined_on") @db.Date
+
+  /**
+   * R21 — জামানত কাটা **কোন মাস থেকে শুরু**, এই কর্মীর জন্য (`YYYY-MM`)।
+   *
+   * ⭐ `null` মানে "নিয়মের সাধারণ শুরুর মাসই খাটবে"
+   * (`deposit_policy.start_year_month`) — তাই পুরোনো সব সারি আগের মতোই চলে।
+   *
+   * ⚠️ ডিফল্ট বসানো হয়নি ইচ্ছাকৃতভাবে: ডিফল্ট থাকলে "কেউ কিছু বলেনি" আর
+   * "মালিক নিজে এই মাসটা বেছে দিয়েছেন" — দুটো দেখতে এক হয়ে যেত।
+   */
+  depositStartYearMonth String? @map("deposit_start_year_month") @db.Char(7)
   leftOn         DateTime?      @map("left_on") @db.Date
   status         EmployeeStatus @default(active)
   /// সই করা monitoring policy — রোলআউটের বাধ্যতামূলক শর্ত

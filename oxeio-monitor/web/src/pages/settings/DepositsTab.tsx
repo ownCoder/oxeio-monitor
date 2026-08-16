@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import {
   listDeposits,
+  setDepositStart,
   settleDeposit,
   updateDepositPolicy,
   type DepositBalance,
@@ -45,6 +46,7 @@ export function DepositsTab() {
 
   const [editingRule, setEditingRule] = useState(false);
   const [settling, setSettling] = useState<DepositBalance | null>(null);
+  const [startFor, setStartFor] = useState<DepositBalance | null>(null);
 
   const rows = data?.rows ?? [];
   const open = rows.filter((r) => !r.settlement);
@@ -128,6 +130,21 @@ export function DepositsTab() {
                       <span className="block text-[12px] text-ink-3">
                         {row.months} {row.months === 1 ? 'month' : 'months'}{' '}
                         held
+                        {/*
+                          ⭐ **কোন মাস থেকে কাটা হচ্ছে** — এটা না দেখালে
+                             মালিককে অঙ্ক কষে বের করতে হতো, আর ভুলটা
+                             ধরাই পড়ত না।
+                          ⚠️ মালিক নিজে বেছে দিলে সেটা আলাদা করে বলা হয়,
+                             নইলে "নিয়ম অনুযায়ী" — দুটো এক দেখালে কে
+                             কোনটা বসিয়েছে তা আর জানা যেত না।
+                        */}
+                        {row.effectiveStart && (
+                          <>
+                            {' · from '}
+                            <span className="num">{row.effectiveStart}</span>
+                            {row.startYearMonth === null && ' (by rule)'}
+                          </>
+                        )}
                       </span>
                     )}
                   </span>
@@ -146,6 +163,15 @@ export function DepositsTab() {
                          দ্বিতীয়বার ৪০৯ দেয়, তাই বোতাম রাখলে সেটা শুধু
                          একটা এরর বাক্সে নিয়ে যেত।
                     */}
+                    {/*
+                      ⚠️ নিষ্পত্তি হয়ে গেলে খাতা বন্ধ — সার্ভার ৪০৯ দেয়,
+                         তাই বোতামটাও থাকে না।
+                    */}
+                    {!row.settlement && (
+                      <MiniButton onClick={() => setStartFor(row)}>
+                        Start month
+                      </MiniButton>
+                    )}
                     {!row.settlement && row.balancePaisa > 0 && (
                       <MiniButton onClick={() => setSettling(row)}>
                         Settle
@@ -165,6 +191,33 @@ export function DepositsTab() {
           only the amount handed over that month goes down.
         </Caveat>
       </Card>
+
+      {startFor && (
+        <StartMonthDialog
+          row={startFor}
+          busy={mutation.busy}
+          onClose={() => setStartFor(null)}
+          onSubmit={(yearMonth) =>
+            mutation.run(async () => {
+              const result = await setDepositStart(startFor.employeeId, yearMonth);
+              setStartFor(null);
+              reload();
+
+              /**
+               * ⚠️⚠️ কতগুলো কিস্তি মুছল সেটা **বলে দেওয়া হয়** — নীরবে
+               * সারি মুছে ফেলা যাবে না। মালিক যদি ভুল মাস বসিয়ে থাকেন,
+               * এই এক লাইনই তাঁকে সাথে সাথে জানায় কী ঘটেছে।
+               */
+              if (result.removed > 0 || result.added > 0) {
+                window.alert(
+                  `Ledger updated — ${result.removed} instalment(s) removed, ` +
+                    `${result.added} added.`,
+                );
+              }
+            })
+          }
+        />
+      )}
 
       {editingRule && data && (
         <EditRule
@@ -421,6 +474,81 @@ function SettleDialog({
           )}
         </FullWidth>
       </FormGrid>
+    </Modal>
+  );
+}
+
+/**
+ * ⭐⭐ **এই কর্মীর জামানত কোন মাস থেকে কাটা শুরু।**
+ *
+ * ⚠️⚠️ মাস **এগিয়ে** দিলে তার আগের কিস্তিগুলো খাতা থেকে মুছে যায় — এটাই
+ * এই জানালার আসল কাজ (ভুল সংশোধন), তাই কথাটা এখানে **আগেই** বলা হয়,
+ * সেভ করার পরে নয়।
+ *
+ * ⭐ `month` ইনপুট ব্যবহার করা হয়েছে, তারিখ নয় — প্রশ্নটা "কোন মাস", আর
+ * দিন চাইলে মালিককে এমন একটা সিদ্ধান্ত নিতে হতো যেটার কোনো মানেই নেই।
+ */
+function StartMonthDialog({
+  row,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  row: DepositBalance;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (yearMonth: string | null) => void;
+}) {
+  const [month, setMonth] = useState(row.startYearMonth ?? row.effectiveStart ?? '');
+
+  return (
+    <Modal
+      title={`${row.fullName} — deposit start`}
+      hint="From which month this person's deposit started being held"
+      onClose={onClose}
+      footer={
+        <>
+          <MiniButton onClick={onClose}>Cancel</MiniButton>
+          {/*
+            ⚠️ "নিয়মে ফেরত" আলাদা বোতাম — ঘরটা খালি করে সেভ করলে সেটা
+               "কিছু বলিনি" নাকি "নিয়মে ফেরাও" তা বোঝা যেত না।
+          */}
+          {row.startYearMonth !== null && (
+            <MiniButton disabled={busy} onClick={() => onSubmit(null)}>
+              Use the rule
+            </MiniButton>
+          )}
+          <MiniButton
+            tone="primary"
+            disabled={busy || month === '' || month === row.startYearMonth}
+            onClick={() => onSubmit(month)}
+          >
+            {busy ? 'Saving…' : 'Save'}
+          </MiniButton>
+        </>
+      }
+    >
+      <div className="space-y-3.5">
+        <Notice>
+          Moving this <b>later</b> deletes the instalments before it, and moving
+          it <b>earlier</b> adds the missing ones. The ledger is rebuilt to match
+          the month you choose.
+        </Notice>
+
+        <TextField
+          label="Deposit starts from"
+          type="month"
+          value={month}
+          onChange={setMonth}
+          required
+          autoFocus
+          hint={
+            row.startYearMonth === null
+              ? `Currently following the rule (${row.effectiveStart ?? '—'})`
+              : 'Set by you — "Use the rule" puts it back'
+          }
+        />
+      </div>
     </Modal>
   );
 }

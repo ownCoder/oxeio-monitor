@@ -56,6 +56,17 @@ export interface DepositBalance {
   balancePaisa: number;
   /** নিষ্পত্তি হয়ে গেলে খাতা বন্ধ — তখন `balance` কেবল ইতিহাস */
   settlement: DepositSettlementView | null;
+
+  /**
+   * ⭐ এই কর্মীর জন্য মালিকের বেছে দেওয়া শুরুর মাস — না দিলে `null`।
+   *
+   * ⚠️ `effectiveStart`-ও পাঠানো হয়, কারণ পর্দায় দরকার **কোন মাস থেকে
+   * সত্যিই কাটা হচ্ছে** — সেটা override, যোগদানের মাস আর নিয়মের মাস
+   * তিনটের মধ্যে কোনটা জিতেছে তার উপর নির্ভর করে। শুধু override পাঠালে
+   * খালি ঘর দেখে মালিক বুঝতেন না আসলে কোন মাস খাটছে।
+   */
+  startYearMonth: string | null;
+  effectiveStart: string | null;
 }
 
 /**
@@ -174,7 +185,13 @@ export class DepositsService {
     if (policy.startYearMonth > now) return;
 
     const employees = await this.prisma.employee.findMany({
-      select: { id: true, joinedOn: true, leftOn: true, status: true },
+      select: {
+        id: true,
+        joinedOn: true,
+        leftOn: true,
+        status: true,
+        depositStartYearMonth: true,
+      },
     });
 
     // ⚠️ নিষ্পত্তি হয়ে যাওয়া কর্মীর খাতায় আর কিস্তি বসে না — টাকাটা
@@ -202,8 +219,22 @@ export class DepositsService {
       const joinedMonth = e.joinedOn
         ? e.joinedOn.toISOString().slice(0, 7)
         : policy.startYearMonth;
-      const from =
-        joinedMonth > policy.startYearMonth ? joinedMonth : policy.startYearMonth;
+
+      /**
+       * ⭐⭐ **কর্মীর নিজের শুরুর মাস থাকলে সেটাই চূড়ান্ত** — যোগদানের
+       * তারিখের উপরেও।
+       *
+       * ⚠️ এটা সচেতন সিদ্ধান্ত। `joined_on` প্রায়ই অনুমান বা ফাঁকা (আমাদের
+       * ১২ জনের কারোরই বসানো ছিল না), অথচ এই ঘরটা মালিক **নিজে হাতে** বেছে
+       * দেন — অর্থাৎ এটা অনুমান নয়, বিবৃতি। অনুমানকে বিবৃতির উপরে বসালে
+       * মালিক ভুল সংশোধন করতে গিয়ে দেখতেন কিছুই বদলায়নি, আর কেন — বোঝার
+       * উপায় থাকত না।
+       */
+      const from = e.depositStartYearMonth
+        ? e.depositStartYearMonth
+        : joinedMonth > policy.startYearMonth
+          ? joinedMonth
+          : policy.startYearMonth;
 
       // ⚠️ চলে গেলে তাঁর শেষ মাস পর্যন্তই — তার পরের মাসে বেতনই নেই।
       const leftMonth = e.leftOn ? e.leftOn.toISOString().slice(0, 7) : null;
@@ -226,6 +257,105 @@ export class DepositsService {
     if (count > 0) {
       this.logger.log(`জামানতের খাতায় ${count}টা নতুন কিস্তি বসল`);
     }
+  }
+
+  /**
+   * ⭐⭐ **এই কর্মীর জামানত কোন মাস থেকে কাটা শুরু** — মালিক হাতে বসান।
+   *
+   * ⚠️⚠️ **পুরোনো কিস্তি সরানো হয়, আর সেটাই এই ফিচারের আসল কাজ।** শুরুর
+   * মাস পিছিয়ে দিলে নতুন কিস্তি বসে; **এগিয়ে দিলে আগের ভুল কিস্তিগুলো
+   * মুছে যায়**। না মুছলে "ভুল সংশোধন" করেও খাতায় ভুলটা রয়ে যেত, আর
+   * মালিক ভাবতেন সেভ হয়নি।
+   *
+   * ⚠️ মুছে ফেলা সারিগুলো **স্বয়ংক্রিয়ভাবে বসানো** কিস্তি, হাতে লেখা
+   * কিছু নয় — তাই এটা ইতিহাস মোছা নয়, ভুল হিসাব ঠিক করা। কতগুলো গেল
+   * সেটা audit log-এ লেখা থাকে।
+   *
+   * ⚠️⚠️ নিষ্পত্তি হয়ে যাওয়া কর্মীর খাতা **বন্ধ** — টাকা ফেরত বা বাজেয়াপ্ত
+   * হয়ে গেছে, তাই সেখানে হাত দেওয়া মানে মিটে যাওয়া হিসাব নাড়ানো।
+   */
+  async setStartMonth(
+    actor: SessionUser,
+    employeeId: number,
+    yearMonth: string | null,
+    ip: string,
+  ): Promise<{ removed: number; added: number }> {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, fullName: true, depositStartYearMonth: true },
+    });
+    if (!employee) throw new NotFoundException('Staff member not found');
+
+    if (yearMonth !== null && !isYearMonth(yearMonth)) {
+      throw new BadRequestException('Month must be in YYYY-MM format');
+    }
+
+    /**
+     * ⚠️ ভবিষ্যতের মাস আটকানো — নইলে খাতাটা চুপচাপ খালি হয়ে যেত (কোনো
+     *    কিস্তিই আর বসত না), আর কারণটা পর্দায় কোথাও লেখা থাকত না।
+     */
+    if (yearMonth !== null && yearMonth > this.currentMonth()) {
+      throw new BadRequestException('That month has not started yet');
+    }
+
+    const settled = await this.prisma.depositSettlement.findFirst({
+      where: { employeeId },
+      select: { employeeId: true },
+    });
+    if (settled) {
+      throw new ConflictException(
+        'This deposit is already settled — the ledger is closed, so the start month cannot change',
+      );
+    }
+
+    // ⚠️ কিছুই বদলায়নি — audit-এ ঘটনা লেখা হয় না
+    if ((employee.depositStartYearMonth ?? null) === yearMonth) {
+      return { removed: 0, added: 0 };
+    }
+
+    await this.prisma.employee.update({
+      where: { id: employeeId },
+      data: { depositStartYearMonth: yearMonth },
+    });
+
+    /**
+     * ⚠️ আগের মাসগুলোর কিস্তি সরানো হয় **শুধু নতুন শুরু বসালে**। `null`
+     *    করলে (নিয়মের সাধারণ মাসে ফেরত) কিছু মোছা হয় না — তখন খাতাটা
+     *    এমনিতেই আবার ভরে যাবে, আর অকারণে সারি মুছে ঝুঁকি নেওয়ার মানে নেই।
+     */
+    let removed = 0;
+    if (yearMonth !== null) {
+      const gone = await this.prisma.securityDeposit.deleteMany({
+        where: { employeeId, yearMonth: { lt: yearMonth } },
+      });
+      removed = gone.count;
+    }
+
+    const before = await this.prisma.securityDeposit.count({ where: { employeeId } });
+    await this.ensureLedger();
+    const after = await this.prisma.securityDeposit.count({ where: { employeeId } });
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'deposit_policy_update',
+      targetType: 'employee',
+      targetId: employeeId,
+      ipAddress: ip,
+      meta: {
+        op: 'deposit_start_month',
+        from: employee.depositStartYearMonth,
+        to: yearMonth,
+        removed,
+        added: after - before,
+      },
+    });
+
+    this.logger.log(
+      `${employee.fullName}: জামানতের শুরু ${employee.depositStartYearMonth ?? 'নিয়ম'} → ` +
+        `${yearMonth ?? 'নিয়ম'} (${removed} মোছা, ${after - before} যোগ)`,
+    );
+
+    return { removed, added: after - before };
   }
 
   /**
@@ -285,7 +415,14 @@ export class DepositsService {
 
     const [employees, sums, settlements, policy] = await Promise.all([
       this.prisma.employee.findMany({
-        select: { id: true, empCode: true, fullName: true, status: true },
+        select: {
+          id: true,
+          empCode: true,
+          fullName: true,
+          status: true,
+          joinedOn: true,
+          depositStartYearMonth: true,
+        },
         orderBy: { empCode: 'asc' },
       }),
       this.prisma.securityDeposit.groupBy({
@@ -307,7 +444,23 @@ export class DepositsService {
         const balancePaisa = agg?._sum.amountPaisa ?? 0;
         const settlement = settledOf.get(e.id);
 
+        /**
+         * ⚠️ `ensureLedger()`-এর হুবহু একই যুক্তি — কোন মাস থেকে সত্যিই
+         *    কাটা হচ্ছে। দুই জায়গায় দুই হিসাব হলে পর্দা এক মাস দেখাত আর
+         *    খাতায় বসত অন্যটা, আর পার্থক্যটা কেউ ধরতে পারত না।
+         */
+        const joinedMonth = e.joinedOn
+          ? e.joinedOn.toISOString().slice(0, 7)
+          : policy.startYearMonth;
+        const effectiveStart = e.depositStartYearMonth
+          ? e.depositStartYearMonth
+          : joinedMonth > policy.startYearMonth
+            ? joinedMonth
+            : policy.startYearMonth;
+
         return {
+          startYearMonth: e.depositStartYearMonth,
+          effectiveStart,
           employeeId: e.id,
           empCode: e.empCode,
           fullName: e.fullName,

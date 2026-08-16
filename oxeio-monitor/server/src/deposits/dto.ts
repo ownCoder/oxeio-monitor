@@ -8,6 +8,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 /**
@@ -82,4 +83,16 @@ export class SettleDepositDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+}
+
+/**
+ * ⭐ এই কর্মীর জামানত কোন মাস থেকে কাটা শুরু।
+ *
+ * ⚠️ `null` **বৈধ ও অর্থবহ** — মানে "নিয়মের সাধারণ শুরুর মাসেই ফিরে যাও"।
+ * তাই `@IsOptional()` নয়, নইলে ঘরটা খালি করে দেওয়ার কোনো পথ থাকত না।
+ */
+export class SetDepositStartDto {
+  @ValidateIf((_, value) => value !== null)
+  @Matches(YEAR_MONTH, { message: 'yearMonth must be in YYYY-MM format' })
+  yearMonth!: string | null;
 }

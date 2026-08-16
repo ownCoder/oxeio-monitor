@@ -20,7 +20,8 @@ import {
   type DepositPolicyView,
   type DepositSettlementView,
 } from './deposits.service';
-import { SettleDepositDto, UpdateDepositPolicyDto } from './dto';
+import { SetDepositStartDto,
+  SettleDepositDto, UpdateDepositPolicyDto } from './dto';
 
 /**
  * R21 — জামানতের owner-এর দিক (`/api/v1/deposits`)।
@@ -50,6 +51,26 @@ export class DepositsController {
     @Ip() ip: string,
   ): Promise<DepositPolicyView> {
     return this.deposits.updatePolicy(actor, dto, ip);
+  }
+
+  /**
+   * ⭐⭐ `PATCH /api/v1/deposits/:employeeId/start` — এই কর্মীর জামানত
+   * কোন মাস থেকে কাটা শুরু।
+   *
+   * ⚠️ `yearMonth: null` পাঠালে নিয়মের সাধারণ শুরুর মাসে ফিরে যায়।
+   *
+   * ⚠️⚠️ মাস **এগিয়ে** দিলে তার আগের কিস্তিগুলো খাতা থেকে মুছে যায় — এটাই
+   * এই রুটের আসল কাজ (ভুল সংশোধন)। কতগুলো গেল সেটা রেসপন্সে ফেরত আসে,
+   * যাতে পর্দা মালিককে সত্যিটা দেখাতে পারে।
+   */
+  @Patch(':employeeId/start')
+  setStart(
+    @CurrentUser() actor: SessionUser,
+    @Param('employeeId', ParseIntPipe) employeeId: number,
+    @Body() dto: SetDepositStartDto,
+    @Ip() ip: string,
+  ): Promise<{ removed: number; added: number }> {
+    return this.deposits.setStartMonth(actor, employeeId, dto.yearMonth, ip);
   }
 
   /**

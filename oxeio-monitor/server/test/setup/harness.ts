@@ -57,12 +57,23 @@ export async function resetDatabase(
   prisma: PrismaClient,
   app?: INestApplication,
 ): Promise<void> {
+  /**
+   * ⚠️⚠️ **R21-এর তিনটে টেবিল এখানে ছিল না, আর ব্যর্থতাটা আসত সম্পূর্ণ
+   * অন্য জায়গা থেকে।** deposit_policy-তে employees-এর কোনো FK নেই, তাই
+   * CASCADE-এও সেটা বেঁচে যেত — এক টেস্টের বসানো নিয়ম পরের টেস্টে রয়ে
+   * যেত, ensureLedger আবার খাতা ভরত, আর ফল হতো order-নির্ভর ব্যর্থতা:
+   * একই কোডে একবার ১২টা পাস, পরেরবার ৪টা।
+   *
+   * ⭐ নতুন টেবিল যোগ করলে এই তালিকাতেও বসাতে হয়। ভুলে গেলে ধরা পড়ে
+   * অনেক দূরে, অন্য কারো টেস্টে — আর কারণটা খুঁজে পাওয়া কঠিন।
+   */
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
       time_adjustments, audit_log, alerts, screenshots, app_usage, events,
       activity_segments, work_sessions, enrollment_codes, devices,
       daily_summary, monthly_summary, users, employees, work_policies,
-      app_categories, holidays, agent_versions, settings
+      app_categories, holidays, agent_versions, settings,
+      deposit_policy, security_deposits, deposit_settlements
     RESTART IDENTITY CASCADE
   `);
 

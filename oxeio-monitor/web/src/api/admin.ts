@@ -490,6 +490,24 @@ export function turnAgentOn(employeeId: number): Promise<{ restored: number }> {
   });
 }
 
+/**
+ * এই কর্মীর জামানত **কোন মাস থেকে** কাটা শুরু (`YYYY-MM`)।
+ *
+ * ⚠️ `null` মানে "নিয়মের সাধারণ শুরুর মাসে ফেরত যাও" — বৈধ ও অর্থবহ।
+ *
+ * ⚠️⚠️ মাস এগিয়ে দিলে তার আগের কিস্তি **মুছে যায়**, আর কতগুলো গেল সেটা
+ * রেসপন্সে আসে — পর্দা যেন নীরবে সারি মুছে না ফেলে।
+ */
+export function setDepositStart(
+  employeeId: number,
+  yearMonth: string | null,
+): Promise<{ removed: number; added: number }> {
+  return api<{ removed: number; added: number }>(
+    `/deposits/${employeeId}/start`,
+    { method: 'PATCH', body: { yearMonth } },
+  );
+}
+
 export function changeUserRole(
   userId: number,
   role: 'employee' | 'manager',
@@ -705,6 +723,16 @@ export interface DepositSettlementView {
 }
 
 export interface DepositBalance {
+  /**
+   * ⭐ মালিকের বেছে দেওয়া শুরুর মাস — না দিলে `null` (নিয়মই চলছে)।
+   *
+   * ⚠️ `effectiveStart`-ও আসে, কারণ পর্দায় দরকার **কোন মাস থেকে সত্যিই
+   * কাটা হচ্ছে**। শুধু override দেখালে খালি ঘর দেখে মালিক বুঝতেন না
+   * আসলে কোন মাস খাটছে।
+   */
+  startYearMonth: string | null;
+  effectiveStart: string | null;
+
   employeeId: number;
   empCode: string;
   fullName: string;
