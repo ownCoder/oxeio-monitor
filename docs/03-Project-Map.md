@@ -322,6 +322,7 @@ oxeio-monitor/
 │       ├── pages/MonthlyPage.tsx           ✅ E07 হিটম্যাপ
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
 │       ├── pages/AlertsPage.tsx            ✅ ⭐ G01–G07 · K04 — অ্যালার্ট ও হেলথ
+│   │   ├── DepositsPage.tsx                ✅ ⭐ R21 জামানত — সাইডবারে, Settings-এ নয় (09 § ৩ঃ)
 │       │   #  ⚠️ `api/alerts.ts` অনেক আগে লেখা, কিন্তু কোনো পাতা ছোঁয়নি
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
 │       │   └── AgentVersionsTab.tsx        ✅ ⭐ H04 — নতুন বিল্ড বিলি করা

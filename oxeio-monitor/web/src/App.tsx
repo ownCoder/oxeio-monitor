@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { Layout } from './components/Layout';
 import { VersionBadge } from './components/VersionBadge';
 import { AlertsPage } from './pages/AlertsPage';
+import { DepositsPage } from './pages/DepositsPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { StaffPage } from './pages/StaffPage';
@@ -159,6 +160,16 @@ function Router() {
           সেগুলো ম্যানেজারের নাগালের বাইরে (স্পেক § ৪.৩)।
         */}
         {isOwner && <Route path="alerts" element={<AlertsPage />} />}
+
+        {/*
+          ⭐ **R21** — জামানত আগে `Settings → Deposits` ট্যাব ছিল, এখন
+             সাইডবারের নিজের পাতা। সেটিংসে যা থাকে তা একবার বসিয়ে ভুলে
+             যাওয়ার জিনিস; জামানতের হিসাবে ঢুকতে হয় বারবার।
+
+          ⚠️ alerts-এর মতোই owner না হলে রুটটা **থাকেই না** — জামানত
+             সরাসরি বেতনের অংশ (ADR-023 · ADR-027)।
+        */}
+        {isOwner && <Route path="deposits" element={<DepositsPage />} />}
 
         {/*
           ⭐ যাঁর অধিকার নেই তাঁর জন্য রুটটা **থাকেই না** — সরাসরি
