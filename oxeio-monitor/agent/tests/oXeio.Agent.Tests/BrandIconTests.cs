@@ -1,5 +1,10 @@
 using System.Drawing;
 using System.Reflection;
+using System.Windows.Forms;
+
+using oXeio.Agent.Ui;
+using oXeio.Agent.Security;
+using oXeio.Core.Agent;
 
 namespace oXeio.Agent.Tests;
 
@@ -125,5 +130,90 @@ public class BrandIconTests
         Assert.InRange(tile.R, 200, 255);
         Assert.InRange(tile.G, 0, 80);
         Assert.InRange(tile.B, 0, 80);
+    }
+
+    // ── জানালাগুলো সত্যিই আইকনটা পায় তো? ──────────────────────────────────
+
+    /**
+     * ⭐⭐⭐ <b>এই ফাইলের সবচেয়ে দামি টেস্ট, আর এটা একটা ধরা-পড়া ভুল থেকে।</b>
+     *
+     * প্রথমে শুধু <c>Icon = BrandIcon.Value;</c> বসিয়ে ধরে নেওয়া হয়েছিল
+     * কাজ শেষ। ⚠️⚠️ কিন্তু <c>ShowIcon = false</c> থাকলে WinForms জানালার
+     * আইকন <b>মুছে দেয়</b> — <c>Icon</c> বসানো থাকলেও। মেপে দেখা গেছে:
+     * FixedDialog + ShowIcon=false + Icon বসানো অবস্থায় <c>WM_GETICON</c>
+     * তিনটে স্লটেই ০ ফেরত দেয়।
+     *
+     * ⭐ অর্থাৎ কোডে লাইনটা থাকত, পড়ে মনে হতো "কাজ হয়েছে", অথচ টাস্কবারে
+     * কিচ্ছু বদলাত না — নিখুঁত নীরব ব্যর্থতা। তাই দাবিটা <b>জোড়া হিসেবে</b>
+     * বাঁধা: আইকন বসানো <b>আর</b> ShowIcon সত্যি।
+     */
+    [Fact]
+    public void The_sign_in_window_carries_the_brand_icon()
+    {
+        OnStaThread(() =>
+        {
+            using var form = new oXeio.Agent.Ui.SignInForm(
+                "https://example.invalid",
+                (_, _, _, _) => Task.FromResult(new EnrollmentResult(EnrollmentStatus.ServerUnreachable, "test")));
+
+            AssertShowsAnIcon(form);
+        });
+    }
+
+    /**
+     * ⚠️⚠️ Today ও About আসে <c>OwnerDrawnForm</c> থেকে, কিন্তু
+     * <b>SignInForm আসে না</b> — সেটা আলাদা ক্লাস। প্রথমবার শুধু বেস
+     * ক্লাসে আইকন বসিয়ে ভাবা হয়েছিল সব জানালা ঢাকা পড়েছে, অথচ ইনস্টলের
+     * পর স্টাফ যেটা <b>সবার আগে</b> দেখেন সেটাই বাদ পড়েছিল।
+     *
+     * ⭐ তাই দুই বংশ আলাদা করে পরীক্ষা করা হয়।
+     */
+    [Fact]
+    public void The_owner_drawn_windows_carry_the_brand_icon()
+    {
+        OnStaThread(() =>
+        {
+            using var fonts = new oXeio.Agent.Ui.TrayFonts();
+            using var form = new oXeio.Agent.Ui.AboutForm(fonts, () => new TrayOptions
+            {
+                AgentVersion = "0.0.0",
+                ServerUrl = "https://example.invalid",
+            });
+
+            AssertShowsAnIcon(form);
+        });
+    }
+
+    private static void AssertShowsAnIcon(Form form)
+    {
+        Assert.NotNull(form.Icon);
+
+        // ⚠️⚠️ `Icon` বসানো থাকা **প্রমাণ নয়** — ShowIcon মিথ্যা হলে
+        //    Windows-এর কাছে জানালাটার কোনো আইকনই থাকে না।
+        Assert.True(form.ShowIcon, "ShowIcon=false হলে বসানো Icon-ও মুছে যায়");
+    }
+
+    /// <summary>
+    /// ⚠️ WinForms কন্ট্রোল কেবল STA থ্রেডে তৈরি করা যায়, আর xunit-এর
+    /// থ্রেড MTA। নতুন প্যাকেজ (Xunit.StaFact) যোগ না করে নিজেই থ্রেডটা
+    /// বানানো হয় — একটা আইকন টেস্টের জন্য নির্ভরতা বাড়ানোর মানে হয় না।
+    /// </summary>
+    private static void OnStaThread(Action body)
+    {
+        Exception? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try { body(); }
+            catch (Exception ex) { failure = ex; }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        // ⚠️ থ্রেডের ভেতরের ব্যর্থতা এখানে না ছুড়লে টেস্টটা **সবুজ** থাকত
+        //    অথচ কিছুই প্রমাণ করত না।
+        if (failure is not null) throw failure;
     }
 }

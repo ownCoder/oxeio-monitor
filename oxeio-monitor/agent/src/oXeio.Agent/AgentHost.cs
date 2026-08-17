@@ -362,9 +362,21 @@ internal sealed class AgentHost : IAsyncDisposable
                 }
 
                 // ⭐ G46 — পর্দা জমে থাকলে ইনপুট টাইমারকে আর বিশ্বাস করা হয় না
-                Record(_machine!.Tick(
+                var before = _machine!.State;
+
+                Record(_machine.Tick(
                     now, sample.SinceLastInput, _sessionSuspended,
                     screenFrozen: _screen.IsFrozen(now)));
+
+                /**
+                 * ⭐⭐ অবস্থা বদলালে সার্ভারকে <b>সাথে সাথে</b> জানানো।
+                 *
+                 * ⚠️⚠️ এই তিনটে লাইন না থাকলে <see cref="HeartbeatUrgency"/>
+                 * থাকত, টেস্টও পাস করত, অথচ বোর্ডে কিছুই বদলাত না — এই
+                 * প্রকল্পের সবচেয়ে চেনা ভুল ("চুক্তি লেখা আছে, কলার লেখা
+                 * হয়নি")। তাই নিয়ম আর কলার একসাথে লেখা হলো।
+                 */
+                if (_machine.State != before) NudgeHeartbeat();
             }
             catch (Exception ex)
             {
@@ -792,6 +804,39 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    /**
+     * ⭐⭐ <b>অবস্থা বদলালে heartbeat জাগানোর ঘণ্টা।</b>
+     *
+     * ⚠️⚠️ মালিকের অভিযোগ থেকে: idle থেকে কাজ শুরু করলে বোর্ডে "Working"
+     * আসতে ১০–১৫ সেকেন্ড লাগত। বাগ ছিল না — এজেন্ট এক সেকেন্ডেই টের পায়,
+     * কিন্তু সার্ভার জানে কেবল heartbeat-এ, আর সেটা ১৫ সেকেন্ড পরপর।
+     *
+     * ⭐ ক্ষতিটা বিশ্বাসের: মালিক পর্দায় দেখেন "Idle", পাশে গিয়ে দেখেন
+     * তিনি টাইপ করছেন। দু-বার এমন হলে গোটা বোর্ডেই আর ভরসা থাকে না।
+     *
+     * ⚠️ কত ঘন ঘন জাগানো যাবে তার নিয়ম <see cref="HeartbeatUrgency"/>-এ,
+     * এখানে নয় — নইলে ওই সংখ্যাটা টেস্ট করা যেত না।
+     */
+    private readonly SemaphoreSlim _stateChanged = new(0, 1);
+
+    /// <summary>শেষ heartbeat কখন গিয়েছিল — ব্যবধানের হিসাবের জন্য।</summary>
+    private DateTimeOffset _lastBeatAt;
+
+    /// <summary>
+    /// ট্র্যাকার থ্রেড থেকে ডাকা হয়, অবস্থা বদলালে।
+    ///
+    /// ⚠️ সেমাফোরের ছাদ ১, তাই একাধিক বদল একসাথে জমে না — একটা জাগানোই
+    /// যথেষ্ট, আর ভরা থাকলে <c>Release</c> ছুড়ত।
+    /// </summary>
+    private void NudgeHeartbeat()
+    {
+        if (_stateChanged.CurrentCount == 0)
+        {
+            try { _stateChanged.Release(); }
+            catch (SemaphoreFullException) { /* অন্য থ্রেড আগেই জাগিয়েছে */ }
+        }
+    }
+
     private async Task HeartbeatLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -839,7 +884,29 @@ internal sealed class AgentHost : IAsyncDisposable
                 _log.Error("Heartbeat failed", ex);
             }
 
-            try { await Task.Delay(HeartbeatDelay(), ct); }
+            _lastBeatAt = _clock.Now;
+
+            /**
+             * ⭐ অবস্থা বদলালে ঘুম ভাঙে — কিন্তু <see cref="HeartbeatUrgency.MinGap"/>
+             * -এর চেয়ে ঘন ঘন নয়।
+             *
+             * ⚠️ <c>WaitAsync</c> সংকেত পেলে সাথে সাথে ফেরে, নইলে সময়
+             * ফুরোলে। দুটোর কোনোটাই ব্যতিক্রম নয় — শুধু বাতিল হলে ছোড়ে।
+             */
+            try
+            {
+                var wait = HeartbeatUrgency.Next(
+                    _clock.Now, _lastBeatAt, HeartbeatDelay(), stateChanged: false);
+
+                if (await _stateChanged.WaitAsync(wait, ct))
+                {
+                    // জেগেছি অবস্থা বদলের সংকেতে — এখন কি পাঠানোর সময় হয়েছে?
+                    var extra = HeartbeatUrgency.Next(
+                        _clock.Now, _lastBeatAt, HeartbeatDelay(), stateChanged: true);
+
+                    if (extra > TimeSpan.Zero) await Task.Delay(extra, ct);
+                }
+            }
             catch (OperationCanceledException) { return; }
         }
     }

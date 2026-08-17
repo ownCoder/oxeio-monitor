@@ -70,6 +70,11 @@ internal sealed class SignInForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
         ShowInTaskbar = true;
+
+        // ⭐ ব্র্যান্ড আইকন। ⚠️ এই ক্লাসটা OwnerDrawnForm-এর উত্তরাধিকারী
+        //    **নয়**, তাই বেস ক্লাসে বসিয়ে এটা পাওয়া যায় না — অথচ
+        //    ইনস্টলের পর স্টাফ এই জানালাটাই সবার আগে দেখেন।
+        Icon = BrandIcon.Value;
         BackColor = _theme.Surface;
         ForeColor = _theme.Ink;
         Font = _fonts.Get(TrayFontRole.Body, dpi);

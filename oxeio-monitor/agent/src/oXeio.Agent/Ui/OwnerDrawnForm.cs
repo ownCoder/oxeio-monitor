@@ -59,18 +59,18 @@ internal abstract class OwnerDrawnForm : Form
         ShowInTaskbar = true;
 
         /**
-         * ⭐⭐ **টাস্কবারের আইকন** — ব্র্যান্ডের লাল টাইল ও সাদা X।
+         * ⭐⭐ <b>টাস্কবার ও টাইটেল বারের আইকন</b> — ব্র্যান্ডের লাল টাইল।
          *
-         * ⚠️⚠️ `ApplicationIcon` বসানোই যথেষ্ট নয়: ওটা exe-র শেল-আইকন,
-         *    কিন্তু WinForms টাস্কবারে দেখায় <c>Form.Icon</c>, আর সেটা
-         *    না দিলে **নিজের ডিফল্ট** আইকন বসায়। মালিক ঠিক ওটাই দেখেছেন।
-         *
-         * ⚠️ <c>ShowIcon = false</c> থাকছে — টাইটেল বারে আইকন নেই, কারণ
-         *    জানালাটা owner-drawn আর ওখানে ১৬px আইকন বেমানান। ⭐ তাতে
-         *    টাস্কবারের আইকন যায় না; দুটো আলাদা জায়গা।
+         * ⚠️⚠️ <b>দুটোই লাগে, আর ক্রমটা নয় — জোড়াটা।</b> আগে এখানে
+         * <c>ShowIcon = false</c> ছিল, আর তখন <c>Icon</c> বসালেও জানালার
+         * আইকন <b>শূন্যই থাকে</b> — মেপে দেখা হয়েছে: FixedDialog +
+         * ShowIcon=false + Icon বসানো অবস্থাতেও <c>WM_GETICON</c> তিনটে
+         * স্লটেই ০ ফেরত দেয়। অর্থাৎ শুধু <c>Icon</c> বসিয়ে "হয়ে গেছে"
+         * ভাবাটা একটা <b>নীরব</b> ভুল হতো।
          */
         Icon = BrandIcon.Value;
-        ShowIcon = false;
+        ShowIcon = true;
+
         KeyPreview = true;
         StartPosition = FormStartPosition.Manual;
 
@@ -748,26 +748,4 @@ internal abstract class OwnerDrawnForm : Form
             return path;
         }
     }
-
-    /**
-     * এমবেড করা ব্র্যান্ড আইকন — একবার পড়া হয়, সব জানালা ভাগ করে নেয়।
-     *
-     * ⚠️⚠️ ব্যর্থ হলে <c>null</c>, ব্যতিক্রম নয়। আইকন না পাওয়ার সবচেয়ে
-     * খারাপ ফল হলো টাস্কবারে পুরোনো চেহারা — কিন্তু ছুড়ে দিলে
-     * <b>সাইন-ইন জানালাটাই খুলত না</b>, আর কর্মী কাজই শুরু করতে পারতেন না।
-     */
-    private static readonly Lazy<Icon?> BrandIcon = new(() =>
-    {
-        try
-        {
-            using var stream = typeof(OwnerDrawnForm).Assembly
-                .GetManifestResourceStream("oXeio.Agent.brand.ico");
-
-            return stream is null ? null : new Icon(stream);
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    });
 }
