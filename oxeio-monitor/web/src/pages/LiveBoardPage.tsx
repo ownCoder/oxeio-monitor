@@ -398,26 +398,16 @@ export function LiveBoardPage() {
           />
 
           {/*
-            ⭐ মকআপ ক-এর মতো **ইতিবাচক দিক থেকে** — "কতগুলো সচল", "কতগুলো
-               মরা" নয়। সাতটার সাতটাই চললে সংখ্যাটা তখন একটা আশ্বাস, আর
-               সেটাই বোর্ড খোলার একটা বৈধ কারণ।
+            ⚠️⚠️ এখানে একটা **"Agents up"** টাইল ছিল, লাল হতো, আর লিখত
+               "hours are being lost"। সেটা তুলে দেওয়া হয়েছে *(১৭ আগস্ট)*
+               কারণ সংখ্যাটা আসত `agent_down` স্ট্যাটাস থেকে, আর ওই
+               স্ট্যাটাসটাই ভুল ছিল — বাড়ি চলে যাওয়া কর্মীকেও গুনত।
 
-            ⚠️⚠️ **লাল এখানেই, আর পর্দায় এটাই একমাত্র লাল।** এজেন্ট বন্ধ
-               মানে ঠিক এই মুহূর্তে কারো ঘণ্টা **হারিয়ে যাচ্ছে** — সেটা
-               খোলা অ্যালার্টের চেয়ে ভিন্ন জাতের, কারণ অ্যালার্ট ইতিমধ্যে
-               ঘটে যাওয়া কিছুর খবর। তাই পাশের টাইলটা হলুদ, এটা লাল।
+            ⭐ একই তথ্য এখন **পাশের প্যানেলেই** আছে, আর সেখানে ঢের ভালো
+               ভাবে: *"Agent silent — BELAL … no shutdown event arrived
+               either"*। টাইলটা কেবল একটা সংখ্যা দিত, অ্যালার্ট দেয় নাম,
+               কারণ আর করণীয়।
           */}
-          <Stat
-            label="Agents up"
-            value={stats.total - stats.agentDown}
-            unit={`/${stats.total}`}
-            tone={stats.agentDown > 0 ? 'attention' : 'counted'}
-            sub={
-              stats.agentDown > 0
-                ? `${stats.agentDown} silent — hours are being lost`
-                : 'every heartbeat is fresh'
-            }
-          />
 
           {/*
             ⚠️ owner ছাড়া কেউ অ্যালার্ট দেখেন না (`listAlerts` owner-only),
@@ -687,13 +677,10 @@ export function LiveBoardPage() {
             onChange={setWho}
             items={[
               { id: 'working', label: `Working · ${working.length}` },
-              {
-                id: 'resting',
-                label:
-                  stats.agentDown > 0
-                    ? `Not working · ${resting.length} · ${stats.agentDown} down`
-                    : `Not working · ${resting.length}`,
-              },
+              // ⚠️ আগে এখানে "· 1 down" জুড়ত। সেটা `agent_down` স্ট্যাটাস
+              //    থেকে আসত, আর ওটাই ভুল ছিল — বাড়ি চলে যাওয়া কর্মীকেও
+              //    গুনত, ফলে ট্যাবের নামেই মিথ্যা অভিযোগ বসে থাকত।
+              { id: 'resting', label: `Not working · ${resting.length}` },
             ]}
           />
 
@@ -928,7 +915,6 @@ export function LiveBoardPage() {
     /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
     withTarget: number;
     metTarget: number;
-    agentDown: number;
   }
 
   /**
@@ -950,7 +936,6 @@ export function LiveBoardPage() {
     let active = 0;
     let workedToday = 0;
     let todaySec = 0;
-    let agentDown = 0;
     let withTarget = 0;
     let metTarget = 0;
 
@@ -958,7 +943,6 @@ export function LiveBoardPage() {
       // ⚠️ ট্যাবের ভাগের সাথে **একই** শর্ত — দুই জায়গায় দুবার লিখলে
       //    একদিন একটা বদলাত আর অন্যটা নয়, আর বোর্ড নিজেই নিজেকে কাটত।
       if (isWorking(card.status)) active += 1;
-      if (card.status === 'agent_down') agentDown += 1;
       if (card.todayWorkedSec > 0) workedToday += 1;
       todaySec += card.todayWorkedSec;
 
@@ -980,7 +964,6 @@ export function LiveBoardPage() {
       todaySec,
       withTarget,
       metTarget,
-      agentDown,
     };
   }
 

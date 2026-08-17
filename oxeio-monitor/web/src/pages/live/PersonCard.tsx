@@ -28,7 +28,7 @@ import { DayOffTag, targetText, TodayRing } from './TodayRing';
  * বাঁ দিকের পটির রঙ।
  *
  * ⚠️ `StatusDot`-এর ভেতরের `DOT_CLASS` এক্সপোর্ট করা নেই, তাই নিয়মটা এখানে
- *    আবার লেখা হলো — **হুবহু একই নিয়ম**: `agent_down` একমাত্র সলিড লাল
+ *    আবার লেখা হলো — **হুবহু একই নিয়ম** (agent_down উঠে গেছে, ১৭ আগস্ট)
  *    (IT-র সমস্যা), `offline` ধূসর (কর্মী চলে গেছে — স্বাভাবিক)। দুটো
  *    মিলিয়ে ফেললে হয় মিথ্যা অভিযোগ হয়, নয় আসল সমস্যা চাপা পড়ে।
  *
@@ -42,7 +42,6 @@ const EDGE: Record<LiveStatus, string> = {
   active: 'bg-ok',
   idle: 'bg-idle',
   offline: 'bg-offline',
-  agent_down: 'bg-attention',
 };
 
 export function PersonCard({

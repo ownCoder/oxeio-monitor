@@ -74,19 +74,11 @@ describe('snapshotMessage', () => {
     expect(msg).toContain('Offline: Karim');
   });
 
-  /**
-   * ⚠️⚠️ agent down **আলাদা করে শেষে** — এটাই একমাত্র সারি যেটা সত্যিকারের
-   * সমস্যা। idle-এর সাথে মিশিয়ে দিলে রোজকার শব্দের নিচে চাপা পড়ত।
+  /*
+   * ⚠️ এখানে "agent down আলাদা সারিতে" টেস্টটা ছিল। বোর্ড থেকে ওই
+   *    স্ট্যাটাসটাই তুলে দেওয়া হয়েছে — এজেন্ট ভাঙার খবর এখন অ্যালার্ট
+   *    হয়ে আসে, স্ন্যাপশটের সারি হয়ে নয়।
    */
-  it('agent down আলাদা ও চিহ্নিত', () => {
-    const msg = snapshotMessage({
-      people: [p('Ali', 'active'), p('Sadia', 'agent_down')],
-      clock: '11:00',
-    });
-
-    expect(msg).toContain('⚠ Agent down: Sadia');
-    expect(msg!.indexOf('Agent down')).toBeGreaterThan(msg!.indexOf('Working now'));
-  });
 
   it('সবাই কাজ করলে শুধু গোনাটাই থাকে', () => {
     const msg = snapshotMessage({

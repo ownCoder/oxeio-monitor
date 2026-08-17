@@ -361,10 +361,6 @@ internal sealed class AgentHost : IAsyncDisposable
                     Record(_machine!.OnResume(gap.ResumedAt));
                 }
 
-                // ⭐⭐ G46 — ছাপ নেওয়া হয় **এখানে**, স্ক্রিনশটের স্লটে নয়।
-                //    কারণ ও পরিণতি SampleScreen-এর ডকে।
-                SampleScreen(now);
-
                 // ⭐ G46 — পর্দা জমে থাকলে ইনপুট টাইমারকে আর বিশ্বাস করা হয় না
                 Record(_machine!.Tick(
                     now, sample.SinceLastInput, _sessionSuspended,
@@ -380,6 +376,23 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    /**
+     * স্ক্রিনশটের স্লট <b>আর</b> G46-এর ছাপ — দুটোই এই একটা লুপে।
+     *
+     * ⚠️⚠️ <b>ছাপটা ট্র্যাকার থ্রেডে ছিল, আর সেটাই ভুল ছিল।</b> তাতে
+     * <see cref="_capture"/>-কে দুটো থ্রেড একসাথে ব্যবহার করত, অথচ ওটা
+     * শুরু থেকেই একক-থ্রেডের ধরে বানানো — ভেতরে DXGI-র COM অবজেক্ট, আর
+     * একই আউটপুট দুবার duplicate করা যায় না।
+     *
+     * ⭐ তাই <b>মালিক একজনই</b>: এই লুপ। স্ক্রিনশটের স্লট আর ছাপের সময়,
+     * যেটা আগে আসে সেই পর্যন্ত ঘুম — অর্থাৎ ছাপ তবু স্ক্রিনশটের
+     * ছন্দ থেকে স্বাধীন, যেটা অচলাবস্থা এড়াতে দরকার ছিল।
+     *
+     * ⚠️ দুটো ঘড়ি ইচ্ছাকৃতভাবে আলাদা: স্লট চলে বাস্তব ঘড়িতে (ওগুলো
+     * দিনের নির্দিষ্ট সময়ে বাঁধা), আর ছাপ চলে monotonic ঘড়িতে
+     * (<see cref="ScreenActivity"/>-ও তা-ই ব্যবহার করে)। মিশিয়ে ফেললে
+     * NTP সংশোধনে হিসাব এলোমেলো হতো।
+     */
     private async Task CaptureLoopAsync(CancellationToken ct)
     {
         var next = _slots!.Next(DateTimeOffset.UtcNow);
@@ -387,11 +400,21 @@ internal sealed class AgentHost : IAsyncDisposable
         while (!ct.IsCancellationRequested)
         {
             var wait = next.FireAt - DateTimeOffset.UtcNow;
+
+            var untilSample = UntilNextScreenSample();
+            if (untilSample < wait) wait = untilSample;
+
             if (wait > TimeSpan.Zero)
             {
                 try { await Task.Delay(wait, ct); }
                 catch (OperationCanceledException) { return; }
             }
+
+            // ⚠️ নিজেই দেখে নেয় সময় হয়েছে কি না, আর নিজেই ব্যর্থতা সামলায়
+            SampleScreen(_clock.Now);
+
+            // ⚠️ ছাপের জন্য জাগলে স্লটের সময় এখনো আসেনি — তখন স্ক্রিনশট নয়
+            if (DateTimeOffset.UtcNow < next.FireAt) continue;
 
             try
             {
@@ -430,14 +453,31 @@ internal sealed class AgentHost : IAsyncDisposable
     /**
      * ⭐⭐⭐ <b>G46 — পর্দার ছাপ নেওয়া।</b>
      *
-     * ⚠️⚠️ এটা ইচ্ছাকৃতভাবে <b>ট্র্যাকিং টিকে</b>, ক্যাপচার স্লটে নয়। স্লটে
-     * থাকলে ছাপের উৎসটা <see cref="CaptureGate"/>-এর ACTIVE শর্তের নিচে
-     * পড়ত, আর তাতে একটা অচলাবস্থা তৈরি হতো — বিস্তারিত
-     * <see cref="ScreenSampling"/>-এ।
+     * ⚠️⚠️ ডাকা হয় <b>ক্যাপচার লুপ থেকে</b>, ট্র্যাকার থ্রেড থেকে নয় —
+     * <see cref="_capture"/>-এর মালিক একজনই থাকতে হবে (দেখুন
+     * <see cref="CaptureLoopAsync"/>)।
+     *
+     * ⭐ তবু এটা স্ক্রিনশটের <b>স্লট</b> থেকে স্বাধীন: স্লট চলে কেবল
+     * ACTIVE অবস্থায়, আর ছাপ চলে সবসময়। ওই পার্থক্যটাই অচলাবস্থা এড়ায় —
+     * বিস্তারিত <see cref="ScreenSampling"/>-এ।
      *
      * ⚠️ ব্যর্থ হলে চুপচাপ ফিরে আসা, কিন্তু <see cref="_screenSampledAt"/>
      * তবু বসানো হয় — নইলে ক্যাপচার ভাঙা মেশিনে প্রতি সেকেন্ডে চেষ্টা চলত।
      */
+    /// <summary>পরের ছাপ কতক্ষণ পরে — ক্যাপচার লুপের ঘুম ঠিক করতে।</summary>
+    private TimeSpan UntilNextScreenSample()
+    {
+        var now = _clock.Now;
+        if (_screenSampledAt is null) return TimeSpan.Zero;
+
+        var every = _screen.IsFrozen(now)
+            ? ScreenSampling.WhenFrozen
+            : ScreenSampling.Interval;
+
+        var due = _screenSampledAt.Value + every - now;
+        return due > TimeSpan.Zero ? due : TimeSpan.Zero;
+    }
+
     private void SampleScreen(DateTimeOffset now)
     {
         if (_capture is null) return;

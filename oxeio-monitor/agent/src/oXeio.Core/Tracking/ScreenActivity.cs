@@ -88,6 +88,17 @@ public sealed class ScreenActivity
     private readonly TimeSpan _frozenAfter;
     private readonly TimeSpan _staleAfter;
 
+    /**
+     * ⚠️⚠️ <b>লিখে ক্যাপচার লুপ, পড়ে ট্র্যাকার থ্রেড।</b> তালা ছাড়া
+     * <see cref="DateTimeOffset"/> (১২+ বাইট) পড়ার সময় ছিঁড়ে যেতে পারত —
+     * অর্ধেক পুরোনো, অর্ধেক নতুন — আর ফল হতো উদ্ভট একটা সময়, অর্থাৎ
+     * অকারণে "জমে গেছে" বা অকারণে "বাসি"। বছরে হয়তো একবার, আর ধরা
+     * প্রায় অসম্ভব।
+     *
+     * ⭐ খরচ নগণ্য: সেকেন্ডে বড়জোর একবার ডাকা হয়।
+     */
+    private readonly object _gate = new();
+
     private byte[]? _last;
     private DateTimeOffset _changedAt;
 
@@ -138,15 +149,18 @@ public sealed class ScreenActivity
     {
         ArgumentNullException.ThrowIfNull(fingerprint);
 
-        // ⚠️ বদলাক বা না বদলাক — নমুনা এসেছে, সেটাই আলাদা করে মনে রাখা হয়।
-        //    "শেষ কবে বদলেছে" আর "শেষ কবে দেখেছি" দুটো আলাদা প্রশ্ন, আর
-        //    দ্বিতীয়টার উত্তর না রাখাই ছিল অচলাবস্থার মূল।
-        _sampledAt = now;
-
-        if (_last is null || Differs(_last, fingerprint))
+        lock (_gate)
         {
-            _last = fingerprint;
-            _changedAt = now;
+            // ⚠️ বদলাক বা না বদলাক — নমুনা এসেছে, সেটাই আলাদা করে মনে রাখা
+            //    হয়। "শেষ কবে বদলেছে" আর "শেষ কবে দেখেছি" দুটো আলাদা প্রশ্ন,
+            //    আর দ্বিতীয়টার উত্তর না রাখাই ছিল অচলাবস্থার মূল।
+            _sampledAt = now;
+
+            if (_last is null || Differs(_last, fingerprint))
+            {
+                _last = fingerprint;
+                _changedAt = now;
+            }
         }
     }
 
@@ -160,25 +174,34 @@ public sealed class ScreenActivity
     /// </summary>
     public bool IsFrozen(DateTimeOffset now)
     {
-        if (_last is null) return false;
+        lock (_gate)
+        {
+            if (_last is null) return false;
 
-        /**
-         * ⭐⭐⭐ <b>টাটকা নমুনা ছাড়া কোনো অভিযোগ নয়</b> (<see cref="StaleAfter"/>)।
-         *
-         * ⚠️⚠️ নমুনা আসা যেকোনো কারণে থেমে যেতে পারে — ক্যাপচার ব্যর্থ, মনিটর
-         * খুলে ফেলা, § ৪.২-এর জানালা বন্ধ, পর্দা লক। ওই নীরবতাকে "পর্দা
-         * বদলায়নি" ধরলে <b>তথ্যের অভাবই শাস্তি</b> হয়ে দাঁড়াত, আর একবার
-         * ধরা পড়লে বেরোনোর পথও থাকত না।
-         */
-        if (now - _sampledAt > _staleAfter) return false;
+            /**
+             * ⭐⭐⭐ <b>টাটকা নমুনা ছাড়া কোনো অভিযোগ নয়</b> (<see cref="StaleAfter"/>)।
+             *
+             * ⚠️⚠️ নমুনা আসা যেকোনো কারণে থেমে যেতে পারে — ক্যাপচার ব্যর্থ, মনিটর
+             * খুলে ফেলা, § ৪.২-এর জানালা বন্ধ, পর্দা লক। ওই নীরবতাকে "পর্দা
+             * বদলায়নি" ধরলে <b>তথ্যের অভাবই শাস্তি</b> হয়ে দাঁড়াত, আর একবার
+             * ধরা পড়লে বেরোনোর পথও থাকত না।
+             */
+            if (now - _sampledAt > _staleAfter) return false;
 
-        // ⚠️ ঘড়ি পিছিয়ে গেলে (NTP সংশোধন) ঋণাত্মক হতে পারে — তখনও "জমেনি"
-        return now - _changedAt >= _frozenAfter;
+            // ⚠️ ঘড়ি পিছিয়ে গেলে (NTP সংশোধন) ঋণাত্মক হতে পারে — তখনও "জমেনি"
+            return now - _changedAt >= _frozenAfter;
+        }
     }
 
     /// <summary>শেষ কবে পর্দা বদলেছিল — লগে দেখানোর জন্য। নমুনা না থাকলে null।</summary>
-    public DateTimeOffset? LastChangedAt => _last is null ? null : _changedAt;
+    public DateTimeOffset? LastChangedAt
+    {
+        get { lock (_gate) { return _last is null ? null : _changedAt; } }
+    }
 
     /// <summary>শেষ কবে নমুনা এসেছিল — ডায়াগনস্টিকসে "কেন জমেনি" বোঝার জন্য।</summary>
-    public DateTimeOffset? LastSampledAt => _last is null ? null : _sampledAt;
+    public DateTimeOffset? LastSampledAt
+    {
+        get { lock (_gate) { return _last is null ? null : _sampledAt; } }
+    }
 }

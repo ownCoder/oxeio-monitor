@@ -44,6 +44,15 @@ internal static class ScreenFingerprint
     {
         if (frame is null || frame.Width == 0 || frame.Height == 0) return null;
 
+        /**
+         * ⚠️⚠️ <b>বাফারটা সত্যিই যথেষ্ট বড় তো?</b> এই একটা লাইন না থাকলে
+         * Skia অ্যারের সীমানার বাইরে পড়ত, আর সেটা .NET-এ ধরা যায় না —
+         * <b>প্রসেসটা সাথে সাথে মরে যেত</b>, কোনো লগ ছাড়াই। ক্যাপচার
+         * ইঞ্জিন দুটোই আজ tight বাফার দেয়, কিন্তু "আজ দেয়" আর "সবসময়
+         * দেবে" এক কথা নয় — আর ভুল হলে দামটা গোটা এজেন্ট।
+         */
+        if ((long)frame.Stride * frame.Height > frame.Pixels.LongLength) return null;
+
         try
         {
             var source = new SKImageInfo(

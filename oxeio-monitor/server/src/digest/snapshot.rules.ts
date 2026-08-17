@@ -56,7 +56,6 @@ export function snapshotMessage(input: SnapshotInput): string | null {
   const working = people.filter((p) => p.status === 'active');
   const idle = people.filter((p) => p.status === 'idle');
   const offline = people.filter((p) => p.status === 'offline');
-  const down = people.filter((p) => p.status === 'agent_down');
 
   const lines = [
     `oXeio · ${clock}`,
@@ -80,14 +79,15 @@ export function snapshotMessage(input: SnapshotInput): string | null {
     lines.push('', `Offline: ${offline.map((p) => p.fullName).join(' · ')}`);
   }
 
-  /**
-   * ⚠️⚠️ agent down **আলাদা করে শেষে** — এটাই একমাত্র সারি যেটা সত্যিকারের
-   * সমস্যা (PC চালু, কিন্তু এজেন্ট সাড়া দিচ্ছে না)। idle-এর সাথে মিশিয়ে
-   * দিলে ওটা রোজকার শব্দের নিচে চাপা পড়ত।
+  /*
+   * ⚠️ এখানে একটা "⚠ Agent down" সারি ছিল। বোর্ড থেকে ওই স্ট্যাটাসটাই
+   *    তুলে দেওয়া হয়েছে (dashboard.math.ts), কারণ ওটা বাড়ি চলে যাওয়া
+   *    কর্মীকেও লাল দেখাত।
+   *
+   * ⭐ এজেন্ট সত্যিই ভাঙলে খবরটা আসে `AgentDownCheck` থেকে, অ্যালার্ট
+   *    হিসেবে — আর অ্যালার্টও এই একই টেলিগ্রাম চ্যানেলেই যায়। অর্থাৎ
+   *    খবরটা হারায়নি, শুধু **সঠিক দরজা দিয়ে** আসে।
    */
-  if (down.length > 0) {
-    lines.push('', `⚠ Agent down: ${down.map((p) => p.fullName).join(' · ')}`);
-  }
 
   return lines.join('\n');
 }

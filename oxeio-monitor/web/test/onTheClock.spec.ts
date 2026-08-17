@@ -10,7 +10,7 @@ import { isWorking, splitBoard } from '../src/pages/live/onTheClock';
  * সে বোর্ড থেকে **নীরবে উধাও** হয়ে যায়। ১৫ জনের অফিসে একজন কম দেখালে
  * সেটা চোখে পড়ার কথা নয়।
  */
-const ALL: LiveStatus[] = ['active', 'idle', 'offline', 'agent_down'];
+const ALL: LiveStatus[] = ['active', 'idle', 'offline'];
 
 const card = (status: LiveStatus, employeeId: number): LiveCard =>
   ({ employeeId, status }) as LiveCard;
@@ -28,9 +28,8 @@ describe('isWorking', () => {
     expect(isWorking('idle')).toBe(false);
   });
 
-  it('offline ও agent_down কাজ নয়', () => {
+  it('offline কাজ নয়', () => {
     expect(isWorking('offline')).toBe(false);
-    expect(isWorking('agent_down')).toBe(false);
   });
 });
 
@@ -43,7 +42,7 @@ describe('splitBoard', () => {
 
   /**
    * ⭐⭐ **এই ফাইলের মূল টেস্ট।** দ্বিতীয় ট্যাবটা কেউ যদি
-   * `status === 'idle'` লিখে বানাত, তাহলে `offline` আর `agent_down`
+   * `status === 'idle'` লিখে বানাত, তাহলে `offline` কার্ডগুলো
    * কার্ডগুলো **কোনো ট্যাবেই থাকত না**।
    */
   it('প্রতিটি কার্ড ঠিক একবার — কেউ হারায় না, কেউ দুবার আসে না', () => {
@@ -52,7 +51,9 @@ describe('splitBoard', () => {
     const { working, resting } = splitBoard(cards);
     const seen = [...working, ...resting].map((c) => c.employeeId).sort();
 
-    expect(seen).toEqual([1, 2, 3, 4]);
+    // ⚠️ হাতে লেখা তালিকা নয় — ALL থেকেই গোনা, নইলে একটা স্ট্যাটাস
+    //    যোগ বা বিয়োগ হলেই টেস্টটা ভাঙত, অথচ দাবিটা অক্ষত থাকত।
+    expect(seen).toEqual(ALL.map((_, i) => i + 1));
     expect(working.length + resting.length).toBe(cards.length);
   });
 

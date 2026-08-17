@@ -12,14 +12,12 @@ const ORDER: { status: LiveStatus; label: string }[] = [
   { status: 'active', label: 'Working' },
   { status: 'idle', label: 'Idle' },
   { status: 'offline', label: 'Offline' },
-  { status: 'agent_down', label: 'Agent down' },
 ];
 
 const FILL: Record<LiveStatus, string> = {
   active: 'var(--color-ok)',
   idle: 'var(--color-idle)',
   offline: 'var(--color-offline)',
-  agent_down: 'var(--color-attention)',
 };
 
 /**
