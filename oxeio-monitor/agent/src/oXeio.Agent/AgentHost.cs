@@ -636,8 +636,18 @@ internal sealed class AgentHost : IAsyncDisposable
          * মনিটরে ৮৬৪ হতো। ৭ দিনের লগে ওটুকুই যথেষ্ট, আর তাতে বাকি লাইনগুলো
          * চাপা পড়ে না।
          */
+        /**
+         * ⚠️⚠️ স্লটের সময়টা <b>ঢাকার</b> ঘড়িতে দেখানো হয়, UTC-তে নয়।
+         *
+         * `slot.SlotStart` UTC (`SlotScheduler.FloorToSlot` অফসেট শূন্য দেয়),
+         * কিন্তু এই লাইনের **টাইমস্ট্যাম্প** লেখে `FileLog`, আর সেটা লোকাল
+         * সময়ে (`DateTimeOffset.Now`, +06:00)। দুটো এক জোনে না রাখলে লগে
+         * পাশাপাশি বসত "22:14 … slot 16:10" — একই ঘটনার দুই সময়, আর যিনি
+         * ইনসিডেন্টের সময় লগ পড়ছেন তাঁকে মাথায় ৬ ঘণ্টা যোগ করতে হতো।
+         * ঠিক এই বিভ্রান্তিটাই G137 তদন্তে ধরা পড়েছে (09 § ৩ফ)।
+         */
         _log.Info(
-            $"📸 slot {slot.SlotStart:HH:mm} · {results.Count} monitor(s)" +
+            $"📸 slot {DhakaTime.LocalTimeOf(slot.SlotStart):HH\\:mm} · {results.Count} monitor(s)" +
             (front is null ? "" : $" · {front.ProcessName}"));
     }
 
