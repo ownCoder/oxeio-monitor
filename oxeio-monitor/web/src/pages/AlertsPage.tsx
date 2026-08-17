@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import {
   acknowledgeAlert,
+  acknowledgeAllAlerts,
   ALERT_SEVERITY_LABEL,
   ALERT_TYPE_LABEL,
   listAlerts,
@@ -47,6 +48,7 @@ export function AlertsPage() {
   );
 
   const health = useApi((signal) => getOpsHealth(signal), []);
+  const ackAll = useMutation();
 
   if (user?.role !== 'owner') {
     return (
@@ -84,6 +86,37 @@ export function AlertsPage() {
           title={showAll ? 'All alerts' : 'Open alerts'}
           hint="Nothing is ever deleted — acknowledging just marks it seen"
           padded={false}
+          actions={
+            /*
+              ⭐ **"Seen all"** — এক ক্লিকে সব খোলা অ্যালার্ট দেখা *(১৮ আগস্ট)*।
+                 G01 ("এজেন্ট চুপ") ১২টা PC-তে বারবার এলে ১১৮টা ওয়ার্নিং জমে,
+                 আর এক-এক করে চাপা যন্ত্রণা।
+
+              ⚠️ শুধু **খোলা** থাকলে দেখানো হয় (`openCount > 0`) — সব দেখা
+                 থাকলে বোতামটাই বসে না, নইলে "কিছু নেই" অবস্থায় একটা নিষ্ক্রিয়
+                 বোতাম বিভ্রান্তি করত।
+
+              ⚠️ নিশ্চিত-প্রম্পট — এটা একসাথে অনেকগুলো ছোঁয়, তাই ভুল ক্লিকে
+                 যেন গোটা তালিকা নীরবে seen না হয়ে যায়।
+            */
+            (alerts.data?.openCount ?? 0) > 0 ? (
+              <MiniButton
+                disabled={ackAll.busy}
+                onClick={() =>
+                  ackAll.run(async () => {
+                    const n = alerts.data?.openCount ?? 0;
+                    if (!window.confirm(`Mark all ${n} open alerts as seen?`)) {
+                      return;
+                    }
+                    await acknowledgeAllAlerts();
+                    alerts.reload();
+                  })
+                }
+              >
+                {ackAll.busy ? 'Marking…' : 'Seen all'}
+              </MiniButton>
+            ) : undefined
+          }
         >
           {alerts.loading && !alerts.data && <Loading />}
           {alerts.error && (

@@ -33,6 +33,18 @@ export class AlertsController {
   }
 
   /**
+   * `POST /api/v1/alerts/acknowledge-all` — একসাথে সব খোলা অ্যালার্ট দেখেছি।
+   *
+   * ⚠️ `:id/acknowledge`-এর **আগে** ঘোষণা করা — নইলে `acknowledge-all`
+   *    একটা `:id` হিসেবে পড়ার ঝুঁকি (রুট-মেলানোর ক্রম)।
+   */
+  @Post('acknowledge-all')
+  @HttpCode(HttpStatus.OK)
+  acknowledgeAll(@CurrentUser() actor: SessionUser): Promise<{ count: number }> {
+    return this.alerts.acknowledgeAll(actor.userId);
+  }
+
+  /**
    * `POST /api/v1/alerts/:id/acknowledge` — "দেখেছি" বলা।
    *
    * ⚠️ অ্যালার্ট কখনো ডিলিট হয় না, শুধু acknowledged হয়। কী কী ভুল হয়েছিল

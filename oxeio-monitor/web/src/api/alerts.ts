@@ -118,3 +118,13 @@ export function listAlerts(
 export function acknowledgeAlert(id: string): Promise<AlertRow> {
   return api<AlertRow>(`/alerts/${id}/acknowledge`, { method: 'POST' });
 }
+
+/**
+ * ⭐ একসাথে সব খোলা অ্যালার্ট "দেখেছি" — G01-এর মতো একই জিনিস ১২টা PC-তে
+ * বারবার এলে এক-এক করে চাপার যন্ত্রণা কমায়।
+ *
+ * ⚠️ আগে-দেখা সারি ছোঁয় না; ফেরত দেয় কতগুলো নতুন করে seen হলো।
+ */
+export function acknowledgeAllAlerts(): Promise<{ count: number }> {
+  return api<{ count: number }>(`/alerts/acknowledge-all`, { method: 'POST' });
+}

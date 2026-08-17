@@ -190,6 +190,26 @@ export class AlertsService {
    * দ্বিতীয়বার ডাকলে নতুন নাম বসিয়ে দিলে "কে আসলে সাড়া দিয়েছিল" তথ্যটা
    * নীরবে মুছে যেত — অথচ অ্যালার্টের গোটা উদ্দেশ্যই ওই জবাবদিহি।
    */
+  /**
+   * ⭐ **একসাথে সব খোলা অ্যালার্ট "দেখেছি"** — G01-এর মতো একই জিনিস
+   * ১২টা PC-তে বারবার এলে এক-এক করে চাপা যন্ত্রণা।
+   *
+   * ⚠️⚠️ শুধু **এখনো acknowledge হয়নি** এমনগুলো (`acknowledgedAt: null`)।
+   * আগে দেখা সারির `acknowledgedBy`/সময় বদলানো হয় না — নইলে "কে প্রথম
+   * দেখেছিল" ইতিহাসটা এই এক ক্লিকে মুছে যেত।
+   *
+   * ⚠️ কিছুই **ডিলিট হয় না** — acknowledge মানে কেবল "পড়া হয়েছে"। তাই
+   * ঘণ্টা-সংশোধনের প্রমাণ (`evidence_alert_id`) অটুট থাকে।
+   */
+  async acknowledgeAll(userId: number): Promise<{ count: number }> {
+    const { count } = await this.prisma.alert.updateMany({
+      where: { acknowledgedAt: null },
+      data: { acknowledgedById: userId, acknowledgedAt: new Date() },
+    });
+    this.logger.log(`${count} alert(s) acknowledged in bulk by user ${userId}`);
+    return { count };
+  }
+
   async acknowledge(rawId: string, userId: number): Promise<AlertRow> {
     const id = parseAlertId(rawId);
 
