@@ -14,10 +14,9 @@ import {
 import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Card, Stat, StatRow } from '../components/Card';
-import { Page, SectionHead } from '../components/Page';
+import { Page } from '../components/Page';
 import { TOPBAR_SLOT_ID } from '../components/Layout';
-import { Caveat, Empty, ErrorBox, Loading } from '../components/States';
-import { StatusLegend } from '../components/StatusDot';
+import { Empty, ErrorBox, Loading } from '../components/States';
 import { Tabs } from '../components/Tabs';
 import {
   dhakaHourNow,
@@ -31,10 +30,7 @@ import { TopApps } from './live/TopApps';
 import { StatusStrip } from './live/TeamBars';
 import { TeamTable } from './live/TeamTable';
 import { MonthCard, TopPerformers, WeekBars } from './live/WeekAndMonth';
-import { PersonCard } from './live/PersonCard';
-import { getLatestShots, NO_SHOTS } from './live/latestShots';
-import { isWorking, splitBoard } from './live/onTheClock';
-import { ShotLightbox } from './live/ShotLightbox';
+import { isWorking } from './live/onTheClock';
 
 /**
  * E01 · E02 · E03 · E12 — ড্যাশবোর্ডের হোম।
@@ -85,7 +81,6 @@ const BOARD_REFRESH_MS = 15_000;
  *  · ট্যাব লুকোনো থাকলে `usePolling` টাইমার বন্ধ রাখে, তাই খোলা রেখে
  *    বাড়ি চলে গেলে সারারাত অডিট লগ ভরবে না।
  */
-const SHOT_REFRESH_MS = 4 * 60_000;
 
 /**
  * ⭐ দিনের ছন্দ **২ মিনিটে** — বোর্ডের ৩০ সেকেন্ডে নয়।
@@ -172,11 +167,14 @@ export function LiveBoardPage() {
 
   const board = usePolling(getLiveBoard, BOARD_REFRESH_MS, []);
 
-  const shots = usePolling(
-    (signal) => (canViewBoard ? getLatestShots(signal) : Promise.resolve(NO_SHOTS)),
-    SHOT_REFRESH_MS,
-    [canViewBoard],
-  );
+  /*
+   * ⚠️⚠️ এখানে `getLatestShots`-এর একটা polling ছিল — কার্ডের থাম্বনেইলের
+   *    জন্য। কার্ড Worklog-এ যাওয়ায় সেটা **তুলে দেওয়া হয়েছে**, আর সেটা
+   *    নিছক পরিচ্ছন্নতা নয়: ⭐ `GET /screenshots`-এর প্রতিটা কল একটা করে
+   *    **audit সারি লেখে** (I08 — "কে আমার স্ক্রিনশট দেখল")। বোর্ডটা
+   *    সারাদিন খোলা থাকে, তাই ছবি না দেখিয়েও সে ওই খাতাটা ভরিয়ে যেত —
+   *    আর স্টাফের বিশ্বাস ঠিক ওই খাতার উপরেই দাঁড়ানো।
+   */
 
   /**
    * ⚠️ `/live/pulse`-ও owner + manager (একই ক্লাস-লেভেল `@Roles`), তাই
@@ -245,23 +243,6 @@ export function LiveBoardPage() {
   );
 
   /**
-   * ⭐ কোন কার্ডের ছবি বড় করে খোলা — **আইডি**, ছবির কপি নয়। কপি ধরে
-   *    রাখলে রিফ্রেশে নতুন টোকেন এলেও মোডালে পুরোনো (মেয়াদোত্তীর্ণ)
-   *    লিঙ্কটাই আটকে থাকত।
-   */
-  const [openFor, setOpenFor] = useState<number | null>(null);
-
-  /**
-   * ⭐ ডিফল্ট **`working`** — বোর্ড খুললে প্রথম যে প্রশ্নটা মাথায় আসে
-   * ("এখন কে কাজ করছে?") তার উত্তর যেন কোনো ক্লিক ছাড়াই সামনে থাকে।
-   *
-   * ⚠️ পছন্দটা মনে রাখা হয় না (localStorage নেই) — ইচ্ছাকৃত। বোর্ডটা
-   * সারাদিন খোলা থাকে আর নিজে নিজে রিফ্রেশ হয়; কেউ একবার অন্য ট্যাবে
-   * গিয়ে ভুলে গেলে পরদিন খুলে দেখতেন "কেউ কাজ করছে না", অথচ আসলে তিনি
-   * অন্য ট্যাবে দাঁড়িয়ে আছেন।
-   */
-  const [who, setWho] = useState<'working' | 'resting'>('working');
-
   /**
    * ⚠️ পছন্দটা মনে রাখা হয় না — উপরের `who`-এর মতোই একই কারণে। বোর্ড
    *    সারাদিন খোলা থাকে; কেউ একবার "All time" রেখে ভুলে গেলে পরদিন
@@ -272,15 +253,14 @@ export function LiveBoardPage() {
   const data = board.data;
   const cards = data?.cards ?? [];
 
-  // ⭐ ভাগটা `onTheClock.ts`-এ — উপরের "Working now" টাইলও **একই**
-  //    `isWorking` ব্যবহার করে, তাই দুটো সংখ্যা কখনো আলাদা হতে পারে না।
-  const { working, resting } = splitBoard(cards);
-  const shown = who === 'working' ? working : resting;
-  const byEmployee = shots.data?.byEmployee;
-
-  const openCard =
-    openFor === null ? null : (cards.find((c) => c.employeeId === openFor) ?? null);
-  const openShot = openFor === null ? null : (byEmployee?.get(openFor) ?? null);
+  /*
+   * ⚠️ এখানে `splitBoard(cards)` ছিল — কার্ডের দুই ট্যাবের জন্য। কার্ড
+   *    `Worklog`-এ যাওয়ায় সেটা আর লাগে না।
+   *
+   * ⭐ তবু "Working now" টাইলের সংখ্যাটা Worklog-এর ট্যাবের সাথে কখনো
+   *    আলাদা হবে না: `summarize()` ওই একই `isWorking()` ডাকে
+   *    (`live/onTheClock.ts`), অর্থাৎ নিয়মটার ঘর একটাই।
+   */
 
   let body: ReactNode;
 
@@ -665,95 +645,21 @@ export function LiveBoardPage() {
           </Card>
         </div>
 
-        {/* ⚠️ `order-first` কেবল `lg`-এর নিচে — উপরের নোট দেখুন */}
-        <div className="mt-5 order-first lg:order-none">
-          <SectionHead
-            title={`Team · ${stats.total}`}
-            hint={
-              stats.withTarget === 0
-                ? 'No target today — weekly off or holiday · hours still count if someone works'
-                : "Ring = today's target · no fixed shift, any hour of the day counts"
-            }
-          />
+        {/*
+          ⚠️⚠️ **এখানে দলের কার্ডগুলো ছিল, এখন `Worklog` পাতায়**
+             *(১৭ আগস্ট, মালিকের অনুরোধে)*।
 
-          {/*
-            ⭐ **কারা এখন কাজ করছেন — সেটাই বোর্ডের আসল প্রশ্ন।** আগে সবাই
-               একসাথে থাকত, তাই ১৫ জনের অফিসে কাজ করা ৩ জনকে খুঁজে বের করতে
-               চোখ বুলাতে হতো। মালিকের কথায়: *"Live Board e ami shudhu
-               working staff dekhte cai."*
+          ⭐ কারণটা সরল: কার্ডগুলো ছিল পাতার **সবার নিচে**, ছ-টা টাইল ও
+             চারটে চার্ট পেরিয়ে — অথচ *"এখন কে কাজ করছে?"* প্রশ্নটাই
+             সবচেয়ে বেশিবার করা হয়। এখন সেটা সাইডবারে এক ক্লিক দূরে।
 
-            ⚠️⚠️ **লুকিয়ে ফেলা নয়, সরিয়ে রাখা।** যাঁরা কাজ করছেন না তাঁরা
-               পাশের ট্যাবেই, আর সংখ্যাটা ট্যাবের গায়ে লেখা — নইলে "কেউ
-               বাদ পড়ে গেল কি না" প্রশ্নটা মাথায় থেকে যেত।
+          ⚠️ মার্কআপটা `live/TeamCards.tsx`-এ **সরানো** হয়েছে, নকল নয় —
+             দুই জায়গায় কপি থাকলে একদিন একটা বদলাত আর অন্যটা নয়।
 
-            ⚠️ 🔴 **agent down কখনো চাপা পড়ে না** — উপরের লাল টাইলটা সবসময়
-               দেখা যায়, আর সংখ্যা শূন্য না হলে ট্যাবের গায়েও আলাদা করে
-               লেখা থাকে। ওটাই একমাত্র অবস্থা যেটা সত্যিই **সমস্যা**,
-               বাকিগুলো শুধু "এখন কাজ করছেন না"।
-          */}
-          <Tabs
-            label="Who is on the board"
-            active={who}
-            onChange={setWho}
-            items={[
-              { id: 'working', label: `Working · ${working.length}` },
-              // ⚠️ আগে এখানে "· 1 down" জুড়ত। সেটা `agent_down` স্ট্যাটাস
-              //    থেকে আসত, আর ওটাই ভুল ছিল — বাড়ি চলে যাওয়া কর্মীকেও
-              //    গুনত, ফলে ট্যাবের নামেই মিথ্যা অভিযোগ বসে থাকত।
-              { id: 'resting', label: `Not working · ${resting.length}` },
-            ]}
-          />
-
-          {/* E12 — ফোনে এক কলাম, ট্যাবে দুই, ডেস্কটপে তিন-চার */}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {shown.map((card) => (
-              <PersonCard
-                key={card.employeeId}
-                card={card}
-                shot={byEmployee?.get(card.employeeId) ?? null}
-                onOpenShot={() => setOpenFor(card.employeeId)}
-              />
-            ))}
-          </div>
-
-          {/*
-            ⚠️ খালি ট্যাব চুপ করে থাকতে পারে না — ফাঁকা জায়গা দেখলে
-               ব্যবহারকারী ভাবেন পাতাটা ভেঙে গেছে, ডেটা লোড হয়নি।
-          */}
-          {shown.length === 0 && (
-            <p className="py-8 text-center text-sm text-ink-3">
-              {who === 'working'
-                ? 'Nobody is working right now.'
-                : 'Everyone is working right now.'}
-            </p>
-          )}
-
-          <StatusLegend />
-
-          {/*
-            ⭐ `/live` কোনো `caveat` ফিল্ড পাঠায় না (dashboard.service.ts
-               দেখে নেওয়া), কিন্তু শর্তটা সত্যি — সেখানে worked সেকেন্ড
-               **যোগফল**, UNION নয়। তাই কথাটা এখানে লেখা আছে। লুকিয়ে
-               ফেললে কেউ দুই PC-র যোগ হওয়া ঘণ্টাকে আসল কাজ ধরে নিত।
-
-            ⚠️ অন্য পাতার `caveat` সার্ভার থেকে **বাংলায়** আসে
-               (activity.service.ts) — সেগুলো যেমন আসে তেমনই দেখানো হয়।
-               এই লেখাটা ক্লায়েন্টেরই, তাই এটা ইংরেজি।
-          */}
-          <Caveat>
-            When one person runs more than one PC at the same time, that stretch
-            is counted twice, so hours can read a little high. An overlap longer
-            than 15 minutes raises its own alert.
-          </Caveat>
-
-          {/* ⚠️ ছবি আনতে না পারা বোর্ড ভেঙে যাওয়া নয় — তাই ছোট করে, আলাদা করে */}
-          {shots.error && !shots.data && (
-            <p className="mt-2 text-xs text-ink-3">
-              Screenshots couldn&rsquo;t be loaded — the image area on each card
-              stays empty.
-            </p>
-          )}
-        </div>
+          ⭐ বোর্ডে "কে কাজ করছে" প্রশ্নের উত্তর তবু আছে: উপরের
+             **Working now** টাইল আর দলের টেবিল — দুটোই একই `isWorking`
+             ব্যবহার করে, তাই সংখ্যাগুলো Worklog-এর সাথে কখনো আলাদা হয় না।
+        */}
         </div>
       </>
     );
@@ -820,7 +726,6 @@ export function LiveBoardPage() {
                  * পর্দার প্রতিটা উৎস ছুঁতে হয়** — নইলে নামটাই মিথ্যা।
                  */
                 board.reload();
-                shots.reload();
                 pulse.reload();
                 trend.reload();
               }}
@@ -860,14 +765,11 @@ export function LiveBoardPage() {
       */}
       <Page>{body}
 
-        {openCard && (
-          <ShotLightbox
-            card={openCard}
-            shot={openShot}
-            onClose={() => setOpenFor(null)}
-            onRefresh={shots.reload}
-          />
-        )}
+        {/*
+          ⚠️ স্ক্রিনশটের লাইটবক্সটা এখানে ছিল — কার্ডগুলোর সাথে সেটাও
+             `Worklog` পাতায় গেছে (`live/TeamCards.tsx`)। বোর্ডে এখন
+             ছবি খোলার কোনো পথই নেই, তাই রাখলে ওটা মৃত কোড হতো।
+        */}
       </Page>
     </>
     );

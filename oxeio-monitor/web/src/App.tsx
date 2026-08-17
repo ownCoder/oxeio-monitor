@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { VersionBadge } from './components/VersionBadge';
 import { AlertsPage } from './pages/AlertsPage';
 import { DepositsPage } from './pages/DepositsPage';
+import { WorklogPage } from './pages/WorklogPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { StaffPage } from './pages/StaffPage';
@@ -100,6 +101,15 @@ function Router() {
    */
   const isStaff = user.role === 'employee';
 
+  /**
+   * ⭐ Worklog — Live Board-এর মতোই owner ও manager।
+   *
+   * ⚠️⚠️ `mayOpenSettings`-এর মতোই **আলাদা নাম**, `!isStaff` নয়। শর্তটা
+   * তিন জায়গায় থাকে (নেভ · রুট · পর্দা), আর নাম না দিলে একদিন একটা
+   * বদলাত আর বাকি দুটো নয় — G134-এ ঠিক সেটাই ঘটেছিল।
+   */
+  const mayOpenWorklog = isOwner || user.role === 'manager';
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -169,6 +179,12 @@ function Router() {
           ⚠️ alerts-এর মতোই owner না হলে রুটটা **থাকেই না** — জামানত
              সরাসরি বেতনের অংশ (ADR-023 · ADR-027)।
         */}
+        {/*
+          ⚠️ owner **ও** manager — `/live`-এর `@Roles`-এর সাথে হুবহু এক।
+             G134-এর শিক্ষা: এক অধিকার তিন জায়গায় (নেভ · রুট · পর্দা), আর
+             তিনটেই না মিললে ব্যবহারকারী নেভে দেখেন কিন্তু চাপলে "কিছু নেই"।
+        */}
+        {mayOpenWorklog && <Route path="worklog" element={<WorklogPage />} />}
         {isOwner && <Route path="deposits" element={<DepositsPage />} />}
 
         {/*
