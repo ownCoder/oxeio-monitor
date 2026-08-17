@@ -430,21 +430,38 @@ describe('segments — dedupe ও যাচাই (§ ২.১-ঘ)', () => {
   });
 
   it('counts_as_work শুধু active-এ সত্যি', async () => {
+    /**
+     * ⚠️⚠️ তিনটে সেগমেন্টই **আজকের ঢাকা-দিনের ভেতরে** আর পরপর সাজানো।
+     *
+     * আগে `idle`/`locked`-এ `minutesAgo(15/10/9)` ছিল — আর সেটাই ঠিক ওই
+     * ফাঁদ যা এই ফাইলেরই `segment()` ডিফল্টে একবার সারানো হয়েছে (উপরের
+     * টীকা): মধ্যরাতের পরে চললে ওগুলো **আগের তারিখে** পড়ত, সার্ভার
+     * সেগমেন্ট ভাগ করত, আর `orderBy startedAt`-এ active আর প্রথমে থাকত না —
+     * `[active, idle, locked]`-এর বদলে `[idle, locked, active]`। CI ঠিক
+     * মধ্যরাতে চলে এটা ধরিয়ে দিয়েছে (§ ৩ব)।
+     *
+     * ⭐ এখন active-এর জানালার **পরেই** idle, তারপর locked — সব আজকের
+     *    দিনে, তাই ক্রম সবসময় স্থির।
+     */
+    const w = dayWindow();
+    const mid = w.start.getTime() + w.half * 1_000;
+    const gap = Math.max(1, Math.floor(w.half / 2));
+
     await asAgent(h.http().post('/api/v1/agent/segments'), device.token)
       .send({
         segments: [
-          segment(),
+          segment(), // active — [w.start, mid]
           segment({
             state: 'idle',
-            startedAt: iso(minutesAgo(15)),
-            endedAt: iso(minutesAgo(10)),
-            durationSec: 300,
+            startedAt: iso(new Date(mid)),
+            endedAt: iso(new Date(mid + gap * 1_000)),
+            durationSec: gap,
           }),
           segment({
             state: 'locked',
-            startedAt: iso(minutesAgo(10)),
-            endedAt: iso(minutesAgo(9)),
-            durationSec: 60,
+            startedAt: iso(new Date(mid + gap * 1_000)),
+            endedAt: iso(new Date(mid + 2 * gap * 1_000)),
+            durationSec: gap,
           }),
         ],
       })
