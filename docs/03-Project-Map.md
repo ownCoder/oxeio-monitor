@@ -72,6 +72,16 @@ oxeio-monitor/
 │   │   │   ├── Tracking/IdleMath.cs        ✅ wraparound + ভবিষ্যৎ-টাইমস্ট্যাম্প ক্ল্যাম্প
 │   │   │   ├── Tracking/SleepGapDetector.cs ✅ ইভেন্ট ছাড়াই ঘুম ধরা
 │   │   │   ├── Tracking/CaptureWindow.cs   ✅ ০৭:০০–২৩:০০
+│   │   │   ├── Tracking/ScreenActivity.cs  ✅ ⭐⭐ G46 — পর্দা সত্যিই বদলাচ্ছে?
+│   │   │   │   #  ⚠️⚠️ `StaleAfter` (৩ মি.) — নমুনা টাটকা না হলে কোনো উত্তরই
+│   │   │   │   #     নয়। এটা না থাকায় একটা অচলাবস্থা হয়েছিল: জমেছে → IDLE →
+│   │   │   │   #     স্ক্রিনশট বন্ধ → নতুন নমুনা নেই → চিরকাল জমে (09 § ৩৫)
+│   │   │   ├── Tracking/ScreenSampling.cs  ✅ ⭐⭐ কখন ছাপ নেওয়া হবে
+│   │   │   │   #  ⚠️ `Allowed()`-এ ইচ্ছাকৃতভাবে **SegmentState নেই** — যে
+│   │   │   │   #     তথ্য দিয়ে সিদ্ধান্ত, তার উৎস সিদ্ধান্তের ফলের উপর
+│   │   │   │   #     নির্ভর করলে বেরোনোর পথ থাকে না
+│   │   │   ├── Agent/HeartbeatUrgency.cs   ✅ ⭐ অবস্থা বদলালে beat সাথে সাথে
+│   │   │   │   #  ⚠️ ছাদ `MinGap` ৩ সে. — নইলে দোদুল্যমান অবস্থায় সার্ভারে ঢেউ
 │   │   │   ├── Agent/TrackingGate.cs       ✅ ⭐ গোনা হবে কি না — সাইন ইন ও revoke
 │   │   │   ├── Agent/SignOutGate.cs        ✅ ⭐ সাইন আউট করা যাবে কি না, আর কী হারাবে (১২ টেস্ট)
 │   │   │   │   #  ⚠️ পাঁচটা জায়গা এটাই মানে: TrackLoop · AppUsageLoop ·
@@ -83,7 +93,7 @@ oxeio-monitor/
 │   │   │   ├── Capture/EngineFallbackPolicy.cs ✅ কতবার ব্যর্থে কত বিরতি
 │   │   │   ├── Apps/AppUsageTracker.cs    ✅ ⭐ D01–D04-এর চারটে নিয়ম
 │   │   │   ├── Apps/DomainParser.cs       ✅ ফুল URL → শুধু ডোমেইন (ADR-013)
-│   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ২০টা ফাইল
+│   │   │   ├── Agent/                      ✅ ⭐ কনট্র্যাক্ট স্তর — ২৬টা ফাইল
 │   │   │   │   #  IOutboxStore · ISyncClient · SyncOutcome · RetryPolicy
 │   │   │   │   #  OutboxBudget · BatchNarrowing · SyncHealthPolicy · AgentStatus
 │   │   │   │   #  ConfigChange ⭐ দুই কনফিগের **পার্থক্য** — যা বদলায়নি তাতে
@@ -119,6 +129,10 @@ oxeio-monitor/
 │   │   │   │   ├── GdiCapturer.cs          ✅ BitBlt + GetDIBits (ফলব্যাক)
 │   │   │   │   ├── FallbackCapturer.cs     ✅ DXGI → GDI শৃঙ্খল
 │   │   │   │   ├── WebpEncoder.cs          ✅ SkiaSharp q70, ≤১৯২০px
+│   │   │   ├── ScreenFingerprint.cs      ✅ ⭐ G46 — ১৬×১৬ ধূসর ছাপ, মেশিন ছাড়ে না
+│   │   │   │   #  ⚠️ নমুনা নেওয়া হয় **ক্যাপচার লুপে** (`SampleScreen`, ৬০ সে. ·
+│   │   │   │   #     জমে থাকলে ৫ সে.), স্ক্রিনশটের স্লটে নয় — এক থ্রেডই
+│   │   │   │   #     ক্যাপচার ইঞ্জিনের মালিক (দুই থ্রেড = DXGI সংঘর্ষ)
 │   │   │   │   └── ScreenCaptureService.cs ✅ সব মনিটর + গুণমান যাচাই
 │   │   │   ├── Storage/                    ✅ SQLite outbox — lease/ack, WAL, OutboxCodec
 │   │   │   ├── Sync/                       ✅ HttpSyncClient · SyncWorker · SyncWire
@@ -141,11 +155,17 @@ oxeio-monitor/
 │   ├── installer/                          ✅ WiX → bin/oXeioAgent-<version>.msi (৬২ MB)
 │   │   #  ⚠️ নামে ভার্সন, আর পুরোনো বিল্ড মোছা হয় না — ১২ আগস্ট একই
 │   │   #     নামে তিনটে বাইনারি বেরিয়ে গিয়েছিল (§ ৩থ)
+│   │   ├── make-icon.py                    ✅ ⭐ favicon.svg → oxeio.ico, ৯টা মাপ
+│   │   │   #  ⚠️ প্রতিটা মাপ **আলাদা করে** আঁকা, একটা বড় ছবি ছোট করে নয় —
+│   │   │   #     ১৬px-এ X-এর ডাঁটি নইলে ধূসর হয়ে মিলিয়ে যেত
+│   │   ├── oxeio.ico                       ✅ উপরের স্ক্রিপ্টের **ফল**, হাতে আঁকা নয়
+│   │   │   #  ⚠️ TrayIconPainter-এর নিয়ম "রিপোতে .ico বাইনারি নেই" — ব্যতিক্রমটা
+│   │   │   #     টেকে কারণ উৎসটা রিপোতেই; বদলাতে হলে স্ক্রিপ্ট বদলাবেন
 │   │   ├── Package.wxs                     ✅ ডাবল-ক্লিক ইনস্টল · রেজিস্ট্রি · টাস্ক
 │   │   │   #    ⚠️ StartWatchdog — ইনস্টল শেষে চালুও করে (G78)
 │   │   └── build.ps1                       ✅ publish → wix build · ঠিকানা ডিফল্টেই বেক
-│   ├── tests/oXeio.Core.Tests/             ✅ ৩২২টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ৯৭টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   ├── tests/oXeio.Core.Tests/             ✅ ৩৮৩টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ১০৬টি — Win32 মডিউলের জন্য (net8.0-windows)
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/
@@ -182,15 +202,23 @@ oxeio-monitor/
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
 │   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
-│   │   ├── digest/                     ✅ **দুটো ডাইজেস্ট, এক মডিউল**
+│   │   ├── digest/                     ✅ **তিনটে প্রেরক, এক মডিউল** — দৈনিক (F07) · সাপ্তাহিক (R3) · ঘণ্টার স্ন্যাপশট
 │   │   │   ├── digest.{job,math,service}.ts   ✅ F07 — রোজ সন্ধ্যা ৬:৩০
 │   │   │   ├── weekly.rules.ts                ✅ ⭐ R3 — সপ্তাহের গণিত, খাঁটি ফাংশন
 │   │   │   ├── weekly.service.ts              ⚠️ ⭐ গ্রুপ-চ্যাটে চলে যাওয়া আটকানোর প্রহরী
 │   │   │   │   #  `WEEKLY_DIGEST_ALLOW_GROUP` না দিলে গ্রুপ chat id-তে যাবেই না —
 │   │   │   │   #  সাপ্তাহিক সারাংশে **সবার** নাম ও ঘণ্টা থাকে, তাই ভুল চ্যাটে
 │   │   │   │   #  একবার গেলে সেটা আর ফেরানো যায় না
-│   │   │   └── weekly.job.ts                  ⚠️ শুক্র সন্ধ্যা (`WEEKLY_DIGEST_DAY/HOUR`)
-│   │   │   #  ⚠️ মাঠে **একবারও চলেনি** — আসল বটে একটাও সাপ্তাহিক বার্তা যায়নি
+│   │   │   ├── weekly.job.ts                  ⚠️ শুক্র সন্ধ্যা (`WEEKLY_DIGEST_DAY/HOUR`)
+│   │   │   ├── snapshot.rules.ts              ✅ ⭐⭐ ঘণ্টার স্ন্যাপশট — খাঁটি
+│   │   │   │   #  ⚠️⚠️ মালিক চেয়েছিলেন "কেউ ১০ মি. idle হলেই খবর"; হিসাবে
+│   │   │   │   #     দাঁড়াত দিনে ৬০–১৮০টা বার্তা, তাই ঘণ্টায় একটা (09 § ৩৩)
+│   │   │   │   #  ⭐ কাজ করা মানুষের নাম লেখা হয় না, শুধু গোনা — নইলে
+│   │   │   │   #     বার্তাটাই এত লম্বা হতো যে কেউ পড়ত না
+│   │   │   ├── snapshot.service.ts            ✅ DashboardService.live() ডাকে
+│   │   │   │   #  ⚠️ নিজে কিছু গোনে না — Live Board যা দেখায় ঠিক সেটাই যায়
+│   │   │   └── snapshot.job.ts                ✅ প্রতি ঘণ্টায়, ৯টা–৭টা
+│   │   │   #  ⚠️ **সাপ্তাহিক জব:** মাঠে একবারও চলেনি — আসল বটে একটাও সাপ্তাহিক বার্তা যায়নি
 │   │   ├── ops/                        ✅ K02 এনক্রিপটেড ব্যাকআপ · K03 কপি · K04 হেলথ
 │   │   ├── reports/                    ✅ F01–F06 · Excel · PDF
 │   │   ├── screenshots/                ✅ E06 গ্যালারি · I07 signed URL · I08 audit
@@ -230,8 +258,8 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১০৮৯টি টেস্ট, ৫৩টি ফাইল**
-│       #  ⚠️ ৩৫টি ফাইল (৮৫৯ টেস্ট) DB ছাড়াই চলে; ১৮টি `*.e2e.spec.ts`
+│   └── test/                               ✅ Vitest + supertest — **১২৮৬টি টেস্ট, ৬৭টি ফাইল**
+│       #  ⚠️ ৪৪টি ফাইল DB ছাড়াই চলে; ২৩টি `*.e2e.spec.ts`
 │       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
@@ -389,6 +417,12 @@ Server:
   UsersModule ──▶ AuthModule                          ✅
   AuditModule ◀── Auth, (পরে) Screenshots, Reports    ✅  (গ্লোবাল)
   DashboardModule ─▶ Prisma (read-only)              ✅
+        └──▶ **exports: DashboardService** ⭐ প্রথম বাইরের গ্রাহক (১৭ আগস্ট)
+  DigestModule ─▶ DashboardModule ──▶ live()          ✅
+        #  ⚠️⚠️ ঘণ্টার স্ন্যাপশট নিজে কিছু **গোনে না** — Live Board যা
+        #     দেখায় ঠিক সেটাই টেলিগ্রামে যায়। দুই জায়গায় দুই হিসাব হলে
+        #     পর্দা এক কথা বলত আর টেলিগ্রাম অন্য কথা, আর কোনটা সত্যি
+        #     তা বলার উপায় থাকত না
   ReportsModule ─▶ Summary ──▶ monthly_summary       ✅
   SummaryModule ─▶ cron (K05/K06) · OpsModule ─▶ cron ✅
   AlertsModule ◀── জব ও Agent (ইভেন্ট-ভিত্তিক)         ✅
@@ -436,13 +470,17 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | **R1** মাস বন্ধ করা (payroll lock) | — | `admin/month-close.{service,controller}.ts` ✅ · `month_closure` টেবিল · `summary.service.ts`-এর গার্ড · `adjustments`-এ `assertMonthOpen()` | `settings/MonthsTab.tsx` ✅ |
 | **R2** ছুটির খাতা | — | `admin/leave.{service,controller}.ts` ✅ · `leaves` টেবিল · `countLeaveWorkdays()` → `prorate()` · `elapsedWorkdays()` · `proratedExpectedSec()`। ⭐⭐ ছুটি **টার্গেট** কমায়, `d ÷ D` নয় — অর্থাৎ সবেতন | `settings/LeaveTab.tsx` ✅ |
 | **R21** সিকিউরিটি মানি (জামানত) | — | `deposits/` ✅ · তিনটে টেবিল (`deposit_policy` · `security_deposits` · `deposit_settlements`) · `payroll.service`-এ `securityDeposit`/`netPayable` · `GET /me/deposit`। ⭐⭐ খাতা **লিখে রাখা** হয়, গোনা হয় না — অঙ্ক বদলালে পুরোনো কিস্তি নড়ে না | `DepositsPage.tsx` ✅ **সাইডবারে**, সেটিংসে নয় (09 § ৩ঃ) · ভেতরটা `settings/DepositsTab.tsx` · `MyDataPage.tsx`-এ কর্মীর নিজের কার্ড ✅ |
-| **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি | — |
+| **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি। ⭐ টোকেন ও chat id এখন **পর্দা থেকেই** বসানো যায় (`alerts/telegram.settings.ts`) | `settings/NotificationsTab.tsx` ✅ |
 | ট্র্যাকিং শুরুর জানালা | — | `summary/summary.math.ts` → `elapsedWindow()` ✅ — tray · Monthly · ডাইজেস্ট · রিপোর্ট **এক সংজ্ঞা** (এজেন্ট বসার আগের না-দেখা দিন কারো ঘাটতি নয়)। ⚠️ ৭ দিনের ফিতে (`trendDayExpectation`) **ইচ্ছাকৃতভাবে আজকের দিনটা রাখে** — ভিন্ন প্রশ্ন, ফাংশনের নোটে লেখা | `MonthlyPage` · `live/WeekAndMonth.tsx` |
 | অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
-| লাইভ স্ট্যাটাস | heartbeat ✅ | `dashboard/live.controller` ✅ | `LiveBoardPage.tsx` |
+| লাইভ স্ট্যাটাস | heartbeat ✅ · `HeartbeatUrgency` — অবস্থা বদলালে beat **সাথে সাথে** (ছিল ০–১৫ সে.) | `dashboard/live.controller` ✅ · `dashboard.math.ts` → `decideLiveStatus()` | `LiveBoardPage.tsx` — রিফ্রেশ ১৫ সে. (ছিল ৩০) |
+| ⚠️⚠️ **তিনটে স্ট্যাটাস, চারটে নয়** *(১৭ আগস্ট)* | — | `LiveStatus = 'active' \| 'idle' \| 'offline'`। 🔴 `agent_down` **তুলে দেওয়া** — বোর্ড কোনোদিনই বলতে পারত না এজেন্ট "মরেছে" নাকি "PC বন্ধ", আর দুবার সৎ কর্মীকে লাল দেখিয়েছে (09 § ৩৬)। ⭐ আসল ফল্ট ধরে `AgentDownCheck` (G01), আর সেটা **অ্যালার্টে** যায় — যেখানে ব্যাখ্যা আঁটে | `StatusDot.tsx` তিনটে চিপ · "Agents up" টাইল ও "· N down" ট্যাব **সরানো** |
+| ⭐⭐ **G46** নকল ইনপুট (জিগলার) | `ScreenActivity` · `ScreenSampling` · `ScreenFingerprint` (১৬×১৬ ধূসর, মেশিন ছাড়ে না) | `alerts/synthetic-input.{rules,check}.ts` — সার্ভারেও আলাদা পাহারা | — |
+| ⭐ **ঘণ্টার স্ন্যাপশট** টেলিগ্রামে | — | `digest/snapshot.{rules,service,job}.ts` ✅ প্রতি ঘণ্টায় ৯টা–৭টা · দৈনিক ডাইজেস্টও এখন টেলিগ্রামে | — |
+| ব্র্যান্ড আইকন | `Ui/BrandIcon.cs` → দুই বংশের জানালাতেই · `<ApplicationIcon>` দুই exe-তে | — | `installer/oxeio.ico` ← `make-icon.py` ← `web/public/favicon.svg` |
 | মাসিক হিটম্যাপ | — | `summary/` · `day-close.job` ✅ | `MonthlyPage.tsx` |
 | রিপোর্ট | — | `reports/` ✅ · `payroll/` ✅ | `ReportsPage.tsx` |
-| Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `LiveBoardPage` badge |
+| Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `live/OpenAlerts.tsx` · `AlertsPage.tsx` — ⚠️ এজেন্টের গোলযোগ **বোর্ডের কার্ডে নয়, অ্যালার্টে** (ADR-030) |
 | Retention | — | `summary/retention.job` ✅ রাত ২টার cron + `POST /ops/retention/run` (K01) | `settings/` |
 | স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | `me/` ✅ — `GET /me` · `GET /me/days` | `MyDataPage.tsx` ✅ tray-র "My data" এখানেই নামে |
 | **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` ✅ লেখা ও বাতিল দুটোই (G35/B14) | `pages/employee/Adjustments.tsx` ✅ |
@@ -484,6 +522,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | ~~`Polly`~~ | ❌ **লাগেনি** — `Core/Agent/RetryPolicy.cs` খাঁটি ফাংশন হিসেবে backoff দেয়, তাই শিডিউলার ছাড়াই ইউনিট টেস্ট করা যায় |
 | ~~`Serilog`~~ | ❌ **লাগেনি** — কোনো csproj-এ নেই। যা আছে তা হাতে লেখা: watchdog-এর `Platform/RollingLog.cs`, এজেন্টের `Storage/FileLog.cs` (H08 — `logs\agent.log`, ৭ দিন / ৫০ MB, সিদ্ধান্তটা `Core/Agent/LogRetention.cs`-এ) ও `Storage/DropLog.cs`। ⚠️ আগে `ISyncLog`-এর একমাত্র বাস্তবায়ন ছিল `ConsoleSyncLog`, আর প্রজেক্ট `WinExe` — কনসোল না থাকায় **প্রতিটা লাইন শূন্যে যেত**। [09-Build-Log](09-Build-Log.md) § ৩ঝ |
 | `WiX Toolset v4` | MSI ইনস্টলার |
+| **Python + Pillow** *(বিল্ড-টাইম)* | `installer/make-icon.py` → `oxeio.ico`। ⚠️ কেবল আইকন **নতুন করে বানাতে** লাগে; `.ico` রিপোতে আছে বলে সাধারণ বিল্ডে দরকার নেই। ⚠️⚠️ cairosvg/Inkscape ইচ্ছাকৃতভাবে বাদ — SVG parse না করে আকৃতিটা (তিনটে path) সরাসরি আঁকা হয়, নইলে বিল্ড অন্য কারো মেশিনে ভাঙত |
 
 ### Server (Node)
 | প্যাকেজ | কেন |

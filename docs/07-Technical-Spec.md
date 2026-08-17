@@ -833,7 +833,7 @@ Base: `https://oxeio-server.local/api/v1` · সব রেসপন্স JSON
 | POST | `/agent/enroll-login` | ⭐ **সাধারণ পথ** — স্টাফ নিজের ইমেইল-পাসওয়ার্ড দিয়ে নিজের PC যোগ করে। `{email, password, totp?, hostname, windowsUsername, machineGuid, …}` → `{deviceId, deviceToken, employee, configVersion, config}`, অথবা 2FA চালু থাকলে `{status: "needs_totp"}` (দুটোই **২০০**)। ⚠️ যাচাই `AuthService.login()`-এই — throttle · 2FA · audit তিনটেই ওখান থেকে আসে। owner/manager-এর অ্যাকাউন্টে **৪০৩** |
 | POST | `/agent/enroll` | একবার-ব্যবহার্য কোড দিয়ে (**স্ক্রিপ্টেড রোলআউটের পথ**)। `{enrollmentCode, hostname, windowsUsername, machineGuid, osVersion?, agentVersion?, monitors?}` → একই উত্তর। `deviceToken` **এই একবারই** যায়, সার্ভারে শুধু sha256 |
 | GET | `/agent/config` | কনফিগ সিঙ্ক (capture window, interval, idle threshold) → `{version, config}`। `version` = কনফিগের sha256-এর প্রথম ১৬ অক্ষর, আলাদা কাউন্টার নেই |
-| POST | `/agent/heartbeat` | প্রতি ৩০ সেকেন্ডে। `{state, activeSecToday, queueDepth?, configVersion?, agentVersion?}` → `{commands, configVersion, progress}` (↓ দুটোই নিচে) |
+| POST | `/agent/heartbeat` | প্রতি **১৫ সেকেন্ডে** (সার্ভারের `heartbeatSec`, ছাদ-মেঝে ১৫ সে.–৫ মি.), **আর অবস্থা বদলালে সাথে সাথেই** (`HeartbeatUrgency`, দুটোর মধ্যে সর্বনিম্ন ব্যবধান ৩ সে.)। ⚠️ শেষটা যোগ হয়েছে ১৭ আগস্ট: কর্মী কাজ শুরু করার পরেও বোর্ডে ১০–১৫ সে. "Idle" থাকত, আর ক্ষতিটা ছিল বিশ্বাসের — মালিক পর্দায় দেখেন "Idle", পাশে গিয়ে দেখেন তিনি টাইপ করছেন। `{state, activeSecToday, queueDepth?, configVersion?, agentVersion?}` → `{commands, configVersion, progress}` (↓ দুটোই নিচে) |
 | POST | `/agent/segments` | ব্যাচে activity segments (প্রতি ১ মিনিটে) |
 | POST | `/agent/app-usage` | ব্যাচে app/website usage |
 | POST | `/agent/events` | logon/logoff/lock/sleep ইত্যাদি |
@@ -1038,7 +1038,10 @@ WSL2-কে ৮ GB দিলেই যথেষ্ট (`.wslconfig`), বাক�
 | রাত ২:০০ | ৯০ দিনের পুরোনো স্ক্রিনশট ডিলিট (DB + ফাইল) |
 | রাত ২:৩০ | `pg_dump` → `/data/backups/` (৩০ দিন রাখবে) |
 | রাত ৩:০০ | ব্যাকআপ + স্ক্রিনশট → এক্সটার্নাল HDD বা Google Drive-এ কপি |
-| প্রতি ৫ মিনিট | কোনো এজেন্ট ১০ মিনিট ধরে চুপ? → অ্যালার্ট |
+| প্রতি ৫ মিনিট | কোনো এজেন্ট ১০ মিনিট ধরে চুপ? → অ্যালার্ট (G01)। ⭐ বিদায়ী ইভেন্ট (shutdown/logoff) দেখে "স্বাভাবিক বন্ধ" ছেঁকে ফেলা হয় — `isExpectedSilence()` |
+| **সন্ধ্যা ১৮:৩০** | দৈনিক ডাইজেস্ট (F07) — **ইমেইল ও টেলিগ্রাম দুটোতেই** *(১৭ আগস্ট)*। ⚠️ SMTP কনফিগার করা নেই, তাই এতদিন এটা কেবল লগে পড়ে ছিল |
+| **প্রতি ঘণ্টায়, ০৯:০০–১৯:০০** | ⭐⭐ টেলিগ্রামে স্ন্যাপশট — *"Working now: 8/12"*, তারপর idle ও offline-দের নাম (`digest/snapshot.job.ts`)। ⚠️⚠️ মালিক চেয়েছিলেন **কেউ ১০ মিনিটের বেশি idle হলেই খবর**; হিসাবে দাঁড়াত দিনে **৬০–১৮০টা বার্তা** (১২ জন × ৫–১৫টা স্বাভাবিক বিরতি), আর তখন কেউ আর কোনো বার্তাই পড়ত না — `THROTTLE_HOURS`-এর ডকে ওই পরিণতি আগেই লেখা ছিল। ⭐ সিদ্ধান্তটা ADR-029-এ |
+| **শুক্র সন্ধ্যা** | সাপ্তাহিক টেলিগ্রাম সারাংশ (R3) ⚠️ মাঠে এখনো চলেনি |
 
 ---
 
