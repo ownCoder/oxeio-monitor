@@ -25,6 +25,22 @@
          WPF অ্যাসেম্বলিগুলো এমনিতেও যায়, শুধু রেফারেন্স করা হতো না। -->
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      ⭐⭐ **ব্র্যান্ড আইকন** — `web/public/favicon.svg`-এর সেই লাল টাইল ও
+           সাদা X, অর্থাৎ ওয়েব আর এজেন্ট একই মুখ দেখায়।
+
+      ⚠️ এটা exe-র ভেতরে বসে, তাই Explorer, টাস্কবার, alt-tab আর
+         "Add or remove programs" — সবখানেই এটাই দেখা যায়। আগে কিছুই বসানো
+         ছিল না, তাই Windows-এর ডিফল্ট ফাঁকা আইকনটা দেখাত।
+
+      ⚠️⚠️ ফাইলটা `installer/make-icon.py` **তৈরি করে**, হাতে আঁকা নয়।
+         TrayIconPainter-এর ডকে লেখা আছে রিপোতে `.ico` বাইনারি না রাখার
+         কারণ — ডিফ পড়া যায় না। ⭐ এখানে ব্যতিক্রমটা টিকছে কারণ **উৎসটা
+         রিপোতেই আছে**: বদলাতে হলে ওই স্ক্রিপ্টটা বদলাবেন, আর ডিফে সেটাই
+         পড়া যাবে। বাইনারিটা তার ফল মাত্র।
+    -->
+    <ApplicationIcon>..\..\installer\oxeio.ico</ApplicationIcon>
+
     <RootNamespace>oXeio.Agent</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
 
@@ -42,6 +58,20 @@
     -->
     <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      ⚠️⚠️ `ApplicationIcon` **যথেষ্ট নয়** — ওটা exe-র শেল-আইকন ঠিক করে,
+         কিন্তু WinForms একটা Form-এর টাস্কবার আইকন নেয় `Form.Icon` থেকে,
+         আর সেটা না দিলে **নিজের ডিফল্ট আইকনটাই** বসায়। ঠিক এই কারণেই
+         টাস্কবারে সাদা-নীল ফাঁকা জানালাটা দেখা যেত।
+
+      ⭐ তাই একই ফাইল রিসোর্স হিসেবেও ঢোকে, আর `OwnerDrawnForm` সেটা পড়ে।
+         ২৮ KB — ৬২ MB-র MSI-তে ধর্তব্য নয়।
+    -->
+    <EmbeddedResource Include="..\..\installer\oxeio.ico" LogicalName="oXeio.Agent.brand.ico" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <!-- ⚠️ UseWPF চালু করলে SDK-র implicit using-এর সেটটাই বদলে যায় —

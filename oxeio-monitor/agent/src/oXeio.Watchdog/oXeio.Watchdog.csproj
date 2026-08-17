@@ -11,6 +11,22 @@
 
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      ⭐⭐ **ব্র্যান্ড আইকন** — `web/public/favicon.svg`-এর সেই লাল টাইল ও
+           সাদা X, অর্থাৎ ওয়েব আর এজেন্ট একই মুখ দেখায়।
+
+      ⚠️ এটা exe-র ভেতরে বসে, তাই Explorer, টাস্কবার, alt-tab আর
+         "Add or remove programs" — সবখানেই এটাই দেখা যায়। আগে কিছুই বসানো
+         ছিল না, তাই Windows-এর ডিফল্ট ফাঁকা আইকনটা দেখাত।
+
+      ⚠️⚠️ ফাইলটা `installer/make-icon.py` **তৈরি করে**, হাতে আঁকা নয়।
+         TrayIconPainter-এর ডকে লেখা আছে রিপোতে `.ico` বাইনারি না রাখার
+         কারণ — ডিফ পড়া যায় না। ⭐ এখানে ব্যতিক্রমটা টিকছে কারণ **উৎসটা
+         রিপোতেই আছে**: বদলাতে হলে ওই স্ক্রিপ্টটা বদলাবেন, আর ডিফে সেটাই
+         পড়া যাবে। বাইনারিটা তার ফল মাত্র।
+    -->
+    <ApplicationIcon>..\..\installer\oxeio.ico</ApplicationIcon>
+
     <RootNamespace>oXeio.Watchdog</RootNamespace>
     <AssemblyName>oXeio.Watchdog</AssemblyName>
     <InvariantGlobalization>true</InvariantGlobalization>
