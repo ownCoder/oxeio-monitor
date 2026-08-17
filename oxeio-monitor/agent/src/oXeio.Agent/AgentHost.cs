@@ -361,6 +361,10 @@ internal sealed class AgentHost : IAsyncDisposable
                     Record(_machine!.OnResume(gap.ResumedAt));
                 }
 
+                // ⭐⭐ G46 — ছাপ নেওয়া হয় **এখানে**, স্ক্রিনশটের স্লটে নয়।
+                //    কারণ ও পরিণতি SampleScreen-এর ডকে।
+                SampleScreen(now);
+
                 // ⭐ G46 — পর্দা জমে থাকলে ইনপুট টাইমারকে আর বিশ্বাস করা হয় না
                 Record(_machine!.Tick(
                     now, sample.SinceLastInput, _sessionSuspended,
@@ -405,12 +409,74 @@ internal sealed class AgentHost : IAsyncDisposable
     /**
      * ⭐⭐ <b>G46</b> — পর্দা সত্যিই বদলাচ্ছে কি না।
      *
-     * ⚠️ নমুনা আসে ক্যাপচারের স্লট থেকে (৫ মিনিট পরপর), তাই ক্যাপচার বন্ধ
-     *    থাকলে (রাতে, § ৪.২-এর জানালার বাইরে) কোনো নমুনাই আসে না — আর তখন
-     *    <see cref="ScreenActivity.IsFrozen"/> সবসময় false, অর্থাৎ গোনা
-     *    স্বাভাবিকভাবেই চলে। "জানি না"-কে অভিযোগ ধরা হয় না।
+     * ⚠️⚠️ নমুনা আসে <see cref="SampleScreen"/> থেকে, <b>স্ক্রিনশটের স্লট
+     *    থেকে নয়</b> — আর এই আলাদা করাটাই এখানকার সবচেয়ে জরুরি সিদ্ধান্ত।
+     *    আগে ছাপ আসত স্লট থেকে, আর স্লট চলত কেবল ACTIVE অবস্থায়; ফলে
+     *    "জমেছে → IDLE → স্লট বন্ধ → নতুন ছাপ নেই → চিরকাল জমে আছে" —
+     *    কর্মী ফিরে এসে কাজ করলেও এজেন্ট স্থায়ীভাবে idle দেখাত।
+     *
+     * ⚠️ ক্যাপচার বন্ধ থাকলে (রাতে, § ৪.২-এর জানালার বাইরে, বা লক করা
+     *    পর্দায়) নমুনা আসে না, আর <see cref="ScreenActivity.StaleAfter"/>
+     *    পেরোলে সন্দেহটা নিজে থেকেই উঠে যায়। "জানি না"-কে অভিযোগ ধরা হয় না।
      */
     private readonly ScreenActivity _screen = new();
+
+    /// <summary>শেষ কবে ছাপ নেওয়ার চেষ্টা হয়েছিল — ব্যর্থ হলেও।</summary>
+    private DateTimeOffset? _screenSampledAt;
+
+    /// <summary>ছাপ বানানো ব্যর্থ হওয়ার কথা একবারই লগে যায়।</summary>
+    private bool _screenSampleFailed;
+
+    /**
+     * ⭐⭐⭐ <b>G46 — পর্দার ছাপ নেওয়া।</b>
+     *
+     * ⚠️⚠️ এটা ইচ্ছাকৃতভাবে <b>ট্র্যাকিং টিকে</b>, ক্যাপচার স্লটে নয়। স্লটে
+     * থাকলে ছাপের উৎসটা <see cref="CaptureGate"/>-এর ACTIVE শর্তের নিচে
+     * পড়ত, আর তাতে একটা অচলাবস্থা তৈরি হতো — বিস্তারিত
+     * <see cref="ScreenSampling"/>-এ।
+     *
+     * ⚠️ ব্যর্থ হলে চুপচাপ ফিরে আসা, কিন্তু <see cref="_screenSampledAt"/>
+     * তবু বসানো হয় — নইলে ক্যাপচার ভাঙা মেশিনে প্রতি সেকেন্ডে চেষ্টা চলত।
+     */
+    private void SampleScreen(DateTimeOffset now)
+    {
+        if (_capture is null) return;
+
+        if (!ScreenSampling.Allowed(
+                _credentials?.IsEnrolled == true,
+                _credentials?.IsRevoked == true,
+                _window.Allows(now),
+                _sessionSuspended))
+            return;
+
+        if (!ScreenSampling.Due(now, _screenSampledAt, _screen.IsFrozen(now))) return;
+
+        _screenSampledAt = now;
+
+        try
+        {
+            var frame = _capture.CapturePrimary();
+            if (frame is null) return;
+
+            var fingerprint = ScreenFingerprint.From(frame);
+            if (fingerprint is not null) _screen.Observe(fingerprint, now);
+        }
+        catch (Exception ex)
+        {
+            /**
+             * ⚠️ গোনা চালু রাখাই বড় কথা — ছাপ না পেলে StaleAfter সামলে নেবে।
+             *
+             * ⚠️⚠️ <b>একবারই লেখা হয়।</b> প্রতিবার লিখলে ভাঙা ক্যাপচারের
+             * মেশিনে লগ ফাইল মিনিটে একটা করে সারি নিয়ে ফুলে উঠত, আর
+             * H08-এর ঘূর্ণনে আসল ভুলগুলো মুছে যেত।
+             */
+            if (!_screenSampleFailed)
+            {
+                _screenSampleFailed = true;
+                _log.Warn($"Screen fingerprint failed — jiggler detection is off on this PC: {ex.Message}");
+            }
+        }
+    }
 
     private async Task CaptureSlotAsync(SlotScheduler.Slot slot, CancellationToken ct)
     {
@@ -439,21 +505,6 @@ internal sealed class AgentHost : IAsyncDisposable
         if (_outbox is null) return;
 
         var results = _capture!.CaptureAll();
-
-        /**
-         * ⭐ শুধু <b>প্রথম</b> মনিটরের ছাপ — সাধারণত ওখানেই কাজ হয়, আর সব
-         *    পর্দার ছাপ মেলালে একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই "জমেছে" বলে
-         *    সৎ কর্মীর গোনা বন্ধ করে দিত।
-         *
-         * ⚠️ ছাপ বানাতে ব্যর্থ হলে চুপচাপ এগোনো — তখন ওই স্লটে জিগলার ধরা
-         *    পড়ল না, কিন্তু স্ক্রিনশটটা অক্ষত থাকল। ছবিটাই বেশি মূল্যবান।
-         */
-        var first = results.MinBy(r => r.MonitorIndex);
-        if (first is not null)
-        {
-            var fingerprint = ScreenFingerprint.From(first.Webp);
-            if (fingerprint is not null) _screen.Observe(fingerprint, _clock.Now);
-        }
 
         // A07 — ছবির সাথে ওই মুহূর্তের অ্যাপ ও উইন্ডো টাইটেল।
         //

@@ -78,5 +78,26 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
         return results;
     }
 
+    /// <summary>
+    /// ⭐⭐ <b>G46</b> — শুধু প্রথম মনিটরের কাঁচা ছবি, ছাপ বানানোর জন্য।
+    ///
+    /// ⚠️ <see cref="CaptureAll"/> নয়, ইচ্ছাকৃতভাবে: ওটা সব মনিটরের ছবি তোলে
+    /// আর প্রতিটাকে WebP-তে এনকোড করে — ছাপের জন্য দুটোরই দরকার নেই, অথচ
+    /// এটা মিনিটে একবার (জমে থাকলে ৫ সেকেন্ডে একবার) চলে।
+    ///
+    /// ⚠️⚠️ ছবিটা <b>কোথাও জমে না, যায়ও না</b> — এখান থেকে বেরোয় কেবল
+    /// ২৫৬ বাইটের একটা ছাপ, আর সেটাও মেশিন ছাড়ে না।
+    /// </summary>
+    public CapturedFrame? CapturePrimary()
+    {
+        var monitors = MonitorEnumerator.Enumerate();
+        if (monitors.Count == 0) return null;
+
+        // ⚠️ প্রথমটাই — CaptureAll-এও ছাপ নেওয়া হতো MinBy(MonitorIndex) থেকে,
+        //    অর্থাৎ একই পর্দা। সাধারণত ওখানেই কাজ হয়, আর সব পর্দা মেলালে
+        //    একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই "জমেছে" বলে গোনা বন্ধ করত।
+        return capturer.Capture(monitors[0]);
+    }
+
     public void Dispose() => capturer.Dispose();
 }

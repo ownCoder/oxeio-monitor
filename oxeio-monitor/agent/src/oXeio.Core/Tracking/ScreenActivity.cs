@@ -62,18 +62,50 @@ public sealed class ScreenActivity
     /// </summary>
     private const int ChangedCells = 6;
 
+    /// <summary>
+    /// ⭐⭐⭐ <b>নমুনা এতক্ষণ পুরোনো হলে আর কোনো উত্তর দেওয়া হয় না।</b>
+    ///
+    /// ⚠️⚠️ <b>এটা একটা সত্যিকারের ঘটনা থেকে এসেছে</b>, তত্ত্ব থেকে নয়।
+    /// প্রথম সংস্করণে ছাপ আসত <b>কেবল স্ক্রিনশটের স্লট থেকে</b>, আর স্ক্রিনশট
+    /// ওঠে কেবল ACTIVE অবস্থায়। ফলে একটা অচলাবস্থা তৈরি হতো:
+    ///
+    /// <code>
+    /// পর্দা জমেছে → IDLE → স্ক্রিনশট বন্ধ → নতুন ছাপ নেই → চিরকাল "জমে আছে"
+    /// </code>
+    ///
+    /// কর্মী ফিরে এসে কাজ শুরু করলেও এজেন্ট <b>স্থায়ীভাবে</b> idle দেখাত —
+    /// এজেন্ট রিস্টার্ট না করা পর্যন্ত। অর্থাৎ ফাঁকি ধরার যন্ত্রটাই সৎ
+    /// কর্মীর গোটা দিন কেটে নিত। ⭐ ঠিক এই আশঙ্কাটা টেস্ট ফাইলের মাথায়
+    /// লেখাও ছিল, কিন্তু ভুলটা ছিল <b>তারের সংযোগে</b>, নিয়মে নয় — তাই
+    /// কোনো ইউনিট টেস্ট ধরতে পারেনি।
+    ///
+    /// ⭐⭐ তাই নিয়মটা এখন <b>নিজেই</b> পাহারা দেয়: নমুনা টাটকা না হলে
+    /// উত্তর "জানি না", আর জানি না মানে সন্দেহ নয়। কলার যেভাবেই লেখা হোক,
+    /// অচলাবস্থাটা আর তৈরি হতে পারে না।
+    /// </summary>
+    public static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(3);
+
     private readonly TimeSpan _frozenAfter;
+    private readonly TimeSpan _staleAfter;
 
     private byte[]? _last;
     private DateTimeOffset _changedAt;
 
-    public ScreenActivity(TimeSpan? frozenAfter = null)
+    /// <summary>শেষ নমুনা কখন এসেছিল — বদলাক বা না বদলাক।</summary>
+    private DateTimeOffset _sampledAt;
+
+    public ScreenActivity(TimeSpan? frozenAfter = null, TimeSpan? staleAfter = null)
     {
         var window = frozenAfter ?? FrozenAfter;
         if (window <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(frozenAfter));
 
+        var stale = staleAfter ?? StaleAfter;
+        if (stale <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(staleAfter));
+
         _frozenAfter = window;
+        _staleAfter = stale;
     }
 
     /// <summary>
@@ -106,6 +138,11 @@ public sealed class ScreenActivity
     {
         ArgumentNullException.ThrowIfNull(fingerprint);
 
+        // ⚠️ বদলাক বা না বদলাক — নমুনা এসেছে, সেটাই আলাদা করে মনে রাখা হয়।
+        //    "শেষ কবে বদলেছে" আর "শেষ কবে দেখেছি" দুটো আলাদা প্রশ্ন, আর
+        //    দ্বিতীয়টার উত্তর না রাখাই ছিল অচলাবস্থার মূল।
+        _sampledAt = now;
+
         if (_last is null || Differs(_last, fingerprint))
         {
             _last = fingerprint;
@@ -125,10 +162,23 @@ public sealed class ScreenActivity
     {
         if (_last is null) return false;
 
+        /**
+         * ⭐⭐⭐ <b>টাটকা নমুনা ছাড়া কোনো অভিযোগ নয়</b> (<see cref="StaleAfter"/>)।
+         *
+         * ⚠️⚠️ নমুনা আসা যেকোনো কারণে থেমে যেতে পারে — ক্যাপচার ব্যর্থ, মনিটর
+         * খুলে ফেলা, § ৪.২-এর জানালা বন্ধ, পর্দা লক। ওই নীরবতাকে "পর্দা
+         * বদলায়নি" ধরলে <b>তথ্যের অভাবই শাস্তি</b> হয়ে দাঁড়াত, আর একবার
+         * ধরা পড়লে বেরোনোর পথও থাকত না।
+         */
+        if (now - _sampledAt > _staleAfter) return false;
+
         // ⚠️ ঘড়ি পিছিয়ে গেলে (NTP সংশোধন) ঋণাত্মক হতে পারে — তখনও "জমেনি"
         return now - _changedAt >= _frozenAfter;
     }
 
     /// <summary>শেষ কবে পর্দা বদলেছিল — লগে দেখানোর জন্য। নমুনা না থাকলে null।</summary>
     public DateTimeOffset? LastChangedAt => _last is null ? null : _changedAt;
+
+    /// <summary>শেষ কবে নমুনা এসেছিল — ডায়াগনস্টিকসে "কেন জমেনি" বোঝার জন্য।</summary>
+    public DateTimeOffset? LastSampledAt => _last is null ? null : _sampledAt;
 }

@@ -22,6 +22,19 @@ public class ScreenActivityTests
     /// <summary>১৬×১৬ ধূসর ছাপ — সব কোষ একই মান</summary>
     private static byte[] Flat(byte value) => Enumerable.Repeat(value, 256).ToArray();
 
+    /// <summary>
+    /// বাস্তবের মতো নমুনা আসতে থাকা — প্রতি মিনিটে একই ছাপ।
+    ///
+    /// ⚠️⚠️ <b>টেস্টে এটা দরকার হয়, আর সেটাই আসল কথা।</b> একটামাত্র নমুনা
+    /// দিয়ে আর কখনো "জমেছে" প্রমাণ করা যায় না — <see cref="ScreenActivity.StaleAfter"/>
+    /// পেরোলেই সন্দেহ উঠে যায়। এজেন্টে নমুনা আসে প্রতি ৬০ সেকেন্ডে
+    /// (জমে থাকলে ৫ সেকেন্ডে), তাই এখানেও তা-ই।
+    /// </summary>
+    private static void Steady(ScreenActivity screen, byte value, int fromMin, int toMin)
+    {
+        for (var m = fromMin; m <= toMin; m++) screen.Observe(Flat(value), At(m));
+    }
+
     /// <summary>একই ছাপ, কিন্তু `cells`টা কোষ অনেকখানি বদলানো</summary>
     private static byte[] Nudged(byte value, int cells)
     {
@@ -75,7 +88,7 @@ public class ScreenActivityTests
     {
         var screen = new ScreenActivity();
 
-        screen.Observe(Flat(100), At(0));
+        Steady(screen, 100, 0, 10);
 
         Assert.False(screen.IsFrozen(At(9)));
         Assert.True(screen.IsFrozen(At(10)));
@@ -90,12 +103,14 @@ public class ScreenActivityTests
     {
         var screen = new ScreenActivity();
 
-        screen.Observe(Flat(60), At(0));
+        Steady(screen, 60, 0, 12);
         Assert.True(screen.IsFrozen(At(12)));
 
-        screen.Observe(Flat(100), At(12));
+        screen.Observe(Flat(100), At(12));   // পর্দা নড়ল
 
         Assert.False(screen.IsFrozen(At(12)));
+
+        Steady(screen, 100, 13, 22);
         Assert.False(screen.IsFrozen(At(21)));
         Assert.True(screen.IsFrozen(At(22)));
     }
@@ -215,6 +230,90 @@ public class ScreenActivityTests
     public void Different_size_is_a_change()
     {
         Assert.True(ScreenActivity.Differs(Flat(100), new byte[128]));
+    }
+
+    // ── বাসি নমুনা — যে ভুলটা বেলালের একটা দিন কেড়ে নিয়েছিল ─────────────
+
+    /// <summary>
+    /// ⭐⭐⭐ <b>এই ফাইলের সবচেয়ে দামি টেস্ট, কারণ এটা একটা সত্যিকারের
+    /// ক্ষতি থেকে এসেছে।</b>
+    ///
+    /// ০.৪.১-এ ছাপ আসত কেবল স্ক্রিনশটের স্লট থেকে, আর স্লট চলত কেবল ACTIVE
+    /// অবস্থায়। ফলে: <b>জমেছে → IDLE → স্লট বন্ধ → নতুন ছাপ নেই → চিরকাল
+    /// জমে আছে</b>। কর্মী ফিরে এসে কাজ শুরু করলেও এজেন্ট স্থায়ীভাবে idle
+    /// দেখাত, রিস্টার্ট না করা পর্যন্ত।
+    ///
+    /// ⚠️⚠️ নিয়মটা ভুল ছিল না — <b>তারের সংযোগ</b> ভুল ছিল। তাই প্রতিকারটাও
+    /// নিয়মের ভেতরেই বসানো হয়েছে: টাটকা নমুনা না থাকলে কোনো উত্তর নেই।
+    /// কলার যেভাবেই লেখা হোক, অচলাবস্থাটা আর তৈরি হতে পারে না।
+    /// </summary>
+    [Fact]
+    public void A_stale_sample_never_freezes()
+    {
+        var screen = new ScreenActivity();
+
+        // জমে গেছে, আর নমুনা তখনো টাটকা — সন্দেহটা বৈধ
+        Steady(screen, 100, 0, 11);
+        Assert.True(screen.IsFrozen(At(11)));
+
+        // ⭐ নমুনা আসা বন্ধ (IDLE হওয়ায় ক্যাপচার থেমেছিল) — তিন মিনিট
+        //    পরেই সন্দেহ তুলে নেওয়া হয়, আর কর্মী ফিরে এলে গোনা শুরু হয়
+        Assert.False(screen.IsFrozen(At(15)));
+        Assert.False(screen.IsFrozen(At(600)));
+    }
+
+    /// <summary>
+    /// ⭐ নমুনা আসতে থাকলে সন্দেহ টেকে — নইলে StaleAfter বসিয়ে পুরো
+    /// পাহারাটাই অকেজো করে ফেলা হতো।
+    /// </summary>
+    [Fact]
+    public void Fresh_samples_keep_the_freeze()
+    {
+        var screen = new ScreenActivity();
+
+        Steady(screen, 100, 0, 20);
+
+        Assert.True(screen.IsFrozen(At(20)));
+    }
+
+    /// <summary>⚠️ একই নমুনা আবার এলে "বদলেনি", কিন্তু "দেখা হয়েছে" — দুটো আলাদা।</summary>
+    [Fact]
+    public void An_unchanged_sample_still_counts_as_seen()
+    {
+        var screen = new ScreenActivity();
+
+        screen.Observe(Flat(100), At(0));
+        screen.Observe(Flat(100), At(12));
+
+        // বদলায়নি, তাই জমেই আছে — আর নমুনা টাটকা, তাই উত্তরটা দেওয়া হয়
+        Assert.True(screen.IsFrozen(At(12)));
+        Assert.Equal(At(0), screen.LastChangedAt);
+        Assert.Equal(At(12), screen.LastSampledAt);
+    }
+
+    /// <summary>⭐ সীমানা — ঠিক StaleAfter-এ এখনো উত্তর দেওয়া হয়</summary>
+    [Fact]
+    public void Stale_boundary_is_inclusive()
+    {
+        var screen = new ScreenActivity();
+
+        Steady(screen, 100, 0, 11);   // শেষ নমুনা ১১ মিনিটে
+
+        Assert.True(screen.IsFrozen(At(14)));   // ঠিক ৩ মিনিট পুরোনো
+        Assert.False(screen.IsFrozen(At(15)));  // তার বেশি
+    }
+
+    [Fact]
+    public void Default_stale_window_is_three_minutes()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(3), ScreenActivity.StaleAfter);
+    }
+
+    [Fact]
+    public void Zero_stale_window_is_rejected()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new ScreenActivity(staleAfter: TimeSpan.Zero));
     }
 
     [Fact]
