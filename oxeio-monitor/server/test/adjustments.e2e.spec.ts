@@ -85,6 +85,32 @@ describe('ঘণ্টা ফেরত দেওয়া', () => {
   it('heartbeat-এর pace-এ সাথে সাথেই যোগ হয়', async () => {
     const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
 
+    /**
+     * ⚠️⚠️ **কর্মীকে একটা ট্র্যাকিং-বেসলাইন দিতে হয়, নইলে টেস্টটা যা মাপতে
+     * চায় তা মাপে না।**
+     *
+     * এই টেস্টের দাবি: সংশোধনের `deltaSec` **সরাসরি** pace-এ যোগ হয়, তাই
+     * ডেল্টা ঠিক ৩৬০০। কিন্তু `trackingStartedOn` আসে কর্মীর **প্রথম**
+     * `daily_summary` সারি থেকে (`progress.service` → `firstSeen`)। বেসলাইন
+     * না থাকলে সংশোধন POST করার সময় `AdjustmentsService.refresh()` **আজকের**
+     * তারিখে প্রথম সারিটা বানিয়ে দেয় — আর তখন elapsed-উইন্ডো আজ থেকে শুরু
+     * হয়ে **খালি** হয়ে যায়, expected ৪৬০৮০০ → ০-তে নামে। ফলে ডেল্টায়
+     * ৩৬০০ নয়, গোটা মাসের প্রত্যাশাটাই চলে আসত (মেপে দেখা: before=−460800,
+     * after=3600)। সংখ্যাটা রোজ বাড়ত বলে CI-ও রোজ লাল হতো।
+     *
+     * ⭐ মাসের শুরুতে একটা `daily_summary` বসিয়ে দিলে `firstSeen` **স্থির**
+     * থাকে (আজকের নতুন সারিও min বদলায় না), তাই একমাত্র যা বদলায় তা
+     * `creditedSec` — ঠিক ৩৬০০। এটাই বাস্তবের ছবি: আসল কর্মীর সবসময়ই
+     * আগের দিনের ট্র্যাকিং থাকে।
+     */
+    const dhakaNow = new Date(Date.now() + 6 * 3600_000);
+    const monthStart = new Date(
+      Date.UTC(dhakaNow.getUTCFullYear(), dhakaNow.getUTCMonth(), 1),
+    );
+    await h.prisma.dailySummary.create({
+      data: { employeeId, workDate: monthStart, workedSec: 0 },
+    });
+
     const before = await h.app
       .get<{ forEmployee: (id: number) => Promise<{ paceSec: number }> }>(
         (await import('../src/agent/progress.service')).ProgressService,
