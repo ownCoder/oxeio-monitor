@@ -200,7 +200,8 @@ DB স্কিমা · API কনট্রাক্ট · এজেন্ট �
 ### Phase 3 — Dashboard MVP · সপ্তাহ ৩ ⭐
 | ডেলিভারেবল | Done-এর সংজ্ঞা |
 |---|---|
-| Live Board | ১৫টা কার্ড, **১৫** সেকেন্ডে auto-refresh · তিনটে স্ট্যাটাস (active · idle · offline) |
+| Live Board | KPI টাইল, চার্ট ও দলের টেবিল, **১৫** সেকেন্ডে auto-refresh |
+| **Worklog** ⭐ | ১৫টা কার্ড, তিনটে স্ট্যাটাস (active · idle · offline), Working/Not working ট্যাব। ⚠️ ১৭ আগস্ট Live Board থেকে **সরিয়ে** নিজের পাতায় — কার্ড ছিল বোর্ডের সবার নিচে, অথচ "এখন কে কাজ করছে" প্রশ্নটাই সবচেয়ে বেশিবার করা |
 | Employee timeline | দিনের active/idle/break বার + ঘণ্টাভিত্তিক চার্ট |
 | Screenshot gallery | ফিল্টার, লাইটবক্স, কি-বোর্ড নেভিগেশন, lazy load |
 | Audit log | স্ক্রিনশট দেখলেই রেকর্ড হয় |

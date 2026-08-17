@@ -345,7 +345,18 @@ oxeio-monitor/
 │       │                                      EmployeePicker · ThemeToggle · GlobalSearch
 │       ├── pages/LoginPage.tsx             ✅ + TOTP দ্বিতীয় ধাপ (I06)
 │       ├── pages/ChangePasswordPage.tsx    ✅ বাধ্যতামূলক প্রথম-বদল (G33)
-│       ├── pages/LiveBoardPage.tsx         ✅ ⭐ হোম — E01 · E02 রিং · E03 থাম্বনেইল
+│       ├── pages/LiveBoardPage.tsx         ✅ ⭐ হোম — E01 টাইল · চার্ট · দলের টেবিল
+│       │   #  ⚠️⚠️ মানুষের **কার্ড এখানে আর নেই** — ১৭ আগস্ট `WorklogPage`-এ
+│       │   #     সরানো (09 § ৩ফ)। সাথে স্ক্রিনশটের লাইটবক্স আর
+│       │   #     `getLatestShots` polling-ও উঠেছে — ওটা ছবি না দেখিয়েও
+│       │   #     প্রতি কলে একটা করে audit সারি লিখত (I08)
+│       ├── pages/WorklogPage.tsx            ✅ ⭐⭐ E01 কার্ড — "এখন কে কাজ করছে"
+│       │   #  ⚠️ owner + manager, আর শর্তটার **নাম আছে** (`mayOpenWorklog`),
+│       │   #     `!isStaff` নয় — শর্ত তিন জায়গায় থাকে (নেভ · রুট · পর্দা),
+│       │   #     আর G134-এ নাম না থাকায় ম্যানেজার নেভে দেখতেন, চাপলে "কিছু নেই"
+│       │   └── live/TeamCards.tsx           ✅ ট্যাব · কার্ডের গ্রিড · লেজেন্ড · লাইটবক্স
+│       │       #  ⚠️ কম্পোনেন্টে **তোলা** হয়েছে, কেটে-বসানো নয় — দুই কপি
+│       │       #     থাকলে একদিন একটা বদলাত আর অন্যটা নয়
 │       ├── pages/EmployeeDetailPage.tsx    ✅ E04 টাইমলাইন · E05 চার্ট · D07 · D08
 │       │   └── employee/DayShots.tsx       ✅ ওই দিনের ছবি — ⚠️ সবার শেষে, সংখ্যা আগে
 │       ├── pages/GalleryPage.tsx           ✅ E06 গ্রিড + লাইটবক্স + কি-বোর্ড নেভ
@@ -362,7 +373,7 @@ oxeio-monitor/
 │           #  ⚠️ কোনো বোতাম নেই — একটা বসালেই approval workflow-র প্রথম ধাপ
 │   └── test/                               ✅ **৭৩টি, ২ ফাইল**
 │       ├── format.spec.ts                  ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
-│       └── onTheClock.spec.ts              ✅ ৯টি — Live Board-এর দুই ট্যাব;
+│       └── onTheClock.spec.ts              ✅ ৯টি — **Worklog**-এর দুই ট্যাব (`live/TeamCards.tsx`); বোর্ডের "Working now" টাইলও একই `isWorking()` ডাকে, তাই সংখ্যা দুটো কখনো আলাদা হয় না;
 │           #  ⚠️ কেউ যেন **কোনো ট্যাবেই না পড়ে নীরবে উধাও** হয়ে না যায়
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
@@ -465,7 +476,7 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | Clock drift | `MonotonicClock` | `agent/clock-drift.service` ✅ | — |
 | অফলাইন কাজ → dedupe | `LocalQueue` `SyncClient` | `agent/util/derive-uuid` ✅ | — |
 | মাসিক টার্গেট + pace (কর্মদিবস × ৮ঘ, ফ্ল্যাট ২০৮ নয়) | `TrayIcon` · `TodayForm` | `summary/proration.ts` · `reports/reports.range.ts` (`dailyTargetSec`) · `agent/progress.service` ✅ | `components/ProgressRing.tsx` |
-| ✅ ~~একই টার্গেট, দুই হার~~ **মিলেছে** | — | চারটে পথই এখন **একই `prorate()` ডাকে**, একই সূত্র দু'জায়গায় লেখা নয়: tray · `/me` · `reports/` · `dashboard.service.ts`-এর লাইভ কার্ড। ⚠️ আগে কার্ড **ক্যালেন্ডার কর্মদিবস** ভাগ করত (২৭ কর্মদিবসের আগস্টে ৭ঘ ৪২মি/দিন) আর tray পলিসির ধ্রুবক (৮.০০ঘ) — একই কর্মী, একই মাস, দুই সংখ্যা (G88)। মাঠে যাচাই: কার্ড এখন ৮.০০ঘ/দিন · ২০৮ঘ/মাস | `LiveBoardPage` · `api/dashboard.ts` |
+| ✅ ~~একই টার্গেট, দুই হার~~ **মিলেছে** | — | চারটে পথই এখন **একই `prorate()` ডাকে**, একই সূত্র দু'জায়গায় লেখা নয়: tray · `/me` · `reports/` · `dashboard.service.ts`-এর লাইভ কার্ড। ⚠️ আগে কার্ড **ক্যালেন্ডার কর্মদিবস** ভাগ করত (২৭ কর্মদিবসের আগস্টে ৭ঘ ৪২মি/দিন) আর tray পলিসির ধ্রুবক (৮.০০ঘ) — একই কর্মী, একই মাস, দুই সংখ্যা (G88)। মাঠে যাচাই: কার্ড এখন ৮.০০ঘ/দিন · ২০৮ঘ/মাস | `WorklogPage` → `live/TeamCards.tsx` → `live/PersonCard.tsx` (কার্ড) · বোর্ডে টার্গেট দেখা যায় টাইলের sub-এ ও `TeamTable`-এর বারে · `api/dashboard.ts` |
 | **R7** ছুটির ক্যালেন্ডার (২০২৬–২৭) | — | `prisma/holidays.data.ts` → `seed.ts` ✅ · `admin/holidays.service` ✅ | `settings/HolidaysSection.tsx` |
 | **R1** মাস বন্ধ করা (payroll lock) | — | `admin/month-close.{service,controller}.ts` ✅ · `month_closure` টেবিল · `summary.service.ts`-এর গার্ড · `adjustments`-এ `assertMonthOpen()` | `settings/MonthsTab.tsx` ✅ |
 | **R2** ছুটির খাতা | — | `admin/leave.{service,controller}.ts` ✅ · `leaves` টেবিল · `countLeaveWorkdays()` → `prorate()` · `elapsedWorkdays()` · `proratedExpectedSec()`। ⭐⭐ ছুটি **টার্গেট** কমায়, `d ÷ D` নয় — অর্থাৎ সবেতন | `settings/LeaveTab.tsx` ✅ |
@@ -474,14 +485,14 @@ settings (key-value)   ·   agent_versions   ·   alerts
 | **R3** সাপ্তাহিক টেলিগ্রাম সারাংশ | — | `digest/weekly.{rules,service,job}.ts` ⚠️ কোড ও ৭৭ টেস্ট আছে, মাঠে চলেনি। ⭐ টোকেন ও chat id এখন **পর্দা থেকেই** বসানো যায় (`alerts/telegram.settings.ts`) | `settings/NotificationsTab.tsx` ✅ |
 | ট্র্যাকিং শুরুর জানালা | — | `summary/summary.math.ts` → `elapsedWindow()` ✅ — tray · Monthly · ডাইজেস্ট · রিপোর্ট **এক সংজ্ঞা** (এজেন্ট বসার আগের না-দেখা দিন কারো ঘাটতি নয়)। ⚠️ ৭ দিনের ফিতে (`trendDayExpectation`) **ইচ্ছাকৃতভাবে আজকের দিনটা রাখে** — ভিন্ন প্রশ্ন, ফাংশনের নোটে লেখা | `MonthlyPage` · `live/WeekAndMonth.tsx` |
 | অ্যাপ/সাইট ট্র্যাকিং | `ForegroundWindowProbe` `BrowserUrlReader` | `agent/ingest.service` ✅ · `activity/` (D05 ক্যাটাগরি) ✅ | `EmployeeDetailPage.tsx` |
-| লাইভ স্ট্যাটাস | heartbeat ✅ · `HeartbeatUrgency` — অবস্থা বদলালে beat **সাথে সাথে** (ছিল ০–১৫ সে.) | `dashboard/live.controller` ✅ · `dashboard.math.ts` → `decideLiveStatus()` | `LiveBoardPage.tsx` — রিফ্রেশ ১৫ সে. (ছিল ৩০) |
+| লাইভ স্ট্যাটাস | heartbeat ✅ · `HeartbeatUrgency` — অবস্থা বদলালে beat **সাথে সাথে** (ছিল ০–১৫ সে.) | `dashboard/live.controller` ✅ · `dashboard.math.ts` → `decideLiveStatus()` | `LiveBoardPage.tsx` ও `WorklogPage.tsx` — দুটোই ১৫ সে. (ছিল ৩০)। ⚠️ ছন্দ দুটো আলাদা হলে একই মুহূর্তে দুই পাতায় দুই সংখ্যা দেখা যেত |
 | ⚠️⚠️ **তিনটে স্ট্যাটাস, চারটে নয়** *(১৭ আগস্ট)* | — | `LiveStatus = 'active' \| 'idle' \| 'offline'`। 🔴 `agent_down` **তুলে দেওয়া** — বোর্ড কোনোদিনই বলতে পারত না এজেন্ট "মরেছে" নাকি "PC বন্ধ", আর দুবার সৎ কর্মীকে লাল দেখিয়েছে (09 § ৩৬)। ⭐ আসল ফল্ট ধরে `AgentDownCheck` (G01), আর সেটা **অ্যালার্টে** যায় — যেখানে ব্যাখ্যা আঁটে | `StatusDot.tsx` তিনটে চিপ · "Agents up" টাইল ও "· N down" ট্যাব **সরানো** |
 | ⭐⭐ **G46** নকল ইনপুট (জিগলার) | `ScreenActivity` · `ScreenSampling` · `ScreenFingerprint` (১৬×১৬ ধূসর, মেশিন ছাড়ে না) | `alerts/synthetic-input.{rules,check}.ts` — সার্ভারেও আলাদা পাহারা | — |
 | ⭐ **ঘণ্টার স্ন্যাপশট** টেলিগ্রামে | — | `digest/snapshot.{rules,service,job}.ts` ✅ প্রতি ঘণ্টায় ৯টা–৭টা · দৈনিক ডাইজেস্টও এখন টেলিগ্রামে | — |
 | ব্র্যান্ড আইকন | `Ui/BrandIcon.cs` → দুই বংশের জানালাতেই · `<ApplicationIcon>` দুই exe-তে | — | `installer/oxeio.ico` ← `make-icon.py` ← `web/public/favicon.svg` |
 | মাসিক হিটম্যাপ | — | `summary/` · `day-close.job` ✅ | `MonthlyPage.tsx` |
 | রিপোর্ট | — | `reports/` ✅ · `payroll/` ✅ | `ReportsPage.tsx` |
-| Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `live/OpenAlerts.tsx` · `AlertsPage.tsx` — ⚠️ এজেন্টের গোলযোগ **বোর্ডের কার্ডে নয়, অ্যালার্টে** (ADR-030) |
+| Watchdog | `oXeio.Watchdog` (লগঅন Scheduled Task, সার্ভিস নয়) | `alerts/` ✅ | `live/OpenAlerts.tsx` · `AlertsPage.tsx` — ⚠️ এজেন্টের গোলযোগ **কর্মীর কার্ডে নয়** (কার্ড এখন Worklog-এ), **অ্যালার্টে** (ADR-030) |
 | Retention | — | `summary/retention.job` ✅ রাত ২টার cron + `POST /ops/retention/run` (K01) | `settings/` |
 | স্টাফের নিজস্ব ভিউ | `TodayForm` (tray) ✅ | `me/` ✅ — `GET /me` · `GET /me/days` | `MyDataPage.tsx` ✅ tray-র "My data" এখানেই নামে |
 | **ঘণ্টা সংশোধন** (ADR-011e) | — | `adjustments/` ✅ লেখা ও বাতিল দুটোই (G35/B14) | `pages/employee/Adjustments.tsx` ✅ |
