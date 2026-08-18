@@ -58,13 +58,19 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       return;
     }
 
-    this.schedule('agent-down', AGENT_DOWN_TICK_MS, (now) => {
+    this.schedule('agent-down', AGENT_DOWN_TICK_MS, async (now) => {
+      // ⭐ ফিরে আসা এজেন্টের খোলা alert বন্ধ করা grace-এর **বাইরেও** চলে:
+      //    রিস্টার্টের পর যে এজেন্ট এরই মধ্যে হাজিরা দিয়েছে, তার বাসি
+      //    agent_down তখনই মুছে যাক। এটা কখনো মিথ্যা alert তোলে না — শুধু
+      //    বন্ধ করে — তাই grace-এ আটকানোর কারণ নেই।
+      await this.agentDown.resolveReturned(now);
+
       // ⭐ সার্ভার সবে উঠেছে — এখন সবাইকেই চুপ দেখাবে (কারণ আমরাই ছিলাম না)
       if (isWithinStartupGrace(this.bootedAt, now)) {
         this.logger.debug(
           `startup grace (${STARTUP_GRACE_MIN}m) — agent_down check not yet`,
         );
-        return Promise.resolve(0);
+        return 0;
       }
       return this.agentDown.runOnce(now);
     });
@@ -108,6 +114,8 @@ export class AlertsScheduler implements OnApplicationBootstrap, OnModuleDestroy 
       this.noActivity.runOnce(now),
       this.overlap.runOnce(now),
     ]);
+    // ⭐ ফিরে আসা এজেন্টের খোলা agent_down বন্ধ করা (raise-এর সংখ্যায় গোনা নয়)
+    await this.agentDown.resolveReturned(now);
     await this.dispatcher.runOnce(now);
     return counts.reduce((a, b) => a + b, 0);
   }

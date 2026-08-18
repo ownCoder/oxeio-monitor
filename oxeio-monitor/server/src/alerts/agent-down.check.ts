@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_SILENCE_MIN } from './alerts.constants';
 import {
   agentDownCandidates,
+  recoveredAlertIds,
   silentMinutes,
   CLEAN_STOP_EVENTS,
   type DeviceSilence,
@@ -84,6 +85,43 @@ export class AgentDownCheck {
 
     this.logger.warn(`${inputs.length} devices silent with no explanation`);
     return this.alerts.raiseMany(inputs, now);
+  }
+
+  /**
+   * ⭐ ফিরে আসা এজেন্ট — খোলা agent_down alert নিজে বন্ধ করা।
+   *
+   * `runOnce`-এর **আয়না**: ওটা চুপ ডিভাইসে alert **তোলে**, এটা আবার-কথা-বলা
+   * ডিভাইসের খোলা alert **বন্ধ** করে (`recoveredAlertIds`)। ফলে সকালে মালিক
+   * শুধু এখন-সত্যিই-down PC দেখেন — রাতে বন্ধ হয়ে আবার চালু হওয়া বারোটা বাসি
+   * warning নয়।
+   *
+   * ⚠️ ingest hot path (device-auth.guard) ছোঁয়া হয় না — একই `lastSeenAt`
+   *    কলাম, একই শিডিউলার, প্রতি-রিকোয়েস্টে বাড়তি কোনো খরচ নেই।
+   */
+  async resolveReturned(now = new Date()): Promise<number> {
+    const open = await this.prisma.alert.findMany({
+      where: {
+        type: 'agent_down',
+        acknowledgedAt: null,
+        resolvedAt: null,
+        deviceId: { not: null },
+      },
+      select: {
+        id: true,
+        device: { select: { status: true, lastSeenAt: true } },
+      },
+    });
+    if (open.length === 0) return 0;
+
+    const ids = recoveredAlertIds(
+      open.map((a) => ({
+        alertId: a.id,
+        deviceActive: a.device?.status === 'active',
+        lastSeenAt: a.device?.lastSeenAt ?? null,
+      })),
+      now,
+    );
+    return this.alerts.resolveMany(ids, 'agent returned', now);
   }
 
   /**

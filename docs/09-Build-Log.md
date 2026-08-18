@@ -7523,6 +7523,79 @@ G01 ("এজেন্ট চুপ") ১২টা PC-তে বারবার �
 
 ---
 
+## ৩ভ২. Agent-down alert নিজে বন্ধ — সকালের বাসি-warning দেয়াল *(১৮ আগস্ট ২০২৬)*
+
+"Seen all" (§ ৩ভ) ছিল **ঝাড়ু**, ঝাড়ুর দরকার কমানো নয়। মালিক পরদিন সকালে
+আবার দেখালেন **১১টা খোলা "Agent down"** — সবই ৭০০+ মিনিট চুপ, "no shutdown
+event arrived either"। জিজ্ঞেস করলেন: *"ei warning gola kivabe handle korte caicho?"*
+
+### কারণ — নিয়মটা চতুর, কিন্তু goodbye পৌঁছায় না
+
+`isExpectedSilence()` (alerts.rules) এমনিতে PC বন্ধ করে বাড়ি যাওয়াকে স্বাভাবিক
+ধরে — শর্ত একটাই: শেষ খবরটা যেন বিদায়ী ইভেন্ট (agent_stop/logoff/shutdown/
+sleep) হয়। কিন্তু PC বন্ধের শেষ সেকেন্ডে এজেন্ট সেটা POST করার সময় পায় না —
+তা বন্ধ PC-র outbox-এ আটকে থাকে, drain হয় অনেক দেরিতে (**G136**)। সার্ভার
+goodbye শোনেই না → রাত ২টায় "১২ ঘণ্টা চুপ, ব্যাখ্যা নেই" → warning। তার ওপর
+দ্বিতীয় ফাঁক: PC সকালে ফিরে কাজ শুরু করলেও পুরোনো alert **নিজে বন্ধ হতো না** —
+হাতে "Seen" চাপা পর্যন্ত খোলা।
+
+### ⭐ #১ — ফিরে এলে নিজে বন্ধ (এই কমিট)
+
+শিডিউলড চেকেই সমাধান, ingest hot-path (`device-auth.guard`) ছোঁয়া হয়নি:
+
+- **নতুন কলাম** `alerts.resolved_at` + `resolved_reason` (nullable, default
+  নেই)। ⭐ `acknowledged_at` ("মানুষ দেখেছে") থেকে **আলাদা** — এটা "সার্ভার নিজে
+  দেখল অবস্থা কেটে গেছে"। দুটো ভিন্ন ঘটনা, তাই ভিন্ন ঘর; "কে প্রথম দেখেছিল"
+  ইতিহাস নড়ে না, ঘণ্টা-সংশোধনের প্রমাণও (`evidence_alert_id`) অটুট।
+- **pure function** `recoveredAlertIds()` — `agentDownCandidates()`-এর ঠিক
+  আয়না: ওটা `lastSeenAt < floor` ("চুপ") বাছে, এটা `>= floor` ("আবার কথা
+  বলছে")। খাঁটি ফাংশন, তাই **৮টা ইউনিট টেস্ট**।
+- `AgentDownCheck.resolveReturned()` — খোলা agent_down-এর ডিভাইস আবার সাম্প্রতিক
+  হলে `resolveMany(ids, 'agent returned')`। শিডিউলারের একই 'agent-down' টিকে
+  চলে, **grace-এর বাইরে** (কখনো নতুন alert তোলে না, শুধু বন্ধ করে — তাই
+  রিস্টার্টের পরও নিরাপদ, বরং বাসি alert তখনই সাফ হয়)।
+
+### ⚠️ "open" = unacked **এবং** unresolved — পাঁচ জায়গা
+
+একটা understand-পাসে (৬টা রিডার সমান্তরালে) গোটা change-surface ম্যাপ করা হয়,
+আর সেটাই বাঁচিয়েছে **সহজে-মিস-হওয়া যমজটা**:
+
+- **must-fix (openCount সঠিক রাখে):** `alerts.service` openCount · default list
+  filter · **`ops.health.service` openAlerts** ← এই দ্বিতীয় কাউন্টার আলাদা
+  পাতায়, ভুলে গেলে অন্য পাতা ঠিক হলেও হেলথ-সংখ্যা ভুল থাকত।
+- **consistency-fix:** `acknowledgeAll` (confirm-এ দেখানো সংখ্যা = যা ছোঁয়) ·
+  clock-drift dedup (আগেরটা resolved হলে নতুন drift সত্যিই নতুন)।
+- **ছোঁয়া হয়নি (ইচ্ছাকৃত):** throttle স্ক্যান (resolvedAt দিলে বন্যা ফিরত) ·
+  dispatcher/telegram (channels_sent-ভিত্তিক, "open" নয়) · adjustments FK চেক।
+
+### UI — তিন অবস্থা
+
+Alerts সারি এখন: **Seen by X** (মানুষ) · **Resolved** (সার্ভার, বোতাম নয়,
+tooltip-এ সময়) · নয়তো **Seen** বোতাম। resolved সারি ম্লান, "Show all"-এ ইতিহাসে
+থাকে, খোলা গোনায় নয়। ⭐ subtitle আর "Seen all" গেট দুটোই openCount পড়ে, তাই
+ক্লায়েন্টে আর কিছু বদলাতে হয়নি।
+
+### ⛔ dispatcher suppress এবার নয় — ইচ্ছাকৃত scope
+
+resolve হওয়ার আগেই email চলে যায় (dispatcher ৬০s, agent-down টিক ৫min), তাই
+suppress-এর জানালা নগণ্য; আর `channels_sent` খালি রেখে suppress করলে "গেছে কি
+যায়নি" invariant নষ্ট হতো। মালিকের আসল ব্যথা **পর্দার দেয়াল**, সেটা auto-close-ই
+মেটায়।
+
+### যাচাই
+
+**৬০ টেস্ট সবুজ** (৫০ rules unit + ৫ recovery e2e + ৫ ack e2e), সার্ভার tsc
+পরিষ্কার, ওয়েব tsc+build সবুজ। migration test DB-তে প্রয়োগ হয়েছে।
+⚠️ পর্দায় লাইভ দেখা যায়নি (লগইন নিষিদ্ধ) — লজিক e2e-তে প্রমাণিত।
+
+### ⏳ #২ এখনো বাকি — আসল গোড়া
+
+auto-close দেয়ালটা সরায়, কিন্তু warning-টা **তৈরি হওয়াই** থামায় না। সেটা থামাতে
+হলে এজেন্টকে Windows shutdown/logoff-এ বিদায়ী ইভেন্ট সিঙ্ক্রোনাসভাবে পাঠাতে হবে
+(G136-এর আসল সমাধান) — পরের ধাপ।
+
+---
+
 ## ৩ব. CI রোজ লাল, আর মালিকের ইনবক্স ভরছিল — অবশেষে সবুজ *(১৭ আগস্ট ২০২৬)*
 
 মালিক Gmail-এর স্ক্রিনশট পাঠালেন: *"ei email gula ami pacchi keno?"* —

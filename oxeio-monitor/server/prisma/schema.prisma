@@ -497,6 +497,11 @@ model Alert {
   channelsSent     String[]      @map("channels_sent")
   acknowledgedById Int?          @map("acknowledged_by")
   acknowledgedAt   DateTime?     @map("acknowledged_at") @db.Timestamptz(3)
+  // ⭐ সার্ভার নিজে অবস্থা কেটে যেতে দেখেছে (এজেন্ট ফিরে এসেছে) — মানুষ নয়।
+  //    acknowledgedAt ("মানুষ দেখেছে") থেকে আলাদা: দুটো ভিন্ন ঘটনা, তাই ভিন্ন ঘর।
+  //    NULL = এখনো মেটেনি; "open" মানে acknowledgedAt আর resolvedAt দুটোই NULL।
+  resolvedAt       DateTime?     @map("resolved_at") @db.Timestamptz(3)
+  resolvedReason   String?       @map("resolved_reason")
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
   employee       Employee?        @relation(fields: [employeeId], references: [id])

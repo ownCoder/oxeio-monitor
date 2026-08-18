@@ -73,6 +73,9 @@ export class ClockDriftService {
         type: 'clock_drift',
         deviceId,
         acknowledgedAt: null,
+        // ⚠️ "এখনো খোলা" = unacked **এবং** unresolved। আগেরটা বন্ধ হয়ে থাকলে
+        //    নতুন drift সত্যিই নতুন খবর — চাপা দেওয়া উচিত নয়।
+        resolvedAt: null,
         createdAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
       },
       select: { id: true },

@@ -156,9 +156,9 @@ function AlertTable({
       <Table
         rows={rows}
         rowKey={(r) => r.id}
-        // ⚠️ acknowledge করা সারি ম্লান — কিন্তু **থেকে যায়**, কারণ
-        //    ইতিহাসটাই পরে ঘণ্টা সংশোধনের প্রমাণ (ADR-011e)
-        rowMuted={(r) => r.acknowledgedAt !== null}
+        // ⚠️ acknowledge **বা** সার্ভার নিজে-বন্ধ করা সারি ম্লান — কিন্তু
+        //    **থেকে যায়**, কারণ ইতিহাসটাই পরে ঘণ্টা সংশোধনের প্রমাণ (ADR-011e)
+        rowMuted={(r) => r.acknowledgedAt !== null || r.resolvedAt !== null}
         columns={[
           {
             key: 'severity',
@@ -229,6 +229,18 @@ function AlertTable({
               r.acknowledgedAt ? (
                 <span className="text-[12px] text-ink-3">
                   Seen{r.acknowledgedBy ? ` by ${r.acknowledgedBy}` : ''}
+                </span>
+              ) : r.resolvedAt ? (
+                /*
+                  ⭐ সার্ভার **নিজে** বন্ধ করেছে (এজেন্ট ফিরে এসেছে) — কোনো
+                     বোতাম নয়, কারণ "দেখার" কিছু নেই। সারিটা ইতিহাসে থেকে যায়
+                     (Show all-এ), কিন্তু খোলা গোনায় ঢোকে না।
+                */
+                <span
+                  className="text-[12px] text-ink-3"
+                  title={`Resolved on its own — ${formatDateTime(r.resolvedAt)}`}
+                >
+                  Resolved
                 </span>
               ) : (
                 <MiniButton

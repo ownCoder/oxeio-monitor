@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AGENT_SILENCE_MIN,
   DISK_CRITICAL_PCT,
   DISK_WARN_PCT,
   THROTTLE_HOURS,
@@ -19,6 +20,7 @@ import {
   isThrottled,
   isWithinStartupGrace,
   nextAllowedAt,
+  recoveredAlertIds,
   shouldFlagNoActivity,
   silentMinutes,
   suppressFlood,
@@ -27,6 +29,7 @@ import {
   type AlertKey,
   type DeviceSilence,
   type NoActivityInput,
+  type OpenAgentDownAlert,
   type StopEvent,
 } from '../src/alerts/alerts.rules';
 
@@ -237,6 +240,70 @@ describe('G01 — নীরবতার ব্যাখ্যা আছে ক�
     expect(
       isWithinStartupGrace(new Date(now.getTime() - 20 * MIN), now),
     ).toBe(false);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// G01 (ফেরত) — ফিরে এলে alert নিজে বন্ধ
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('recoveredAlertIds — ফিরে আসা এজেন্টের খোলা alert বন্ধযোগ্য', () => {
+  const now = new Date('2026-08-11T14:00:00Z');
+  const cameBack = new Date(now.getTime() - 2 * MIN); // ১০ মিনিটের কম → ফিরেছে
+  const stillSilent = new Date(now.getTime() - 30 * MIN);
+
+  const open = (
+    over: Partial<OpenAgentDownAlert> = {},
+  ): OpenAgentDownAlert => ({
+    alertId: 1n,
+    deviceActive: true,
+    lastSeenAt: cameBack,
+    ...over,
+  });
+
+  it('আবার কথা-বলা active ডিভাইসের alert বন্ধযোগ্য', () => {
+    expect(recoveredAlertIds([open()], now)).toEqual([1n]);
+  });
+
+  /** ⭐ agentDownCandidates()-এর ঠিক আয়না: এখনো চুপ থাকলে বন্ধ নয় */
+  it('এখনো চুপ থাকলে বন্ধ করা হয় না', () => {
+    expect(recoveredAlertIds([open({ lastSeenAt: stillSilent })], now)).toEqual(
+      [],
+    );
+  });
+
+  /** ⚠️ revoke করা ডিভাইসের চুপ থাকাটাই উদ্দেশ্য — সাম্প্রতিক হলেও বন্ধ নয় */
+  it('revoke করা ডিভাইস বাদ', () => {
+    expect(recoveredAlertIds([open({ deviceActive: false })], now)).toEqual([]);
+  });
+
+  it('lastSeenAt নেই এমন কিছু বন্ধ হয় না', () => {
+    expect(recoveredAlertIds([open({ lastSeenAt: null })], now)).toEqual([]);
+  });
+
+  /** ⚠️ সীমানা ঠিক silence-floor-এ — raise আর resolve যেন একই দাগে না লাগে */
+  it('ঠিক silence-floor-এ থাকলেও ফিরে এসেছে ধরা হয়', () => {
+    const atFloor = new Date(now.getTime() - AGENT_SILENCE_MIN * MIN);
+    expect(recoveredAlertIds([open({ lastSeenAt: atFloor })], now)).toEqual([
+      1n,
+    ]);
+  });
+
+  it('মিশ্র তালিকায় শুধু ফিরে-আসাগুলোর id ফেরে', () => {
+    const ids = recoveredAlertIds(
+      [
+        open({ alertId: 10n, lastSeenAt: cameBack }),
+        open({ alertId: 11n, lastSeenAt: stillSilent }),
+        open({ alertId: 12n, deviceActive: false }),
+        open({ alertId: 13n, lastSeenAt: cameBack }),
+      ],
+      now,
+    );
+    expect(ids).toEqual([10n, 13n]);
+  });
+
+  it('খালি তালিকায় খালি ফল', () => {
+    expect(recoveredAlertIds([], now)).toEqual([]);
   });
 });
 

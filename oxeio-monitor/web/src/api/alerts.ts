@@ -78,6 +78,11 @@ export interface AlertRow {
   acknowledgedAt: string | null;
   /** যিনি প্রথম "দেখেছি" বলেছিলেন — পরে কেউ ডাকলেও নাম বদলায় না */
   acknowledgedBy: string | null;
+  /**
+   * ⭐ সার্ভার **নিজে** বন্ধ করেছে (এজেন্ট ফিরে এসেছে) — কোনো মানুষ দেখেনি।
+   *    acknowledgedAt থেকে আলাদা: "open" মানে দুটোই null।
+   */
+  resolvedAt: string | null;
   createdAt: string;
 }
 

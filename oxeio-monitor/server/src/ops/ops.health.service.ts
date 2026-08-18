@@ -200,7 +200,10 @@ export class OpsHealthService {
           },
         }),
         this.prisma.alert.count({ where: { channelsSent: { isEmpty: true } } }),
-        this.prisma.alert.count({ where: { acknowledgedAt: null } }),
+        // ⚠️ alerts.service-এর openCount-এর যমজ। "open" = acknowledgedAt আর
+        //    resolvedAt দুটোই NULL — নইলে সার্ভার নিজে বন্ধ করা alert হেলথ
+        //    পাতায় সংখ্যাটা ভুল দেখাত (অন্য পাতা ঠিক হলেও)।
+        this.prisma.alert.count({ where: { acknowledgedAt: null, resolvedAt: null } }),
         this.prisma.screenshot.count({ where: { deletedAt: { not: null } } }),
       ]);
 

@@ -197,6 +197,41 @@ export function agentDownCandidates(
   });
 }
 
+/** একটা খোলা agent_down alert + তার ডিভাইসের সর্বশেষ অবস্থা */
+export interface OpenAgentDownAlert {
+  alertId: bigint;
+  /** ডিভাইসটা এখনো active (revoke হয়নি) */
+  deviceActive: boolean;
+  /** সার্ভারের ঘড়িতে শেষ কবে কিছু এসেছে */
+  lastSeenAt: Date | null;
+}
+
+/**
+ * ⭐ ফিরে আসা এজেন্ট — কোন খোলা agent_down alert এখন নিজে বন্ধ করা যায়।
+ *
+ * `agentDownCandidates()`-এর ঠিক **আয়না**: ওটা "চুপ হয়ে গেছে" বাছে
+ * (`lastSeenAt < floor`), এটা বাছে "আবার কথা বলছে" (`lastSeenAt >= floor`)।
+ * যে PC-র জন্য alert উঠেছিল সে আবার ডেটা পাঠাতে শুরু করলে alert-এর প্রশ্নটা
+ * ("এই PC কি ঠিক আছে?") নিজেই মিটে যায় — উত্তর হ্যাঁ। তাই সকালে মালিক শুধু
+ * **এখন যা সত্যিই down** তা-ই দেখেন, রাতে-বন্ধ-হওয়া বারোটা বাসি warning নয়।
+ *
+ * ⚠️ revoke করা ডিভাইস বাদ — চুপ থাকাটাই তো উদ্দেশ্য, ওর alert এই পথে
+ *    বন্ধ করা হয় না।
+ */
+export function recoveredAlertIds(
+  alerts: readonly OpenAgentDownAlert[],
+  now: Date,
+  silenceMin = AGENT_SILENCE_MIN,
+): bigint[] {
+  const floor = now.getTime() - silenceMin * MINUTE_MS;
+  return alerts
+    .filter(
+      (a) =>
+        a.deviceActive && a.lastSeenAt != null && a.lastSeenAt.getTime() >= floor,
+    )
+    .map((a) => a.alertId);
+}
+
 /**
  * ⭐ সার্ভার সবে উঠেছে — এখন agent_down দেখা মানে শুধু নিজেরই অনুপস্থিতি দেখা।
  * এজেন্টদের ফিরে আসার সময় দেওয়ার আগে প্রশ্নটাই করা উচিত নয়।

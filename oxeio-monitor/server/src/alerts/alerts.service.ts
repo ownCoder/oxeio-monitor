@@ -43,6 +43,8 @@ export interface AlertRow {
   channelsSent: string[];
   acknowledgedAt: string | null;
   acknowledgedBy: string | null;
+  /** সার্ভার নিজে বন্ধ করেছে (এজেন্ট ফিরে এসেছে) — মানুষ acknowledge করেনি */
+  resolvedAt: string | null;
   createdAt: string;
 }
 
@@ -68,6 +70,7 @@ const ROW_SELECT = {
   meta: true,
   channelsSent: true,
   acknowledgedAt: true,
+  resolvedAt: true,
   createdAt: true,
   device: { select: { hostname: true } },
   employee: { select: { fullName: true } },
@@ -164,14 +167,18 @@ export class AlertsService {
     const limit = query.limit ?? DEFAULT_LIMIT;
 
     const where: Prisma.AlertWhereInput = {
-      ...(query.status === 'all' ? {} : { acknowledgedAt: null }),
+      // ⚠️ "open" = acknowledgedAt আর resolvedAt দুটোই NULL। সার্ভার নিজে বন্ধ
+      //    করা (resolved) সারি খোলা তালিকায় থাকলে গণনা আর তালিকা দ্বিমত করত।
+      ...(query.status === 'all' ? {} : { acknowledgedAt: null, resolvedAt: null }),
       ...(query.type ? { type: query.type } : {}),
       ...(query.severity ? { severity: query.severity } : {}),
     };
 
     const [total, openCount, rows] = await Promise.all([
       this.prisma.alert.count({ where }),
-      this.prisma.alert.count({ where: { acknowledgedAt: null } }),
+      // ⭐ ব্যাজ ও "N still open"-এর একমাত্র উৎস — resolved বাদ না দিলে
+      //    ফিরে-আসা এজেন্টের বন্ধ alert-ও সংখ্যাটা বাড়িয়ে রাখত।
+      this.prisma.alert.count({ where: { acknowledgedAt: null, resolvedAt: null } }),
       this.prisma.alert.findMany({
         where,
         select: ROW_SELECT,
@@ -203,11 +210,39 @@ export class AlertsService {
    */
   async acknowledgeAll(userId: number): Promise<{ count: number }> {
     const { count } = await this.prisma.alert.updateMany({
-      where: { acknowledgedAt: null },
+      // ⚠️ শুধু সত্যিকারের **খোলা** সারি — acknowledgedAt আর resolvedAt দুটোই
+      //    NULL। নইলে confirm-এ দেখানো সংখ্যা (openCount, resolved বাদ) আর
+      //    সার্ভার যা ছোঁয় তা মিলত না।
+      where: { acknowledgedAt: null, resolvedAt: null },
       data: { acknowledgedById: userId, acknowledgedAt: new Date() },
     });
     this.logger.log(`${count} alert(s) acknowledged in bulk by user ${userId}`);
     return { count };
+  }
+
+  /**
+   * ⭐ **সার্ভার নিজে অ্যালার্ট বন্ধ করা** — কোনো মানুষ "দেখেছি" বলেনি,
+   * অবস্থাটাই কেটে গেছে (এজেন্ট ফিরে এসেছে)। তাই `acknowledgedAt` নয়, আলাদা
+   * `resolvedAt` — "কে প্রথম দেখেছিল" ইতিহাস অটুট থাকে, আর ঘণ্টা-সংশোধনের
+   * প্রমাণও (`evidence_alert_id`) নড়ে না। কিছুই ডিলিট হয় না।
+   *
+   * ⚠️ idempotent: আগে-বন্ধ সারি আবার ছোঁয়া হয় না (`resolvedAt: null` শর্ত),
+   *    নইলে প্রতি টিকে reason ও সময় নতুন করে বসে যেত।
+   */
+  async resolveMany(
+    ids: readonly bigint[],
+    reason: string,
+    now = new Date(),
+  ): Promise<number> {
+    if (ids.length === 0) return 0;
+    const { count } = await this.prisma.alert.updateMany({
+      where: { id: { in: [...ids] }, resolvedAt: null },
+      data: { resolvedAt: now, resolvedReason: reason },
+    });
+    if (count > 0) {
+      this.logger.log(`${count} alert(s) auto-resolved — ${reason}`);
+    }
+    return count;
   }
 
   async acknowledge(rawId: string, userId: number): Promise<AlertRow> {
@@ -259,6 +294,7 @@ function toRow(a: AlertWithNames): AlertRow {
     channelsSent: a.channelsSent,
     acknowledgedAt: a.acknowledgedAt?.toISOString() ?? null,
     acknowledgedBy: a.acknowledgedBy?.fullName ?? null,
+    resolvedAt: a.resolvedAt?.toISOString() ?? null,
     createdAt: a.createdAt.toISOString(),
   };
 }
