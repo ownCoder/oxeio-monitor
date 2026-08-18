@@ -258,7 +258,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১২৮৬টি টেস্ট, ৬৭টি ফাইল**
+│   └── test/                               ✅ Vitest + supertest — **১৩৫১টি টেস্ট, ৭৩টি ফাইল** *(১৮ আগস্ট মাপা, ১টি skipped)*
 │       #  ⚠️ ৪৪টি ফাইল DB ছাড়াই চলে; ২৩টি `*.e2e.spec.ts`
 │       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
@@ -366,15 +366,25 @@ oxeio-monitor/
 │   │   ├── DepositsPage.tsx                ✅ ⭐ R21 জামানত — সাইডবারে, Settings-এ নয় (09 § ৩ঃ)
 │       │   #  ⚠️ `api/alerts.ts` অনেক আগে লেখা, কিন্তু কোনো পাতা ছোঁয়নি
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
-│       │   └── AgentVersionsTab.tsx        ✅ ⭐ H04 — নতুন বিল্ড বিলি করা
+│       │   ├── AgentVersionsTab.tsx        ✅ ⭐ H04 — নতুন বিল্ড বিলি করা · ধাপ বদল · Download MSI
+│       │   ├── FleetCard.tsx               ✅ ⭐ **কোন PC কোন বিল্ডে** — ওই ট্যাবেরই দ্বিতীয় কার্ড
+│       │   │  #  ⚠️⚠️ নতুন "Devices" ট্যাব **নয়** (G89 — মালিক নিজেই তুলে দিতে বলেছিলেন);
+│       │   │  #     শুধু-দেখার, কোনো revoke বোতাম নেই — এজেন্ট বন্ধ/চালু হয় Staff সারিতে
+│       │   ├── fleet.ts                    ✅ খাঁটি নিয়ম — compareVersion · newestOffered · lagOf · fleetGroups
+│       │   │  #  ⚠️⚠️ ভার্সন তুলনা **সংখ্যায়**: '0.4.10' < '0.4.9' বর্ণক্রমে সত্যি, আর ভুলটা নীরব।
+│       │   │  #     নিয়মটা সার্ভারের `agent/rollout.ts`-এর `isNewer()` থেকে হুবহু কপি
+│       │   └── BackupTab.tsx               ✅ ⭐ R5 · G39 — অফসাইট ব্যাকআপের কী (Backblaze B2)
+│       │      #  ⚠️⚠️ পুরো application key কখনো ব্রাউজারে ফেরত যায় না — শুধু শেষ চার অক্ষর
 │       ├── pages/security/                 ✅ I06 2FA চালু/বন্ধ · রিকভারি কোড
 │       ├── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
 │       └── pages/MyDataPage.tsx            ✅ ⭐ J05 — tray-র "My data" এখানে নামে
 │           #  ⚠️ কোনো বোতাম নেই — একটা বসালেই approval workflow-র প্রথম ধাপ
-│   └── test/                               ✅ **৭৩টি, ২ ফাইল**
+│   └── test/                               ✅ **১০৬টি, ৪ ফাইল**
 │       ├── format.spec.ts                  ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
-│       └── onTheClock.spec.ts              ✅ ৯টি — **Worklog**-এর দুই ট্যাব (`live/TeamCards.tsx`); বোর্ডের "Working now" টাইলও একই `isWorking()` ডাকে, তাই সংখ্যা দুটো কখনো আলাদা হয় না;
-│           #  ⚠️ কেউ যেন **কোনো ট্যাবেই না পড়ে নীরবে উধাও** হয়ে না যায়
+│       ├── onTheClock.spec.ts              ✅ ৯টি — **Worklog**-এর দুই ট্যাব (`live/TeamCards.tsx`); বোর্ডের "Working now" টাইলও একই `isWorking()` ডাকে, তাই সংখ্যা দুটো কখনো আলাদা হয় না;
+│       │   #  ⚠️ কেউ যেন **কোনো ট্যাবেই না পড়ে নীরবে উধাও** হয়ে না যায়
+│       ├── roster.spec.ts                  ✅ ১২টি — সারির ক্রম **কখনো ঘণ্টা ধরে নয়** (লিডারবোর্ড হয়ে যেত)
+│       └── fleet.spec.ts                   ✅ ২১টি — সবচেয়ে জরুরিটা *"০.৪.১০ ০.৪.৯-এর চেয়ে নতুন"*
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
 │
