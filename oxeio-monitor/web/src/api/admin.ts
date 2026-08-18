@@ -197,6 +197,22 @@ export interface DeviceView {
   employee: { id: number; empCode: string; fullName: string } | null;
 }
 
+/**
+ * ⚠️⚠️ **এই রুটটা সার্ভারে বহুদিন ধরে ছিল, ওয়েব একবারও ডাকেনি।**
+ *
+ * উপরের `DeviceView` টাইপটাও লেখা হয়ে বসে ছিল — অর্থাৎ চুক্তির দুই পাশই
+ * তৈরি, মাঝখানে কল নেই। ফল: *"কোন PC-তে কোন এজেন্ট চলছে"* প্রশ্নের উত্তর
+ * পর্দার কোথাও ছিল না, যদিও ডেটাটা এক কল দূরে (১৮ আগস্ট, মালিকের প্রশ্ন)।
+ *
+ * ⚠️ owner-only (`@Roles(UserRole.owner)`), আর সার্ভার `{ rows, total }`
+ * খামে পাঠায় — `total` এখানে লাগে না, সারিগুলোই ফেরত দেওয়া হয়।
+ */
+export function listDevices(signal?: AbortSignal): Promise<DeviceView[]> {
+  return api<{ rows: DeviceView[]; total: number }>('/devices', {
+    signal,
+  }).then((r) => r.rows);
+}
+
 
 
 

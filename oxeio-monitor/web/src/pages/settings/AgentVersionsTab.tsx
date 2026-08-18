@@ -13,6 +13,7 @@ import { Card } from '../../components/Card';
 import { Button } from '../../components/Page';
 import { Empty, ErrorBox, Loading } from '../../components/States';
 import { Table } from '../../components/Table';
+import { FleetCard } from './FleetCard';
 import { formatBytes, formatDateTime } from '../../lib/format';
 import {
   Chip,
@@ -77,6 +78,17 @@ export function AgentVersionsTab() {
         )}
         {rows.length > 0 && <VersionTable rows={rows} onChanged={reload} />}
       </Card>
+
+      {/*
+        ⭐⭐ **কোন PC কোন বিল্ডে** *(১৮ আগস্ট)* — উপরের টেবিল বলে কোন
+           ভার্সনে **কতগুলো** PC আছে, কিন্তু **কোনগুলো** সেটা পর্দার
+           কোথাও ছিল না। মালিকের প্রশ্নটা ছিল ঠিক তাই।
+
+        ⚠️ নতুন "Devices" ট্যাব **নয়** (G89 — সেটা মালিক নিজেই তুলে দিতে
+           বলেছিলেন)। এখানে বসেছে কারণ প্রশ্নটা এই ট্যাবেই ওঠে, আর
+           দুটো সংখ্যা পাশাপাশি থাকলে সেগুলো একমত কিনা তাও দেখা যায়।
+      */}
+      <FleetCard versions={rows} />
 
       {publishing && (
         <PublishDialog

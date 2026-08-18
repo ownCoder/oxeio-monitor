@@ -384,7 +384,7 @@ export function StaffTab() {
           hint={
             search
               ? 'Try part of a name, code or email — or change "Status" to include inactive people.'
-              : 'Add someone first, then create an enrolment code for their PC on the "Devices" tab — without it the agent sends nothing.'
+              : 'Add someone first and give them a portal account — the agent on their PC asks for that same email and password the first time it runs.'
           }
           action={
             <Button tone="primary" onClick={() => setCreating(true)}>
@@ -830,7 +830,7 @@ function ReactivateDialog({
     <ConfirmDialog
       title={`Reactivate ${employee.fullName}?`}
       intro="They come back to the active list and count towards the monthly target again."
-      warning="Devices do not come back on their own — create a new enrolment code for their PC on the Devices tab, otherwise the agent stays silent."
+      warning="Their PC does not come back on its own — their agent was switched off when they were made inactive. Use “Turn agent on” in their row afterwards, otherwise it stays silent."
       confirmLabel="Reactivate"
       tone="primary"
       busy={busy}
