@@ -113,6 +113,59 @@ public class LiveDurationTests
         Assert.Equal(Min(120), shown);
     }
 
+    /// <summary>
+    /// ⚠️⚠️ <b>মাঠের অভিযোগ — "sec barte barte atoke jacche"।</b>
+    ///
+    /// ০.৪.৮-এ <c>counted</c> আসত সার্ভারের heartbeat থেকে, যেটা সবসময়
+    /// <b>পিছিয়ে</b> (আপলোড বাকি সেগমেন্ট কিউয়ে)। নতুন heartbeat এলে candidate
+    /// আগের দেখানো মানের চেয়ে কম হতো, আর "পিছোবে না" নিয়মটা তখন ঘড়িটাকে
+    /// <b>আটকে রাখত</b> যতক্ষণ না candidate ওই মান ছাড়ায় — অর্থাৎ প্রতি
+    /// চক্রে কয়েক মিনিট থমকে থাকা।
+    ///
+    /// ⭐ সমাধান: <c>counted</c> এখন হোস্ট দেয় খোলা সেগমেন্টসহ, তাই সেটা
+    /// নিজেই ধারাবাহিকভাবে বাড়ে। এই টেস্ট সেই ধারাবাহিকতাটাই পাহারা দেয়:
+    /// প্রতিটা সেকেন্ডে ঘড়ি <b>কঠোরভাবে</b> এগোবে, snapshot বদলানোর
+    /// মুহূর্তেও।
+    /// </summary>
+    [Fact]
+    public void Snapshot_বদলানোর_মুহূর্তেও_ঘড়ি_থামে_না()
+    {
+        var live = new LiveDuration();
+        var previous = TimeSpan.MinValue;
+
+        // হোস্ট প্রতি ৫ মিনিটে নতুন snapshot দেয়; মাঝের সেকেন্ডগুলো জানালা গোনে
+        for (var second = 0; second <= 15 * 60; second++)
+        {
+            var snapshotSecond = second / 300 * 300;          // শেষ snapshot কখন
+            var snapshotAt = T0.AddSeconds(snapshotSecond);
+
+            // ⭐ হোস্টের সংখ্যা খোলা সেগমেন্টসহ — snapshot-এর মুহূর্ত পর্যন্ত সঠিক
+            var counted = Min(120) + TimeSpan.FromSeconds(snapshotSecond);
+
+            var shown = live.Next(counted, snapshotAt, T0.AddSeconds(second), counting: true);
+
+            Assert.True(
+                shown > previous,
+                $"{second} সেকেন্ডে ঘড়ি আটকে গেছে ({previous} → {shown})");
+
+            previous = shown;
+        }
+
+        // ১৫ মিনিট কাজের পর ঠিক ১৫ মিনিটই বেড়েছে — এক সেকেন্ডও বেশি নয়
+        Assert.Equal(Min(135), previous);
+    }
+
+    /// <summary>
+    /// ⚠️ ছাদটা স্ট্যাটাস প্রকাশের সর্বোচ্চ ব্যবধানের (৫ মিনিট — heartbeat ও
+    /// <c>MaxSegmentLength</c> দুটোই) চেয়ে বড় হতেই হবে। সমান হলে ঘড়ি ঠিক
+    /// শেষ মুহূর্তে থমকে যেত — ০.৪.৮-এ ঠিক সেটাই হয়েছিল।
+    /// </summary>
+    [Fact]
+    public void ছাদ_প্রকাশের_ব্যবধানের_চেয়ে_বড়()
+    {
+        Assert.True(LiveDuration.MaxDrift > TimeSpan.FromMinutes(5));
+    }
+
     /// <summary>নতুন গোনা সংখ্যা এলে সেটাই ভিত্তি — ঘড়ি সেখান থেকে চলে।</summary>
     [Fact]
     public void নতুন_সংখ্যা_এলে_সেখান_থেকেই_চলে()

@@ -154,8 +154,17 @@ internal sealed class AgentHost : IAsyncDisposable
     /// কারণ <see cref="Snapshot"/> যেটা ব্যবহার করে anchor-ও ঠিক সেটারই হতে
     /// হবে — মিলিয়ে ফেললে ঘড়ি ভুল জায়গা থেকে গুনত।
     /// </summary>
-    private DateTimeOffset? _progressAt;
-    private DateTimeOffset? _activeTodayAt;
+    /// <summary>
+    /// ⭐ সার্ভারের হিসাব থেকে আমাদের নিজের হিসাব **কতটা এগিয়ে** — অর্থাৎ
+    /// এই এজেন্ট চালু হওয়ার আগের কাজটুকু (রিবুট, বা দিনের প্রথম ভাগ অন্য
+    /// সেশনে)। heartbeat-এ আমরা নিজের <c>ActiveSecToday</c> পাঠাই আর সার্ভার
+    /// তার মোট ফেরত দেয় — পার্থক্যটাই এই অফসেট।
+    ///
+    /// ⚠️⚠️ এটা না থাকলে রিবুটের পর জানালা হয় সার্ভারের **থেমে থাকা** সংখ্যা
+    /// দেখাত (সেকেন্ড নড়ত না), নয়তো নিজের শূন্য থেকে শুরু করা সংখ্যা —
+    /// অর্থাৎ সকালের কাজটুকু উধাও। অফসেট + নিজের চলন্ত হিসাব = দুটোই ঠিক।
+    /// </summary>
+    private long _todayOffsetSec;
     private string? _configVersion;
     private MilestoneMemory? _milestone;
 
@@ -876,11 +885,15 @@ internal sealed class AgentHost : IAsyncDisposable
             {
                 if (_credentials?.IsEnrolled == true && _sync is not null)
                 {
+                    // ⭐ ঠিক যে সংখ্যাটা পাঠানো হচ্ছে সেটাই ধরে রাখা — সার্ভারের
+                    //    উত্তরের সাথে মিলিয়ে অফসেট বের করতে ওটাই লাগবে।
+                    var sentTodaySec = (int)Math.Clamp(
+                        Interlocked.Read(ref _activeTodaySec), 0, 86_400);
+
                     var result = await _sync.HeartbeatAsync(new HeartbeatRequest
                     {
                         State = _machine!.State,
-                        ActiveSecToday = (int)Math.Clamp(
-                            Interlocked.Read(ref _activeTodaySec), 0, 86_400),
+                        ActiveSecToday = sentTodaySec,
                         QueueDepth = _worker?.Depth.ForHeartbeat,
                         ConfigVersion = _configVersion,
                         AgentVersion = _version,
@@ -891,8 +904,14 @@ internal sealed class AgentHost : IAsyncDisposable
                         if (body.Progress is not null)
                         {
                             _progress = body.Progress;
-                            // ⭐ চলন্ত ঘড়ির anchor — এই মুহূর্তের হিসাব
-                            _progressAt = _clock.Now;
+
+                            // ⭐ সার্ভার আমাদের চেয়ে যতটা এগিয়ে, ততটাই অফসেট।
+                            // ⚠️ ঋণাত্মক হলে ০ — সার্ভার **পিছিয়ে** থাকা
+                            //    স্বাভাবিক (কিউয়ে সেগমেন্ট পড়ে আছে), সেটা
+                            //    আমাদের হিসাব থেকে বাদ দেওয়ার কারণ নয়।
+                            Interlocked.Exchange(
+                                ref _todayOffsetSec,
+                                Math.Max(0, body.Progress.TodayActiveSec - sentTodaySec));
                         }
 
                         // ⭐⚠️ **এখানেই কনফিগ বদলানো এতদিন নীরবে মরে ছিল।**
@@ -1533,11 +1552,6 @@ internal sealed class AgentHost : IAsyncDisposable
                 }
 
                 Interlocked.Add(ref _activeTodaySec, s.DurationSec);
-
-                // ⭐ এই সেগমেন্ট যেখানে শেষ হয়েছে, চলন্ত ঘড়ি সেখান থেকেই গোনে।
-                //    ⚠️ `now` নয়, `s.EndedAt` — সেগমেন্টটা দেরিতে রেকর্ড হলে
-                //    (লুপের টিক) মাঝের সময়টুকু দুবার গোনা হতো।
-                _activeTodayAt = s.EndedAt;
             }
 
             RememberBusy(s);
@@ -1719,6 +1733,44 @@ internal sealed class AgentHost : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// ⭐⭐ আজ এ পর্যন্ত কত কাজ — <b>এই সেকেন্ড পর্যন্ত</b>।
+    ///
+    /// তিনটে অংশ: সার্ভার-অফসেট (এজেন্ট চালুর আগের কাজ) + আজকের বন্ধ হওয়া
+    /// সেগমেন্ট + <b>এখন যে সেগমেন্টটা চলছে সেটুকু</b>।
+    ///
+    /// ⚠️⚠️ শেষ অংশটাই আগে বাদ পড়ত, আর সেটাই ছিল "সেকেন্ড নড়ে না"-র গোড়া:
+    /// <c>_activeTodaySec</c> বাড়ে কেবল সেগমেন্ট <b>বন্ধ</b> হলে, আর সেগমেন্ট
+    /// কাটা হয় সর্বোচ্চ ৫ মিনিটে (<c>IdleStateMachine.MaxSegmentLength</c>) —
+    /// অর্থাৎ সংখ্যাটা ৫ মিনিট থেমে থেকে এক লাফে ৫ মিনিট বাড়ত।
+    ///
+    /// ⚠️ খোলা সেগমেন্টের হিসাব <b>এখানেই</b>, `_clock`-এ (monotonic) — জানালায়
+    /// নয়। জানালা বাস্তব ঘড়ি দেখে; দুই টাইমলাইন মেশানো ভুল হতো।
+    ///
+    /// ⚠️ শুধু ACTIVE অবস্থায় যোগ হয় — idle মানে গোনাই বন্ধ (§ ২.১-ক), আর
+    /// lock/suspend-ও তাই।
+    /// </summary>
+    private TimeSpan TodayWorked(EmployeeProgress? progress)
+    {
+        var counted = Interlocked.Read(ref _todayOffsetSec)
+                      + Interlocked.Read(ref _activeTodaySec);
+
+        if (_machine is { State: SegmentState.Active } machine)
+        {
+            var openFor = _clock.Now - machine.OpenedAt;
+            if (openFor > TimeSpan.Zero) counted += (long)openFor.TotalSeconds;
+        }
+
+        // ⚠️ সার্ভারের সংখ্যা কখনো আমাদের চেয়ে বেশি হলে সেটাই — সে একাধিক
+        //    ডিভাইসের যোগফল জানে, আমরা জানি না।
+        if (progress?.TodayActiveSec is { } serverSec && serverSec > counted)
+        {
+            counted = serverSec;
+        }
+
+        return TimeSpan.FromSeconds(counted);
+    }
+
     private AgentStatus Snapshot()
     {
         var depth = _worker?.Depth.Total ?? 0;
@@ -1733,12 +1785,13 @@ internal sealed class AgentHost : IAsyncDisposable
 
             // ⭐ আজকের হিসাব সার্ভারেরটাই — এজেন্টের নিজেরটা রিবুটে শূন্য হয়।
             //    সার্ভার এখনো কিছু না বললে (একবারও heartbeat হয়নি) নিজেরটা।
-            ActiveToday = TimeSpan.FromSeconds(
-                progress?.TodayActiveSec ?? Interlocked.Read(ref _activeTodaySec)),
+            ActiveToday = TodayWorked(progress),
 
-            // ⭐ উপরের সংখ্যাটা **যেখান থেকে** এসেছে, anchor-ও ঠিক সেটার।
-            //    জানালার চলন্ত ঘড়ি এখান থেকেই সেকেন্ড গোনে (LiveDuration)।
-            CountedAt = progress is not null ? _progressAt : _activeTodayAt,
+            // ⭐ উপরের সংখ্যাটা **এই মুহূর্তের** — জানালা এরপর থেকে নিজে
+            //    সেকেন্ড গোনে (LiveDuration)। ⚠️ ইচ্ছাকৃতভাবে বাস্তব ঘড়ি
+            //    (`UtcNow`), `_clock` নয়: জানালাও বাস্তব ঘড়িতেই মাপে, আর দুই
+            //    টাইমলাইন মেশালে পার্থক্যটা অর্থহীন হয়ে যেত।
+            CountedAt = DateTimeOffset.UtcNow,
             ActiveThisMonth = TimeSpan.FromSeconds(progress?.MonthActiveSec ?? 0),
             MonthlyTargetHours = progress?.MonthlyTargetHours ?? 208,
 
