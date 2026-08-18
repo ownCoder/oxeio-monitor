@@ -308,9 +308,16 @@ Write-Host '── ২· wix build ───────────────
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
+# ⚠️⚠️ -bindpath — Package.wxs-এ `oxeio.ico` **আপেক্ষিক** পথে লেখা। এটা ছাড়া
+#    wix ফাইলটা cwd থেকে খোঁজে, Package.wxs-এর পাশ থেকে নয় — তাই installer/
+#    বাদে অন্য কোনো ফোল্ডার থেকে বিল্ড করলে `Cannot find oxeio.ico` দিয়ে
+#    থামত। ঠিক এটাই ঘটেছে ১৮ আগস্ট (agent/ নয়, web/ cwd থেকে চালানো হয়েছিল),
+#    আর ডকের `powershell -File installer\build.ps1`-ও (agent/ cwd) একইভাবে
+#    ভাঙত। bindpath দিলে cwd যেখানেই হোক wix installer/-এ ফাইল খুঁজে পায়।
 & wix build `
     (Join-Path $here 'Package.wxs') `
     -arch x64 `
+    -bindpath "$here" `
     -d "PublishDir=$publishDir" `
     -d "Version=$Version" `
     -d "ServerUrlDefault=$($ServerUrl.TrimEnd('/'))" `
