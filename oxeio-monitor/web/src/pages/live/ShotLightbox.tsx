@@ -64,7 +64,15 @@ export function ShotLightbox({
         // ⚠️ ভেতরে ক্লিক করলে যেন বন্ধ না হয় — ছবিটা দেখতে গিয়ে ভুল করে
         //    মোডাল বন্ধ হয়ে যাওয়াটা বিরক্তিকর।
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-line bg-surface"
+        /**
+         * ⭐ মোডালটা পর্দার **~৯২%** জুড়ে *(১৮ আগস্ট, মালিকের অনুরোধে)*।
+         *
+         * ⚠️ আগে ছিল `max-w-4xl` (৮৯৬px) — চওড়া পর্দায় ১৯২০×১০৮০ স্ক্রিনশট
+         *    ৮৯৬px-এ নামিয়ে দেখাত, চারপাশে অনেক ফাঁকা, আর ছবির লেখা পড়াই
+         *    যেত না। এখন `92vw` (ছাদ ১৬০০px, যাতে আল্ট্রাওয়াইডে হাস্যকর বড়
+         *    না হয়) — ছবিটা অনেক কম নামে, তাই পড়া যায়।
+         */
+        className="flex max-h-[92vh] w-[92vw] max-w-[1600px] flex-col overflow-hidden rounded-xl border border-line bg-surface"
       >
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <div className="min-w-0">
@@ -126,7 +134,7 @@ export function ShotLightbox({
                * ⚠️ `w-auto` — ছোট ছবি জোর করে টেনে বড় করা হয় না, নইলে
                *    থাম্বনেইল ঝাপসা হয়ে ফুলে উঠত।
                */
-              style={{ maxHeight: 'calc(100dvh - 14rem)' }}
+              style={{ maxHeight: 'calc(92vh - 7rem)' }}
               className="mx-auto block h-auto w-auto max-w-full object-contain"
             />
           )}
