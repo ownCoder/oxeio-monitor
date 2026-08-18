@@ -29,6 +29,23 @@ internal sealed class TodayForm : OwnerDrawnForm
     private AgentStatus _status = AgentStatus.Starting;
 
     /// <summary>
+    /// ⭐⭐ <b>সেকেন্ডের ঘড়ি</b> — জানালা খোলা থাকলে প্রতি সেকেন্ডে একবার আঁকা।
+    ///
+    /// ⚠️⚠️ এটা ছাড়া সেকেন্ড দেখানোর কোনো মানেই ছিল না: <see cref="Apply"/>
+    /// শুধু <b>স্ট্যাটাস বদলালে</b> আঁকে, আর স্ট্যাটাস বদলায় heartbeat বা
+    /// সেগমেন্ট বন্ধ হওয়ার সময় — মিনিটে একবারও নয়। মালিক ঠিক সেটাই দেখেছেন
+    /// (<i>"login korar pore sec change hocche na"</i>): অঙ্কে সেকেন্ড ছিল,
+    /// কিন্তু সেটা নড়ত না।
+    ///
+    /// ⚠️ জানালা বন্ধ থাকলে টাইমারও বন্ধ — tray-তে বসে থাকা এজেন্ট প্রতি
+    ///    সেকেন্ডে অকারণে কিছুই আঁকে না।
+    /// </summary>
+    private readonly System.Windows.Forms.Timer _tick = new() { Interval = 1_000 };
+
+    /// <summary>গোনা সংখ্যা + তারপর থেকে কেটে যাওয়া সময় (নিয়মটা Core-এ, টেস্টসহ)।</summary>
+    private readonly LiveDuration _live = new();
+
+    /// <summary>
     /// ⚠️ উচ্চতা ৫০০ → ৪০০। নতুন লেআউটে লেখা কম, তাই ৫০০-তে নিচে একটা বড়
     /// ফাঁকা কালো পটি পড়ে থাকত — দেখে মনে হতো কিছু লোড হতে বাকি।
     /// <see cref="OwnerDrawnForm"/> দরকার হলে নিজেই লম্বা করে নেয় (loading ও
@@ -38,6 +55,18 @@ internal sealed class TodayForm : OwnerDrawnForm
         : base(fonts, "oXeio — Today's hours", 400, 400)
     {
         _options = options;
+
+        // ⚠️ শুধু Invalidate — হিসাবটা PaintBody-তেই হয়, তাই টাইমারের হাতে
+        //    কোনো অবস্থা নেই। পুনঃআঁকা সস্তা: থাম্বনেইলটা ক্যাশে থাকে
+        //    (OwnerDrawnForm.ThumbnailFor), তাই প্রতি সেকেন্ডে ডিস্ক পড়া হয় না।
+        _tick.Tick += (_, _) => { if (Visible && !IsDisposed) Invalidate(); };
+        _tick.Start();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _tick.Dispose();
+        base.Dispose(disposing);
     }
 
     /// <summary>
@@ -83,7 +112,13 @@ internal sealed class TodayForm : OwnerDrawnForm
         stack.Hero(
             // ⭐ হিরো সংখ্যাটাই একমাত্র সেকেন্ডসহ (মালিকের চাওয়া, ১৮ আগস্ট) —
             //    নিচের টার্গেট-বারগুলো H:MM-ই থাকে।
-            UiText.DurationLong(status.ActiveToday),
+            //
+            // ⭐⭐ আর এখানেই **চলন্ত** মান: `status.ActiveToday` নিজে লাফিয়ে
+            //    বাড়ে (heartbeat বা সেগমেন্ট বন্ধ হলে), তাই তার সাথে "তারপর
+            //    থেকে কত সময় কাজ চলছে" যোগ করে দেখানো হয় — নইলে অঙ্কে সেকেন্ড
+            //    থাকত, কিন্তু নড়ত না। নিয়মটা LiveDuration-এ, টেস্টসহ।
+            UiText.DurationLong(
+                _live.Next(status.ActiveToday, status.CountedAt, now, IsCounting(status))),
             "hours today",
             HeroState(status),
             StateDot(status));
@@ -383,6 +418,21 @@ internal sealed class TodayForm : OwnerDrawnForm
             TrackingGate.Verdict.Revoked => "Stopped",
             _ => status.Paused ? "Tracking paused" : TrayTooltip.StateName(status.State),
         };
+
+    /// <summary>
+    /// এই মুহূর্তে ঘড়িটা সত্যিই চলছে কি না — চলন্ত সংখ্যার একমাত্র শর্ত।
+    ///
+    /// ⭐ idle অবস্থায় সংখ্যাটা <b>থেমে থাকাই ঠিক</b>: নিয়মই তো "৬০ সেকেন্ড
+    /// হাত না চললে গোনা বন্ধ, আর ওই সময়টা মোট থেকে বাদ" — জানালার নিচেই
+    /// লেখা আছে। idle-এও ঘড়ি চললে জানালাটা নিজের লেখা কথারই বিরুদ্ধে যেত।
+    ///
+    /// ⚠️ সাইন ইন না থাকলে বা revoke হলে তো গোনাই হয় না (TrackingGate),
+    /// আর pause চলাকালীনও নয়।
+    /// </summary>
+    private static bool IsCounting(AgentStatus status) =>
+        TrackingGate.Allows(status.Enrolled, status.Health is SyncHealth.Revoked)
+        && !status.Paused
+        && status.State == SegmentState.Active;
 
     /// <summary>Live Board-এর ডট-ভাষাই — সবুজ চলছে · আম্বার থেমে · ধূসর লক।</summary>
     private Color StateDot(AgentStatus status)

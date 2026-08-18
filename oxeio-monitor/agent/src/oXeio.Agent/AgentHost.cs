@@ -146,6 +146,16 @@ internal sealed class AgentHost : IAsyncDisposable
     private int _latestShotMonitors;
     private DateOnly _activeDate;
     private EmployeeProgress? _progress;
+
+    /// <summary>
+    /// ⭐ আজকের গোনা সংখ্যাটা <b>কখন</b> মাপা হয়েছিল — জানালার চলন্ত ঘড়ির
+    /// anchor (<see cref="LiveDuration"/>)। সার্ভারের সংখ্যা এলে heartbeat-এর
+    /// মুহূর্ত, নইলে শেষ সেগমেন্ট গোনার মুহূর্ত। ⚠️ দুটো আলাদা রাখা হয়েছে,
+    /// কারণ <see cref="Snapshot"/> যেটা ব্যবহার করে anchor-ও ঠিক সেটারই হতে
+    /// হবে — মিলিয়ে ফেললে ঘড়ি ভুল জায়গা থেকে গুনত।
+    /// </summary>
+    private DateTimeOffset? _progressAt;
+    private DateTimeOffset? _activeTodayAt;
     private string? _configVersion;
     private MilestoneMemory? _milestone;
 
@@ -878,7 +888,12 @@ internal sealed class AgentHost : IAsyncDisposable
 
                     if (result.IsSuccess && result.Value is { } body)
                     {
-                        if (body.Progress is not null) _progress = body.Progress;
+                        if (body.Progress is not null)
+                        {
+                            _progress = body.Progress;
+                            // ⭐ চলন্ত ঘড়ির anchor — এই মুহূর্তের হিসাব
+                            _progressAt = _clock.Now;
+                        }
 
                         // ⭐⚠️ **এখানেই কনফিগ বদলানো এতদিন নীরবে মরে ছিল।**
                         //    আগে লাইনটা ছিল শুধু `_configVersion = body.ConfigVersion;` —
@@ -1518,6 +1533,11 @@ internal sealed class AgentHost : IAsyncDisposable
                 }
 
                 Interlocked.Add(ref _activeTodaySec, s.DurationSec);
+
+                // ⭐ এই সেগমেন্ট যেখানে শেষ হয়েছে, চলন্ত ঘড়ি সেখান থেকেই গোনে।
+                //    ⚠️ `now` নয়, `s.EndedAt` — সেগমেন্টটা দেরিতে রেকর্ড হলে
+                //    (লুপের টিক) মাঝের সময়টুকু দুবার গোনা হতো।
+                _activeTodayAt = s.EndedAt;
             }
 
             RememberBusy(s);
@@ -1715,6 +1735,10 @@ internal sealed class AgentHost : IAsyncDisposable
             //    সার্ভার এখনো কিছু না বললে (একবারও heartbeat হয়নি) নিজেরটা।
             ActiveToday = TimeSpan.FromSeconds(
                 progress?.TodayActiveSec ?? Interlocked.Read(ref _activeTodaySec)),
+
+            // ⭐ উপরের সংখ্যাটা **যেখান থেকে** এসেছে, anchor-ও ঠিক সেটার।
+            //    জানালার চলন্ত ঘড়ি এখান থেকেই সেকেন্ড গোনে (LiveDuration)।
+            CountedAt = progress is not null ? _progressAt : _activeTodayAt,
             ActiveThisMonth = TimeSpan.FromSeconds(progress?.MonthActiveSec ?? 0),
             MonthlyTargetHours = progress?.MonthlyTargetHours ?? 208,
 

@@ -47,6 +47,21 @@ public sealed record AgentStatus
     /// <summary>ঢাকার আজকের দিনের ACTIVE সময়।</summary>
     public required TimeSpan ActiveToday { get; init; }
 
+    /// <summary>
+    /// <see cref="ActiveToday"/> সংখ্যাটা <b>কখন মাপা হয়েছিল</b>।
+    ///
+    /// ⭐ সংখ্যাটা নিজে চলন্ত নয় — সার্ভারের heartbeat এলে বা একটা সেগমেন্ট
+    /// বন্ধ হলে তবেই বাড়ে। জানালায় সেকেন্ডের ঘড়ি চালাতে হলে "এরপর কতক্ষণ
+    /// কেটেছে" জানা দরকার, আর সেটা এই ঘরটাই দেয় (<see cref="LiveDuration"/>)।
+    ///
+    /// ⚠️ <c>null</c> মানে "জানি না" — তখন <see cref="LiveDuration"/> নিজে থেকে
+    /// এক সেকেন্ডও যোগ করে না। ⚠️ ঘরটা ঐচ্ছিক রাখা হয়েছে ইচ্ছাকৃতভাবে:
+    /// <c>required</c> করলে প্রিভিউ/টেস্টের পুরোনো নির্মাণগুলো ভাঙত, আর
+    /// ডিফল্ট <c>default(DateTimeOffset)</c> (০০০১ সাল) বসলে "কেটে যাওয়া সময়"
+    /// হতো দু-হাজার বছর — অর্থাৎ প্রতিবার ছাদে ঠেকে ভুল সময় যোগ হতো।
+    /// </summary>
+    public DateTimeOffset? CountedAt { get; init; }
+
     /// <summary>ঢাকার চলতি মাসের ACTIVE সময়। মাসিক ২০৮ ঘণ্টার সাথে এটাই মেলানো হয়।</summary>
     public required TimeSpan ActiveThisMonth { get; init; }
 

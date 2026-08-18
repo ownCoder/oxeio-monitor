@@ -101,6 +101,59 @@ internal abstract class OwnerDrawnForm : Form
 
     protected Color Muted => _theme.Ink3;
 
+    // ── থাম্বনেইলের ক্যাশ ───────────────────────────────────────────────────
+    private string? _thumbPath;
+    private DateTime _thumbStamp;
+    private Bitmap? _thumbImage;
+
+    /// <summary>
+    /// ⭐ ডিকোড করা থাম্বনেইল — <b>একই ফাইলের জন্য একবারই</b>।
+    ///
+    /// ⚠️⚠️ আগে প্রতিটা পেইন্টে ডিস্ক থেকে পড়ে WebP ডিকোড হতো। আঁকা হতো
+    /// কালেভদ্রে (স্ট্যাটাস বদলালে), তাই সেটা চোখে পড়ত না — কিন্তু
+    /// <see cref="TodayForm"/>-এ সেকেন্ডের ঘড়ি বসার পর আঁকা হয় <b>প্রতি
+    /// সেকেন্ডে</b>, আর তখন ওটা হতো প্রতি সেকেন্ডে একটা ফাইল-পড়া + ডিকোড।
+    ///
+    /// ⭐ ফাইলের <b>লেখার সময়</b> মিলিয়ে দেখা হয়, শুধু নাম নয় — নতুন ছবি
+    /// এলে পথ একই থাকে (<c>last-shot.webp</c>), তাই নাম দেখে ক্যাশ করলে
+    /// জানালা চিরকাল প্রথম ছবিটাই দেখাত।
+    /// </summary>
+    internal Bitmap? ThumbnailFor(string path)
+    {
+        DateTime stamp;
+        try { stamp = File.GetLastWriteTimeUtc(path); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+
+        if (_thumbImage is not null && _thumbPath == path && _thumbStamp == stamp)
+        {
+            return _thumbImage;
+        }
+
+        var loaded = WebpImage.Load(path);
+        if (loaded is null) return null;
+
+        _thumbImage?.Dispose();
+        _thumbImage = loaded;
+        _thumbPath = path;
+        _thumbStamp = stamp;
+
+        return _thumbImage;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _thumbImage?.Dispose();
+            _thumbImage = null;
+        }
+
+        base.Dispose(disposing);
+    }
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
@@ -699,7 +752,10 @@ internal abstract class OwnerDrawnForm : Form
             // ⚠️⚠️ `Image.FromStream` এখানে চলে **না** — ছবিটা WebP, আর GDI+-এ
             //    ওই কোডেক নেই। সে "Parameter is not valid" বলে, যেটা পড়ে মনে হয়
             //    ফাইল নষ্ট। ডিকোড করে SkiaSharp (WebpImage), যেটা এমনিতেই আছে।
-            using var image = WebpImage.Load(path);
+            // ⚠️ `using` নয় — ছবিটা ফর্মের ক্যাশের, প্রতি পেইন্টে নতুন করে
+            //    ডিকোড হয় না (ThumbnailFor)। এখানে dispose করলে পরের পেইন্টে
+            //    ক্যাশে বসে থাকা ছবিটা ব্যবহারের অযোগ্য হয়ে যেত।
+            var image = _form.ThumbnailFor(path);
             if (image is null) return false;
 
             try
