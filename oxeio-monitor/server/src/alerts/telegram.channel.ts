@@ -8,7 +8,10 @@ import {
   TELEGRAM_FAILED_TAG,
   TELEGRAM_MAX_AGE_HOURS,
   TELEGRAM_MAX_ATTEMPTS,
+  TELEGRAM_CAPTION_MAX,
+  TELEGRAM_DOCUMENT_MAX_BYTES,
   TELEGRAM_TIMEOUT_MS,
+  TELEGRAM_UPLOAD_TIMEOUT_MS,
 } from '../ops/ops.constants';
 import { telegramMessage, type TelegramAlertFacts } from '../ops/ops.rules';
 import { PrismaService } from '../prisma/prisma.service';
@@ -205,6 +208,87 @@ export class TelegramChannel {
     } catch (err) {
       this.logger.error(
         `Could not send to Telegram: ${TelegramChannel.scrub(err instanceof Error ? err.message : 'unknown error', settings.botToken)}`,
+      );
+      return 'failed';
+    }
+  }
+
+  /**
+   * ⭐⭐ **R26 — ফাইল পাঠানো** (Excel/PDF)। `send()`-এর যমজ, একই চুক্তি:
+   * প্রতিবার নতুন করে সেটিংস পড়ে, কখনো throw করে না, কখনো টোকেন লগ করে না।
+   *
+   * ⚠️⚠️ <b>কোনো `headers` দেওয়া হয়নি — আর সেটা ইচ্ছাকৃত।</b> `fetch`
+   * নিজেই `FormData` দেখে `multipart/form-data; boundary=…` বসায়। উপরের
+   * `send()`-এর মতো হাতে `content-type` লিখলে boundary-টা হারিয়ে যেত, আর
+   * Telegram প্রতিবার ৪০০ দিত — দেখতে লাগত টোকেনের সমস্যা।
+   *
+   * ⚠️ `Blob`, স্ট্রিম নয়: Node-এ স্ট্রিম-বডি multipart মোড়কের সাথে চলে না।
+   *    `Buffer` নিজেই `Uint8Array`, তাই সরাসরি `BlobPart` হিসেবে চলে।
+   *
+   * ⚠️ কোনো retry নেই — ইচ্ছাকৃত। ৪২৯-এ Telegram `retry_after` দেয়, কিন্তু
+   *    এখানে ঘুমোলে একটা রিকোয়েস্ট ৬০ সেকেন্ড ধরে আটকে থাকত। ব্যর্থতা
+   *    কলারকে ফেরত দেওয়া হয়, সিদ্ধান্ত তার।
+   */
+  async sendDocument(
+    doc: { bytes: Buffer; filename: string; contentType?: string },
+    caption?: string,
+  ): Promise<TelegramOutcome> {
+    const settings = await this.resolve();
+    if (settings === null) return 'not_configured';
+
+    // ⚠️ আগে মাপা, তারপর পাঠানো — নইলে পুরো আপলোড খরচ করে তবে জানা যেত
+    if (doc.bytes.byteLength > TELEGRAM_DOCUMENT_MAX_BYTES) {
+      this.logger.error(
+        `Telegram-এ পাঠানো গেল না — ফাইলটা বড় (${doc.filename}, ` +
+          `${Math.round(doc.bytes.byteLength / 1024 / 1024)} MB, সীমা ` +
+          `${TELEGRAM_DOCUMENT_MAX_BYTES / 1024 / 1024} MB)`,
+      );
+      return 'failed';
+    }
+
+    // ⚠️ নামটা ছেঁকে নেওয়া — উদ্ধৃতি বা নিউলাইন multipart হেডারই ভেঙে দিত
+    const filename =
+      doc.filename.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 120) || 'report';
+    const text = (caption ?? '').trim().slice(0, TELEGRAM_CAPTION_MAX);
+
+    try {
+      const form = new FormData();
+      form.append('chat_id', settings.chatId);
+      // ⚠️ খালি ক্যাপশন **পাঠানোই হয় না** — খালি স্ট্রিং পাঠালে ৪০০
+      if (text) form.append('caption', text);
+      form.append(
+        'document',
+        new Blob([doc.bytes], {
+          type: doc.contentType ?? 'application/octet-stream',
+        }),
+        filename,
+      );
+
+      const res = await fetch(
+        `https://api.telegram.org/bot${settings.botToken}/sendDocument`,
+        {
+          method: 'POST',
+          body: form,
+          signal: AbortSignal.timeout(TELEGRAM_UPLOAD_TIMEOUT_MS),
+        },
+      );
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        this.logger.error(
+          `Could not send a document to Telegram (HTTP ${res.status}): ` +
+            `${TelegramChannel.scrub(body, settings.botToken).slice(0, 200)}`,
+        );
+        return 'failed';
+      }
+
+      return 'sent';
+    } catch (err) {
+      this.logger.error(
+        `Could not send a document to Telegram: ${TelegramChannel.scrub(
+          err instanceof Error ? err.message : 'unknown error',
+          settings.botToken,
+        )}`,
       );
       return 'failed';
     }

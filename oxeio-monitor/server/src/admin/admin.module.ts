@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 
+import { ReportsModule } from '../reports/reports.module';
+
 import { AgentVersionsController } from './agent-versions.controller';
 import { AgentVersionsService } from './agent-versions.service';
 import { AuditLogController } from './audit-log.controller';
@@ -40,6 +42,11 @@ import { WorkPoliciesService } from './work-policies.service';
     AuditLogController,
     AgentVersionsController,
   ],
+  /**
+   * ⭐ **R26** — মাস বন্ধ হলে হিসাবের ফাইল পাঠাতে `MonthDeliveryService`
+   *    লাগে। ⚠️ AdminModule-এ এতদিন কোনো `imports` ছিল না; এটাই প্রথম।
+   */
+  imports: [ReportsModule],
   providers: [
     EmployeesService,
     DevicesService,

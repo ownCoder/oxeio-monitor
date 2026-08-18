@@ -5,6 +5,7 @@ import { MonthCloseService } from '../src/admin/month-close.service';
 import type { AuditService } from '../src/audit/audit.service';
 import type { SessionUser } from '../src/auth/types';
 import type { PrismaService } from '../src/prisma/prisma.service';
+import { MonthDeliveryService } from '../src/reports/month-delivery.service';
 
 /**
  * ⭐⭐ **R1 — মাস বন্ধ করা।**
@@ -44,13 +45,27 @@ function makeService(closures: Record<string, { closedAt: Date; closedBy: string
     },
   };
 
+  /**
+   * ⭐ **R26** — মাস বন্ধ হলে হিসাবের ফাইল পাঠানো হয়। এখানে সেটা নকল,
+   * আর নকলটাই যথেষ্ট: কলটা fire-and-forget, তাই `close()`-এর ফল ওর উপর
+   * নির্ভর করে না। ⚠️ কিন্তু ডাকা **হচ্ছে কি না** সেটা পরীক্ষা করা যায়।
+   */
+  const delivery = {
+    deliverClosedMonth: vi.fn().mockResolvedValue({
+      telegram: 'not_configured',
+      email: 'not_configured',
+    }),
+  };
+
   return {
     svc: new MonthCloseService(
       prisma as unknown as PrismaService,
       audit as unknown as AuditService,
+      delivery as unknown as MonthDeliveryService,
     ),
     prisma,
     audit,
+    delivery,
   };
 }
 
@@ -73,6 +88,38 @@ describe('MonthCloseService', () => {
       expect(audit.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'month_closed', targetId: '2026-08' }),
       );
+    });
+
+    /**
+     * ⭐⭐ **R26** — বন্ধ করার পর হিসাবের ফাইল পাঠানো হয়।
+     */
+    it('বন্ধ হলে ওই মাসের রিপোর্ট পাঠানো হয়', async () => {
+      const { svc, delivery } = makeService();
+      await svc.close(OWNER, '2026-08', undefined, 'ip');
+
+      expect(delivery.deliverClosedMonth).toHaveBeenCalledWith('2026-08');
+    });
+
+    /**
+     * ⚠️⚠️ **সবচেয়ে জরুরি R26 টেস্ট।** ডেলিভারি ভেঙে গেলেও মাস-বন্ধ করাটা
+     * সফলই থাকে — সারিটা তার আগেই commit হয়ে গেছে। উল্টোটা হলে মালিক
+     * ৫০০ দেখতেন, আবার চেষ্টা করে ৪০৯ পেতেন ("মাস তো বন্ধই"), আর কোথাও
+     * কিছু ভাঙেনি বোঝার উপায় থাকত না।
+     */
+    it('⭐ রিপোর্ট পাঠাতে ব্যর্থ হলেও মাস বন্ধই থাকে', async () => {
+      const { svc, delivery } = makeService();
+      delivery.deliverClosedMonth.mockRejectedValueOnce(new Error('telegram down'));
+
+      const row = await svc.close(OWNER, '2026-08', undefined, 'ip');
+
+      expect(row.yearMonth).toBe('2026-08');
+
+      // ⚠️⚠️ মাইক্রোটাস্ক, `setImmediate` নয় — এই স্পেকে fake timers চালু
+      //    (উপরে `vi.useFakeTimers()`), তাই macrotask কোনোদিন চলত না আর
+      //    টেস্টটা ৩০ সেকেন্ড ঝুলে টাইমআউট করত।
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(delivery.deliverClosedMonth).toHaveBeenCalledWith('2026-08');
     });
 
     /**

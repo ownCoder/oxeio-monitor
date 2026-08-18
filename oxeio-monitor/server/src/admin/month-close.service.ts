@@ -10,6 +10,7 @@ import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { MonthDeliveryService } from '../reports/month-delivery.service';
 
 export interface MonthClosureView {
   yearMonth: string;
@@ -38,6 +39,7 @@ export class MonthCloseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly delivery: MonthDeliveryService,
   ) {}
 
   async list(): Promise<{ rows: MonthClosureView[] }> {
@@ -101,6 +103,31 @@ export class MonthCloseService {
       ipAddress: ip,
       meta: { note: row.note },
     });
+
+    /**
+     * ⭐⭐ **R26 — হিসাবের ফাইল নিজে থেকে চলে যায়।**
+     *
+     * ⚠️⚠️ `void` + `.catch()`, আর কখনো `await` নয় — তিনটে কারণেই:
+     *  ১· সারিটা **উপরেই commit হয়ে গেছে** (`create` নিজের ট্রানজেকশনে),
+     *     তাই এখানকার ব্যর্থতা মাস-বন্ধ করাকে ছুঁতে পারে না।
+     *  ২· await করলে মালিকের HTTP রিকোয়েস্ট আপলোডের পুরোটা সময় ঝুলত
+     *     (কয়েক MB, ৬০ সেকেন্ড পর্যন্ত), আর throw করলে **সফল** একটা
+     *     মাস-বন্ধ ৫০০ হয়ে ফিরত — তিনি আবার চেষ্টা করে ৪০৯ পেতেন।
+     *  ৩· `.catch()` ছাড়া একটা floating promise unhandled rejection হয়ে
+     *     গোটা API প্রসেস নামিয়ে দিত (`alerts.scheduler.ts`-এর একই শিক্ষা)।
+     *
+     * ⚠️ ভবিষ্যতে কেউ যদি `close()`-কে `$transaction`-এ মোড়ে, এই কলটা
+     *    অবশ্যই কলব্যাকের **বাইরে** তুলতে হবে — নইলে চলন্ত আপলোড
+     *    Prisma-র ৫ সেকেন্ডের সীমা পেরিয়ে আসল মাস-বন্ধটাই rollback করাত।
+     */
+    void this.delivery
+      .deliverClosedMonth(yearMonth)
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Auto-delivery for ${yearMonth} failed (the month is closed regardless)`,
+          err instanceof Error ? err.stack : undefined,
+        ),
+      );
 
     this.logger.log(`${yearMonth} closed by ${actor.email}`);
     return toView(row);

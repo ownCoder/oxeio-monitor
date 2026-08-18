@@ -9,12 +9,27 @@ import { SMTP_TIMEOUT_MS } from './alerts.constants';
  *    হয় শুধু সেটুকুর একটা ইন্টারফেস। এতে লাইব্রেরির ভার্সন বদলালে এই ফাইলে
  *    কী কী ভাঙতে পারে সেটা এক নজরেই দেখা যায়।
  */
+/**
+ * ⭐ **R26** — চিঠির সাথে ফাইল। `content` সরাসরি `Buffer`, কারণ
+ * `reports.excel.ts`/`reports.pdf.ts` দুটোই `Buffer` ফেরত দেয় — কোনো
+ * অস্থায়ী ফাইল বা base64-এর দরকার নেই।
+ * ⭐ আকৃতিটা `ReportFile`-এর উপসেট, তাই ওটা সরাসরি পাস করা যায়।
+ */
+export interface MailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 interface MailSender {
   sendMail(options: {
     from: string;
     to: string;
     subject: string;
     text: string;
+    // ⚠️ readonly নয় — nodemailer-এর নিজের টাইপ mutable অ্যারে চায়,
+    //    আর readonly দিলে গোটা Transporter-টাই আর এই ইন্টারফেসে মেলে না
+    attachments?: MailAttachment[];
   }): Promise<unknown>;
   close(): void;
   on(event: 'error', listener: (err: Error) => void): unknown;
@@ -70,6 +85,12 @@ export class AlertMailer implements OnModuleDestroy {
     to: readonly string[],
     subject: string,
     body: string,
+    /**
+     * ⚠️ **ঐচ্ছিক, ইচ্ছাকৃতভাবে** — তিনটে পুরোনো কলার আর দুটো টেস্ট-মক
+     *    অপরিবর্তিত থাকে। বাধ্যতামূলক করলে ওগুলো সবই একসাথে ভাঙত, অথচ
+     *    তাদের কারো সংযুক্তির দরকার নেই।
+     */
+    attachments?: readonly MailAttachment[],
   ): Promise<SendOutcome> {
     if (!this.config || to.length === 0) {
       if (!this.warnedMissing) {
@@ -90,6 +111,11 @@ export class AlertMailer implements OnModuleDestroy {
         to: to.join(', '),
         subject,
         text: body,
+        // ⚠️ খালি হলে ঘরটা **বসানোই হয় না** — `attachments: []` পাঠানো
+        //    নিরীহ, কিন্তু কিছু SMTP সার্ভার তাতেও multipart মোড়ক বানায়
+        ...(attachments && attachments.length > 0
+          ? { attachments: [...attachments] }
+          : {}),
       });
       return 'sent';
     } catch (err) {

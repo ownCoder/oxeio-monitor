@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { AlertMailer } from '../alerts/alerts.mailer';
+import { TelegramChannel } from '../alerts/telegram.channel';
+import { MonthDeliveryService } from './month-delivery.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 
@@ -22,7 +25,15 @@ import { ReportsService } from './reports.service';
  */
 @Module({
   controllers: [ReportsController],
-  providers: [ReportsService],
+  /**
+   * ⚠️ `AlertMailer` ও `TelegramChannel` এখানে **আবার প্রোভাইড করা হয়েছে**,
+   *    `AlertsModule` import করে নয় — কারণ `AlertsModule` ওদুটো export করে
+   *    না (শুধু `AlertsService`)। ⭐ ঠিক এই পথটাই `DigestModule` আগে
+   *    নিয়েছে, আর সেখানকার মন্তব্যে কারণও লেখা আছে। দুটোই stateless
+   *    ট্রান্সপোর্ট (প্রতি কলে সেটিংস পড়ে), তাই দ্বিতীয় ইনস্ট্যান্সে কোনো
+   *    অবস্থা ভাগ হয় না।
+   */
+  providers: [ReportsService, MonthDeliveryService, AlertMailer, TelegramChannel],
   /**
    * ⭐ F07 (`DigestModule`) এই সার্ভিসটাই ডাকে — নিজে `daily_summary` পড়ে
    * টার্গেট বের করে না। ফলে দৈনিক ইমেইল আর ছাপা রিপোর্ট **কখনো দুই রকম
@@ -34,6 +45,6 @@ import { ReportsService } from './reports.service';
    * যে মডিউল সার্ভিসটা ব্যবহার করে তার **নিজের** দায়িত্ব কাকে দেখাবে
    * সেটা ঠিক করা (ডাইজেস্ট তাই ডিফল্টে শুধু owner-দের ইমেইল করে)।
    */
-  exports: [ReportsService],
+  exports: [ReportsService, MonthDeliveryService],
 })
 export class ReportsModule {}
