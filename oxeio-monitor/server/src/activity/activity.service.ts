@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { SegmentState, type Prisma } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
@@ -258,6 +258,9 @@ export class ActivityService {
   ): Prisma.AppUsageWhereInput {
     return {
       workDate: { gte: range.from, lte: range.to },
+        // ⭐ R22a — শুধু ACTIVE-এ দেখা খণ্ড গোনা হয়। idle-এ দেখা সারি
+        //    এখন জমা হয় (মিটিং চেনার জন্য), কিন্তু কোনো হিসাবে যায় না।
+        segmentState: SegmentState.active,
       ...(employeeIds === undefined ? {} : { employeeId: { in: employeeIds } }),
     };
   }

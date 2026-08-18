@@ -52,9 +52,15 @@ internal sealed class AppUsageService
     /// <summary>প্রতি সেকেন্ডে ডাকা হয়। যা রেকর্ড বন্ধ হলো তা ফেরে।</summary>
     public IReadOnlyList<AppUsageRecord> Tick(DateTimeOffset now, SegmentState state)
     {
-        // ACTIVE ছাড়া উইন্ডো পড়ারই দরকার নেই — গোনা তো হবেই না।
-        // এতে লক থাকা অবস্থায় প্রতি সেকেন্ডে অকারণ Win32 কল বাঁচে।
-        if (state != SegmentState.Active) return _tracker.Observe(null, now, state);
+        /**
+         * ⭐ <b>R22a</b> — IDLE-এও উইন্ডো পড়া হয় (মিটিং চেনার একমাত্র সূত্র),
+         * কিন্তু <b>LOCKED-এ নয়</b>: পর্দা লক থাকলে সামনে পড়ার মতো কিছু নেই,
+         * আর লক করে উঠে যাওয়া মানুষটার পর্দা পড়ার কোনো কারণও নেই।
+         *
+         * ⚠️ খরচ নিয়ে: idle-এ উইন্ডো বদলায় না, তাই <see cref="ReadUrlIfChanged"/>
+         *    ক্যাশ করা মানই ফেরায় — UI Automation-এর দামি কলটা আর হয় না।
+         */
+        if (state == SegmentState.Locked) return _tracker.Observe(null, now, state);
 
         var sample = _probe.Read(ReadUrlIfChanged);
 

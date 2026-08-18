@@ -63,6 +63,15 @@ public sealed class AppUsageTracker(
     private DateTimeOffset _openedAt;
 
     /// <summary>
+    /// ⭐ <b>R22a</b> — খোলা খণ্ডটা কোন অবস্থায় শুরু হয়েছিল।
+    ///
+    /// ⚠️ অবস্থা বদলালে খণ্ডটা <b>ওখানেই কেটে</b> নতুন করে শুরু হয় — নইলে
+    /// একটা সারি অর্ধেক ACTIVE অর্ধেক IDLE হয়ে বসত, আর "এই সময়টা গোনা
+    /// হবে কি না" প্রশ্নের কোনো একক উত্তর থাকত না।
+    /// </summary>
+    private SegmentState _openState = SegmentState.Active;
+
+    /// <summary>
     /// এখন যে উইন্ডোটা গোনা হচ্ছে — ডায়াগনস্টিক ও A07-এর জন্য।
     ///
     /// ⚠️ ACTIVE ছাড়া এটা সবসময় <c>null</c>, কারণ <see cref="Observe"/>
@@ -84,9 +93,25 @@ public sealed class AppUsageTracker(
     {
         var closed = new List<AppUsageRecord>();
 
-        // ACTIVE না হলে যা খোলা আছে বন্ধ করে থেমে যাওয়া। ⚠️ কেউ লাঞ্চে গেলে
-        // পর্দায় Excel খোলা থাকে — ওই এক ঘণ্টা "Excel ব্যবহার" নয়।
-        if (state != SegmentState.Active || sample is null)
+        /**
+         * ⭐⭐ <b>R22a — IDLE-এও দেখা হয়, কিন্তু গোনা হয় না।</b>
+         *
+         * আগে এখানে শর্ত ছিল <c>state != Active</c>, অর্থাৎ ACTIVE ছাড়ার
+         * সাথে সাথেই সব বন্ধ। ⚠️⚠️ ফলে idle সেগমেন্টের ভেতরে একটাও সারি
+         * থাকত না — মাঠে মেপে দেখা গেছে যেটুকু overlap দেখা যেত তার গড়
+         * ছিল ৫৯ সেকেন্ড, অর্থাৎ শুধু সেগমেন্টের মাথার ভুতুড়ে অংশ।
+         * তাতে "এই idle সময়টায় সামনে কী ছিল?" প্রশ্নের উত্তর হারাত, আর
+         * মিটিং চেনার কোনো উপায় থাকত না।
+         *
+         * ⚠️ <b>LOCKED এখনো বাদ</b> — পর্দা লক থাকলে সামনে কোনো উইন্ডোই
+         * নেই, আর তখন যা পড়া যেত সেটা লক-স্ক্রিন। এটা গোপনীয়তার দিক থেকেও
+         * ঠিক: লক করে উঠে যাওয়া মানুষটার পর্দা পড়ার কোনো কারণ নেই।
+         *
+         * ⚠️⚠️ আর "লাঞ্চে Excel খোলা রেখে যাওয়া কাজ নয়" নিয়মটা <b>ভাঙেনি</b>:
+         * ওই খণ্ডগুলো এখন <c>State = Idle</c> নিয়ে জমা হয়, আর পড়ার প্রতিটা
+         * জায়গা কেবল ACTIVE ছাঁকে। রেকর্ড থাকা আর গোনা হওয়া — দুটো আলাদা।
+         */
+        if (state == SegmentState.Locked || sample is null)
         {
             Close(closed, now);
             return closed;
@@ -94,7 +119,16 @@ public sealed class AppUsageTracker(
 
         if (_open is null)
         {
-            Open(sample, now);
+            Open(sample, now, state);
+            return closed;
+        }
+
+        // ⚠️ অবস্থা বদলেছে — খণ্ডটা এখানেই কেটে নতুন অবস্থায় শুরু, নইলে
+        //    একটা সারি অর্ধেক ACTIVE অর্ধেক IDLE হয়ে বসত।
+        if (state != _openState)
+        {
+            Close(closed, now);
+            Open(sample, now, state);
             return closed;
         }
 
@@ -106,7 +140,7 @@ public sealed class AppUsageTracker(
         }
 
         Close(closed, now);
-        Open(sample, now);
+        Open(sample, now, state);
         return closed;
     }
 
@@ -137,10 +171,11 @@ public sealed class AppUsageTracker(
     private static string? DomainOf(WindowSample s) =>
         DomainParser.LooksPrivate(s.WindowTitle) ? null : DomainParser.Extract(s.RawUrl);
 
-    private void Open(WindowSample sample, DateTimeOffset now)
+    private void Open(WindowSample sample, DateTimeOffset now, SegmentState state)
     {
         _open = sample;
         _openedAt = now;
+        _openState = state;
     }
 
     private void SplitIfLong(List<AppUsageRecord> closed, DateTimeOffset now)
@@ -197,6 +232,11 @@ public sealed class AppUsageTracker(
             WindowTitle = isPrivate ? null : _open.WindowTitle,
             Domain = isPrivate ? null : DomainParser.Extract(_open.RawUrl),
             IsBrowser = _open.IsBrowser,
+
+            // ⭐ R22a — কোন অবস্থায় দেখা হয়েছে। ⚠️ `state` প্যারামিটার নয়,
+            //    `_openState`: খণ্ডটা যে অবস্থায় **শুরু** হয়েছিল সেটাই তার
+            //    অবস্থা, আর অবস্থা বদলালে খণ্ডটা এমনিতেই কেটে যায় (Observe)।
+            State = _openState,
         });
     }
 }

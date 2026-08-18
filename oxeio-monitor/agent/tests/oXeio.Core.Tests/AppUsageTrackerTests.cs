@@ -71,20 +71,71 @@ public class AppUsageTrackerTests
     /// কেউ লাঞ্চে গেলে পর্দায় Excel খোলা থাকে। ওই এক ঘণ্টা
     /// "Excel ব্যবহার" নয় — কাজের সময়ের হিসাবেও ওটা গোনা হয় না।
     /// </summary>
+    /// <summary>
+    /// ⭐⭐ <b>R22a-তে এই চুক্তিটা বদলেছে</b> — আর বদলটা সচেতন।
+    ///
+    /// আগে idle-এ ঢুকলে ট্র্যাকার থেমে যেত, অর্থাৎ ওই সময়ের কোনো রেকর্ডই
+    /// থাকত না। ⚠️⚠️ তাতে "এই idle সময়টায় সামনে কী ছিল?" প্রশ্নের উত্তর
+    /// চিরতরে হারাত — আর ওটাই মিটিং চেনার একমাত্র সূত্র (Zoom-এ থাকলে
+    /// কি-বোর্ড চুপ, অথচ মানুষটা কাজেই আছে)।
+    ///
+    /// ⭐ <b>"লাঞ্চে Excel খোলা রেখে যাওয়া কাজ নয়" নিয়মটা ভাঙেনি</b> —
+    /// শুধু জায়গা বদলেছে: রেকর্ডটা জমা হয় <c>State = Idle</c> নিয়ে, আর
+    /// সার্ভারে পড়ার প্রতিটা জায়গা কেবল ACTIVE ছাঁকে। <b>রেকর্ড থাকা</b>
+    /// আর <b>গোনা হওয়া</b> — দুটো আলাদা জিনিস।
+    /// </summary>
     [Fact]
-    public void নিষ্ক্রিয়_অবস্থায়_গোনা_হয়_না()
+    public void নিষ্ক্রিয়_অবস্থায়ও_রেকর্ড_হয়_কিন্তু_আলাদা_চিহ্নে()
     {
         var t = New();
 
         t.Observe(App("excel.exe"), T0, SegmentState.Active);
-        var closed = t.Observe(App("excel.exe"), T0.AddSeconds(30), SegmentState.Idle);
 
+        // অবস্থা বদলেছে — ACTIVE খণ্ডটা এখানেই কাটা পড়ে
+        var closed = t.Observe(App("excel.exe"), T0.AddSeconds(30), SegmentState.Idle);
         Assert.Single(closed);
         Assert.Equal(30, closed[0].DurationSec);
+        Assert.Equal(SegmentState.Active, closed[0].State);
 
-        // idle-এ থাকা অবস্থায় আর কিছু জমে না
-        var more = t.Observe(App("excel.exe"), T0.AddMinutes(60), SegmentState.Idle);
-        Assert.Empty(more);
+        // ⭐ idle-এর সময়টুকুও এখন জমে — কিন্তু Idle চিহ্ন নিয়ে
+        var more = t.Observe(App("excel.exe"), T0.AddMinutes(6), SegmentState.Idle);
+        Assert.NotEmpty(more);
+        Assert.All(more, r => Assert.Equal(SegmentState.Idle, r.State));
+    }
+
+    /// <summary>
+    /// ⚠️ একটা রেকর্ড অর্ধেক ACTIVE অর্ধেক IDLE হতে পারে না — নইলে "এই
+    /// সময়টা গোনা হবে কি না" প্রশ্নের কোনো একক উত্তর থাকত না।
+    /// </summary>
+    [Fact]
+    public void অবস্থা_বদলালে_খণ্ড_ওখানেই_কাটে()
+    {
+        var t = New();
+
+        t.Observe(App("zoom.exe"), T0, SegmentState.Active);
+        var atIdle = t.Observe(App("zoom.exe"), T0.AddSeconds(20), SegmentState.Idle);
+        var backActive = t.Observe(App("zoom.exe"), T0.AddSeconds(50), SegmentState.Active);
+
+        Assert.Single(atIdle);
+        Assert.Equal(SegmentState.Active, atIdle[0].State);
+        Assert.Equal(20, atIdle[0].DurationSec);
+
+        Assert.Single(backActive);
+        Assert.Equal(SegmentState.Idle, backActive[0].State);
+        Assert.Equal(30, backActive[0].DurationSec);
+    }
+
+    /// <summary>⭐ স্বাভাবিক অবস্থায় চিহ্নটা ACTIVE — ডিফল্ট বদলে যায়নি।</summary>
+    [Fact]
+    public void সচল_অবস্থার_রেকর্ডে_চিহ্ন_Active()
+    {
+        var t = New();
+
+        t.Observe(App("code.exe"), T0, SegmentState.Active);
+        var closed = t.Observe(App("excel.exe"), T0.AddSeconds(40), SegmentState.Active);
+
+        Assert.Single(closed);
+        Assert.Equal(SegmentState.Active, closed[0].State);
     }
 
     [Fact]

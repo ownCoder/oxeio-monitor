@@ -102,6 +102,15 @@ internal static class SyncWire
         public string? WindowTitle { get; init; }
         public string? Domain { get; init; }
         public bool? IsBrowser { get; init; }
+
+        /**
+         * ⭐ <b>R22a</b> — খণ্ডটা কোন অবস্থায় দেখা হয়েছে (`active` / `idle`)।
+         *
+         * ⚠️ ছোট হাতের স্ট্রিং, কারণ সার্ভারের enum-ও তাই (`SegmentState`)।
+         *    `.ToString()` দিলে `Active` যেত আর `@IsEnum` ৪০০ দিত — আর ৪০০
+         *    মানে Permanent, অর্থাৎ পুরো ব্যাচটা মুছে ফেলা হতো (G49)।
+         */
+        public required string State { get; init; }
     }
 
     internal static AppUsageEnvelope AppUsage(IReadOnlyList<AppUsageRecord> items)
@@ -122,6 +131,7 @@ internal static class SyncWire
                 WindowTitle = Clamp(i.WindowTitle, 1000),
                 Domain = Clamp(DomainOnly(i.Domain), 260),
                 IsBrowser = i.IsBrowser,
+                State = i.State.ToString().ToLowerInvariant(),
             });
         }
 

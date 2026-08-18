@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { SegmentState, type Prisma } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
@@ -107,7 +107,13 @@ export class SummaryService {
         _sum: { deltaSec: true },
       }),
       this.prisma.appUsage.findMany({
-        where: { workDate, employeeId: { in: ids }, categoryId: { not: null } },
+        // ⭐ R22a — শুধু ACTIVE-এ দেখা খণ্ড (idle সারি হিসাবে যায় না)
+        where: {
+          workDate,
+          employeeId: { in: ids },
+          categoryId: { not: null },
+          segmentState: SegmentState.active,
+        },
         select: {
           employeeId: true,
           startedAt: true,

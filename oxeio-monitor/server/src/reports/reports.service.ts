@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmployeeStatus, type Productivity } from '@prisma/client';
+import { EmployeeStatus, SegmentState, type Productivity } from '@prisma/client';
 
 import {
   addSeconds,
@@ -477,6 +477,9 @@ export class ReportsService {
     const where = {
       employeeId: { in: ids },
       workDate: { gte: ctx.range.from, lte: ctx.range.to },
+      // ⭐ R22a — শুধু ACTIVE-এ দেখা খণ্ড গোনা হয়। idle-এ দেখা সারি এখন
+      //    জমা হয় (মিটিং চেনার জন্য), কিন্তু কোনো হিসাবে যায় না।
+      segmentState: SegmentState.active,
     };
     const limit = q.limit ?? DEFAULT_TOP;
 

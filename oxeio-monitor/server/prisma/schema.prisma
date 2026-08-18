@@ -360,12 +360,21 @@ model AppUsage {
   domain      String?
   categoryId  Int?     @map("category_id")
   isBrowser   Boolean  @default(false) @map("is_browser")
+  /// ⭐ R22a — খণ্ডটা কোন অবস্থায় দেখা হয়েছে।
+  /// ⚠️ ডিফল্ট `active`: পুরোনো এজেন্ট ঘরটা পাঠায় না, আর তারা যা পাঠাত
+  /// তার সবই সংজ্ঞা অনুযায়ী ACTIVE — তাই পুরোনো সারির মানে বদলায় না।
+  /// ⚠️⚠️ `idle` সারি **কোনো হিসাবে যায় না**; পড়ার প্রতিটা জায়গায়
+  /// `segmentState: 'active'` ছাঁকনি বসানো।
+  segmentState SegmentState @default(active) @map("segment_state")
 
   employee Employee     @relation(fields: [employeeId], references: [id])
   device   Device       @relation(fields: [deviceId], references: [id])
   category AppCategory? @relation(fields: [categoryId], references: [id])
 
   @@index([employeeId, workDate])
+  /// ⭐ R22b-র overlap কোয়েরির জন্য — idle সেগমেন্টের সাথে সময় মেলাতে
+  /// `work_date` নয়, `started_at` ধরে খুঁজতে হবে
+  @@index([employeeId, startedAt])
   @@index([domain])
   @@map("app_usage")
 }

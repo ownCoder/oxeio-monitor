@@ -7,6 +7,7 @@ import {
   IsDate,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -169,6 +170,19 @@ export class AppUsageDto extends WithClientUuid {
   @IsOptional() @IsString() @MaxLength(260) domain?: string;
 
   @IsOptional() @IsBoolean() isBrowser?: boolean;
+
+  /**
+   * ⭐ **R22a** — খণ্ডটা কোন অবস্থায় দেখা হয়েছে।
+   *
+   * ⚠️⚠️ **`@IsOptional()` অপরিহার্য** — ফ্লিটের পুরোনো এজেন্ট (০.৩.৭/০.৩.৮)
+   * এই ঘরটা পাঠায় না। বাধ্যতামূলক করলে তাদের প্রতিটা ব্যাচ **৪০০** খেত,
+   * আর ৪০০ মানে এজেন্টের কাছে Permanent — সে ডেটাটা **মুছে ফেলত** (G49)।
+   * অর্থাৎ এক লাইনের ভুলে গোটা অফিসের অ্যাপ-হিসাব হারাত।
+   *
+   * ⭐ না এলে ডাটাবেসের ডিফল্ট `active` বসে, আর সেটাই সঠিক: পুরোনো এজেন্ট
+   * কেবল ACTIVE অবস্থাতেই রেকর্ড করত।
+   */
+  @IsOptional() @IsIn(['active', 'idle', 'locked']) state?: 'active' | 'idle' | 'locked';
 }
 
 export class AppUsageBatchDto {
