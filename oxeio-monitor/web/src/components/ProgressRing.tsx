@@ -165,3 +165,73 @@ export function ProgressBar({
     </div>
   );
 }
+
+/**
+ * ⭐⭐ **আজকের মিটার — তিনটে আলাদা সত্যি, তিনটে আলাদা চেহারা।**
+ *
+ * `ProgressBar` জানে একটাই গল্প: "কতটা হয়েছে"। কিন্তু রোস্টারে তিন রকম
+ * সারি পাশাপাশি বসে, আর ওদের গুলিয়ে ফেলা যাবে না:
+ *
+ * | অবস্থা | চেহারা | মানে |
+ * |---|---|---|
+ * | `counted` | ভরাট সবুজ | মাপা হয়েছে, এতটা কাজ হয়েছে |
+ * | `zero` | **ড্যাশ করা খালি** | মাপা হয়েছে, আজ শূন্য |
+ * | `unknown` | **হ্যাচ করা** | মাপাই হয়নি (এজেন্ট বসেনি / কখনো সাড়া দেয়নি) |
+ *
+ * ⚠️⚠️ শেষ দুটো আগে **একই খালি বার** ছিল, আর তাতে "এজেন্ট বসানোই হয়নি"
+ * নীরবে "আজ কিছু করেননি"-র অভিযোগ হয়ে যেত। ⭐ ভাগটা এখানে **রঙ দিয়ে
+ * নয়, টেক্সচার দিয়ে** — বর্ণান্ধতায়ও পার্থক্যটা টেকে (`TeamBars`-এর
+ * মাপা ΔE-র শিক্ষা: হিউয়ের উপর ভরসা করা যায় না)।
+ *
+ * ⚠️ ন্যূনতম প্রস্থ ২px — নইলে ০.৩% কাজ GDI-র মতোই শূন্যে গোল হয়ে যেত,
+ * আর "একটু" ও "কিছুই না" এক দেখাত।
+ */
+export function TodayMeter({
+  kind,
+  value,
+  max,
+  className = '',
+  ariaLabel = "Today's target",
+}: {
+  kind: 'counted' | 'zero' | 'unknown';
+  value: number;
+  max: number;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  if (kind !== 'counted') {
+    const unknown = kind === 'unknown';
+    return (
+      <div
+        className={`h-1.5 rounded-full ${
+          unknown
+            ? // হ্যাচ — "গোনাই হয়নি"
+              'bg-[repeating-linear-gradient(135deg,var(--color-line)_0_3px,transparent_3px_6px)]'
+            : // ড্যাশ করা খালি ঘর — "গোনা হয়েছে, শূন্য"
+              'border border-dashed border-line'
+        } ${className}`}
+        role="img"
+        aria-label={unknown ? `${ariaLabel} — not counted yet` : `${ariaLabel} — nothing counted today`}
+      />
+    );
+  }
+
+  const pct = pctOf(value, max);
+  const shown = Math.min(100, Math.max(0, pct));
+  const met = pct >= 100;
+
+  return (
+    <div
+      className={`h-1.5 overflow-hidden rounded-full bg-line ${className}`}
+      role="img"
+      aria-label={`${ariaLabel} — ${Math.round(pct)} percent`}
+    >
+      <div
+        className={`h-full min-w-[2px] rounded-full transition-[width] duration-700 ${
+          met ? 'bg-ok' : 'bg-ok/70'
+        }`}
+        style={{ width: `${shown}%` }}
+      />
+    </div>
+  );
+}

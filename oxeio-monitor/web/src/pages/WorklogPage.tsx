@@ -4,7 +4,7 @@ import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
-import { TeamCards } from './live/TeamCards';
+import { TeamRoster } from './live/TeamRoster';
 
 /**
  * **Worklog — এখন কে কাজ করছেন, কে করছেন না।**
@@ -66,7 +66,7 @@ export function WorklogPage() {
       ) : !data ? (
         <ErrorBox error={board.error} retry={board.reload} />
       ) : (
-        <TeamCards
+        <TeamRoster
           cards={data.cards}
           canView={canView}
           withTarget={

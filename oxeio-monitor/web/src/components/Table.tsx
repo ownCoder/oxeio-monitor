@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
 /**
@@ -38,6 +39,7 @@ export function Table<T>({
   onRowClick,
   /** সারি হালকা করে দেখানো — যেমন নিষ্ক্রিয় কর্মী */
   rowMuted,
+  groupBefore,
   footer,
 }: {
   columns: Column<T>[];
@@ -45,6 +47,14 @@ export function Table<T>({
   rowKey: (row: T, index: number) => string;
   onRowClick?: (row: T) => void;
   rowMuted?: (row: T) => boolean;
+  /**
+   * ⭐ কোনো সারির **আগে** একটা পূর্ণ-প্রস্থ ব্যান্ড — যেমন "Not working · 1"।
+   *
+   * ⚠️ দুটো আলাদা `<Table>` বসিয়ে ভাগ করা যেত না: দুটো টেবিলের কলাম
+   *    আলাদাভাবে মাপা হয়, তাই সংখ্যাগুলো আর এক লাইনে থাকত না — অথচ
+   *    সারিবদ্ধ সংখ্যাই টেবিলের একমাত্র কারণ।
+   */
+  groupBefore?: (row: T, index: number) => ReactNode;
   /** যোগফলের সারি — `<tfoot>`-এ বসে, স্ক্রল করলেও কলামের সাথেই থাকে */
   footer?: ReactNode;
 }) {
@@ -87,9 +97,20 @@ export function Table<T>({
         </thead>
 
         <tbody>
-          {rows.map((row, index) => (
+          {rows.map((row, index) => {
+            const band = groupBefore?.(row, index);
+            return (
+          <Fragment key={rowKey(row, index)}>
+            {band && (
+              <tr className="bg-surface">
+                {/* ⚠️ `colSpan` — নইলে ব্যান্ডটা প্রথম কলামের ভেতরে ঢুকে
+                    যেত আর বাকি কলামগুলো ফাঁকা সারি হয়ে দাঁড়াত */}
+                <td colSpan={columns.length} className="px-3 pt-5 pb-2">
+                  {band}
+                </td>
+              </tr>
+            )}
             <tr
-              key={rowKey(row, index)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               // ⚠️ `bg-surface` এখানে **বাধ্যতামূলক** — উপরের নোট দেখুন;
               //    `<tr>`-এ রং না থাকলে sticky ঘরটা স্বচ্ছ হয়ে যেত আর
@@ -109,7 +130,9 @@ export function Table<T>({
                 </td>
               ))}
             </tr>
-          ))}
+          </Fragment>
+            );
+          })}
         </tbody>
 
         {footer && (
