@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import {
   TELEGRAM_BATCH,
   TELEGRAM_CHANNEL_TAG,
+  TELEGRAM_MUTED_TYPES,
   TELEGRAM_FAILED_TAG,
   TELEGRAM_MAX_AGE_HOURS,
   TELEGRAM_MAX_ATTEMPTS,
@@ -135,6 +136,18 @@ export class TelegramChannel {
       where: {
         // ⭐ ইমেইলের পালা শেষ হয়েছে এমন সারিই — বিস্তারিত কারণ ক্লাসের ডকে
         channelsSent: { isEmpty: false },
+        /**
+         * ⭐⭐ **চুপ করানো ধরনগুলো এখানেই ছাঁকা হয়** *(১৮ আগস্ট)* —
+         * `agent_down` দিনে ~৩৯ বার উঠত, আর তাতে বাকি সব বার্তা চাপা
+         * পড়ত (`TELEGRAM_MUTED_TYPES`-এর নোট)।
+         *
+         * ⚠️ WHERE-এ ছাঁকা হয়, তুলে এনে বাদ দেওয়া হয় না — নইলে প্রতি
+         * sweep-এ ১০টার ব্যাচ ওই সারিগুলোতেই ভরে যেত আর সত্যিকারের
+         * অ্যালার্ট কোনোদিন সামনের সারিতে আসত না।
+         * ⚠️ চিহ্ন বসানোরও দরকার নেই: ২৪ ঘণ্টার জানালা পেরোলে সারিগুলো
+         * এমনিতেই আর বিবেচনায় আসে না।
+         */
+        type: { notIn: [...TELEGRAM_MUTED_TYPES] },
         NOT: {
           channelsSent: { hasSome: [TELEGRAM_CHANNEL_TAG, TELEGRAM_FAILED_TAG] },
         },
@@ -176,6 +189,41 @@ export class TelegramChannel {
    *    তাই বার্তাটা থেকেও টোকেনটা ছেঁকে ফেলা হয়।
    */
   async send(text: string): Promise<TelegramOutcome> {
+    return this.post(text, null);
+  }
+
+  /**
+   * ⭐⭐ **monospace বার্তা** *(১৮ আগস্ট)* — কেবল দৈনিক রিপোর্টের জন্য।
+   *
+   * ⚠️⚠️ **কেন `send()`-এর ভেতরে একটা ফ্ল্যাগ নয়, আলাদা মেথড:** উপরের
+   * `send()`-এর প্লেইন-টেক্সট হওয়াটা একটা **সুরক্ষা**, খামখেয়াল নয় —
+   * অ্যালার্টের বার্তায় হোস্টনেম বসে, আর `DESKTOP_A_B`-র আন্ডারস্কোরগুলো
+   * Markdown/HTML মোডে গোটা বার্তাটা ৪০০ করে দিতে পারত। আলাদা মেথড রাখলে
+   * কেউ ভুল করে অ্যালার্টকেও HTML মোডে পাঠাতে পারবে না।
+   *
+   * ⚠️⚠️ **ব্যর্থ হলে প্লেইন টেক্সটে আবার** — একটা ফরম্যাটিং সমস্যার দাম
+   * কখনোই *"সেদিনের রিপোর্টটাই গেল না"* হওয়া উচিত নয়। ⚠️ দ্বিতীয়বারের
+   * জন্য `<pre>` মোড়কটা কলার খুলে দেয় (`plainFallback`), নইলে পাঠক
+   * কাঁচা ট্যাগ দেখতেন।
+   */
+  async sendHtml(html: string, plainFallback: string): Promise<TelegramOutcome> {
+    const outcome = await this.post(html, 'HTML');
+    if (outcome !== 'failed') return outcome;
+
+    this.logger.warn('Telegram rejected the formatted message — retrying as plain text');
+    return this.post(plainFallback, null);
+  }
+
+  /**
+   * ⚠️ কখনো throw করে না, আর **কখনো URL লগ করে না** — URL-এর ভেতরেই
+   *    bot টোকেন থাকে, আর ওই টোকেন হাতে পেলে যে-কেউ ওই গ্রুপে যা খুশি
+   *    পাঠাতে পারে। Telegram-এর ত্রুটি বার্তাও মাঝে মাঝে URL ফিরিয়ে দেয়,
+   *    তাই বার্তাটা থেকেও টোকেনটা ছেঁকে ফেলা হয়।
+   */
+  private async post(
+    text: string,
+    parseMode: 'HTML' | null,
+  ): Promise<TelegramOutcome> {
     const settings = await this.resolve();
     if (settings === null) return 'not_configured';
 
@@ -188,8 +236,9 @@ export class TelegramChannel {
           body: JSON.stringify({
             chat_id: settings.chatId,
             text,
-            // ⚠️ কোনো parse_mode নেই — প্লেইন টেক্সট। Markdown দিলে
+            // ⚠️ ডিফল্টে কোনো parse_mode নেই — প্লেইন টেক্সট। Markdown দিলে
             //    হোস্টনেমের একটা `_` গোটা বার্তাটা ৪০০ করে দিত।
+            ...(parseMode === null ? {} : { parse_mode: parseMode }),
             disable_web_page_preview: true,
           }),
           signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),

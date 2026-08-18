@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { workDateOf } from '../agent/util/dhaka-time';
+import { dhakaClock, workDateOf } from '../agent/util/dhaka-time';
 import { AlertMailer, type SendOutcome } from '../alerts/alerts.mailer';
 import { TelegramChannel } from '../alerts/telegram.channel';
 import { PrismaService } from '../prisma/prisma.service';
 import { monthBoundsOf, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
 import { buildDigest, digestBody, digestSubject, type Digest } from './digest.math';
+import { asPreBlock, telegramDigest } from './digest.telegram';
 
 /** লেটারহেড ও ইমেইলের শিরোনামে — `reports.service.ts`-এর সাথে একই env */
 const DEFAULT_ORG_NAME = 'oXeio Monitoring';
@@ -81,9 +82,22 @@ export class DigestService {
      * প্রহরীটা ছিল কারণ ওটা **অনেক বেশি বিস্তারিত** (প্রতিটা কর্মীর
      * সপ্তাহভর ঘণ্টা); দৈনিকটা সংক্ষিপ্ত সারাংশ।
      */
-    const telegramOutcome = await this.telegram.send(`${subject}
+    /**
+     * ⚠️⚠️ **টেলিগ্রামে ইমেইলের বডি আর যায় না** *(১৮ আগস্ট)*। আগে হুবহু
+     * ওটাই যেত — সব কর্মীর এক তালিকা + আট লাইনের "How to read these
+     * numbers"। ফোনে সেটা একটা ধূসর দেয়াল, আর মালিকের দুটো প্রশ্ন
+     * (*কে কত ঘণ্টা*, *কে টার্গেট ছুঁল*) ওর ভেতরে হারিয়ে যেত।
+     *
+     * ⭐ ইমেইলটা **অপরিবর্তিত** — ওখানে বিস্তারিত ব্যাখ্যাটা ঠিক আছে।
+     * দুই মাধ্যমের দুই চেহারা, কিন্তু সংখ্যা একই `Digest` থেকে, তাই
+     * কোনোদিন দুটো আলাদা কথা বলবে না।
+     */
+    const plain = telegramDigest(digest, this.orgName, {
+      silentPcs: await this.silentPcsToday(now),
+      atTime: dhakaClock(now),
+    });
 
-${body}`);
+    const telegramOutcome = await this.telegram.sendHtml(asPreBlock(plain), plain);
 
     if (telegramOutcome === 'sent') {
       this.logger.log('Daily digest also sent to Telegram');
@@ -119,6 +133,37 @@ ${body}`);
       recipients: recipients.length,
       outcome,
     };
+  }
+
+  /**
+   * আজ কর্মঘণ্টায় কতগুলো **আলাদা** PC চুপ ছিল।
+   *
+   * ⚠️⚠️ **আলাদা PC গোনা হয়, অ্যালার্ট নয়।** একটা মেশিন দিনে পাঁচবার
+   * চুপ হলে পাঁচটা সারি তৈরি হয় — সেগুলো গুনলে সংখ্যাটা আতঙ্কজনক
+   * দেখাত অথচ সমস্যা একটাই। `DISTINCT device_id`-ই এখানে সত্যি।
+   *
+   * ⚠️ কখনো throw করে না — এই এক লাইনের জন্য পুরো রিপোর্ট আটকানো যাবে না।
+   */
+  private async silentPcsToday(now: Date): Promise<number> {
+    try {
+      const since = new Date(now.getTime() - 24 * 3_600_000);
+      const rows = await this.prisma.alert.findMany({
+        where: {
+          type: 'agent_down',
+          createdAt: { gte: since },
+          deviceId: { not: null },
+        },
+        select: { deviceId: true },
+        distinct: ['deviceId'],
+      });
+
+      return rows.length;
+    } catch (err) {
+      this.logger.warn(
+        `Could not count silent PCs: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return 0;
+    }
   }
 
   /** ⭐ শুধু সংখ্যা — ইমেইল ছাড়াই টেস্ট বা ভবিষ্যতের কোনো প্রিভিউ ডাকতে পারে */

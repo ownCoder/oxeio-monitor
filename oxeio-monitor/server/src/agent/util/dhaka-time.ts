@@ -42,6 +42,22 @@ export function dhakaHourOf(instant: Date): number {
   return new Date(instant.getTime() + OFFSET_MS).getUTCHours();
 }
 
+/**
+ * ঢাকার ঘড়ি, `HH:MM` — যেমন `18:30`।
+ *
+ * ⚠️ `dhakaHourOf`-এর মতোই একই কৌশলে (offset যোগ করে UTC পড়া), আর একই
+ * কারণে: `getHours()` সার্ভারের টাইমজোন ধরত, আর কনটেইনার UTC-তে চলে।
+ * ⭐ দৈনিক রিপোর্টে এটা লেখা থাকে যাতে পাঠক জানেন সংখ্যাগুলো **কোন
+ * মুহূর্তের** — সন্ধ্যা ৬:৩০-এর হিসাবে অনেকেই তখনো কাজে।
+ */
+export function dhakaClock(instant: Date): string {
+  const local = new Date(instant.getTime() + OFFSET_MS);
+  const hh = String(local.getUTCHours()).padStart(2, '0');
+  const mm = String(local.getUTCMinutes()).padStart(2, '0');
+
+  return `${hh}:${mm}`;
+}
+
 export function sameWorkDate(a: Date, b: Date): boolean {
   return workDateOf(a).getTime() === workDateOf(b).getTime();
 }

@@ -119,6 +119,8 @@ function makeService(
       findMany: () =>
         Promise.resolve(over.owners ?? [{ email: 'owner@example.com' }]),
     },
+    // ⚠️ "আজ কতগুলো PC চুপ ছিল" — টেলিগ্রামের এক লাইনের জন্য (১৮ আগস্ট)
+    alert: { findMany: () => Promise.resolve([]) },
   } as unknown as PrismaService;
 
   const reports = {
@@ -150,6 +152,9 @@ function makeService(
    */
   const telegram = {
     send: () => Promise.resolve('not_configured' as const),
+    // ⚠️ দৈনিক রিপোর্ট এখন `sendHtml()` দিয়ে যায় (monospace) — স্টাবে
+    //    না থাকলে গোটা `runOnce()` ছুড়ে বসত
+    sendHtml: () => Promise.resolve('not_configured' as const),
   } as unknown as TelegramChannel;
 
   return {

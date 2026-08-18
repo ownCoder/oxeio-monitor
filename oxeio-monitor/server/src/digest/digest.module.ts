@@ -3,9 +3,6 @@ import { Module } from '@nestjs/common';
 import { AlertMailer } from '../alerts/alerts.mailer';
 import { TelegramChannel } from '../alerts/telegram.channel';
 import { TeamsChannel } from '../alerts/teams.channel';
-import { DashboardModule } from '../dashboard/dashboard.module';
-import { SnapshotJob } from './snapshot.job';
-import { SnapshotService } from './snapshot.service';
 import { ReportsModule } from '../reports/reports.module';
 import { DigestJob } from './digest.job';
 import { DigestService } from './digest.service';
@@ -42,7 +39,9 @@ import { WeeklyDigestService } from './weekly.service';
  * তবে ⚠️ তখন খেয়াল রাখতে হবে বৃত্ত তৈরি না হয়।
  */
 @Module({
-  imports: [ReportsModule, DashboardModule],
+  // ⚠️ `DashboardModule` এখানে ছিল কেবল ঘণ্টার স্ন্যাপশটের জন্য; সেটা
+  //    তুলে দেওয়ায় নির্ভরতাটাও গেল (১৮ আগস্ট)
+  imports: [ReportsModule],
   providers: [
     DigestService,
     DigestJob,
@@ -50,9 +49,20 @@ import { WeeklyDigestService } from './weekly.service';
     WeeklyDigestService,
     WeeklyDigestJob,
     TelegramChannel,
-    // ⭐ ঘণ্টায় একবার — এখন কে কাজ করছে (মালিকের ১০-মিনিট দাবির বদলে)
-    SnapshotService,
-    SnapshotJob,
+    /**
+     * ⚠️⚠️ **ঘণ্টার স্ন্যাপশট (`SnapshotService`/`SnapshotJob`) তুলে দেওয়া
+     * হয়েছে** *(১৮ আগস্ট ২০২৬, মালিকের সিদ্ধান্ত — ADR-029 বাতিল)*।
+     *
+     * ওটা এসেছিল রিয়েল-টাইম idle অ্যালার্টের **বিকল্প** হিসেবে: দিনে
+     * ৬০–১৮০টা বার্তার বদলে ঘণ্টায় একটা। কিন্তু মাঠে দাঁড়াল দিনে ১১টা
+     * স্ন্যাপশট + ৩৯টা `agent_down` = ~৫০টা বার্তা, আর তার নিচে চাপা
+     * পড়ল সেই জিনিসটাই যেটা মালিক আসলে চেয়েছিলেন — দৈনিক রিপোর্ট।
+     * ⭐ মালিকের কথায়: *"ami ei type er alart gula chaina. ami chai
+     * deily report type er."*
+     *
+     * ⚠️ **ফিরিয়ে আনার আগে ভাবুন:** "এখন কে কাজ করছে" প্রশ্নের উত্তর
+     * Live Board-এ **সবসময়** আছে; ঠেলে পাঠানোর দরকার ছিল না।
+     */
     // ⭐ Teams — টেলিগ্রামের পাশাপাশি, বিকল্প নয়
     TeamsChannel,
   ],
