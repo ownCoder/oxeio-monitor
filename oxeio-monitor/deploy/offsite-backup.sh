@@ -52,12 +52,41 @@ notify() {
 
 printf '\n%s── R5 · অফসাইট ব্যাকআপ%s\n' "$c_dim" "$c_off"
 
+# ── ০· পর্দায় বসানো কনফিগ (R5, ১৮ আগস্ট) ─────────────────────────────────
+#
+# ⭐⭐ B2-র কী এখন **ডাটাবেসে** বসে (Settings → Backup), তাই VPS-এ SSH করে
+#    `rclone config` চালানোর দরকার নেই। ⚠️ পুরোনো পথও অটুট: `RCLONE_REMOTE`
+#    আগে থেকে সেট থাকলে ডাটাবেস ছোঁয়াই হয় না।
+#
+# ⭐ কনফিগ ফাইল লেখা হয় না — rclone নিজেই `RCLONE_CONFIG_<নাম>_<ঘর>` চলক
+#    পড়ে। ⚠️ ফলে key কখনো ডিস্কে বসে না, শুধু এই প্রসেসের পরিবেশে থাকে।
+if [[ -z "${REMOTE}" ]] && command -v docker >/dev/null 2>&1; then
+  # ⚠️ ডাটাবেসের নাম/ইউজার হোস্টের পরিবেশে থাকে না — compose-এর `.env`-এ
+  #    থাকে, ঠিক যেমন টেলিগ্রামের টোকেন (`notify()` একই কাজ করে)।
+  pg_user=$(grep -E '^POSTGRES_USER=' "$COMPOSE_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
+  pg_db=$(grep -E '^POSTGRES_DB=' "$COMPOSE_DIR/.env" 2>/dev/null | cut -d= -f2- || true)
+
+  cfg=$(cd "$COMPOSE_DIR" 2>/dev/null && docker compose exec -T postgres psql -U "${pg_user:-oxeio}" -d "${pg_db:-oxeio}" -tAc "SELECT concat_ws('|', value->>'keyId', value->>'appKey', value->>'bucket') FROM settings WHERE key = 'ops.offsite'" 2>/dev/null | tr -d '[:space:]' || true)
+
+  IFS='|' read -r db_id db_key db_bucket <<< "${cfg:-}"
+
+  if [[ -n "${db_id:-}" && -n "${db_key:-}" && -n "${db_bucket:-}" ]]; then
+    export RCLONE_CONFIG_B2_TYPE=b2
+    export RCLONE_CONFIG_B2_ACCOUNT="$db_id"
+    export RCLONE_CONFIG_B2_KEY="$db_key"
+    export RCLONE_CONFIG_B2_HARD_DELETE=false
+    REMOTE="b2:${db_bucket}"
+    unset db_id db_key db_bucket cfg
+    say 'কনফিগ পর্দা থেকে (Settings → Backup)'
+  fi
+fi
+
 # ── ১· যা ছাড়া চলবে না ───────────────────────────────────────────────────────
 command -v rclone >/dev/null 2>&1 || die \
   'rclone নেই। বসান: curl https://rclone.org/install.sh | sudo bash'
 
 [[ -n "$REMOTE" ]] || die \
-  'RCLONE_REMOTE সেট করা নেই (যেমন: gdrive:oxeio-backups)। deploy/README § R5 দেখুন'
+  'কোনো অফসাইট গন্তব্য বসানো নেই — ড্যাশবোর্ডে Settings → Backup-এ B2-র কী বসান (অথবা RCLONE_REMOTE দিন)'
 
 [[ -d "$BACKUP_DIR" ]] || die "ব্যাকআপ ফোল্ডার নেই: $BACKUP_DIR"
 
