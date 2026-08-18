@@ -165,7 +165,9 @@ oxeio-monitor/
 │   │   │   #    ⚠️ StartWatchdog — ইনস্টল শেষে চালুও করে (G78)
 │   │   └── build.ps1                       ✅ publish → wix build · ঠিকানা ডিফল্টেই বেক
 │   ├── tests/oXeio.Core.Tests/             ✅ ৩৮৩টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ১০৬টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   └── tests/oXeio.Agent.Tests/            ✅ ১১৬টি — Win32 মডিউলের জন্য (net8.0-windows)
+│       #  ⭐ `HeroSecondsTests` **সত্যিই এঁকে কালি গোনে** — "ছোট করেছি" আর
+│       #     "পর্দায় ঠিক বসেছে" এক কথা নয়, আর দ্বিতীয়টা কোনো কম্পাইলার ধরে না
 │
 ├── server/                                 # ── Node 22 + NestJS 11 ──
 │   ├── src/

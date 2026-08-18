@@ -109,19 +109,20 @@ internal sealed class TodayForm : OwnerDrawnForm
         //    সেটাই হতো: সবুজ বিন্দু আর "Working", অথচ গোনাও হচ্ছিল না,
         //    সার্ভারেও কিছু যাচ্ছিল না। স্টাফ দেখত সব ঠিক আছে, তাই সাইন ইন
         //    করার কথাই মাথায় আসত না — আর দিনের শেষে তার ঘণ্টা শূন্য।
-        stack.Hero(
-            // ⭐ হিরো সংখ্যাটাই একমাত্র সেকেন্ডসহ (মালিকের চাওয়া, ১৮ আগস্ট) —
-            //    নিচের টার্গেট-বারগুলো H:MM-ই থাকে।
-            //
-            // ⭐⭐ আর এখানেই **চলন্ত** মান: `status.ActiveToday` নিজে লাফিয়ে
-            //    বাড়ে (heartbeat বা সেগমেন্ট বন্ধ হলে), তাই তার সাথে "তারপর
-            //    থেকে কত সময় কাজ চলছে" যোগ করে দেখানো হয় — নইলে অঙ্কে সেকেন্ড
-            //    থাকত, কিন্তু নড়ত না। নিয়মটা LiveDuration-এ, টেস্টসহ।
+        // ⭐ হিরো সংখ্যাটাই একমাত্র সেকেন্ডসহ (মালিকের চাওয়া, ১৮ আগস্ট) —
+        //    নিচের টার্গেট-বারগুলো H:MM-ই থাকে।
+        //
+        // ⭐⭐ আর এখানেই **চলন্ত** মান: `status.ActiveToday` নিজে লাফিয়ে
+        //    বাড়ে (heartbeat বা সেগমেন্ট বন্ধ হলে), তাই তার সাথে "তারপর
+        //    থেকে কত সময় কাজ চলছে" যোগ করে দেখানো হয় — নইলে অঙ্কে সেকেন্ড
+        //    থাকত, কিন্তু নড়ত না। নিয়মটা LiveDuration-এ, টেস্টসহ।
+        var (figure, seconds) = UiText.SplitSeconds(
             UiText.DurationLong(
-                _live.Next(status.ActiveToday, status.CountedAt, now, IsCounting(status))),
-            "hours today",
-            HeroState(status),
-            StateDot(status));
+                _live.Next(status.ActiveToday, status.CountedAt, now, IsCounting(status))));
+
+        // ⭐ সেকেন্ডটা অর্ধেক মাপে (মালিকের চাওয়া, ১৮ আগস্ট) — ওটাই একমাত্র
+        //    অঙ্ক যেটা প্রতি সেকেন্ডে নড়ে, আর পুরো মাপে সেটা চোখ টেনে রাখত।
+        stack.Hero(figure, seconds, "hours today", HeroState(status), StateDot(status));
 
         stack.Line(
             status.Enrolled

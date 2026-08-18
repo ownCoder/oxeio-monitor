@@ -384,9 +384,16 @@ internal abstract class OwnerDrawnForm : Form
         /// বদলায়। আগে এটা চার সারির তালিকার চতুর্থ সারি ছিল ("Now: Working"),
         /// অর্থাৎ "Queued: 0"-র সমান ওজনে।
         /// </summary>
-        public void Hero(string figure, string unit, string? chip, Color chipDot)
+        /// <param name="tail">
+        /// ⭐ সংখ্যার শেষ টুকরো, <b>অর্ধেক মাপে</b> আঁকা হয় — যেমন
+        /// <c>3:59:22</c>-এর <c>:22</c> (মালিকের চাওয়া, ১৮ আগস্ট)।
+        /// খালি হলে পুরোটাই হিরো মাপে।
+        /// </param>
+        public void Hero(
+            string figure, string? tail, string unit, string? chip, Color chipDot)
         {
             var heroFont = _form.FontFor(TrayFontRole.Hero);
+            var tailFont = _form.FontFor(TrayFontRole.HeroSeconds);
             var unitFont = _form.FontFor(TrayFontRole.Body);
 
             var heroSize = TextRenderer.MeasureText(
@@ -396,6 +403,34 @@ internal abstract class OwnerDrawnForm : Form
                 _g, figure, heroFont,
                 new Rectangle(_bounds.Left, _y, _bounds.Width, heroSize.Height),
                 _form.Theme.Ink, TextFlags);
+
+            var used = heroSize.Width;
+
+            if (!string.IsNullOrEmpty(tail))
+            {
+                var tailSize = TextRenderer.MeasureText(
+                    _g, tail, tailFont, new Size(_bounds.Width, int.MaxValue), TextFlags);
+
+                /**
+                 * ⚠️⚠️ **baseline মিলিয়ে বসানো হয়, উপর বা নিচ ধরে নয়।**
+                 *
+                 * উপর ধরে বসালে ছোট অঙ্কটা মাথার সাথে ঝুলত; নিচ ধরে বসালে
+                 * descent-এর তফাতে (৪৪px-এর descent ২২px-এর দ্বিগুণ) ওটা
+                 * বড় অঙ্কের baseline-এর **নিচে** নেমে যেত — দুটোই দেখতে
+                 * ভাঙা লাগে। ⭐ দুই ফন্ট একই ফ্যামিলি ও style বলে ascent
+                 * মাপে সমানুপাতিক, তাই হিসাবটা নির্ভরযোগ্য।
+                 */
+                var tailY = _y + AscentPx(heroFont) - AscentPx(tailFont);
+
+                TextRenderer.DrawText(
+                    _g, tail, tailFont,
+                    new Rectangle(
+                        _bounds.Left + heroSize.Width, tailY,
+                        _bounds.Width - heroSize.Width, tailSize.Height),
+                    _form.Theme.Ink, TextFlags);
+
+                used += tailSize.Width;
+            }
 
             // ⚠️ একক বসে সংখ্যার baseline-এ, উপরে নয় — নইলে "hours today"
             //    সংখ্যাটার মাথার সাথে ভাসত।
@@ -407,8 +442,8 @@ internal abstract class OwnerDrawnForm : Form
             TextRenderer.DrawText(
                 _g, unit, unitFont,
                 new Rectangle(
-                    _bounds.Left + heroSize.Width + _form.Scale(8), unitY,
-                    _bounds.Width - heroSize.Width, unitSize.Height),
+                    _bounds.Left + used + _form.Scale(8), unitY,
+                    _bounds.Width - used, unitSize.Height),
                 _form.Theme.Ink2, TextFlags);
 
             if (!string.IsNullOrEmpty(chip))
@@ -417,6 +452,27 @@ internal abstract class OwnerDrawnForm : Form
             }
 
             _y += heroSize.Height + _form.Scale(2);
+        }
+
+        /// <summary>
+        /// লেখার উপরের প্রান্ত থেকে baseline কত পিক্সেল নিচে।
+        ///
+        /// ⚠️ <see cref="TextFormatFlags.NoPadding"/> দিয়ে আঁকা হয় বলে glyph
+        /// সেলের মাথা ঠিক rect-এর মাথায় বসে — তাই ascent-ই সরাসরি দূরত্ব।
+        /// ⚠️ <c>font.Size</c> এখানে <b>পিক্সেলে</b> (ফন্ট তৈরি হয়
+        /// <see cref="GraphicsUnit.Pixel"/>-এ, <see cref="TrayFonts"/> দেখুন);
+        /// পয়েন্টে হলে এই হিসাব DPI-তে ভেঙে পড়ত।
+        /// </summary>
+        private static int AscentPx(Font font)
+        {
+            var family = font.FontFamily;
+            var em = family.GetEmHeight(font.Style);
+
+            // ⚠️ em শূন্য হওয়ার কথা নয়, কিন্তু হলে ভাগটা NaN হয়ে লেখাটা
+            //    জানালার বাইরে চলে যেত — তার চেয়ে উপরে বসুক।
+            if (em <= 0) return 0;
+
+            return (int)Math.Round(font.Size * family.GetCellAscent(font.Style) / em);
         }
 
         /// <summary>ডান দিকে একটা পিল — ভেতরে রঙিন বিন্দু আর অবস্থার নাম।</summary>

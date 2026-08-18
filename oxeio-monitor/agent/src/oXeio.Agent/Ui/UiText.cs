@@ -76,6 +76,35 @@ internal static class UiText
                span.Seconds.ToString("00", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// <c>3:59:22</c> → <c>("3:59", ":22")</c> — হিরো সংখ্যার সেকেন্ড অংশটা
+    /// আলাদা করে, যাতে ওটা <b>অর্ধেক মাপে</b> আঁকা যায়
+    /// (<see cref="TrayFontRole.HeroSeconds"/>)।
+    ///
+    /// ⭐ নিয়মটা এখানে, আঁকার কোডে নয় — এটা একটা <b>সিদ্ধান্ত</b>
+    /// ("কোথা থেকে সেকেন্ড শুরু"), বিন্যাস নয়, আর তাই টেস্টযোগ্য।
+    ///
+    /// ⚠️⚠️ <b>শেষ</b> কোলনটাই খোঁজা হয়, প্রথমটা নয়। <c>3:59:22</c>-এ
+    /// প্রথম কোলন ধরলে <c>:59:22</c> পুরোটাই ছোট হয়ে যেত — অর্থাৎ মিনিটও।
+    ///
+    /// ⚠️ দুটোর কম কোলন থাকলে (যেমন <c>3:59</c>) সেকেন্ড নেই, তাই লেজ খালি —
+    /// তখন পুরোটাই হিরো মাপে আঁকা হয়। এই পথটা আজ কেউ ডাকে না, কিন্তু
+    /// <see cref="Duration"/> কোনোদিন হিরোতে বসলে চুপচাপ ভাঙার চেয়ে
+    /// ঠিকঠাক দেখানোই ভালো।
+    /// </summary>
+    public static (string Head, string Tail) SplitSeconds(string figure)
+    {
+        if (string.IsNullOrEmpty(figure)) return (figure ?? string.Empty, string.Empty);
+
+        var last = figure.LastIndexOf(':');
+        var first = figure.IndexOf(':');
+
+        // ⚠️ `last == first` মানে কোলন একটাই — ওটা ঘণ্টা:মিনিট, সেকেন্ড নয়
+        if (last <= 0 || last == first) return (figure, string.Empty);
+
+        return (figure[..last], figure[last..]);
+    }
+
     /// <summary>০.৬১ → <c>61%</c>। ১-এর উপরে ক্ল্যাম্প করা হয় না (ADR — বাড়তি কাজ অদৃশ্য নয়)।</summary>
     public static string Percent(double ratio)
     {

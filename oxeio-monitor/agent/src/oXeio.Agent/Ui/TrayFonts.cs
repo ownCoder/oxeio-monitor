@@ -24,6 +24,19 @@ internal enum TrayFontRole
     /// </summary>
     Hero,
 
+    /// <summary>
+    /// হিরো সংখ্যার <b>সেকেন্ড অংশ</b> — <see cref="Hero"/>-র ঠিক অর্ধেক (২২px)।
+    ///
+    /// ⭐ মালিকের চাওয়া (১৮ আগস্ট): <c>3:59:22</c>-এর <c>:22</c> অর্ধেক মাপে।
+    /// ⚠️⚠️ কারণটা সাজসজ্জার চেয়ে বেশি: সেকেন্ডটাই একমাত্র অঙ্ক যেটা
+    /// <b>প্রতি সেকেন্ডে</b> বদলায়, আর পুরো মাপে সেটা চোখ টেনে রাখত —
+    /// অথচ কাজের সংখ্যা ঘণ্টা ও মিনিট। ছোট করলে নড়াচড়াটা থাকে (ঘড়ি
+    /// চলছে, সেটা দেখা যায়), কিন্তু আর চিৎকার করে না।
+    /// ⚠️ ফ্যামিলি ও style <see cref="Hero"/>-রই — নইলে দুটো অঙ্ক দেখতে
+    /// দুই পরিবারের লাগত, আর baseline মেলানোর হিসাবও ভাঙত।
+    /// </summary>
+    HeroSeconds,
+
     /// <summary>রিডআউটের ছোট বড়-হাতের লেবেল (SYNC · LAST SYNC · QUEUED)।</summary>
     Micro,
 
@@ -112,14 +125,15 @@ internal sealed class TrayFonts : IDisposable
         var family = role switch
         {
             TrayFontRole.Mono => _mono,
-            TrayFontRole.Hero => _semibold ?? _family,
+            TrayFontRole.Hero or TrayFontRole.HeroSeconds => _semibold ?? _family,
             _ => _family,
         };
 
         var style = role switch
         {
             TrayFontRole.Strong or TrayFontRole.Big => FontStyle.Bold,
-            TrayFontRole.Hero => _semibold is null ? FontStyle.Bold : FontStyle.Regular,
+            TrayFontRole.Hero or TrayFontRole.HeroSeconds =>
+                _semibold is null ? FontStyle.Bold : FontStyle.Regular,
             _ => FontStyle.Regular,
         };
 
@@ -131,6 +145,9 @@ internal sealed class TrayFonts : IDisposable
     private static float BasePixels(TrayFontRole role) => role switch
     {
         TrayFontRole.Hero => 44f,
+        // ⚠️ ঠিক অর্ধেক, হাতে বসানো কোনো সংখ্যা নয় — হিরোর মাপ বদলালে
+        //    সেকেন্ডও আপনাআপনি সঙ্গে যায়
+        TrayFontRole.HeroSeconds => 44f / 2f,
         TrayFontRole.Big => 30f,
         TrayFontRole.Strong => 16f,
         TrayFontRole.Mono => 13f,
