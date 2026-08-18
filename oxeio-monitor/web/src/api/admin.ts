@@ -749,3 +749,54 @@ export function settleDeposit(
     body,
   });
 }
+
+// ── R5 · অফসাইট ব্যাকআপ (Backblaze B2) ──────────────────────────────────────
+
+export interface OffsiteSettingsView {
+  configured: boolean;
+  /** `…9f2a` — application key বসানো না থাকলে `null` */
+  keyHint: string | null;
+  /** ⭐ গোপন নয় — পুরোটাই আসে, যাতে "আগেরটাই থাক" কাজ করে */
+  keyId: string;
+  bucket: string;
+  /** ⚠️ কোনটা খাটছে — ডাটাবেস না সার্ভারের ফাইল */
+  source: 'database' | 'env' | 'none';
+}
+
+export interface B2Verdict {
+  ok: boolean;
+  message: string;
+  /** key-টা যে bucket-এ বাঁধা (সীমাবদ্ধ না হলে `null`) */
+  boundTo: string | null;
+}
+
+export function getOffsiteSettings(
+  signal?: AbortSignal,
+): Promise<OffsiteSettingsView> {
+  return api<OffsiteSettingsView>('/settings/offsite', { signal });
+}
+
+/**
+ * ⚠️⚠️ `appKey` খালি পাঠানো মানে **"আগেরটাই থাক"** — টেলিগ্রামের চেয়ে
+ * আলাদা, আর সেটা ইচ্ছাকৃত: Backblaze application key **একবারই দেখায়**,
+ * তাই bucket-এর নাম শুধরাতে গিয়ে সেটা মুছে গেলে নতুন key বানাতে হতো।
+ * ⭐ পুরোপুরি মুছতে হলে তিনটে ঘরই খালি রেখে সেভ।
+ */
+export function saveOffsiteSettings(
+  keyId: string,
+  appKey: string,
+  bucket: string,
+): Promise<OffsiteSettingsView> {
+  return api<OffsiteSettingsView>('/settings/offsite', {
+    method: 'PATCH',
+    body: { keyId, appKey, bucket },
+  });
+}
+
+/**
+ * ⭐⭐ কী-জোড়া সত্যিই কাজ করে কি না — **এখনই**। সার্ভার সরাসরি
+ * Backblaze-কে জিজ্ঞেস করে, তাই ভুল key সাথে সাথেই ধরা পড়ে।
+ */
+export function testOffsite(): Promise<B2Verdict> {
+  return api<B2Verdict>('/settings/offsite/test', { method: 'POST' });
+}

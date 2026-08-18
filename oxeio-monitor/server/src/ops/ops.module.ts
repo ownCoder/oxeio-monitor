@@ -10,6 +10,7 @@ import { BackupStateStore } from './backup.state';
 import { OpsController } from './ops.controller';
 import { OpsHealthService } from './ops.health.service';
 import { OpsScheduler } from './ops.scheduler';
+import { OffsiteSettingsController } from './offsite.controller';
 
 /**
  * **K02 · K03 · K04 · G04 · G08** — ব্যাকআপ, হেলথ, ব্যাকআপ-অ্যালার্ট, টেলিগ্রাম।
@@ -32,7 +33,7 @@ import { OpsScheduler } from './ops.scheduler';
   //    endpoint)। ওখানে `ScheduleModule.forRoot()` আছে, কিন্তু Nest মডিউল
   //    singleton — ইমপোর্ট করলে সেটা দ্বিতীয়বার চলে না।
   imports: [AlertsModule, SummaryModule],
-  controllers: [OpsController],
+  controllers: [OpsController, OffsiteSettingsController],
   providers: [
     BackupStateStore,
     BackupService,

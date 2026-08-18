@@ -151,3 +151,12 @@ export const TELEGRAM_CHANNEL_TAG = 'telegram';
 export const TELEGRAM_FAILED_TAG = 'telegram_failed';
 
 export const TELEGRAM_MAX_ATTEMPTS = 3;
+
+// ── R5 · অফসাইট (Backblaze B2) ──────────────────────────────────────────────
+
+/**
+ * ⚠️ পর্দার "Test the connection" বোতামের সীমা। ছোট রাখা হয়েছে ইচ্ছাকৃতভাবে:
+ * মালিক বোতাম চেপে বসে আছেন, তাই উত্তরটা দ্রুত আসা দরকার — B2 সাড়া না দিলে
+ * "পৌঁছানো গেল না" বলাই যথেষ্ট, ৩০ সেকেন্ড ঘোরানোর দরকার নেই।
+ */
+export const B2_AUTH_TIMEOUT_MS = 10_000;
