@@ -73,6 +73,17 @@ internal sealed class AgentHost : IAsyncDisposable
     /// </summary>
     private static readonly TimeSpan FinalDrainBudget = TimeSpan.FromSeconds(3);
 
+    /// <summary>
+    /// ⭐ শেষ full drain-এর <b>আগে</b> শুধু বিদায়ী ইভেন্ট পাঠানোর বাজেট (G136)।
+    ///
+    /// full drain <see cref="Sync.SyncWorker.DrainOnceAsync"/> সবসময়
+    /// Segment→Event ক্রমে চলে, তাই সেগমেন্ট-ব্যাকলগ থাকলে goodbye ইভেন্টটা
+    /// ৩ সেকেন্ডের বাজেটে না পৌঁছে outbox-এ পড়ে থাকত। ছোট রাখা হয়েছে: ইভেন্ট
+    /// সারিগুলো ছোট, জীবন্ত লিংকে অর্ধ সেকেন্ডেই যায়; মরা লিংকে এইটুকুতেই থেমে
+    /// full drain-কে সময় ছাড়ে (মোট ছাদ <c>Program.ShutdownBudget</c> ৪ সে.)।
+    /// </summary>
+    private static readonly TimeSpan GoodbyeBudget = TimeSpan.FromSeconds(2);
+
     private readonly AgentSettings _settings;
     private readonly string _version;
     private readonly ISyncLog _log;
@@ -1892,7 +1903,28 @@ internal sealed class AgentHost : IAsyncDisposable
             }
         }
 
-        // শেষ চেষ্টা — বন্ধ হওয়ার আগে যা আছে পাঠিয়ে দেওয়া
+        // ── G136: বিদায়ী ইভেন্ট আগে ────────────────────────────────────────
+        // ⭐ shutdown/logoff + agent_stop **সবার আগে** পাঠানো।
+        //
+        // ⚠️⚠️ নিচের full drain Segment→Event ক্রমে চলে (SyncWorker.Order)। যে
+        //    PC রাতে বন্ধ হয় তার শেষ ~৩০ সেকেন্ডের সেগমেন্ট তখনো কিউয়ে, আর
+        //    ৩ সেকেন্ডের বাজেট ওগুলোতেই ফুরিয়ে গেলে বিদায়ী ইভেন্টটা পড়ে থাকত।
+        //    পরদিন সার্ভার "শেষ খবরটা বিদায় ছিল না" ধরে মিথ্যা agent_down তুলত
+        //    (isExpectedSilence — alerts.rules.ts)। ওটাই ছিল সকালের বাসি-warning
+        //    দেয়ালের গোড়া।
+        //
+        // ⚠️ ব্যর্থ/timeout হলেও ইভেন্টটা outbox-এ **থাকেই** (নিচের full drain বা
+        //    পরের startup ধরে নেয়) — তাই এটা নিছক best-effort অগ্রাধিকার, কোনো
+        //    regression নেই। নেটওয়ার্ক এখানে নিরাপদ: DisposeAsync UI-থ্রেডে নয়,
+        //    Program.Shutdown এটাকে thread-pool-এ await করে।
+        if (_worker is not null)
+        {
+            using var goodbye = new CancellationTokenSource(GoodbyeBudget);
+            try { await _worker.DrainKindOnceAsync(OutboundKind.Event, goodbye.Token); }
+            catch (Exception) { /* বন্ধ হচ্ছে */ }
+        }
+
+        // শেষ চেষ্টা — বন্ধ হওয়ার আগে বাকিটা (সেগমেন্ট, ছবি) পাঠিয়ে দেওয়া
         //
         // ⚠️ ছাদটা আগে ১০ সেকেন্ড ছিল, কিন্তু সেটা কখনো পৌঁছাত না:
         //    Program.Shutdown() পুরো DisposeAsync-কেই ৪ সেকেন্ডে থামিয়ে দেয়

@@ -142,6 +142,7 @@ internal sealed class FakeSyncClient : ISyncClient
     public Queue<SyncOutcome> ForcedOutcomes { get; } = new();
     public List<int> SegmentBatchSizes { get; } = [];
     public int AcceptedSegments { get; private set; }
+    public int AcceptedEvents { get; private set; }
 
     public void SetDeviceToken(string? deviceToken) { }
 
@@ -192,9 +193,12 @@ internal sealed class FakeSyncClient : ISyncClient
             new IngestAck { Accepted = items.Count, Duplicates = 0, Split = 0 }));
 
     public Task<SyncResult<IngestAck>> SendEventsAsync(
-        IReadOnlyList<AgentEventRecord> events, CancellationToken ct = default) =>
-        Task.FromResult(SyncResult<IngestAck>.Ok(
+        IReadOnlyList<AgentEventRecord> events, CancellationToken ct = default)
+    {
+        AcceptedEvents += events.Count;
+        return Task.FromResult(SyncResult<IngestAck>.Ok(
             new IngestAck { Accepted = events.Count, Duplicates = 0, Split = 0 }));
+    }
 
     public Task<SyncResult<ScreenshotAck>> SendScreenshotAsync(
         ScreenshotRecord meta, string webpPath, CancellationToken ct = default) =>

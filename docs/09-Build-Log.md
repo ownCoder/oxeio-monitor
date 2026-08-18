@@ -7596,6 +7596,67 @@ auto-close দেয়ালটা সরায়, কিন্তু warning-
 
 ---
 
+## ৩ভ৩. এজেন্ট ০.৪.৭ — সেকেন্ড, সবুজ, আর shutdown-এ goodbye অগ্রাধিকার *(১৮ আগস্ট ২০২৬)*
+
+দুটো আলাদা কাজ, একই ০.৪.৭ বাইনারিতে (এজেন্ট-বদল = নতুন MSI, তাই একসাথে)।
+
+### ⭐ ১· tray "Today's hours" — সেকেন্ড ও সবুজ (মালিকের চাওয়া)
+
+- **হিরো সংখ্যা HH:MM:SS** — নতুন `UiText.DurationLong()` (`2:27:14`), শুধু
+  "আজকের হিসাব" বড় সংখ্যায়। ⚠️ নিচের টার্গেট-তুলনার বারগুলো (`2:27 / 8:00`)
+  `Duration` (H:MM)-ই থাকে — ওখানে সেকেন্ড শুধু নয়েজ।
+- **অগ্রগতির ভরাট সবুজ** — `ProgressColor(progress)` (আগে চলতি অবস্থায় নিরপেক্ষ
+  `Ink`, শুধু ১০০%-এ সবুজ) → `ProgressFill => Theme.Ok`। Today · Last 7 · This
+  month তিন বার-ই। আর `BusyBlocks` ভরাট `Ink` → `Ok`। ⭐ মালিক প্রথমে ওয়েবে,
+  এখন tray-তেও "কাজ হচ্ছে = সবুজ" চেয়েছেন — দুই পর্দা এক থাকল।
+
+### ⭐⭐ ২· #২ (A1) — বিদায়ী ইভেন্ট shutdown-এ অগ্রাধিকার (G136 আংশিক)
+
+একটা understand-পাসে এজেন্টের গঠন ম্যাপ করা হয়। মূল আবিষ্কার:
+
+- এজেন্ট **Windows Service নয়**, headless WinForms tray app (`Application.Run()`)।
+- shutdown/logoff `WM_ENDSESSION` → `OnSessionEnd` — departure event শুধু SQLite
+  outbox-এ লেখে, **নেটওয়ার্কে নয়** (ইচ্ছাকৃত: UI-থ্রেডে HTTP hang করলে ডেস্কটপ
+  জমে + Windows প্রসেস মেরে ইভেন্ট হারায়)।
+- exit-এ একমাত্র নেটওয়ার্ক-সেন্ড: `DisposeAsync`-এর final drain (৩s, UI-থ্রেডের
+  বাইরে)। ⚠️⚠️ **কিন্তু drain-এর ক্রম `[Segment, Event, …]`** — রাতে বন্ধ হওয়া
+  PC-র শেষ ~৩০s-এর সেগমেন্ট তখনো কিউয়ে, আর ৩s বাজেট ওগুলোতেই ফুরোলে goodbye
+  ইভেন্টটা পড়ে থাকত। পরদিন সার্ভার "শেষ খবর বিদায় ছিল না" ভেবে মিথ্যা agent_down
+  তুলত। **এটাই সকালের বাসি-warning দেয়ালের গোড়া।**
+
+**ফিক্স (A1):** `SyncWorker.DrainKindOnceAsync(kind)` — একটাই kind নিষ্কাশন।
+`DisposeAsync` full drain-এর **আগে** `DrainKindOnceAsync(OutboundKind.Event)`
+ডাকে (নতুন ২s `GoodbyeBudget`), তাই shutdown/logoff + agent_stop **সবার আগে**
+যায়। ⚠️ ব্যর্থ/timeout হলেও ইভেন্ট outbox-এ থাকেই (full drain বা পরের startup
+ধরে) — নিছক best-effort অগ্রাধিকার, **শূন্য regression**। নেটওয়ার্ক এখানে নিরাপদ,
+কারণ DisposeAsync UI-থ্রেডে নয়। টেস্ট: `DrainKindOnce_শুধু_সেই_kind_পাঠায়`।
+
+### ⏳ কেন পূর্ণ-ফিক্স (B) এবার নয়
+
+যদি `DisposeAsync` OS-shutdown-এ **আদৌ না চলে** (প্রসেস আগে মারা পড়ে), A1-ও
+সাহায্য করে না। তার জন্য লাগে `WM_QUERYENDSESSION` + `ShutdownBlockReasonCreate`
+(Windows-এর কাছে সময় চেয়ে নেওয়া) — কিন্তু ওটা **UI-থ্রেডে**, ভুল হলে ডেস্কটপ
+জমে যায়, আর আমি আসল shutdown-এ টেস্ট করতে পারি না। তাই A1 (নিরাপদ, common
+overnight-shutdown কেসে সাহায্য করে) আগে; B দরকার হলে মালিকের test PC-তে যাচাই
+করে পরে (roadmap **R29**)।
+
+### ⚠️ understand-পাসের একটা দাগ
+
+৬টা রিডারের **৩টে** structured-output-এ আক্ষরিক `"test"` placeholder ফেরত
+দিয়েছে (গবেষণা করেও) — মডেলের ভুল। ভালো ৩টে (process-model · event-model ·
+sync-client) এত বিস্তারিত দিয়েছে যে বাকিটা কভার হয়ে গেছে। শিক্ষা: workflow-এর
+আউটপুট **পড়ে যাচাই** করতে হয়, সংখ্যা দেখে "সফল" ধরে নয়।
+
+### যাচাই
+
+এজেন্ট বিল্ড ০ warning · ০ error; **৩৮৩ Core + ১০৭ Agent টেস্ট পাস**। Version
+`0.4.6 → 0.4.7` (Directory.Build.props)। ⚠️ signed MSI বিল্ড + canary publish
+মালিকের নিশ্চিতকরণে (সাইনিং সার্ট মালিকের)। ⚠️⚠️ **আসল যাচাই মালিকের test
+PC-তে:** (ক) tray-তে সেকেন্ড ও সবুজ চোখে, (খ) PC বন্ধ করে সকালে সার্ভারে
+shutdown ইভেন্ট এসেছে কিনা / agent_down ওঠেনি কিনা।
+
+---
+
 ## ৩ব. CI রোজ লাল, আর মালিকের ইনবক্স ভরছিল — অবশেষে সবুজ *(১৭ আগস্ট ২০২৬)*
 
 মালিক Gmail-এর স্ক্রিনশট পাঠালেন: *"ei email gula ami pacchi keno?"* —

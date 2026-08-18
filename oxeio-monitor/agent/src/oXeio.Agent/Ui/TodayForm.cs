@@ -81,7 +81,9 @@ internal sealed class TodayForm : OwnerDrawnForm
         //    সার্ভারেও কিছু যাচ্ছিল না। স্টাফ দেখত সব ঠিক আছে, তাই সাইন ইন
         //    করার কথাই মাথায় আসত না — আর দিনের শেষে তার ঘণ্টা শূন্য।
         stack.Hero(
-            UiText.Duration(status.ActiveToday),
+            // ⭐ হিরো সংখ্যাটাই একমাত্র সেকেন্ডসহ (মালিকের চাওয়া, ১৮ আগস্ট) —
+            //    নিচের টার্গেট-বারগুলো H:MM-ই থাকে।
+            UiText.DurationLong(status.ActiveToday),
             "hours today",
             HeroState(status),
             StateDot(status));
@@ -203,7 +205,7 @@ internal sealed class TodayForm : OwnerDrawnForm
                     ? $"{UiText.Duration(status.ActiveToday)} / {UiText.Duration(t)}"
                     : UiText.Duration(status.ActiveToday),
                 status.DailyProgress,
-                ProgressColor(status.DailyProgress ?? 0));
+                ProgressFill);
         }
 
         stack.Gap(6);
@@ -215,7 +217,7 @@ internal sealed class TodayForm : OwnerDrawnForm
                 ? $"{UiText.Duration(worked)} / {UiText.Duration(target)}"
                 : "—",
             status.Last7Progress,
-            ProgressColor(status.Last7Progress ?? 0));
+            ProgressFill);
 
         stack.Gap(6);
 
@@ -227,7 +229,7 @@ internal sealed class TodayForm : OwnerDrawnForm
             $"{UiText.Duration(status.ActiveThisMonth)} / " +
             $"{UiText.Number((int)Math.Round(status.MonthlyTargetHours))} hours",
             status.MonthlyProgress,
-            ProgressColor(status.MonthlyProgress),
+            ProgressFill,
             expected: ExpectedRatio(status, pace));
 
         PaintLegend(stack, status, pace);
@@ -408,13 +410,15 @@ internal sealed class TodayForm : OwnerDrawnForm
     };
 
     /// <summary>
-    /// ⭐ চলতি অবস্থায় নিরপেক্ষ <c>ink</c>, টার্গেট পূর্ণ হলে সবুজ —
-    /// ড্যাশবোর্ড এই তর্ক আগেই মিটিয়েছে ([09 § ৩উ](../../../../docs/09-Build-Log.md))।
+    /// ⭐ অগ্রগতির ভরাট <b>সবুজ</b> (<c>Theme.Ok</c>) — মালিকের চাওয়া
+    /// (১৮ আগস্ট): "কাজ হচ্ছে = সবুজ"।
     ///
-    /// ⚠️ আগে এখানে ছিল <c>#4A6FA5</c>, একটা নীল যা oXeio-র <b>কোথাও নেই</b>।
+    /// ⚠️ আগে ছিল চলতি অবস্থায় নিরপেক্ষ <c>ink</c>, শুধু টার্গেট পূর্ণে সবুজ
+    /// ([09 § ৩উ](../../../../docs/09-Build-Log.md))। মালিক প্রথমে ওয়েবে,
+    /// তারপর এই জানালাতেও ভরাটটা সবুজ চেয়েছেন — দুই পর্দা এক থাকুক।
+    /// (আরও আগে ছিল <c>#4A6FA5</c>, একটা নীল যা oXeio-র কোথাও নেই।)
     /// </summary>
-    private Color ProgressColor(double progress) =>
-        progress >= 1.0 ? Theme.Ok : Theme.Ink;
+    private Color ProgressFill => Theme.Ok;
 
     private static string DefaultDetail(SyncHealth health) => health switch
     {

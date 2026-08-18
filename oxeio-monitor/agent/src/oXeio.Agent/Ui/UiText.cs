@@ -57,6 +57,25 @@ internal static class UiText
                minutes.ToString("00", CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// ঘণ্টা:মিনিট:<b>সেকেন্ড</b> — যেমন <c>2:27:14</c>।
+    ///
+    /// ⭐ মালিকের চাওয়া (১৮ আগস্ট): "আজকের হিসাব" হিরো সংখ্যাটা সেকেন্ড
+    /// পর্যন্ত দেখাক। ⚠️ শুধু ওই একটাই জায়গায় — টার্গেট-তুলনার বারগুলোয়
+    /// (<c>2:27 / 8:00</c>) সেকেন্ড শুধু নয়েজ, তাই ওখানে <see cref="Duration"/>।
+    /// </summary>
+    public static string DurationLong(TimeSpan span)
+    {
+        if (span < TimeSpan.Zero) span = TimeSpan.Zero;
+
+        // ⚠️ Duration()-এর মতোই TotalHours — span.Hours ২৪-এ শূন্যে ফেরে
+        var hours = (int)span.TotalHours;
+
+        return hours.ToString(CultureInfo.InvariantCulture) + ":" +
+               span.Minutes.ToString("00", CultureInfo.InvariantCulture) + ":" +
+               span.Seconds.ToString("00", CultureInfo.InvariantCulture);
+    }
+
     /// <summary>০.৬১ → <c>61%</c>। ১-এর উপরে ক্ল্যাম্প করা হয় না (ADR — বাড়তি কাজ অদৃশ্য নয়)।</summary>
     public static string Percent(double ratio)
     {

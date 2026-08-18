@@ -103,6 +103,36 @@ internal sealed class SyncWorker(
         }
     }
 
+    /// <summary>
+    /// ⭐ শুধু একটা <paramref name="kind"/> এখনই নিষ্কাশন — বন্ধ হওয়ার সময়
+    /// বিদায়ী ইভেন্ট (<see cref="OutboundKind.Event"/>) যেন সেগমেন্ট-ব্যাকলগের
+    /// পেছনে আটকে না থাকে সেজন্য <c>AgentHost.DisposeAsync</c> full drain-এর
+    /// আগে এটা ডাকে (G136)। <see cref="DrainOnceAsync"/> সবসময় <see cref="Order"/>
+    /// ধরে সব kind ঘোরে; এখানে একটাই।
+    ///
+    /// ⚠️ <see cref="DrainOnceAsync"/>-এর মতোই ব্যতিক্রম বাইরে যায় না — এই
+    /// পথ বন্ধ হওয়ার শেষ মুহূর্তে চলে, ওখানে ছুটে যাওয়া exception প্রসেসকে
+    /// নোংরাভাবে ফেলে দিত।
+    /// </summary>
+    public async Task DrainKindOnceAsync(OutboundKind kind, CancellationToken ct = default)
+    {
+        if (Revoked) return;
+
+        try
+        {
+            await DrainKindAsync(kind, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // থামতে বলা হয়েছে — স্বাভাবিক
+        }
+        catch (Exception ex)
+        {
+            _log.Error(
+                $"Unexpected error draining {kind} — it will be retried on the next cycle", ex);
+        }
+    }
+
     private async Task DrainKindAsync(OutboundKind kind, CancellationToken ct)
     {
         var narrowing = _narrowing[kind];

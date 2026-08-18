@@ -672,8 +672,11 @@ internal abstract class OwnerDrawnForm : Form
                 var score = Math.Clamp(scores[i - missing], 0, 100);
                 var filled = Math.Max(_form.Scale(1), (int)Math.Round(height * score / 100.0));
 
+                // ⭐ ভরাট সবুজ (Theme.Ok) — মালিকের চাওয়া (১৮ আগস্ট), টার্গেট-
+                //    বারগুলোর সাথে এক ভাষা। ⚠️ শূন্য স্কোরে ম্লান Ink3-এর ১px
+                //    রেখা থাকে, নইলে "০% ব্যস্ত" আর "তথ্যই নেই" এক দেখাত।
                 using var brush = new SolidBrush(
-                    score == 0 ? _form.Theme.Ink3 : _form.Theme.Ink);
+                    score == 0 ? _form.Theme.Ink3 : _form.Theme.Ok);
 
                 _g.FillRectangle(
                     brush, new Rectangle(x, slot.Bottom - filled, width, filled));

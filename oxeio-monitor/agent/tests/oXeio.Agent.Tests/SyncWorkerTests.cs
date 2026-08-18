@@ -19,6 +19,13 @@ public class SyncWorkerTests
         DurationSec = 60,
     };
 
+    private static AgentEventRecord Event(int i, string type) => new()
+    {
+        ClientUuid = Guid.Parse($"00000000-0000-0000-0001-{i:D12}"),
+        Type = type,
+        OccurredAt = T0.AddMinutes(i),
+    };
+
     private static async Task<FakeOutbox> Filled(int count)
     {
         var box = new FakeOutbox();
@@ -193,5 +200,31 @@ public class SyncWorkerTests
 
         Assert.Empty(client.SegmentBatchSizes);
         Assert.Equal(0, box.AckedBatches);
+    }
+
+    /// <summary>
+    /// ⭐ G136 — বন্ধ হওয়ার সময় <c>DisposeAsync</c> full drain-এর আগে বিদায়ী
+    /// ইভেন্ট আলাদা করে পাঠায়। <see cref="SyncWorker.DrainKindOnceAsync"/>(Event)
+    /// শুধু ইভেন্ট পাঠায়, সেগমেন্ট ছোঁয় না — তাই বড় সেগমেন্ট-ব্যাকলগ থাকলেও
+    /// shutdown/agent_stop সার্ভারে পৌঁছায়, আর পরদিন মিথ্যা agent_down ওঠে না।
+    /// </summary>
+    [Fact]
+    public async Task DrainKindOnce_শুধু_সেই_kind_পাঠায়()
+    {
+        var box = new FakeOutbox();
+        // পাঁচটা সেগমেন্ট আগে কিউয়ে — স্বাভাবিক drain-এ এগুলোই আগে যেত
+        for (var i = 1; i <= 5; i++)
+            await box.EnqueueAsync(OutboxCodec.Item(Segment(i), T0));
+        await box.EnqueueAsync(OutboxCodec.Item(Event(1, AgentEventTypes.Shutdown), T0));
+        await box.EnqueueAsync(OutboxCodec.Item(Event(2, AgentEventTypes.AgentStop), T0));
+
+        var client = new FakeSyncClient();
+        await Worker(box, client).DrainKindOnceAsync(OutboundKind.Event);
+
+        // বিদায়ী ইভেন্ট দুটো গেছে
+        Assert.Equal(2, client.AcceptedEvents);
+        // সেগমেন্টে হাত পড়েনি — সার্ভারে যায়নি, পাঁচটাই কিউয়ে
+        Assert.Equal(0, client.AcceptedSegments);
+        Assert.Equal(5, box.RemainingUuids.Count);
     }
 }
