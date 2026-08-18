@@ -17,7 +17,8 @@
 # চালানো (VPS-এ root হিসেবে):
 #     bash /opt/oxeio/oxeio-monitor/deploy/offsite-b2.sh
 #
-# ⭐ বারবার চালানো নিরাপদ — রিমোট আগেই থাকলে শুধু যাচাই করে এগোয়।
+# ⭐ বারবার চালানো নিরাপদ — রিমোট আগে থেকে **কাজ করলে** শুধু যাচাই করে এগোয়,
+#    আর কাজ না করলে কী দুটো আবার চায়।
 
 set -euo pipefail
 
@@ -36,10 +37,35 @@ printf '\n%s── R5 · Backblaze B2 রিমোট%s\n' "$c_dim" "$c_off"
 command -v rclone >/dev/null 2>&1 || die \
   'rclone নেই। বসান: curl https://rclone.org/install.sh | sudo bash'
 
-# ── ১· রিমোট আছে কি না ──────────────────────────────────────────────────────
-if rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; then
-  say "রিমোট '${REMOTE_NAME}' আগে থেকেই আছে — নতুন করে বাঁধা হচ্ছে না"
-else
+has_remote() { rclone listremotes 2>/dev/null | grep -qx "${REMOTE_NAME}:"; }
+
+# ⚠️⚠️ **আগে bucket, তারপর অ্যাকাউন্ট** — ক্রমটা জরুরি। একটা key যদি শুধু
+#    একটা bucket-এ সীমাবদ্ধ থাকে (আর সেটাই সুপারিশ), তাহলে সে **সব bucket
+#    তালিকা করার অনুমতি পায় না**। শুধু `rclone lsd b2:` দিয়ে পরীক্ষা করলে
+#    নিখুঁত key-ও ফেল করত — ১৮ আগস্ট ঠিক সেটাই হয়েছে, আর ভুলটা ছিল
+#    পরীক্ষায়, key-তে নয়।
+works() {
+  rclone lsd "${REMOTE_NAME}:${BUCKET}" >/dev/null 2>&1 \
+    || rclone lsd "${REMOTE_NAME}:" >/dev/null 2>&1
+}
+
+# ── ০· আগের রিমোট কি সত্যিই কাজ করে ────────────────────────────────────────
+#
+# ⚠️⚠️ আগে শুধু "রিমোট আছে কি না" দেখা হতো, আর থাকলে ধরে নেওয়া হতো ঠিকই
+#    আছে। ভুল key দিয়ে একবার বাঁধা হয়ে গেলে সেটা **আর কোনোদিন বদলানোই
+#    যেত না** — স্ক্রিপ্ট প্রতিবার "আগে থেকেই আছে" বলে এগিয়ে যেত আর একই
+#    জায়গায় ব্যর্থ হতো। (১৮ আগস্ট, মাঠে ঘটেছে।)
+if has_remote && works; then
+  say "রিমোট '${REMOTE_NAME}' আগে থেকেই আছে আর কাজ করছে"
+elif has_remote; then
+  warn "রিমোট '${REMOTE_NAME}' আছে, কিন্তু B2 তাকে মানছে না — কী দুটো আবার নেওয়া হবে"
+  printf '   %sB2 যা বলল:%s\n' "$c_dim" "$c_off"
+  rclone lsd "${REMOTE_NAME}:${BUCKET}" 2>&1 | tail -2 | sed 's/^/     /'
+  rclone config delete "${REMOTE_NAME}" >/dev/null 2>&1 || true
+fi
+
+# ── ১· দরকার হলে নতুন করে বাঁধা ─────────────────────────────────────────────
+if ! has_remote; then
   printf '\n   Backblaze-এর Application Key দুটো লাগবে।\n'
   printf '   %s(backblaze.com → B2 → Application Keys → Add a New Application Key)%s\n\n' "$c_dim" "$c_off"
 
@@ -49,6 +75,14 @@ else
   read -rsp '   applicationKey : ' B2_KEY; echo
 
   [ -n "${B2_ID}" ] && [ -n "${B2_KEY}" ] || die 'দুটোই লাগবে — কিছু বসানো হয়নি'
+
+  # ⭐⭐ **কী নয়, কেবল দৈর্ঘ্য** — B2-র keyID ২৫ আর applicationKey ৩১ অক্ষর।
+  #    ⚠️ লুকানো প্রম্পটে পেস্ট আংশিক হলে (cmd.exe-তে এটা হয়) কিছুই বোঝা
+  #    যেত না, আর ভুলটা ধরা পড়ত অনেক পরে — একটা রহস্যময় 401 হয়ে।
+  printf '   %sপাওয়া গেল: keyID %d অক্ষর (আশা ২৫), applicationKey %d অক্ষর (আশা ৩১)%s\n' \
+    "$c_dim" "${#B2_ID}" "${#B2_KEY}" "$c_off"
+  [ "${#B2_ID}" -eq 25 ] || warn 'keyID-র দৈর্ঘ্য অস্বাভাবিক — পুরোটা কপি হয়েছে তো?'
+  [ "${#B2_KEY}" -eq 31 ] || warn 'applicationKey-র দৈর্ঘ্য অস্বাভাবিক — পুরোটা কপি হয়েছে তো?'
 
   # ⚠️ আউটপুট চাপা: rclone সফল হলে গোটা কনফিগটা ছাপে, আর তাতে key-ও থাকে।
   rclone config create "$REMOTE_NAME" b2 \
@@ -64,9 +98,15 @@ fi
 # ⚠️⚠️ এই ধাপটা বাদ দেওয়া যাবে না। ভুল key দিয়েও `config create` **সফল**
 #    হয় — সে কেবল ফাইলে লিখে রাখে, যাচাই করে না। ওখানে থেমে গেলে সব ঠিক
 #    মনে হতো, আর ভুলটা ধরা পড়ত শনিবার রাতে, টাইমার ব্যর্থ হওয়ার পর।
-rclone lsd "${REMOTE_NAME}:" >/dev/null 2>&1 \
-  || die "কী দুটো দিয়ে B2-তে পৌঁছানো যাচ্ছে না — Application Key আবার দেখুন (rclone config delete ${REMOTE_NAME} দিয়ে মুছে আবার চালান)"
-say 'B2-তে পৌঁছানো যাচ্ছে'
+if rclone lsd "${REMOTE_NAME}:${BUCKET}" >/dev/null 2>&1; then
+  say "B2-তে পৌঁছানো যাচ্ছে (bucket '${BUCKET}')"
+elif rclone lsd "${REMOTE_NAME}:" >/dev/null 2>&1; then
+  say 'B2-তে পৌঁছানো যাচ্ছে (অ্যাকাউন্ট-স্তরে)'
+else
+  printf '   %sB2 যা বলল:%s\n' "$c_dim" "$c_off"
+  rclone lsd "${REMOTE_NAME}:${BUCKET}" 2>&1 | tail -2 | sed 's/^/     /'
+  die "B2 কী-জোড়া মানছে না। ⚠️ '401 bad_auth_token' সাধারণত মানে applicationKey ভুল বা অসম্পূর্ণ — ওটা একবারই দেখানো হয়, তাই হাতে না থাকলে নতুন key বানিয়ে আবার চালান"
+fi
 
 # ── ৩· bucket ───────────────────────────────────────────────────────────────
 if rclone lsd "${REMOTE_NAME}:${BUCKET}" >/dev/null 2>&1; then
