@@ -69,10 +69,10 @@ export function ShotLightbox({
          *
          * ⚠️ আগে ছিল `max-w-4xl` (৮৯৬px) — চওড়া পর্দায় ১৯২০×১০৮০ স্ক্রিনশট
          *    ৮৯৬px-এ নামিয়ে দেখাত, চারপাশে অনেক ফাঁকা, আর ছবির লেখা পড়াই
-         *    যেত না। এখন `92vw` (ছাদ ১৬০০px, যাতে আল্ট্রাওয়াইডে হাস্যকর বড়
-         *    না হয়) — ছবিটা অনেক কম নামে, তাই পড়া যায়।
+         *    যেত না। এখন `92vw` (ছাদ ১৮০০px, যাতে আল্ট্রাওয়াইডে হাস্যকর বড়
+         *    না হয় — অথচ ১৯২০px পর্দায় ছাদ বাধে না, পুরো ৯২% পায়)।
          */
-        className="flex max-h-[92vh] w-[92vw] max-w-[1600px] flex-col overflow-hidden rounded-xl border border-line bg-surface"
+        className="flex max-h-[92vh] w-[92vw] max-w-[1800px] flex-col overflow-hidden rounded-xl border border-line bg-surface"
       >
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <div className="min-w-0">
