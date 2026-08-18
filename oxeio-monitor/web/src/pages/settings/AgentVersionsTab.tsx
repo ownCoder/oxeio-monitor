@@ -166,6 +166,32 @@ function VersionTable({
               ),
           },
           {
+            key: 'download',
+            header: '',
+            /*
+              ⭐⭐ **হাতে বসানোর জন্য MSI নামানো** *(১৮ আগস্ট)*।
+
+              ⚠️⚠️ ০.৪.১-এর **আগের** এজেন্টে tray-তে "Install update"
+                 মেনুটাই নেই, তাই ধাপে ধাপে রোলআউট ওই PC-গুলোয় পৌঁছায় না —
+                 ফাইলটা নেমে পড়ে থাকে, কেউ জানে না। ওখানে একবার হাতে
+                 বসাতে হয়, আর তার জন্য MSI-টা হাতে পাওয়ার কোনো পথই ছিল না।
+
+              ⚠️ সাধারণ `<a download>` — কোনো JS নয়। ফাইলটা ৬২ MB, আর
+                 fetch দিয়ে মেমরিতে তুলে blob বানালে বড় ফাইলে ব্রাউজার
+                 অকারণে ভুগত; ব্রাউজারের নিজের ডাউনলোডই এখানে সঠিক যন্ত্র।
+            */
+            render: (r) =>
+              r.fileMissing ? null : (
+                <a
+                  href={`/api/v1/agent-versions/${encodeURIComponent(r.version)}/download`}
+                  download
+                  className="rounded-md border border-line px-2 py-1 text-[12px] text-ink-2 transition hover:border-brand hover:text-ink"
+                >
+                  Download MSI
+                </a>
+              ),
+          },
+          {
             key: 'released',
             header: 'Published',
             render: (r) => (

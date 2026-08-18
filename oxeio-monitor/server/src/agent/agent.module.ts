@@ -33,6 +33,12 @@ import { UpdateService } from './update.service';
   ],
   // ⚠️ `ProgressService` export করা হয় **কর্মীর নিজের পাতার জন্য**
   //    (`MeModule`) — tray আর ওয়েব যেন একই সংখ্যা দেখায়।
-  exports: [AgentConfigService, ClockDriftService, ProgressService],
+  /**
+   * ⭐ `UpdateService` export — `AdminModule`-এর ডাউনলোড রুট এটাই ব্যবহার
+   *    করে। ⚠️ কোডটা নকল করা হয়নি ইচ্ছাকৃতভাবে: `openMsi()` path-traversal
+   *    আটকায় (storage-এর বাইরের ফাইল দেওয়া যাবে না), আর ওই পাহারাটা দুই
+   *    জায়গায় থাকলে একদিন একটায় ঠিক হতো, অন্যটায় নয়।
+   */
+  exports: [AgentConfigService, ClockDriftService, ProgressService, UpdateService],
 })
 export class AgentModule {}
