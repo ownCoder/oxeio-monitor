@@ -6589,7 +6589,8 @@ docker ফোল্ডারটা root-এর নামে বানাল, api
 
 ### ⭐ ৫· R5 — আর `sync` বনাম `copy`
 
-`deploy/offsite-backup.sh` + সাপ্তাহিক systemd টাইমার (শনি ০৪:০০,
+`deploy/offsite-backup.sh` + সাপ্তাহিক systemd টাইমার (শনি ০৪:০০ **UTC**
+= ঢাকার সকাল ১০টা,
 `Persistent=true`)।
 
 ⚠️⚠️ **`rclone copy`, `sync` নয়** — এখানকার সবচেয়ে জরুরি সিদ্ধান্ত।

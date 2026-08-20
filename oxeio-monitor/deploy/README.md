@@ -1609,6 +1609,8 @@ Description=oXeio — offsite backup, weekly
 
 [Timer]
 OnCalendar=Sat 04:00
+# ⚠️⚠️ এটা UTC — সার্ভারের টাইমজোন Etc/UTC, আর ইউনিটে Timezone= নেই।
+#    ঢাকায় তাই **শনিবার সকাল ১০টা**। খুঁজতে গেলে ওই সময়েই দেখুন।
 Persistent=true
 
 [Install]

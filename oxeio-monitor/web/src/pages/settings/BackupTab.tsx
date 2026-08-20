@@ -182,7 +182,7 @@ export function BackupTab() {
           </div>
 
           <p className="text-[12px] text-ink-3">
-            The copy runs every Saturday at 04:00. Files are encrypted before
+            The copy runs every Saturday at 10:00 Dhaka. Files are encrypted before
             they leave this server, so Backblaze cannot read them —{' '}
             <b>which also means the passphrase is the only way back in</b>. Keep
             it somewhere other than this server.
