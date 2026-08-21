@@ -22,6 +22,8 @@ function row(overrides: Partial<EmployeeRow> = {}): EmployeeRow {
     email: 'rumana@example.com',
     designation: 'Designer',
     department: 'Creative',
+    // ⭐ কাজের ধরন (২১ আগস্ট) — designation-এর পাশে, বিকল্প নয়
+    staffType: 'designer',
     policyId: 1,
     monthlySalary: 13000,
     joinedOn: new Date('2025-03-01T00:00:00.000Z'),

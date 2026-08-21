@@ -22,6 +22,10 @@ function card(over: Partial<LiveCard> = {}): LiveCard {
     empCode: 'OX-01',
     fullName: 'Rakib Hasan',
     designation: 'Researcher',
+    // ⭐ ডিজাইনের টার্গেট (২১ আগস্ট) — গবেষকের জন্য খাটে না
+    staffType: 'researcher',
+    designsDone: 0,
+    designTargetPerDay: 25,
     status: 'active',
     todayWorkedSec: 3_600,
     dailyTargetSec: 28_800,

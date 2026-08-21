@@ -35,6 +35,24 @@ enum UserRole {
   employee
 }
 
+/**
+ * ⭐ **কর্মীর কাজের ধরন** *(২১ আগস্ট ২০২৬, মালিকের চাওয়া)*।
+ *
+ * ⚠️⚠️ এটা `UserRole`-এর সাথে **গুলিয়ে ফেলবেন না**। `UserRole` বলে *কে কী
+ * দেখতে পাবে* (পোর্টালের অনুমতি); এটা বলে *কে কী কাজ করে*। একজন মানুষ
+ * `manager` ধরনের হয়েও পোর্টালে `employee` হতে পারেন, আর উল্টোটাও।
+ *
+ * ⚠️ `designation` ঘরটা **থেকেই যাচ্ছে** — ওটা পদবি ("Senior Graphic
+ * Designer"), মুক্ত-লেখা। এটা **শ্রেণি**, আর কেবল এর উপরেই নিয়ম বসতে পারে
+ * (যেমন ডিজাইনারের দৈনিক ২৫টার টার্গেট)। মুক্ত-লেখায় নিয়ম বসালে
+ * "Designer" আর "graphic designer" দু-রকম হয়ে যেত।
+ */
+enum StaffType {
+  designer
+  researcher
+  manager
+}
+
 enum EmployeeStatus {
   active
   inactive
@@ -109,6 +127,16 @@ model WorkPolicy {
   /// 'HH:MM' — ক্যাপচার উইন্ডো। null হলে ২৪ ঘণ্টা ছবি ওঠে।
   screenshotFrom     String? @map("screenshot_from") @db.VarChar(5)
   screenshotTo       String? @map("screenshot_to") @db.VarChar(5)
+  /**
+   * ⭐⭐ **ডিজাইনারের দৈনিক টার্গেট** *(২১ আগস্ট ২০২৬)* — মালিকের চাওয়া ২৫।
+   *
+   * ⚠️ ঘণ্টার টার্গেটের **পাশে**, বিকল্প নয়: ডিজাইনারও ২০৮ ঘণ্টা মেনে
+   * চলেন, তার উপরে এই সংখ্যাটা। ⚠️⚠️ এটা কেবল `staff_type = 'designer'`
+   * কর্মীদের জন্য খাটে (`hasDesignTarget()`); বাকিদের পর্দায় ঘরটাই ওঠে না,
+   * কারণ "০/২৫" দেখতে অভিযোগের মতো লাগে অথচ মাপটাই তাঁদের নয়।
+   * ⚠️ ০ বসালে টার্গেট **বন্ধ** — সংখ্যা গোনা চলবে, কিন্তু কেউ "পিছিয়ে" নয়।
+   */
+  dailyDesignTarget  Int     @default(25) @map("daily_design_target")
   idleThresholdSec   Int     @default(60) @map("idle_threshold_sec")
   slotMinutes        Int     @default(5) @map("slot_minutes")
   /// Asia/Dhaka = GMT+6 (UTC+06:00), কোনো DST নেই — তাই work_date সবসময় নির্দ্বিধায় বের হয়
@@ -125,8 +153,16 @@ model Employee {
   empCode        String         @unique @map("emp_code")
   fullName       String         @map("full_name")
   email          String?        @unique
+  /// পদবি — মুক্ত-লেখা, শুধু দেখানোর জন্য ("Senior Graphic Designer")
   designation    String?
   department     String?
+  /**
+   * ⭐ কাজের ধরন — নিয়ম **কেবল এর উপরেই** বসে ([StaffType](#StaffType))।
+   *
+   * ⚠️ `null` মানে "এখনো বসানো হয়নি", আর সেটা `designer`-এর সমান নয়:
+   * টার্গেটের হিসাব তখন ওই কর্মীকে **ছেড়ে দেয়**, শূন্য ধরে না।
+   */
+  staffType      StaffType?     @map("staff_type")
   policyId       Int?           @map("policy_id")
   /// ⭐ মাসিক বেতন — **শুধু owner দেখতে পায়** ([ADR-023](../../docs/05-Options-Decisions.md))।
   /// ঘাটতির টাকা বের করতে লাগে: (বেতন ÷ মাসিক টার্গেট ঘণ্টা) × ঘাটতি-ঘণ্টা।
@@ -160,6 +196,7 @@ model Employee {
   appUsage          AppUsage[]
   events            Event[]
   dailySummaries    DailySummary[]
+  designCredits     DesignCredit[]
   monthlySummary    MonthlySummary[]
   timeAdjustments   TimeAdjustment[]
   enrollmentCodes   EnrollmentCode[]
@@ -539,6 +576,36 @@ model AgentVersion {
 
 /// ⚠️ target / shortfall / overtime / late / attendance এখানে নেই —
 ///    দৈনিক কোনো টার্গেটই নেই। সব টার্গেট-হিসাব MonthlySummary-তে।
+/**
+ * ⭐⭐ **একটা ডিজাইন প্রথম কবে দেখা গেল** *(২১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ **কেন আলাদা টেবিল, রোজ গুনে নেওয়া নয়।** "আজ কতগুলো ডিজাইন" প্রশ্নের
+ * সৎ উত্তর হলো **নতুন** ডিজাইনের সংখ্যা — গতকালের ফাইল আজ আবার খুললে সেটা
+ * আজকের কাজ নয়। মাঠে মেপে দেখা গেছে তফাতটা বড়: একজনের ৩৯ নেমে দাঁড়ায়
+ * **২৪**-এ। কিন্তু "নতুন কি না" জানতে হলে **পুরো ইতিহাস** দেখতে হয়, আর
+ * সেটা রোজ স্ক্যান করা এক বছর পর ব্যয়বহুল হয়ে উঠত।
+ *
+ * ⭐ তাই প্রতিটা (কর্মী, ডিজাইন) জোড়া **একবারই** বসে, আর প্রাথমিক কী-ই
+ * দ্বিতীয়বার বসতে দেয় না। "আজ কতগুলো" = `first_work_date` আজকের এমন সারি।
+ *
+ * ⚠️ **ডিজাইনের নাম এখানে জমা হয় না** — কেবল সামনের নম্বরটা। মালিকের
+ * শর্ত (২১ আগস্ট): শিরোনাম পড়া যাবে, কিন্তু নাম কোথাও রাখা বা দেখানো নয়।
+ */
+model DesignCredit {
+  employeeId    Int      @map("employee_id")
+  /// ফাইলের নামের সামনের নম্বর — যেমন `37933`
+  designId      String   @map("design_id") @db.VarChar(16)
+  /// ঢাকার যে দিনে এটা **প্রথম** চোখে পড়েছে
+  firstWorkDate DateTime @map("first_work_date") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@id([employeeId, designId])
+  @@index([employeeId, firstWorkDate])
+  @@map("design_credits")
+}
+
 model DailySummary {
   employeeId      Int       @map("employee_id")
   workDate        DateTime  @map("work_date") @db.Date
@@ -560,6 +627,16 @@ model DailySummary {
   unproductiveSec Int       @default(0) @map("unproductive_sec")
   productivityPct Decimal?  @map("productivity_pct") @db.Decimal(5, 2)
   screenshotCount Int       @default(0) @map("screenshot_count")
+  /**
+   * ⭐⭐ **আজ কতগুলো নতুন ডিজাইন** (ডিজাইনারদের জন্য) — [DesignCredit] থেকে গোনা।
+   *
+   * ⚠️ এখানে **জমিয়ে রাখা** হয় ইচ্ছাকৃতভাবে: Worklog · টেলিগ্রাম রিপোর্ট ·
+   * মাসিক Excel · কর্মীর নিজের পাতা — চারটেই এই এক সংখ্যাটাই পড়ে, তাই
+   * চারটে আলাদা হিসাব কোনোদিন দ্বিমত করতে পারে না।
+   * ⚠️ ডিজাইনার নন এমন কারো জন্য এটা সবসময় ০ — সেটা "কাজ করেননি" নয়,
+   * "এই মাপটা তাঁর জন্য নয়"। পর্দায় তাই কলামটাই দেখানো হয় না।
+   */
+  designsDone     Int       @default(0) @map("designs_done")
   dayType         DayType?  @map("day_type")
   computedAt      DateTime  @default(now()) @map("computed_at") @db.Timestamptz(3)
 

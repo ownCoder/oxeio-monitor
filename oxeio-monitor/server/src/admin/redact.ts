@@ -31,6 +31,8 @@ export interface EmployeeRow {
   email: string | null;
   designation: string | null;
   department: string | null;
+  /** ⭐ কাজের ধরন — ম্যানেজারও দেখেন; এটা গোপন কিছু নয়, বেতনের মতো নয় */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   policyId: number | null;
   monthlySalary: Decimalish | null;
   joinedOn: Date | null;
@@ -52,6 +54,8 @@ export interface EmployeeBaseView {
   email: string | null;
   designation: string | null;
   department: string | null;
+  /** ⭐ কাজের ধরন — ম্যানেজারও দেখেন; এটা গোপন কিছু নয়, বেতনের মতো নয় */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   policyId: number | null;
   /** 'YYYY-MM-DD' */
   joinedOn: string | null;
@@ -119,6 +123,7 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     email: row.email,
     designation: row.designation,
     department: row.department,
+    staffType: row.staffType,
     policyId: row.policyId,
     joinedOn: toDateOnly(row.joinedOn),
     leftOn: toDateOnly(row.leftOn),

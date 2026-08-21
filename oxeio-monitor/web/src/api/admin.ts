@@ -18,6 +18,15 @@ import { qs } from './query';
 
 export type EmployeeStatus = 'active' | 'inactive';
 export type DeviceStatus = 'active' | 'revoked';
+
+/** ⚠️ `UserRole` (কে কী দেখবে) নয় — এটা "কে কী কাজ করে" */
+export type StaffType = 'designer' | 'researcher' | 'manager';
+
+export const STAFF_TYPE_LABEL: Record<StaffType, string> = {
+  designer: 'Designer',
+  researcher: 'Researcher',
+  manager: 'Manager',
+};
 export type Role = 'owner' | 'manager' | 'employee';
 
 /**
@@ -44,6 +53,14 @@ export interface EmployeeView {
   fullName: string;
   email: string | null;
   designation: string | null;
+  /**
+   * ⭐ কাজের ধরন *(২১ আগস্ট)* — নিয়ম **কেবল এর উপরেই** বসে।
+   *
+   * ⚠️ `designation`-এর বিকল্প নয়: ওটা পদবি (মুক্ত-লেখা), এটা শ্রেণি।
+   * ⚠️ `null` মানে "বসানো হয়নি" — টার্গেটের হিসাব তখন ওই কর্মীকে **ছেড়ে
+   * দেয়**, শূন্য ধরে না।
+   */
+  staffType: StaffType | null;
   department: string | null;
   policyId: number | null;
   /** `YYYY-MM-DD` */
@@ -112,6 +129,7 @@ export interface CreateEmployeeBody {
   email?: string;
   designation?: string;
   department?: string;
+  staffType?: StaffType;
   policyId?: number;
   /**
    * ⭐⚠️ টাকা **স্ট্রিং** হিসেবে পাঠাতে হবে (`'13000'` বা `'13000.50'`)।
@@ -132,6 +150,7 @@ export type UpdateEmployeeBody = Partial<{
   email: string | null;
   designation: string | null;
   department: string | null;
+  staffType: StaffType | null;
   policyId: number | null;
   monthlySalary: string | null;
   joinedOn: string | null;

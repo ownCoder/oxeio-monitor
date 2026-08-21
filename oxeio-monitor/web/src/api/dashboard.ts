@@ -33,6 +33,16 @@ export interface LiveCard {
   empCode: string;
   fullName: string;
   designation: string | null;
+  /** ⭐ কাজের ধরন — কেবল এর উপরেই ডিজাইনের টার্গেট বসে (২১ আগস্ট) */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
+  /**
+   * আজ কতগুলো **নতুন** ডিজাইন। ⚠️ ডিজাইনার না হলে সবসময় ০ — সেটা
+   * "কাজ করেননি" নয়, "এই মাপটা তাঁর জন্য নয়"; পর্দা তাই ঘরটাই খালি রাখে।
+   * ⚠️ সারাংশ-রিফ্রেশে হালনাগাদ হয় (~১৫ মিনিট), ঘণ্টার মতো লাইভ নয়।
+   */
+  designsDone: number;
+  /** ⚠️ ০ মানে টার্গেট বন্ধ */
+  designTargetPerDay: number;
   status: LiveStatus;
   /** ঢাকার আজকের দিনে গোনা সেকেন্ড */
   todayWorkedSec: number;

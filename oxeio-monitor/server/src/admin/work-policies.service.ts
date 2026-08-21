@@ -26,6 +26,8 @@ export interface WorkPolicyView {
   screenshotFrom: string | null;
   screenshotTo: string | null;
   idleThresholdSec: number;
+  /** ⭐ ডিজাইনারের দৈনিক টার্গেট — কেবল `staffType = designer`-এ খাটে */
+  dailyDesignTarget: number;
   slotMinutes: number;
   timezone: string;
   isActive: boolean;
@@ -93,6 +95,9 @@ export class WorkPoliciesService {
           ? {}
           : { idleThresholdSec: dto.idleThresholdSec }),
         ...(dto.slotMinutes === undefined ? {} : { slotMinutes: dto.slotMinutes }),
+        ...(dto.dailyDesignTarget === undefined
+          ? {}
+          : { dailyDesignTarget: dto.dailyDesignTarget }),
       },
     });
 
@@ -149,6 +154,9 @@ export class WorkPoliciesService {
           ? {}
           : { idleThresholdSec: dto.idleThresholdSec }),
         ...(dto.slotMinutes === undefined ? {} : { slotMinutes: dto.slotMinutes }),
+        ...(dto.dailyDesignTarget === undefined
+          ? {}
+          : { dailyDesignTarget: dto.dailyDesignTarget }),
       },
       include: { _count: { select: { employees: true } } },
     });
@@ -299,6 +307,7 @@ function toView(policy: WorkPolicy, employeeCount: number): WorkPolicyView {
     screenshotFrom: policy.screenshotFrom,
     screenshotTo: policy.screenshotTo,
     idleThresholdSec: policy.idleThresholdSec,
+    dailyDesignTarget: policy.dailyDesignTarget,
     slotMinutes: policy.slotMinutes,
     timezone: policy.timezone,
     isActive: policy.isActive,

@@ -71,6 +71,7 @@ const EMPLOYEE_SELECT = {
   email: true,
   designation: true,
   department: true,
+  staffType: true,
   policyId: true,
   monthlySalary: true,
   joinedOn: true,
@@ -261,6 +262,8 @@ export class EmployeesService {
     if (dto.email !== undefined) data.email = dto.email;
     if (dto.designation !== undefined) data.designation = dto.designation;
     if (dto.department !== undefined) data.department = dto.department;
+    // ⚠️ `null`-ও একটা বৈধ মান (ধরন তুলে নেওয়া), তাই `!== undefined`
+    if (dto.staffType !== undefined) data.staffType = dto.staffType;
     if (dto.monthlySalary !== undefined) data.monthlySalary = dto.monthlySalary;
     if (dto.joinedOn !== undefined) {
       data.joinedOn =
@@ -732,6 +735,7 @@ export class EmployeesService {
       email: dto.email ?? null,
       designation: dto.designation ?? null,
       department: dto.department ?? null,
+      staffType: dto.staffType ?? null,
       policyId: dto.policyId ?? null,
       // ⭐ স্ট্রিং সরাসরি Decimal-এ — মাঝপথে কোনো float নেই
       monthlySalary: dto.monthlySalary ?? null,

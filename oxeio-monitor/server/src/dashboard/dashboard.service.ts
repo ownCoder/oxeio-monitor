@@ -56,6 +56,20 @@ export interface LiveCard {
   empCode: string;
   fullName: string;
   designation: string | null;
+  /** ⭐ কাজের ধরন — কেবল এর উপরেই ডিজাইনের টার্গেট বসে (২১ আগস্ট) */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
+  /**
+   * ⭐⭐ **আজ কতগুলো নতুন ডিজাইন** — ডিজাইনার না হলে সবসময় ০।
+   *
+   * ⚠️ সংখ্যাটা `design_credits` থেকে, `daily_summary` থেকে নয় — দিনের
+   * শুরুতে সারাংশের সারিটা এখনো নাও থাকতে পারে, আর তখন কার্ড "০" দেখাত
+   * অথচ কাজ হয়েছে। দুটোই একই দাবি থেকে জন্মায়, তাই সংখ্যা এক।
+   * ⚠️ হালনাগাদ হয় সারাংশ-রিফ্রেশে (১৫ মিনিট), অর্থাৎ **লাইভ নয়** —
+   * ঘণ্টার মতো সেকেন্ডে সেকেন্ডে নড়ে না।
+   */
+  designsDone: number;
+  /** ⚠️ ০ মানে টার্গেট বন্ধ; পর্দা তখন কিছুই দেখায় না */
+  designTargetPerDay: number;
   status: LiveStatus;
   /** ঢাকার আজকের দিনে গোনা সেকেন্ড */
   todayWorkedSec: number;
@@ -301,6 +315,7 @@ export class DashboardService {
         empCode: true,
         fullName: true,
         designation: true,
+        staffType: true,
         // ⚠️ `joinedOn`/`leftOn` লাগে কারণ টার্গেট **prorate** হয় — মাসের
         //    মাঝপথে যোগ দেওয়া কর্মীর মাসিক টার্গেট পুরো মাসেরটা নয়।
         joinedOn: true,
@@ -313,6 +328,8 @@ export class DashboardService {
             monthlyTargetHours: true,
             weeklyOffDay: true,
             expectedWorkdays: true,
+            // ⭐ ডিজাইনারের দৈনিক টার্গেট (২১ আগস্ট) — ঘণ্টার পাশে
+            dailyDesignTarget: true,
           },
         },
       },
@@ -351,7 +368,8 @@ export class DashboardService {
       set.add(l.leaveDate.getTime());
     }
 
-    const [devices, todaySums, monthSums, recentSegments] = await Promise.all([
+    const [devices, todaySums, designToday, monthSums, recentSegments] =
+      await Promise.all([
       // ⚠️ revoked ডিভাইস বাদ — ওগুলোর lastSeenAt চিরকাল পুরোনো হয়ে
       //    আটকে থাকে, ফলে PC বদলে দেওয়া কর্মীও চিরকাল 🔴 দেখাত।
       //
@@ -384,6 +402,12 @@ export class DashboardService {
         by: ['employeeId'],
         where: { employeeId: { in: ids }, countsAsWork: true, workDate: today },
         _sum: { durationSec: true },
+      }),
+      // ⭐ আজ দাবি করা ডিজাইন — ইনডেক্স করা (employee_id, first_work_date)
+      this.prisma.designCredit.groupBy({
+        by: ['employeeId'],
+        where: { employeeId: { in: ids }, firstWorkDate: today },
+        _count: { _all: true },
       }),
       this.prisma.activitySegment.groupBy({
         by: ['employeeId'],
@@ -423,6 +447,7 @@ export class DashboardService {
     }
 
     const todaySec = sumByEmployee(todaySums);
+    const designsBy = new Map(designToday.map((d) => [d.employeeId, d._count._all]));
     const monthSec = sumByEmployee(monthSums);
 
     // ⚠️ `orderBy endedAt desc` + "প্রথমটাই রাখা" — তাই কর্মীপ্রতি সবচেয়ে
@@ -475,6 +500,9 @@ export class DashboardService {
         empCode: e.empCode,
         fullName: e.fullName,
         designation: e.designation,
+        staffType: e.staffType,
+        designsDone: designsBy.get(e.id) ?? 0,
+        designTargetPerDay: e.policy?.dailyDesignTarget ?? 0,
         status: decideLiveStatus({
           devices: own,
           fallbackState: segmentState.get(e.id) ?? null,

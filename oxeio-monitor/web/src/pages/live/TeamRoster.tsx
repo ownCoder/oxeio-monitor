@@ -104,6 +104,24 @@ export function TeamRoster({
       className: 'min-w-[140px]',
       render: (c) => <TodayCell card={c} />,
     },
+    /*
+      ⭐⭐ **ডিজাইন** *(২১ আগস্ট)* — মালিকের চাওয়া দৈনিক ২৫-এর হিসাব।
+
+      ⚠️⚠️ কলামটা **কেবল তখনই** বসে যখন দলে অন্তত একজন ডিজাইনার আছেন।
+         সবসময় বসালে গবেষকদের সারিতে রোজ একটা খালি ঘর থাকত, আর খালি ঘর
+         দেখতে "ডেটা আসেনি"-র মতো লাগে — অথচ মাপটাই তাঁদের নয়।
+    */
+    ...(rows.some((c) => c.staffType === 'designer' && c.designTargetPerDay > 0)
+      ? [
+          {
+            key: 'designs',
+            header: 'Designs',
+            align: 'right' as const,
+            className: 'hidden min-w-[96px] md:table-cell',
+            render: (c: LiveCard) => <DesignCell card={c} />,
+          },
+        ]
+      : []),
     {
       key: 'month',
       /* ⚠️ "/ 208h" হেডারে লেখা যাবে না — টার্গেট কর্মীভেদে আলাদা ও
@@ -419,4 +437,31 @@ function heartbeatLabel(card: LiveCard): string {
     default:
       return 'Never checked in';
   }
+}
+
+/**
+ * ⭐⭐ **আজকের ডিজাইন — সংখ্যা, রঙ নয়** *(২১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ টার্গেট ছোঁয়া হলে সবুজ, না হলে **নিরপেক্ষ** — লাল নয়। দিনটা তখনো
+ * চলছে, আর দুপুর ১২টায় "১২/২৫" লাল দেখানো মানে প্রত্যেককে রোজ অর্ধেক দিন
+ * ব্যর্থ ঘোষণা করা। ⭐ ঘণ্টার মিটারেও নিয়মটা এক (`TodayMeter`)।
+ *
+ * ⚠️ ডিজাইনার না হলে ঘরটা **খালি**, "০" নয় — "০/২৫" দেখতে অভিযোগের মতো
+ * লাগে, অথচ মাপটাই তাঁর জন্য নয়।
+ */
+function DesignCell({ card }: { card: LiveCard }) {
+  if (card.staffType !== 'designer' || card.designTargetPerDay <= 0) {
+    return <span className="text-ink-3">—</span>;
+  }
+
+  const met = card.designsDone >= card.designTargetPerDay;
+
+  return (
+    <span className="num whitespace-nowrap">
+      <span className={met ? 'font-semibold text-ok' : 'font-medium text-ink'}>
+        {card.designsDone}
+      </span>
+      <span className="text-ink-3"> / {card.designTargetPerDay}</span>
+    </span>
+  );
 }

@@ -3,6 +3,7 @@ import { SegmentState, type Prisma } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
+import { designIdsInDay } from './design.rules';
 import { prorate } from './proration';
 import {
   elapsedWorkdays,
@@ -82,7 +83,8 @@ export class SummaryService {
 
     const ids = employees.map((e) => e.id);
 
-    const [segments, shots, adjustments, usage, holiday] = await Promise.all([
+    const [segments, shots, adjustments, usage, holiday, designTitles] =
+      await Promise.all([
       this.prisma.activitySegment.findMany({
         where: { workDate, employeeId: { in: ids } },
         select: {
@@ -122,6 +124,25 @@ export class SummaryService {
         },
       }),
       this.prisma.holiday.findUnique({ where: { holidayDate: workDate } }),
+      /**
+       * ⭐⭐ **ডিজাইনের নম্বর** *(২১ আগস্ট)* — ডিজাইন-অ্যাপের শিরোনাম।
+       *
+       * ⚠️ উপরের `usage` কোয়েরিটা কাজে লাগানো যেত না: ওটা `categoryId`
+       * থাকা ও **ACTIVE** সারিই আনে (productivity-র হিসাব), অথচ ডিজাইনের
+       * নম্বর ওই দুটো শর্তের বাইরেও থাকে — Illustrator ক্যাটাগরিতে না
+       * পড়লেই ডিজাইন গোনা বন্ধ হয়ে যেত, আর কেউ বুঝতেই পারত না কেন।
+       *
+       * ⚠️ `windowTitle` এখানে আসে ঠিকই, কিন্তু **কোথাও জমা হয় না** —
+       * `designIdsInDay()` কেবল সামনের নম্বরটা ফেরত দেয় (মালিকের শর্ত)।
+       */
+      this.prisma.appUsage.findMany({
+        where: {
+          workDate,
+          employeeId: { in: ids },
+          processName: { in: ['Illustrator.exe', 'Photoshop.exe'] },
+        },
+        select: { employeeId: true, processName: true, windowTitle: true },
+      }),
     ]);
 
     const segmentsBy = groupBy(segments, (s) => s.employeeId);
@@ -146,6 +167,8 @@ export class SummaryService {
 
     const holidays = new Set(holiday ? [workDate.getTime()] : []);
 
+    const designsBy = await this.claimDesigns(designTitles, workDate);
+
     const ops: Prisma.PrismaPromise<unknown>[] = [];
 
     for (const e of employees) {
@@ -158,11 +181,22 @@ export class SummaryService {
         isOffDay: !isWorkday(workDate, e.weeklyOffDay, holidays),
       });
 
+      // ⚠️ `summarizeDay`-র ভেতরে ঢোকানো হয়নি — ওটা **সময়ের** খাঁটি অঙ্ক,
+      //    আর ডিজাইনের সংখ্যা সময় নয়। মিশিয়ে দিলে ওই ফাংশনের টেস্টগুলোয়
+      //    হঠাৎ ডাটাবেসের দরকার পড়ত।
+      const designsDone = designsBy.get(e.id) ?? 0;
+
       ops.push(
         this.prisma.dailySummary.upsert({
           where: { employeeId_workDate: { employeeId: e.id, workDate } },
-          create: { employeeId: e.id, workDate, ...numbers, computedAt: now },
-          update: { ...numbers, computedAt: now },
+          create: {
+            employeeId: e.id,
+            workDate,
+            ...numbers,
+            designsDone,
+            computedAt: now,
+          },
+          update: { ...numbers, designsDone, computedAt: now },
         }),
       );
     }
@@ -174,6 +208,71 @@ export class SummaryService {
     await this.refreshMonth(workDate, employees, now);
 
     return { workDate, employees: employees.length };
+  }
+
+  /**
+   * ⭐⭐ **আজ কতগুলো নতুন ডিজাইন** — কর্মী ধরে।
+   *
+   * ⚠️⚠️ **"খোলা" আর "নতুন" এক নয়, আর তফাতটা বড়।** গতকালের ফাইল আজ আবার
+   * খুললে সেটা আজকের কাজ নয়। মাঠে মেপে দেখা গেছে একজনের ৩৯ নেমে দাঁড়ায়
+   * **২৪**-এ — অর্থাৎ সরল "আজ যতগুলো দেখা গেছে" নিয়মটা টার্গেটের চেয়ে
+   * ৫০%-ও বেশি দেখাতে পারত, আর সেই সংখ্যার উপর কারো মূল্যায়ন দাঁড়াত।
+   *
+   * ⭐ তাই প্রতিটা (কর্মী, ডিজাইন) জোড়া `design_credits`-এ **একবারই** বসে;
+   * প্রাথমিক কী-ই দ্বিতীয়বার বসতে দেয় না (`skipDuplicates`)। "আজকের
+   * সংখ্যা" = আজকের তারিখে দাবি করা সারি।
+   *
+   * ⚠️⚠️ **ক্রমের একটা সীমা লিখে রাখা দরকার:** ক্রেডিট দাবি হয় *যে দিনটা
+   * আগে হিসাব হয়* তার নামে। স্বাভাবিক চলায় দিন এগোয় সামনের দিকে, তাই
+   * ঠিকই থাকে — কিন্তু কেউ **পুরোনো** একটা দিন নতুন করে হিসাব করালে ওই
+   * দিনের ডিজাইনগুলো ইতিমধ্যে পরের দিনের নামে বসে থাকতে পারে, আর তখন
+   * পুরোনো দিনটা কম দেখাবে। ব্যাকফিল করলে **পুরোনো থেকে নতুন** ক্রমে।
+   *
+   * ⚠️ কখনো throw করে না — ডিজাইনের সংখ্যা একটা বাড়তি মাপ; ওটার জন্য
+   * ঘণ্টার সারাংশ আটকে যাওয়া চলবে না।
+   */
+  private async claimDesigns(
+    titles: readonly { employeeId: number; processName: string; windowTitle: string | null }[],
+    workDate: Date,
+  ): Promise<Map<number, number>> {
+    const counts = new Map<number, number>();
+    if (titles.length === 0) return counts;
+
+    const byEmployee = groupBy(titles, (t) => t.employeeId);
+
+    try {
+      for (const [employeeId, rows] of byEmployee) {
+        const ids = designIdsInDay(rows);
+        if (ids.size === 0) continue;
+
+        await this.prisma.designCredit.createMany({
+          data: [...ids].map((designId) => ({
+            employeeId,
+            designId,
+            firstWorkDate: workDate,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // ⚠️ দাবি করার **পরে** গোনা হয়, আগে নয় — নইলে আজ প্রথমবার দেখা
+      //    ডিজাইনগুলো এই রানে গোনায় পড়ত না, আর সংখ্যাটা একদিন পিছিয়ে থাকত।
+      const claimed = await this.prisma.designCredit.groupBy({
+        by: ['employeeId'],
+        where: { firstWorkDate: workDate, employeeId: { in: [...byEmployee.keys()] } },
+        _count: { _all: true },
+      });
+
+      for (const row of claimed) counts.set(row.employeeId, row._count._all);
+    } catch (err) {
+      this.logger.warn(
+        `Could not count designs for ${workDate.toISOString().slice(0, 10)}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    return counts;
   }
 
   /**

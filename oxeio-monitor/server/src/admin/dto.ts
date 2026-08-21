@@ -60,6 +60,16 @@ export class CreateEmployeeDto {
   @IsOptional() @IsString() @MaxLength(120)
   department?: string;
 
+  /**
+   * ⭐ কাজের ধরন — নিয়ম **কেবল এর উপরেই** বসে (যেমন ডিজাইনারের দৈনিক ২৫)।
+   *
+   * ⚠️ `designation`-এর বিকল্প নয়, পাশাপাশি: ওটা পদবি (মুক্ত-লেখা), এটা
+   * শ্রেণি (নির্দিষ্ট তালিকা)। ⚠️ ঐচ্ছিক — না বসালে ওই কর্মী টার্গেটের
+   * হিসাব থেকে **বাদ** থাকেন, শূন্য পান না।
+   */
+  @IsOptional() @IsIn(['designer', 'researcher', 'manager'])
+  staffType?: 'designer' | 'researcher' | 'manager';
+
   @IsOptional() @IsInt() @Min(1)
   policyId?: number;
 
@@ -98,6 +108,10 @@ export class UpdateEmployeeDto {
 
   @IsOptional() @IsString() @MaxLength(120)
   department?: string | null;
+
+  /** ⚠️ `null` পাঠানো **বৈধ** — ধরনটা তুলে নেওয়ার একমাত্র পথ */
+  @IsOptional() @IsIn(['designer', 'researcher', 'manager', null])
+  staffType?: 'designer' | 'researcher' | 'manager' | null;
 
   @IsOptional() @IsInt() @Min(1)
   policyId?: number | null;
@@ -229,6 +243,14 @@ export class CreateWorkPolicyDto {
 
   @IsOptional() @IsInt() @Min(1) @Max(60)
   slotMinutes?: number;
+
+  /**
+   * ⭐ ডিজাইনারের দৈনিক টার্গেট (মালিকের চাওয়া ২৫)।
+   * ⚠️ ০ **বৈধ** — টার্গেট বন্ধ, কিন্তু সংখ্যা গোনা চলতেই থাকে।
+   * ⚠️ ছাদ ৫০০: টাইপো ধরার জন্য, নীতির জন্য নয়।
+   */
+  @IsOptional() @IsInt() @Min(0) @Max(500)
+  dailyDesignTarget?: number;
 }
 
 export class UpdateWorkPolicyDto {
@@ -255,6 +277,14 @@ export class UpdateWorkPolicyDto {
 
   @IsOptional() @IsInt() @Min(1) @Max(60)
   slotMinutes?: number;
+
+  /**
+   * ⭐ ডিজাইনারের দৈনিক টার্গেট (মালিকের চাওয়া ২৫)।
+   * ⚠️ ০ **বৈধ** — টার্গেট বন্ধ, কিন্তু সংখ্যা গোনা চলতেই থাকে।
+   * ⚠️ ছাদ ৫০০: টাইপো ধরার জন্য, নীতির জন্য নয়।
+   */
+  @IsOptional() @IsInt() @Min(0) @Max(500)
+  dailyDesignTarget?: number;
 }
 
 // ── holidays ────────────────────────────────────────────────────────────────

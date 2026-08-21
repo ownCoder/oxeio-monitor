@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { STAFF_TYPE_LABEL, type StaffType } from '../../api/admin';
 import {
   createEmployee,
   changeLoginEmail,
@@ -152,7 +153,16 @@ export function StaffTab() {
         <PersonCell
           fullName={emp.fullName}
           empCode={emp.empCode}
-          note={emp.designation ?? undefined}
+          /*
+            ⚠️ ধরনটা পদবির **আগে** — নিয়ম ওটার উপরেই বসে, তাই তালিকায় চোখ
+               বুলিয়ে "কার ধরন বসানো নেই" ধরা পড়া দরকার (মাঠে দুজনের
+               খালি ছিল, আর তাঁদের একজন আসলে ডিজাইনার)।
+          */
+          note={
+            emp.staffType
+              ? `${STAFF_TYPE_LABEL[emp.staffType]}${emp.designation ? ` · ${emp.designation}` : ''}`
+              : (emp.designation ?? undefined)
+          }
           accent={emp.portalRole === 'manager'}
           accentTitle="Manager — sees everyone's Live Board and reports"
         />
@@ -505,6 +515,8 @@ interface StaffForm {
   email: string;
   designation: string;
   department: string;
+  /** ⚠️ খালি স্ট্রিং = "বসানো নেই" — `StaffType | ''` */
+  staffType: string;
   policyId: string;
   joinedOn: string;
   monthlySalary: string;
@@ -517,6 +529,7 @@ function formOf(employee: EmployeeView | null): StaffForm {
     email: employee?.email ?? '',
     designation: employee?.designation ?? '',
     department: employee?.department ?? '',
+    staffType: employee?.staffType ?? '',
     policyId:
       employee?.policyId === null || employee?.policyId === undefined
         ? ''
@@ -552,6 +565,10 @@ function patchOf(
   }
   if (after.department.trim() !== before.department) {
     patch.department = orNull(after.department);
+  }
+  // ⚠️ ফাঁকা মানে `null` ("ধরন তুলে নাও") — সার্ভার `null` মেনে নেয়
+  if (after.staffType !== before.staffType) {
+    patch.staffType = after.staffType === '' ? null : (after.staffType as StaffType);
   }
   if (after.joinedOn !== before.joinedOn) {
     patch.joinedOn = orNull(after.joinedOn);
@@ -626,6 +643,9 @@ function EmployeeForm({
         const body: CreateEmployeeBody = {
           fullName: form.fullName.trim(),
           ...(orUndefined(form.email) ? { email: form.email.trim() } : {}),
+          ...(form.staffType === ''
+            ? {}
+            : { staffType: form.staffType as StaffType }),
           ...(orUndefined(form.designation)
             ? { designation: form.designation.trim() }
             : {}),
@@ -713,11 +733,33 @@ function EmployeeForm({
             onChange={set('email')}
             hint="Needed to create a portal account"
           />
+          {/*
+            ⭐⭐ **কাজের ধরন** *(২১ আগস্ট, মালিকের চাওয়া)* — আর এটাই
+               একমাত্র ঘর যার উপর **নিয়ম** বসে (ডিজাইনারের দৈনিক টার্গেট)।
+
+            ⚠️⚠️ নিচের "Designation" মুক্ত-লেখাই থাকছে, আর সেটা ইচ্ছাকৃত:
+               ওটা পদবি ("Senior Graphic Designer"), এটা শ্রেণি। এক করে
+               ফেললে পদবিতে "Senior" যোগ করামাত্র টার্গেটের নিয়ম ওই
+               কর্মীর উপর খাটা বন্ধ হয়ে যেত — নীরবে।
+          */}
+          <SelectField
+            label="Staff type"
+            value={form.staffType}
+            onChange={set('staffType')}
+            options={[
+              { value: '', label: 'Not set' },
+              { value: 'designer', label: 'Designer' },
+              { value: 'researcher', label: 'Researcher' },
+              { value: 'manager', label: 'Manager' },
+            ]}
+            hint="Designers get a daily design target; the others do not"
+          />
           <TextField
             label="Designation"
             value={form.designation}
             onChange={set('designation')}
             maxLength={120}
+            hint="Job title, free text — shown on the board"
           />
           <TextField
             label="Department"
