@@ -12,7 +12,7 @@ import { formatAgo, formatDuration, formatHours } from '../../lib/format';
 import type { GalleryItem } from '../../api/screenshots';
 import { getLatestShots, NO_SHOTS } from './latestShots';
 import { isWorking } from './onTheClock';
-import { meterKind, restingStartsAt, rosterRows } from './roster';
+import { designView, meterKind, restingStartsAt, rosterRows } from './roster';
 import { ShotLightbox } from './ShotLightbox';
 
 /**
@@ -111,7 +111,7 @@ export function TeamRoster({
          সবসময় বসালে গবেষকদের সারিতে রোজ একটা খালি ঘর থাকত, আর খালি ঘর
          দেখতে "ডেটা আসেনি"-র মতো লাগে — অথচ মাপটাই তাঁদের নয়।
     */
-    ...(rows.some((c) => c.staffType === 'designer' && c.designTargetPerDay > 0)
+    ...(rows.some((c) => designView(c) !== null)
       ? [
           {
             key: 'designs',
@@ -450,18 +450,21 @@ function heartbeatLabel(card: LiveCard): string {
  * লাগে, অথচ মাপটাই তাঁর জন্য নয়।
  */
 function DesignCell({ card }: { card: LiveCard }) {
-  if (card.staffType !== 'designer' || card.designTargetPerDay <= 0) {
-    return <span className="text-ink-3">—</span>;
-  }
-
-  const met = card.designsDone >= card.designTargetPerDay;
+  const view = designView(card);
+  if (view === null) return <span className="text-ink-3">—</span>;
 
   return (
     <span className="num whitespace-nowrap">
-      <span className={met ? 'font-semibold text-ok' : 'font-medium text-ink'}>
-        {card.designsDone}
+      <span className={view.met ? 'font-semibold text-ok' : 'font-medium text-ink'}>
+        {view.done}
       </span>
-      <span className="text-ink-3"> / {card.designTargetPerDay}</span>
+      {/*
+        ⚠️ টার্গেট না থাকলে "/ ২৫"-ও নেই — ওই কর্মীর কোনো টার্গেটই নেই,
+           তাই ভগ্নাংশটা লিখলে সেটা একটা দাবি হয়ে যেত যা সত্যি নয়।
+      */}
+      {view.target !== null && (
+        <span className="text-ink-3"> / {view.target}</span>
+      )}
     </span>
   );
 }

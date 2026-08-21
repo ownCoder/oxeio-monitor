@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LiveCard } from '../src/api/dashboard';
-import {
+import {designView,
   meterKind,
   restingStartsAt,
   rosterRows,
@@ -142,5 +142,37 @@ describe('restingStartsAt — দলছুট ব্যান্ড কোথা
       card({ employeeId: 2, status: 'idle' }),
     ]);
     expect(restingStartsAt(rows)).toBe(0);
+  });
+});
+
+describe('designView — আজকের ডিজাইন', () => {
+  /**
+   * ⭐⭐ **মালিকের বাছাই, ২২ আগস্ট** — ম্যানেজার (OX-01) নিজেও ডিজাইন
+   * করেন, তিন দিনে ৪৩টা। ধরন বদলানোর পর সংখ্যাটা উধাও হয়ে যাচ্ছিল,
+   * অথচ কাজটা সত্যি।
+   */
+  it('ডিজাইনার নন, তবু কাজ করেছেন — সংখ্যা ওঠে, টার্গেট ছাড়া', () => {
+    const view = designView(card({ staffType: 'manager', designsDone: 43 }));
+    expect(view).toEqual({ done: 43, target: null, met: false });
+  });
+
+  /** ⚠️⚠️ টার্গেট ছাড়া কারো `met` কখনো `true` নয় — ৪৩ > ২৫ হলেও */
+  it('টার্গেট ছাড়া কেউ কখনো সবুজ হয় না', () => {
+    expect(designView(card({ staffType: 'manager', designsDone: 999 }))?.met).toBe(false);
+  });
+
+  it('ডিজাইনারের টার্গেটসহ হিসাব', () => {
+    expect(designView(card({ staffType: 'designer', designsDone: 25 }))).toEqual({
+      done: 25,
+      target: 25,
+      met: true,
+    });
+    expect(designView(card({ staffType: 'designer', designsDone: 24 }))?.met).toBe(false);
+  });
+
+  /** ⚠️ কাজ না করলে কিছুই নয় — "০" পড়তে অভিযোগের মতো লাগে */
+  it('ডিজাইন না করলে কিছুই নয়', () => {
+    expect(designView(card({ staffType: 'researcher', designsDone: 0 }))).toBeNull();
+    expect(designView(card({ staffType: null, designsDone: 0 }))).toBeNull();
   });
 });

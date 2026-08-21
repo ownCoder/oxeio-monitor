@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 
 import { ProgressService, type EmployeeProgress } from '../agent/progress.service';
 import { workDateOf } from '../agent/util/dhaka-time';
+import { designView, type DesignView } from '../summary/design.rules';
 import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseWorkDate, toIsoDate } from '../reports/reports.range';
@@ -26,14 +27,14 @@ export interface MySummary {
   /** ⭐ "ছবি কতদিন থাকে" — প্রতিশ্রুতিটা সংখ্যাসহ, পাতাতেই */
   screenshotRetentionDays: number;
   /**
-   * ⭐⭐ **আজকের ডিজাইন** *(২১ আগস্ট)* — ডিজাইনার না হলে `null`।
+   * ⭐⭐ **আজকের ডিজাইন** *(২১ আগস্ট)* — কিছু না করলে `null`।
    *
    * ⚠️⚠️ স্টাফ নিজে দেখতে পান, আর সেটা **ইচ্ছাকৃত**: যে সংখ্যা দিয়ে
    * তাঁকে মাপা হবে, সেটা তাঁর নিজের কাছেও থাকা দরকার। একই যুক্তিতে
    * `policySignedAt` ও retention-ও এই পাতায়।
    * ⚠️ `null` মানে "এই মাপটা আপনার জন্য নয়" — শূন্য নয়।
    */
-  designs: { done: number; target: number } | null;
+  designs: DesignView | null;
 }
 
 /** একটা দিনের সারি — কর্মীর নিজের তালিকায় */
@@ -138,12 +139,16 @@ export class MeService {
       progress,
       policySignedAt: isoDate(employee.policySignedAt),
       screenshotRetentionDays: SCREENSHOT_RETENTION_DAYS,
-      // ⚠️ ডিজাইনার না হলে, বা টার্গেট ০ হলে — কিছুই নয়, শূন্য নয়
-      designs:
-        employee.staffType === 'designer' &&
-        (employee.policy?.dailyDesignTarget ?? 0) > 0
-          ? { done: designsDone, target: employee.policy!.dailyDesignTarget }
-          : null,
+      /**
+       * ⚠️ নিয়মটা এক জায়গায় (`designView`) — তিনটে অবস্থা: টার্গেটসহ ·
+       * টার্গেট ছাড়া শুধু সংখ্যা · কিছুই নয়। ⭐ চার পর্দাই একই ফাংশন
+       * ডাকে, তাই কোনোদিন দুই পর্দা দু-রকম বলবে না।
+       */
+      designs: designView(
+        employee.staffType,
+        designsDone,
+        employee.policy?.dailyDesignTarget ?? 0,
+      ),
     };
   }
 

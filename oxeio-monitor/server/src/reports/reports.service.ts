@@ -228,9 +228,12 @@ export class ReportsService {
           idleHours: secondsToHours(summary?.idleSec ?? 0),
           adjustmentHours: secondsToHours(summary?.adjustmentSec ?? 0),
           creditedHours: secondsToHours(credited),
-          // ⚠️ ডিজাইনার না হলে `null` — কলামটা তখন খালি থাকে
-          designsDone:
-            employee.staffType === 'designer' ? (summary?.designsDone ?? 0) : null,
+          /**
+           * ⚠️ ডিজাইন **না করলে** `null` (কলামটা খালি), শূন্য নয়।
+           * ⭐ ডিজাইনার না হয়েও কেউ করলে সংখ্যাটা ওঠে — ম্যানেজার নিজেও
+           * ডিজাইন করেন, আর সেটা লুকোনো মানে তথ্য হারানো (২২ আগস্ট)।
+           */
+          designsDone: (summary?.designsDone ?? 0) > 0 ? summary!.designsDone : null,
           targetHours: secondsToHours(dayTarget),
         });
 

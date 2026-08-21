@@ -60,3 +60,39 @@ export function rosterRows(cards: readonly LiveCard[]): LiveCard[] {
 export function restingStartsAt(rows: readonly LiveCard[]): number {
   return rows.findIndex((c) => !isWorking(c.status));
 }
+
+export interface DesignView {
+  done: number;
+  /** ⚠️ `null` = **এই কর্মীর কোনো ডিজাইন-টার্গেট নেই** — শূন্য টার্গেট নয় */
+  target: number | null;
+  /** টার্গেট না থাকলে সবসময় `false` — "ব্যর্থ" নয়, "প্রযোজ্য নয়" */
+  met: boolean;
+}
+
+/**
+ * ⭐⭐ **আজকের ডিজাইন — তিনটে অবস্থা, দুটো নয়** *(মালিকের বাছাই, ২২ আগস্ট)*।
+ *
+ * | কে | কী দেখায় |
+ * |---|---|
+ * | ডিজাইনার, টার্গেট আছে | `24 / 25` |
+ * | অন্য কেউ, তবু ডিজাইন করেছেন | শুধু `43` |
+ * | কেউ ডিজাইন করেননি | কিছুই না |
+ *
+ * ⚠️⚠️ মাঝের সারিটাই সিদ্ধান্ত: ম্যানেজার (OX-01) নিজেও ডিজাইন করেন —
+ * তিন দিনে **৪৩টা**। ধরন `manager` বসানোর পর সংখ্যাটা সব পর্দা থেকে
+ * উধাও হয়ে যাচ্ছিল, অথচ কাজটা সত্যি। ⭐ "কত হলো" আর "টার্গেট ছুঁল কি
+ * না" — দুটো আলাদা প্রশ্ন হিসেবেই থাকল।
+ *
+ * ⚠️ **সার্ভারের `design.rules.ts`-এর হুবহু নকল।** দুই জায়গায় দু-রকম
+ * হলে টেলিগ্রাম এক কথা বলত আর পর্দা অন্য — আর ঠিক ওই ফাঁদটা এই
+ * প্রকল্পে আগে পড়া হয়েছে (`fleet.ts`-এর `compareVersion`-এর নোট)।
+ */
+export function designView(card: LiveCard): DesignView | null {
+  const done = card.designsDone;
+
+  if (card.staffType === 'designer' && card.designTargetPerDay > 0) {
+    return { done, target: card.designTargetPerDay, met: done >= card.designTargetPerDay };
+  }
+
+  return done > 0 ? { done, target: null, met: false } : null;
+}

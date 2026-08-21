@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   designIdOf,
   designIdsInDay,
-  designProgress,
+  designView,
   hasDesignTarget,
 } from '../src/summary/design.rules';
 
@@ -93,7 +93,7 @@ describe('designIdsInDay — অনন্য নম্বর', () => {
   });
 });
 
-describe('hasDesignTarget · designProgress', () => {
+describe('hasDesignTarget · designView', () => {
   /**
    * ⚠️⚠️ **ধরন না বসানো মানে "ছেড়ে দাও", "শূন্য" নয়।** নইলে ধরন বসানোর
    * আগ পর্যন্ত প্রত্যেকে রোজ "০/২৫" হয়ে তালিকায় উঠতেন — আর সেটা একটা
@@ -107,24 +107,52 @@ describe('hasDesignTarget · designProgress', () => {
     expect(hasDesignTarget(undefined)).toBe(false);
   });
 
-  it('ডিজাইনার নন — পর্দায় কিছুই নয়', () => {
-    expect(designProgress('researcher', 12, 25)).toBeNull();
-    expect(designProgress(null, 12, 25)).toBeNull();
+  /**
+   * ⭐⭐ **মালিকের সিদ্ধান্ত, ২২ আগস্ট** — ম্যানেজার (OX-01) নিজেও ডিজাইন
+   * করেন, তিন দিনে ৪৩টা। ধরন বদলানোর পর সংখ্যাটা উধাও হয়ে যাচ্ছিল,
+   * অথচ কাজটা সত্যি। তাই সংখ্যা দেখানো হয়, **টার্গেট ছাড়া**।
+   */
+  it('ডিজাইনার নন, তবু কাজ করেছেন — সংখ্যা দেখায়, টার্গেট ছাড়া', () => {
+    expect(designView('manager', 43, 25)).toEqual({
+      done: 43,
+      target: null,
+      met: false,
+    });
+    expect(designView('researcher', 3, 25)?.target).toBeNull();
   });
 
-  /** ⚠️ টার্গেট ০ মানে বন্ধ — তখনও কেউ "পিছিয়ে" নয় */
-  it('টার্গেট ০ হলে হিসাবটাই দেখানো হয় না', () => {
-    expect(designProgress('designer', 12, 0)).toBeNull();
+  /**
+   * ⚠️⚠️ **টার্গেট ছাড়া কারো `met` কখনো `true` নয়** — ৪৩ > ২৫ হলেও।
+   * ✅ চিহ্নের মানে "টার্গেট ছোঁয়া", আর তাঁর টার্গেটই নেই।
+   */
+  it('টার্গেট ছাড়া কেউ কখনো ✅ পায় না', () => {
+    expect(designView('manager', 999, 25)?.met).toBe(false);
+  });
+
+  /** ⚠️ কাজ না করলে কিছুই নয় — "০" পড়তে অভিযোগের মতো লাগে */
+  it('ডিজাইন না করলে কিছুই দেখানো হয় না', () => {
+    expect(designView('researcher', 0, 25)).toBeNull();
+    expect(designView(null, 0, 25)).toBeNull();
+    expect(designView('designer', 0, 0)).toBeNull();
+  });
+
+  /** ⚠️ ডিজাইনারের টার্গেট ০ = বন্ধ, তখন সংখ্যাই থাকে (টার্গেট ছাড়া) */
+  it('ডিজাইনারের টার্গেট বন্ধ হলে শুধু সংখ্যা', () => {
+    expect(designView('designer', 12, 0)).toEqual({
+      done: 12,
+      target: null,
+      met: false,
+    });
   });
 
   /** ⚠️ ঠিক টার্গেটে থাকা = ছোঁয়া, ঘণ্টার নিয়মের সাথে মিলিয়ে */
   it('কাঁটায় কাঁটায় টার্গেট = ছোঁয়া', () => {
-    expect(designProgress('designer', 25, 25)).toEqual({
+    expect(designView('designer', 25, 25)).toEqual({
       done: 25,
       target: 25,
       met: true,
     });
-    expect(designProgress('designer', 24, 25)?.met).toBe(false);
-    expect(designProgress('designer', 39, 25)?.met).toBe(true);
+    expect(designView('designer', 24, 25)?.met).toBe(false);
+    expect(designView('designer', 39, 25)?.met).toBe(true);
   });
 });

@@ -233,7 +233,7 @@ describe('telegramDigest', () => {
       'oXeio',
       {
         ...EXTRAS,
-        designs: new Map([['OX-07', { done: 24, target: 25 }]]),
+        designs: new Map([['OX-07', { done: 24, target: 25, met: false }]]),
       },
     );
 
@@ -251,11 +251,30 @@ describe('telegramDigest', () => {
       //    "✅ MET THE TARGET" শিরোনামটাই দাবিটা মিথ্যা করে দিত
       telegramDigest(digestOf([row({ empCode: 'OX-07', fullName: 'A', todayHours: 5 })]), 'oXeio', {
         ...EXTRAS,
-        designs: new Map([['OX-07', { done, target: 25 }]]),
+        designs: new Map([['OX-07', { done, target: 25, met: done >= 25 }]]),
       });
 
     expect(make(25)).toContain('✅');
     expect(make(24)).not.toContain('✅');
+  });
+
+  /**
+   * ⭐⭐ **মালিকের বাছাই, ২২ আগস্ট** — ম্যানেজার নিজেও ডিজাইন করেন,
+   * তাই সংখ্যাটা ওঠে; কিন্তু টার্গেট নেই বলে `/25`-ও নেই, ✅-ও নেই।
+   */
+  it('টার্গেট ছাড়া কারো সংখ্যা ওঠে, কিন্তু ছাঁচ ছাড়া', () => {
+    const text = telegramDigest(
+      digestOf([row({ empCode: 'OX-01', fullName: 'Belal', todayHours: 5 })]),
+      'oXeio',
+      {
+        ...EXTRAS,
+        designs: new Map([['OX-01', { done: 43, target: null, met: false }]]),
+      },
+    );
+
+    expect(text).toContain('43');
+    expect(text).not.toContain('43/');
+    expect(text).not.toContain('✅');
   });
 
   /** ⚠️ কারো ডিজাইন-টার্গেট না থাকলে অংশটাই বসে না */
@@ -278,7 +297,7 @@ describe('telegramDigest', () => {
       {
         silentPcs: 2,
         atTime: '18:30',
-        designs: new Map([['OX-01', { done: 24, target: 25 }]]),
+        designs: new Map([['OX-01', { done: 24, target: 25, met: false }]]),
       },
     );
 

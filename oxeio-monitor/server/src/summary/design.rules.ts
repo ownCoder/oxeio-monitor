@@ -92,13 +92,40 @@ export function hasDesignTarget(staffType: string | null | undefined): boolean {
   return staffType === 'designer';
 }
 
-/** পর্দায় দেখানোর মতো — টার্গেট না থাকলে `null`, শূন্য নয় */
-export function designProgress(
+export interface DesignView {
+  done: number;
+  /** ⚠️ `null` = **এই কর্মীর কোনো ডিজাইন-টার্গেট নেই** — শূন্য টার্গেট নয় */
+  target: number | null;
+  /** টার্গেট না থাকলে সবসময় `false` — "ব্যর্থ" নয়, "প্রযোজ্য নয়" */
+  met: boolean;
+}
+
+/**
+ * পর্দায় কী দেখাব — **তিনটে আলাদা অবস্থা**, দুটো নয় *(মালিকের বাছাই, ২২ আগস্ট)*।
+ *
+ * | কে | কী দেখায় | কেন |
+ * |---|---|---|
+ * | ডিজাইনার, টার্গেট আছে | `24 / 25` + ✅ | মাপা হচ্ছে |
+ * | অন্য কেউ, তবু ডিজাইন করেছেন | শুধু `43` | ⭐ সংখ্যাটা **আসল**, লুকোনো মানে তথ্য হারানো |
+ * | কেউ ডিজাইন করেননি | কিছুই না | "০" পড়তে অভিযোগের মতো লাগে |
+ *
+ * ⚠️⚠️ **মাঝের সারিটাই মালিকের সিদ্ধান্ত** *(২২ আগস্ট)*। ঘটনাটা ছিল:
+ * ম্যানেজার (OX-01) নিজেও ডিজাইন করেন — তিন দিনে **৪৩টা**। ধরন
+ * `manager` বসানোর পর সংখ্যাটা সব পর্দা থেকে উধাও হয়ে যাচ্ছিল, অথচ
+ * কাজটা সত্যি। ⭐ তাই "কত হলো" আর "টার্গেট ছুঁল কি না" — দুটো আলাদা
+ * প্রশ্ন হিসেবেই থাকল।
+ *
+ * ⚠️ টার্গেট ছাড়া কারো `met` কখনো `true` হয় না, আর সেটা ইচ্ছাকৃত:
+ * ✅ চিহ্নটার মানে "টার্গেট ছোঁয়া", আর টার্গেট না থাকলে ছোঁয়ার কিছু নেই।
+ */
+export function designView(
   staffType: string | null | undefined,
   done: number,
   target: number,
-): { done: number; target: number; met: boolean } | null {
-  if (!hasDesignTarget(staffType) || target <= 0) return null;
+): DesignView | null {
+  if (hasDesignTarget(staffType) && target > 0) {
+    return { done, target, met: done >= target };
+  }
 
-  return { done, target, met: done >= target };
+  return done > 0 ? { done, target: null, met: false } : null;
 }

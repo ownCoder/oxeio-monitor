@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { monthBoundsOf, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
 import { buildDigest, digestBody, digestSubject, type Digest } from './digest.math';
+import { designView, type DesignView } from '../summary/design.rules';
 import { asPreBlock, telegramDigest } from './digest.telegram';
 
 /** লেটারহেড ও ইমেইলের শিরোনামে — `reports.service.ts`-এর সাথে একই env */
@@ -178,34 +179,44 @@ export class DigestService {
    */
   private async designsToday(
     workDate: string,
-  ): Promise<Map<string, { done: number; target: number }>> {
-    const out = new Map<string, { done: number; target: number }>();
+  ): Promise<Map<string, DesignView>> {
+    const out = new Map<string, DesignView>();
 
     try {
-      const designers = await this.prisma.employee.findMany({
-        where: { status: 'active', staffType: 'designer' },
+      /**
+       * ⚠️⚠️ **সব সক্রিয় কর্মী**, শুধু ডিজাইনার নন *(২২ আগস্ট)* — কারণ
+       * ম্যানেজার নিজেও ডিজাইন করেন (তিন দিনে ৪৩টা)। ⭐ কে তালিকায় উঠবেন
+       * সেটা `designView()` ঠিক করে: টার্গেট থাকলে `24/25 ✅`, না থাকলে
+       * শুধু সংখ্যা, আর কিছু না করলে একেবারেই নয়।
+       */
+      const staff = await this.prisma.employee.findMany({
+        where: { status: 'active' },
         select: {
           id: true,
           empCode: true,
+          staffType: true,
           policy: { select: { dailyDesignTarget: true } },
         },
       });
-      if (designers.length === 0) return out;
+      if (staff.length === 0) return out;
 
       const counts = await this.prisma.designCredit.groupBy({
         by: ['employeeId'],
         where: {
-          employeeId: { in: designers.map((d) => d.id) },
+          employeeId: { in: staff.map((d) => d.id) },
           firstWorkDate: new Date(`${workDate}T00:00:00.000Z`),
         },
         _count: { _all: true },
       });
       const byId = new Map(counts.map((c) => [c.employeeId, c._count._all]));
 
-      for (const d of designers) {
-        const target = d.policy?.dailyDesignTarget ?? 0;
-        // ⚠️ টার্গেট ০ = বন্ধ, তখন সারিটাই দেখানো হয় না
-        if (target > 0) out.set(d.empCode, { done: byId.get(d.id) ?? 0, target });
+      for (const d of staff) {
+        const view = designView(
+          d.staffType,
+          byId.get(d.id) ?? 0,
+          d.policy?.dailyDesignTarget ?? 0,
+        );
+        if (view !== null) out.set(d.empCode, view);
       }
     } catch (err) {
       this.logger.warn(

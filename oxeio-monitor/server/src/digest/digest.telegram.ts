@@ -1,3 +1,4 @@
+import type { DesignView } from '../summary/design.rules';
 import type { Digest, DigestRow } from './digest.math';
 
 /**
@@ -86,7 +87,7 @@ export interface DigestExtras {
    * ⚠️ কেবল ডিজাইনারদেরই থাকে; বাকিদের এখানে এন্ট্রিই নেই। খালি ম্যাপ
    * মানে "কারো ডিজাইন-টার্গেট নেই", আর তখন অংশটাই বসে না।
    */
-  designs?: ReadonlyMap<string, { done: number; target: number }>;
+  designs?: ReadonlyMap<string, DesignView>;
 }
 
 /**
@@ -211,8 +212,18 @@ export function telegramDigest(
 
     for (const r of designRows) {
       const d = extras.designs!.get(r.empCode)!;
-      const mark = d.done >= d.target ? '✅' : '  ';
-      out.push(`  ${String(d.done).padStart(3)}/${d.target} ${mark} ${r.fullName}`);
+
+      /**
+       * ⚠️⚠️ **টার্গেট না থাকলে শুধু সংখ্যা** *(মালিকের বাছাই, ২২ আগস্ট)*।
+       * ম্যানেজার নিজেও ডিজাইন করেন; সংখ্যাটা আসল, কিন্তু তাঁর কোনো
+       * টার্গেট নেই — তাই `/25`-ও নেই, ✅-ও নেই। ⭐ "কত হলো" আর "টার্গেট
+       * ছুঁল কি না" দুটো আলাদা প্রশ্নই থাকে।
+       */
+      const left = d.target === null
+        ? `${String(d.done).padStart(3)}     `
+        : `${String(d.done).padStart(3)}/${d.target} ${d.met ? '✅' : '  '}`;
+
+      out.push(`  ${left} ${r.fullName}`);
     }
   }
 
