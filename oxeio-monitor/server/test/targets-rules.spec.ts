@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   allocationSizes,
+  amazonUrl,
   asinOf,
   JOB_NUMBER_START,
   parseBulk,
@@ -76,6 +77,32 @@ describe('asinOf — URL থেকে পরিচয়', () => {
 
   it('খালি লাইনে ক্র্যাশ নয়', () => {
     expect(asinOf('   ')).toEqual({ reason: 'no_asin' });
+  });
+});
+
+describe('amazonUrl — ASIN থেকে ঠিকানা', () => {
+  /**
+   * ⭐⭐ মালিকের নিয়ম *(২২ আগস্ট)*: *"amora jekono asin `/dp/`-এর পরে
+   * বসিয়ে দিলেই ঝামেলা শেষ"*। ⚠️ তাই মূল URL জমা **রাখা হয় না** — ওটা
+   * রাখলে একই জিনিসের দুটো রূপ টেবিলে থাকত (একজনেরটা `?th=1`সহ,
+   * আরেকজনেরটা `ref=sr_1_3`সহ)।
+   */
+  it('স্বাভাবিক ঠিকানা বানায়', () => {
+    expect(amazonUrl('B0DJBD22LW')).toBe('https://www.amazon.com/dp/B0DJBD22LW');
+  });
+
+  /** ⭐ যেকোনো রূপে পেস্ট করলেও ফেরত আসে একটাই ঠিকানা */
+  it('যেভাবেই পেস্ট হোক, ঠিকানা এক', () => {
+    const forms = [
+      'https://www.amazon.com/Funny-Cat/dp/B0DJBD22LW/ref=sr_1_3',
+      'https://www.amazon.co.uk/gp/product/B0DJBD22LW?th=1',
+      'b0djbd22lw',
+    ];
+
+    const urls = new Set(
+      forms.map((f) => amazonUrl((asinOf(f) as { asin: string }).asin)),
+    );
+    expect([...urls]).toEqual(['https://www.amazon.com/dp/B0DJBD22LW']);
   });
 });
 

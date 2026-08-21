@@ -5,6 +5,7 @@ import { DayCloseJob } from './day-close.job';
 import { RetentionJob } from './retention.job';
 import { SCHEDULING_ENABLED } from './scheduling';
 import { SummaryRefreshJob } from './summary-refresh.job';
+import { TargetsModule } from '../targets/targets.module';
 import { SummaryService } from './summary.service';
 
 /**
@@ -27,7 +28,15 @@ import { SummaryService } from './summary.service';
  * শেয়ার্ড মডিউলে সরাও।
  */
 @Module({
-  imports: SCHEDULING_ENABLED ? [ScheduleModule.forRoot()] : [],
+  /**
+   * ⭐ `TargetsModule` — ফাইলের নামে পাওয়া কাজের নম্বর দিয়ে টার্গেট বন্ধ
+   * করতে (২২ আগস্ট)। ⚠️ শর্তসাপেক্ষ `ScheduleModule`-এর সাথে একই
+   * অ্যারেতে, কারণ ওটা টেস্টে বাদ পড়ে কিন্তু এটা পড়ে না।
+   */
+  imports: [
+    ...(SCHEDULING_ENABLED ? [ScheduleModule.forRoot()] : []),
+    TargetsModule,
+  ],
   providers: [SummaryService, SummaryRefreshJob, DayCloseJob, RetentionJob],
   // এক্সপোর্ট করা আছে যাতে টেস্ট বা ভবিষ্যতের admin endpoint
   // `runOnce()` ইচ্ছে করে ডাকতে পারে

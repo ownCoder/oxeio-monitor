@@ -53,6 +53,20 @@ enum StaffType {
   manager
 }
 
+/**
+ * একটা ডিজাইন-টার্গেট জীবনের কোন ধাপে *(২২ আগস্ট ২০২৬)*।
+ *
+ * ⚠️ `skipped` আলাদা রাখা হয়েছে `done`-এর থেকে: বাদ দেওয়া টার্গেট কারো
+ * কাজ নয়, তাই গোনায় আসে না — কিন্তু পুলে ফেরতও যায় না, নইলে পরদিন
+ * আবার কারো হাতে পড়ত।
+ */
+enum DesignTargetStatus {
+  pool
+  assigned
+  done
+  skipped
+}
+
 enum EmployeeStatus {
   active
   inactive
@@ -163,6 +177,16 @@ model Employee {
    * টার্গেটের হিসাব তখন ওই কর্মীকে **ছেড়ে দেয়**, শূন্য ধরে না।
    */
   staffType      StaffType?     @map("staff_type")
+  /**
+   * ⭐⭐ **এই কর্মীর নিজের দৈনিক ডিজাইন-টার্গেট** *(২২ আগস্ট)* — মালিকের
+   * কথায়: *"karo daily target 25 ta, kono designer er daily target 15 ta"*।
+   *
+   * ⚠️ `null` মানে **পলিসির সংখ্যাটাই খাটবে** (`work_policies.daily_design_target`),
+   * শূন্য নয়। ⚠️⚠️ ডিফল্ট বসানো হয়নি ইচ্ছাকৃতভাবে: ডিফল্ট থাকলে "কেউ
+   * কিছু বলেনি" আর "মালিক নিজে এই সংখ্যাটা বেছে দিয়েছেন" — দুটো দেখতে
+   * এক হয়ে যেত, ঠিক যেমন `depositStartYearMonth`-এ।
+   */
+  dailyDesignTarget Int?         @map("daily_design_target")
   policyId       Int?           @map("policy_id")
   /// ⭐ মাসিক বেতন — **শুধু owner দেখতে পায়** ([ADR-023](../../docs/05-Options-Decisions.md))।
   /// ঘাটতির টাকা বের করতে লাগে: (বেতন ÷ মাসিক টার্গেট ঘণ্টা) × ঘাটতি-ঘণ্টা।
@@ -197,6 +221,7 @@ model Employee {
   events            Event[]
   dailySummaries    DailySummary[]
   designCredits     DesignCredit[]
+  designTargets     DesignTarget[]
   monthlySummary    MonthlySummary[]
   timeAdjustments   TimeAdjustment[]
   enrollmentCodes   EnrollmentCode[]
@@ -234,6 +259,8 @@ model User {
   adjustmentsRevoked TimeAdjustment[] @relation("AdjustmentRevokedBy")
 
   @@map("users")
+  /// ⭐ যে টার্গেটগুলো ইনি জমা দিয়েছেন (২২ আগস্ট)
+  addedTargets DesignTarget[] @relation("addedTargets")
 }
 
 model Device {
@@ -591,6 +618,59 @@ model AgentVersion {
  * ⚠️ **ডিজাইনের নাম এখানে জমা হয় না** — কেবল সামনের নম্বরটা। মালিকের
  * শর্ত (২১ আগস্ট): শিরোনাম পড়া যাবে, কিন্তু নাম কোথাও রাখা বা দেখানো নয়।
  */
+/**
+ * ⭐⭐ **গবেষকের জমা করা ডিজাইন-টার্গেট** *(২২ আগস্ট ২০২৬)*।
+ *
+ * গবেষকেরা রোজ ~৫০০টা Amazon T-shirt URL জমা করেন; সেখান থেকে
+ * ডিজাইনারদের মধ্যে র‍্যান্ডম বণ্টন হয়।
+ *
+ * ⚠️⚠️ **পরিচয় ASIN, URL নয়** — আর `@unique` ওখানেই। একই পণ্যের URL
+ * অসংখ্য রকম হয় (`?th=1`, `ref=sr_1_3`, `.co.uk`); URL ধরে ডুপ্লিকেট
+ * খুঁজলে তিনজন ডিজাইনার একই ডিজাইন বানাতেন।
+ *
+ * ⚠️ মূল URL **জমা রাখা হয় না** — মালিকের নিয়ম (২২ আগস্ট): ASIN বসিয়ে
+ * `https://www.amazon.com/dp/…` বানিয়ে নিলেই হয়। রাখলে একই জিনিসের
+ * দুটো চেহারা টেবিলে থাকত।
+ */
+model DesignTarget {
+  id     Int                @id @default(autoincrement())
+  /// ⚠️ ঠিক ১০ অক্ষর, বড় হাতে সাজানো — `targets.rules.ts` দেখুন
+  asin   String             @unique @db.VarChar(10)
+  status DesignTargetStatus @default(pool)
+
+  /**
+   * ⭐⭐ বরাদ্দের সময় দেওয়া নম্বর — ডিজাইনার এটাই ফাইলের নামে বসাবেন
+   * (`1000042-Funny Cat T-Shirt.ai`), আর তা থেকেই "শেষ হয়েছে" ধরা পড়ে।
+   *
+   * ⚠️ শুরু **১০,০০,০০০** থেকে, আর সেটা মাপা সংখ্যা: চলতি ফাইলগুলোয়
+   * সবচেয়ে বড় নম্বর ৯,৭৩,০৬৫। কম থেকে শুরু করলে পুরোনো কোনো ফাইল ভুল
+   * করে টার্গেট বন্ধ করে দিত।
+   */
+  jobNumber Int? @unique @map("job_number")
+
+  /// ⚠️ কে জমা দিলেন — গবেষক, ম্যানেজার বা মালিক
+  addedById Int      @map("added_by_id")
+  addedAt   DateTime @default(now()) @map("added_at") @db.Timestamptz(3)
+
+  assignedToId Int?      @map("assigned_to_id")
+  assignedAt   DateTime? @map("assigned_at") @db.Timestamptz(3)
+
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
+  completedVia String? @map("completed_via") @db.VarChar(16)
+
+  skippedReason String? @map("skipped_reason")
+
+  addedBy    User      @relation("addedTargets", fields: [addedById], references: [id])
+  assignedTo Employee? @relation(fields: [assignedToId], references: [id])
+
+  /// ⭐ বণ্টনের সময় পুল থেকে বাছতে — `WHERE status = 'pool'`
+  @@index([status])
+  /// ⭐ ডিজাইনারের নিজের তালিকা
+  @@index([assignedToId, status])
+  @@map("design_targets")
+}
+
 model DesignCredit {
   employeeId    Int      @map("employee_id")
   /// ফাইলের নামের সামনের নম্বর — যেমন `37933`

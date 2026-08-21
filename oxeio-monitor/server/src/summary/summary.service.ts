@@ -3,6 +3,7 @@ import { SegmentState, type Prisma } from '@prisma/client';
 
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
+import { TargetsService } from '../targets/targets.service';
 import { designIdsInDay } from './design.rules';
 import { prorate } from './proration';
 import {
@@ -57,7 +58,11 @@ export interface RefreshResult {
 export class SummaryService {
   private readonly logger = new Logger(SummaryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /** ⭐ ফাইলের নামে পাওয়া নম্বর দিয়ে বরাদ্দ করা টার্গেট বন্ধ করতে (২২ আগস্ট) */
+    private readonly targets: TargetsService,
+  ) {}
 
   /** ঢাকার আজকের কর্মদিবস — K06-এর প্রবেশপথ। */
   refreshToday(now: Date = new Date()): Promise<RefreshResult> {
@@ -253,6 +258,15 @@ export class SummaryService {
           })),
           skipDuplicates: true,
         });
+
+        /**
+         * ⭐⭐ **বরাদ্দ করা টার্গেট নিজে থেকেই বন্ধ হয়** *(২২ আগস্ট)* —
+         * ডিজাইনার ফাইলের নামে যে নম্বরটা বসান সেটাই আমাদের দেওয়া
+         * কাজের নম্বর, তাই কোনো বোতাম লাগে না।
+         *
+         * ⚠️ একই `ids` সেট — দুবার শিরোনাম পড়া হয় না।
+         */
+        await this.targets.closeByJobNumbers(employeeId, [...ids], workDate);
       }
 
       // ⚠️ দাবি করার **পরে** গোনা হয়, আগে নয় — নইলে আজ প্রথমবার দেখা

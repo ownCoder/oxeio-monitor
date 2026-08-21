@@ -20,6 +20,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { ReportsModule } from './reports/reports.module';
 import { ScreenshotsModule } from './screenshots/screenshots.module';
 import { SummaryModule } from './summary/summary.module';
+import { TargetsModule } from './targets/targets.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -66,6 +67,8 @@ import { UsersModule } from './users/users.module';
     // এখানে আলাদা করে forRoot() বসিয়ো না — দুটো explorer একই @Cron দুবার
     // রেজিস্টার করতে গিয়ে bootstrap-এই "cron job already exists" দিয়ে ভাঙবে।
     SummaryModule,
+    // ⭐ ডিজাইন-টার্গেট (২২ আগস্ট) — জমা · রোজকার বণ্টন · শেষ হওয়া
+    TargetsModule,
     AlertsModule,
     // ⚠️ OpsModule ও DigestModule দুটোরই `@Cron` আছে, কিন্তু explorer আসে
     // উপরের SummaryModule-এর global forRoot() থেকে — তাই এদের **পরে** রাখা।

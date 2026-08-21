@@ -39,11 +39,21 @@ export type RejectReason =
 
 export interface ParsedTarget {
   asin: string;
-  /** ⚠️ যেটা লেখা হয়েছিল সেটাই রাখা হয়, পরিষ্কার করা রূপ নয় — পরে
-   *  "কোথা থেকে এসেছিল" প্রশ্নের উত্তর দরকার হতে পারে */
-  url: string;
   /** ইনপুটে কত নম্বর লাইনে ছিল — ভুল দেখানোর জন্য */
   line: number;
+}
+
+/**
+ * ⭐⭐ **ASIN থেকে URL বানানো হয়, URL জমা রাখা হয় না** *(মালিকের নিয়ম,
+ * ২২ আগস্ট: "amora jekono asin `/dp/`-এর পরে বসিয়ে দিলেই ঝামেলা শেষ")*।
+ *
+ * ⚠️ প্রথমে ভেবেছিলাম মূল URL-টাও রেখে দেব ("কোথা থেকে এসেছিল")। কিন্তু
+ * ওটা রাখার মানে হতো **একই জিনিসের দুটো রূপ** টেবিলে — একজন `?th=1`সহ
+ * পেস্ট করলে সেটাই চিরকাল দেখাত, আরেকজনেরটা `ref=sr_1_3`সহ। ⭐ ASIN
+ * সব দেশে ও সব রূপে এক, তাই একটাই স্বাভাবিক ঠিকানা যথেষ্ট।
+ */
+export function amazonUrl(asin: string): string {
+  return `https://www.amazon.com/dp/${asin}`;
 }
 
 export interface RejectedLine {
@@ -123,7 +133,7 @@ export function parseBulk(text: string): {
     }
 
     seen.add(result.asin);
-    accepted.push({ asin: result.asin, url: raw, line: i + 1 });
+    accepted.push({ asin: result.asin, line: i + 1 });
   }
 
   return { accepted, rejected };
