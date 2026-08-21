@@ -162,7 +162,7 @@ DB স্কিমা · API কনট্রাক্ট · এজেন্ট �
 | Seed ডেটা | ✅ | work policy, ১০৯টি app category, ছুটি, owner অ্যাকাউন্ট — সব বসেছে |
 | Auth | ✅ | লগইন, httpOnly JWT cookie, CSRF, role guard, পাসওয়ার্ড রিসেট — ২২টি টেস্ট পাস |
 | Agent ingest API | ✅ | ৯টা endpoint + clock-drift + `client_uuid` dedupe — ২৭টি টেস্ট পাস |
-| Web login shell | ✅ | লগইন → বাধ্যতামূলক পাসওয়ার্ড বদল → শেল → লগআউট, ব্রাউজারে যাচাই করা |
+| Web login shell | ✅ | লগইন → পাসওয়ার্ড বদল *(⚠️ ২৩ আগস্ট থেকে **শর্তসাপেক্ষ** — মালিক নিজে পাসওয়ার্ড বসালে এই ধাপটা আসে না, [ADR-033](05-Options-Decisions.md))* → শেল → লগআউট, ব্রাউজারে যাচাই করা |
 | CI | ✅ | lint + typecheck + test + build + docker — সব ধাপ স্থানীয়ভাবে যাচাই করা *(চলবে `git init` + remote-এর পর)* |
 
 > ✅ **Phase 1-এর সব ডেলিভারেবল শেষ।** পরের ধাপ Phase 2 — Windows এজেন্ট (C# .NET 8)।
