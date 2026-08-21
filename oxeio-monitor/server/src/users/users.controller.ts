@@ -13,6 +13,7 @@ import { IsEmail, IsIn } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 import { AuthService } from '../auth/auth.service';
+import { ResetPasswordDto } from '../auth/dto';
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
 
@@ -46,9 +47,11 @@ export class UsersController {
   reset(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ResetPasswordDto,
     @Ip() ip: string,
   ): Promise<{ email: string; tempPassword: string }> {
-    return this.auth.resetPassword(actor.userId, id, ip);
+    // ⭐ ঘরটা খালি রাখলে আগের আচরণ — এলোমেলো পাসওয়ার্ড + বাধ্যতামূলক বদল
+    return this.auth.resetPassword(actor.userId, id, ip, dto.password);
   }
 
   /**

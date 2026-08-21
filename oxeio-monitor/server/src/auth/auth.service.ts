@@ -256,6 +256,8 @@ export class AuthService {
     actorId: number,
     targetUserId: number,
     ip: string,
+    /** ⭐ মালিক নিজে বসালে বাধ্যতামূলক বদল নেই (২৩ আগস্ট) */
+    chosen?: string,
   ): Promise<{ email: string; tempPassword: string }> {
     const target = await this.prisma.user.findUnique({
       where: { id: targetUserId },
@@ -286,14 +288,15 @@ export class AuthService {
       );
     }
 
-    const tempPassword = this.passwords.generateTempPassword();
+    // ⚠️ একই নিয়ম রিসেটেও: মালিক বসালে বাধ্যতামূলক বদল নেই
+    const tempPassword = chosen ?? this.passwords.generateTempPassword();
 
     await this.prisma.user.update({
       where: { id: targetUserId },
       data: {
         passwordHash: await this.passwords.hash(tempPassword),
-        mustChangePw: true,
-        pwChangedAt: null,
+        mustChangePw: chosen === undefined,
+        pwChangedAt: chosen === undefined ? null : new Date(),
       },
     });
 
@@ -430,12 +433,22 @@ export class AuthService {
   }
 
   /** স্টাফের self-view অ্যাকাউন্ট (J04/J05) — owner খোলে */
+  /**
+   * ⭐⭐ **`chosen` দিলে সেটাই বসে, আর বদলানোর পর্দা আসে না**
+   * *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)*।
+   *
+   * ⚠️⚠️ না দিলে **আগের আচরণই অক্ষত** — এলোমেলো পাসওয়ার্ড + প্রথম
+   * লগইনে বাধ্যতামূলক বদল। ওই ধাপটার আসল উদ্দেশ্য ছিল "মালিকের জানা
+   * পাসওয়ার্ড চিরকাল না থাকা"; মালিক নিজে বসালে সেটা তিনি **জেনেবুঝে**
+   * ছাড়ছেন, কিন্তু ডিফল্টটা নিরাপদ থাকাই উচিত।
+   */
   async createPortalAccount(
     actorId: number,
     employeeId: number,
     email: string,
     role: UserRole,
     ip: string,
+    chosen?: string,
   ): Promise<{ userId: number; email: string; tempPassword: string }> {
     const employee = await this.prisma.employee.findUnique({
       where: { id: employeeId },
@@ -450,7 +463,8 @@ export class AuthService {
       throw new BadRequestException('An account with this email already exists');
     }
 
-    const tempPassword = this.passwords.generateTempPassword();
+    // ⚠️ মালিক নিজে বসালে সেটাই; নইলে আগের মতো এলোমেলো
+    const tempPassword = chosen ?? this.passwords.generateTempPassword();
 
     const created = await this.prisma.user.create({
       data: {
@@ -459,7 +473,10 @@ export class AuthService {
         fullName: employee.fullName,
         role,
         employeeId,
-        mustChangePw: true,
+        // ⭐ মালিকের বসানো পাসওয়ার্ড বদলাতে বলা হয় না — তিনি জানেন,
+        //    আর কর্মী চাইলে Security পাতায় নিজেই বদলাতে পারেন
+        mustChangePw: chosen === undefined,
+        pwChangedAt: chosen === undefined ? null : new Date(),
       },
     });
 

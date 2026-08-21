@@ -942,6 +942,16 @@ function PortalAccountForm({
    * হয় না, কারণ একটা নিষ্ক্রিয় ড্রপডাউন দেখলে মনে হতো কিছু একটা ভেঙে
    * আছে — অথচ এটা ইচ্ছাকৃত (ADR-011d)। সার্ভারও আলাদা করে আটকায়।
    */
+  /**
+   * ⭐⭐ **মালিকের বেছে দেওয়া পাসওয়ার্ড** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)*।
+   *
+   * ⚠️⚠️ খালি রাখলে **আগের আচরণ অক্ষত**: সিস্টেম এলোমেলো ১৪ অক্ষর বানায়
+   * আর প্রথম লগইনে বদলাতে বলে। ⭐ ঘরটা ভরলে সেটাই বসে, আর "Change your
+   * password" পর্দাটা আর আসে না — মালিক পাসওয়ার্ডটা জানেন, আর সেটা
+   * তিনি **জেনেবুঝে** বেছেছেন।
+   */
+  const [password, setPassword] = useState('');
+
   const ownerAccount = employee.portalRole === 'owner';
 
   const emailChanged = email.trim() !== (employee.portalEmail ?? '');
@@ -971,7 +981,10 @@ function PortalAccountForm({
               <Button
                 onClick={() =>
                   run(async () => {
-                    const result = await resetUserPassword(employee.portalUserId!);
+                    const result = await resetUserPassword(
+                      employee.portalUserId!,
+                      password.trim() || undefined,
+                    );
                     onCreated(result.email, result.tempPassword);
                   })
                 }
@@ -1012,6 +1025,7 @@ function PortalAccountForm({
                     employee.id,
                     email.trim(),
                     role,
+                    password.trim() || undefined,
                   );
                   onCreated(result.email, result.tempPassword);
                 })
@@ -1028,7 +1042,7 @@ function PortalAccountForm({
         <Notice>
           {existing
             ? 'Change the email or the role, then Save. Resetting gives them a new temporary password — shown only once, and it does not change anything else.'
-            : 'The temporary password is shown only once after it is created. They must change it at their first sign-in.'}
+            : 'Set a password below, or leave it empty and one will be generated — a generated password has to be changed at first sign-in.'}
         </Notice>
 
         <TextField
@@ -1039,6 +1053,18 @@ function PortalAccountForm({
           required
           autoFocus
           hint="This is the email they will sign in with"
+        />
+
+        {/*
+          ⚠️ ইমেইলের **পরে**, ভূমিকার আগে — কাজের ক্রম এটাই: কে ঢুকবে,
+             কী দিয়ে ঢুকবে, তারপর কী দেখবে।
+        */}
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          hint="At least 10 characters. Leave empty to generate one they must change."
         />
 
         {!ownerAccount && (

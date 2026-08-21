@@ -403,10 +403,12 @@ export function listAuditLog(
 /** ⭐ `tempPassword` একবারই আসে — মোডালে দেখিয়ে দিন, কোথাও জমা থাকে না */
 export function resetUserPassword(
   userId: number,
+  /** ⭐ মালিক নিজে বসালে বাধ্যতামূলক বদল নেই (২৩ আগস্ট) */
+  password?: string,
 ): Promise<{ email: string; tempPassword: string }> {
   return api<{ email: string; tempPassword: string }>(
     `/users/${userId}/reset-password`,
-    { method: 'POST' },
+    { method: 'POST', body: password ? { password } : {} },
   );
 }
 
@@ -524,10 +526,24 @@ export function createPortalAccount(
   employeeId: number,
   email: string,
   role?: Role,
+  /**
+   * ⭐ মালিকের বেছে দেওয়া পাসওয়ার্ড *(২৩ আগস্ট)*।
+   *
+   * ⚠️ খালি রাখলে আগের আচরণ: সিস্টেম এলোমেলো পাসওয়ার্ড বানায় **আর
+   * প্রথম লগইনে বদলাতে বলে**। দিলে সেটাই বসে, বদলানোর পর্দা আসে না।
+   */
+  password?: string,
 ): Promise<{ userId: number; email: string; tempPassword: string }> {
   return api<{ userId: number; email: string; tempPassword: string }>(
     `/employees/${employeeId}/portal-account`,
-    { method: 'POST', body: { email, ...(role ? { role } : {}) } },
+    {
+      method: 'POST',
+      body: {
+        email,
+        ...(role ? { role } : {}),
+        ...(password ? { password } : {}),
+      },
+    },
   );
 }
 

@@ -80,9 +80,45 @@ export class CreatePortalAccountDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  /**
+   * ⭐⭐ **মালিকের বেছে দেওয়া পাসওয়ার্ড** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)*।
+   *
+   * ⚠️⚠️ **ঐচ্ছিক, আর সেটাই মূল কথা।** না দিলে আগের পথটাই চলে: সিস্টেম
+   * এলোমেলো পাসওয়ার্ড বানায় **আর প্রথম লগইনে বদলাতে বলে**। দিলে সেটাই
+   * বসে, আর বদলানোর পর্দা আসে না।
+   *
+   * ⚠️ কেন পুরোনো পথটা রাখা হলো: ওই ধাপটার একটা আসল উদ্দেশ্য ছিল —
+   * মালিকের জানা পাসওয়ার্ড যেন চিরকাল না থাকে। মালিক নিজে বসালে সেটা
+   * তিনি **জেনেবুঝে** ছাড়ছেন; কিন্তু স্ক্রিপ্ট বা ভবিষ্যতের কোনো পথ
+   * পাসওয়ার্ড না দিলে নিরাপদ আচরণটাই ডিফল্ট থাকা উচিত।
+   */
+  @IsOptional()
+  @MinLength(MIN_PASSWORD_LENGTH, {
+    message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+  })
+  @MaxLength(200)
+  password?: string;
 }
 
 export class EmployeeIdParam {
   @IsInt()
   id!: number;
 }
+
+/**
+ * ⭐ owner কারো পাসওয়ার্ড রিসেট করে — চাইলে নিজেই একটা বসিয়ে দিয়ে
+ * *(২৩ আগস্ট)*।
+ *
+ * ⚠️ ঘরটা খালি রাখলে আগের আচরণ অক্ষত: এলোমেলো পাসওয়ার্ড, আর প্রথম
+ * লগইনে বাধ্যতামূলক বদল।
+ */
+export class ResetPasswordDto {
+  @IsOptional()
+  @MinLength(MIN_PASSWORD_LENGTH, {
+    message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+  })
+  @MaxLength(200)
+  password?: string;
+}
+

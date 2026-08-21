@@ -38,6 +38,8 @@ export class EmployeePortalController {
       dto.email,
       dto.role ?? UserRole.employee,
       ip,
+      // ⭐ মালিক নিজে বসালে সেটাই, আর বদলানোর পর্দা আসে না (২৩ আগস্ট)
+      dto.password,
     );
   }
 }
