@@ -661,6 +661,22 @@ model DesignTarget {
 
   skippedReason String? @map("skipped_reason")
 
+  /**
+   * ⭐⭐ **oXeio-র আগে এই সারিটা কোথায় ছিল** *(২২ আগস্ট, ইমপোর্ট)*।
+   *
+   * পুরোনো Excel-এ নাম ও তারিখ এক ঘরে মেশানো ছিল
+   * (`Hafiz-29-07-2026`, `Salman 03.01.2026`, `বেলাল`), আর তার ভেতরে
+   * ছিল **ছেড়ে যাওয়া কর্মীদের নামও** (rony · aman · eshaan · tamim…)।
+   *
+   * ⚠️⚠️ তাই ওগুলো `assignedToId`-তে বসানো **যায়নি** — FK-টা কর্মী-সারিতে
+   * বাঁধা, আর যাঁরা নেই তাঁদের জন্য সারি বানানো মানে ইতিহাসকে বর্তমান
+   * বলে চালানো। ⭐ কিন্তু মুছেও ফেলা হয়নি: কাঁচা লেখাটা এখানে থাকল,
+   * যাতে "এই ডিজাইনটা কে করেছিল" প্রশ্নের উত্তর হারিয়ে না যায়।
+   *
+   * ⚠️ `null` মানে সারিটা oXeio-তেই জন্মেছে, ইমপোর্ট নয়।
+   */
+  sourceNote String? @map("source_note")
+
   addedBy    User      @relation("addedTargets", fields: [addedById], references: [id])
   assignedTo Employee? @relation(fields: [assignedToId], references: [id])
 
