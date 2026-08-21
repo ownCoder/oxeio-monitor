@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
+import { workDateOf } from '../agent/util/dhaka-time';
 import { JOB_TIMEZONE, RunLock, SCHEDULING_ENABLED } from '../summary/scheduling';
 import { TargetsService } from './targets.service';
 
@@ -25,6 +26,8 @@ import { TargetsService } from './targets.service';
 export class TargetsJob {
   private readonly logger = new Logger(TargetsJob.name);
   private readonly lock = new RunLock();
+  /** ⚠️ আলাদা তালা — ফেরত ও বণ্টন কখনো একে অন্যকে আটকাবে না */
+  private readonly returnLock = new RunLock();
 
   constructor(private readonly targets: TargetsService) {}
 
@@ -37,6 +40,44 @@ export class TargetsJob {
   async scheduled(): Promise<void> {
     if (!SCHEDULING_ENABLED) return;
     await this.runOnce();
+  }
+
+  /**
+   * ⭐⭐ **দিন শেষে — না-করা টার্গেট পুলে ফেরত** *(মালিকের নিয়ম, ২২ আগস্ট)*।
+   *
+   * ⚠️⚠️ **রাত ১১:৫৫, সকাল ৮টা নয় — আর সময়টা ইচ্ছাকৃত।** বণ্টনের ঠিক
+   * আগে ফেরত নিলে সকাল ৭টায় কাজ শুরু করা কারো হাত থেকে টার্গেট **টেনে
+   * নেওয়া** হতো। রাতে করলে সকালের তালিকা পরিষ্কার হয়েই থাকে।
+   *
+   * ⚠️ মধ্যরাতের **আগে**, কারণ তারিখ ঘুরলে "আজ ছোঁয়া হয়েছে কি না"
+   * প্রশ্নটার উত্তর বদলে যেত — আর তখন আজকের কাজ-চলতি টার্গেটগুলোও
+   * ফেরত চলে যেত।
+   *
+   * ⚠️ ছুটির দিনেও চলে: বরাদ্দ ঘণ্টা গোনে না, আর ছুটির দিনে হাত ভরে
+   * রাখার কোনো কারণ নেই।
+   */
+  @Cron('0 55 23 * * *', {
+    name: 'design-target-return',
+    timeZone: JOB_TIMEZONE,
+    disabled: !SCHEDULING_ENABLED,
+    waitForCompletion: true,
+  })
+  async returnScheduled(): Promise<void> {
+    if (!SCHEDULING_ENABLED) return;
+    await this.returnOnce();
+  }
+
+  /** টেস্ট বা হাতে চালানোর জন্য। ⚠️ কখনো throw করে না। */
+  async returnOnce(now: Date = new Date()): Promise<void> {
+    await this.returnLock.run(async () => {
+      try {
+        await this.targets.returnUnworked(workDateOf(now));
+      } catch (err) {
+        this.logger.error(
+          `Return failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    });
   }
 
   /** টেস্ট বা হাতে চালানোর জন্য। ⚠️ কখনো throw করে না। */

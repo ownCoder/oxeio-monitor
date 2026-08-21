@@ -228,13 +228,80 @@ export class TargetsService {
         SET status = 'assigned',
             assigned_to_id = ${employeeId},
             assigned_at = ${now},
-            job_number = nextval('design_job_number_seq')
+            -- ⚠️⚠️ COALESCE — পুল থেকে **ফিরে আসা** টার্গেটের নম্বর
+            --    ইতিমধ্যেই আছে, আর নম্বরটা ASIN-এর, বরাদ্দের নয়।
+            --    আবার বসালে সিরিয়াল অকারণে ফুরাত, আর পুরোনো ফাইলের
+            --    নাম কোনোদিন কিছুর সাথে মিলত না।
+            job_number = COALESCE(job_number, nextval('design_job_number_seq'))
         WHERE id = ${row.id} AND status = 'pool'
       `;
       count += done;
     }
 
     return count;
+  }
+
+  /**
+   * ⭐⭐ **দিন শেষে না-করা টার্গেট পুলে ফেরত** *(মালিকের নিয়ম, ২২ আগস্ট:
+   * "din sheshe baki design gula amar main list e back asbe")*।
+   *
+   * কাউকে ৩০টা দেওয়া হলো, তিনি ১৫টা করলেন — বাকি ১৫টা পুলে ফিরে যায়,
+   * আর ভবিষ্যতে আবার বিলি হয়। ⭐ এতে কোনো টার্গেট কারো হাতে **আটকে
+   * থাকে না**; পুল সবসময় সত্যিকারের বাকি কাজটাই দেখায়।
+   *
+   * ⚠️⚠️ **যেটা আজ ছোঁয়া হয়েছে সেটা ফেরত যায় না — আর এটাই এখানকার
+   * সবচেয়ে জরুরি শর্ত।** কেউ একটা ডিজাইন খুলে কাজ শুরু করেছেন কিন্তু
+   * আজ শেষ করতে পারেননি — সরল নিয়মে ওটাও ফিরে যেত, আর কাল অন্য কারো
+   * হাতে পড়ত। দুজনের শ্রম নষ্ট, আর কেউ বুঝতই না কেন।
+   * ⭐ "ছোঁয়া" মানে ফাইলটা খোলা হয়েছে, অর্থাৎ নম্বরটা আজকের
+   * `design_credits`-এ আছে — একই সংকেত যা দিয়ে "শেষ হয়েছে" ধরা হয়।
+   *
+   * ⚠️ **কাজের নম্বর মুছে ফেলা হয় না।** নম্বরটা ASIN-এর, বরাদ্দের নয় —
+   * একবার বসলে চিরকাল ওটাই। মুছে দিলে (ক) সিরিয়াল অকারণে ফুরাত,
+   * (খ) পুরোনো ফাইলের নাম কোনোদিন কিছুর সাথে মিলত না।
+   *
+   * ⚠️ কখনো throw করে না।
+   */
+  async returnUnworked(workDate: Date): Promise<{ returned: number }> {
+    try {
+      /**
+       * ⚠️ আজ যে নম্বরগুলো কারো ফাইলে দেখা গেছে — কর্মী ধরে।
+       * ⭐ `design_credits.design_id` টেক্সট, আর `job_number` সংখ্যা;
+       * মেলানোটা তাই টেক্সটেই করা হয় (নম্বরের রূপ এক, `1000042`)।
+       */
+      const touched = await this.prisma.designCredit.findMany({
+        where: { firstWorkDate: workDate },
+        select: { employeeId: true, designId: true },
+      });
+
+      const keep = new Set(touched.map((t) => `${t.employeeId}:${t.designId}`));
+
+      const open = await this.prisma.designTarget.findMany({
+        where: { status: DesignTargetStatus.assigned },
+        select: { id: true, assignedToId: true, jobNumber: true },
+      });
+
+      const ids = open
+        .filter((t) => !keep.has(`${t.assignedToId}:${t.jobNumber}`))
+        .map((t) => t.id);
+      if (ids.length === 0) return { returned: 0 };
+
+      const { count } = await this.prisma.designTarget.updateMany({
+        // ⚠️ `status` শর্তটা এখানেও — এই ফাঁকে কেউ শেষ করে ফেললে তাঁর
+        //    কাজটা যেন পুলে ফেরত না যায়
+        where: { id: { in: ids }, status: DesignTargetStatus.assigned },
+        data: { status: DesignTargetStatus.pool, assignedToId: null, assignedAt: null },
+      });
+
+      if (count > 0) this.logger.log(`Design targets returned to the pool · ${count}`);
+
+      return { returned: count };
+    } catch (err) {
+      this.logger.error(
+        `Could not return targets: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return { returned: 0 };
+    }
   }
 
   /** ⭐ ডিজাইনারের নিজের তালিকা — যেগুলো এখনো হাতে আছে */

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { workDateOf } from '../src/agent/util/dhaka-time';
 import { TargetsService } from '../src/targets/targets.service';
 import { JOB_NUMBER_START } from '../src/targets/targets.rules';
 import {
@@ -299,5 +300,133 @@ describe('ফাইলের নাম থেকে শেষ হওয়া', 
 
     expect(closed).toBe(0);
     expect((await h.prisma.designTarget.findFirstOrThrow()).status).toBe('assigned');
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+
+describe('দিন শেষে পুলে ফেরত', () => {
+  async function seed(count: number) {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join(BR),
+    }).expect(201);
+  }
+
+  const TODAY = new Date();
+  /** ⚠️ নতুন লাইন — সরাসরি লিখলে escaping-এ ভুল হয় */
+  const BR = String.fromCharCode(10);
+
+  /**
+   * ⭐⭐ মালিকের নিয়ম *(২২ আগস্ট)*: *"din sheshe baki design gula amar
+   * main list e back asbe"* — ৩০টা দেওয়া, ১৫টা করা, বাকি ১৫ ফেরত।
+   */
+  it('না-করা টার্গেট পুলে ফেরে', async () => {
+    await staff('OX-D1', 'designer', 'd1@test.local');
+    await seed(40);
+
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+    expect(await h.prisma.designTarget.count({ where: { status: 'assigned' } })).toBe(30);
+
+    const { returned } = await targets.returnUnworked(workDateOf(TODAY));
+
+    expect(returned).toBe(30);
+    expect(await h.prisma.designTarget.count({ where: { status: 'pool' } })).toBe(40);
+    // ⚠️ কারো হাতে আর কিছু নেই
+    expect(
+      await h.prisma.designTarget.count({ where: { assignedToId: { not: null } } }),
+    ).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ **এই ফাইলের সবচেয়ে জরুরি টেস্ট।** কেউ একটা ডিজাইন খুলে কাজ শুরু
+   * করেছেন কিন্তু আজ শেষ করতে পারেননি — সরল নিয়মে ওটাও ফিরে যেত, আর কাল
+   * অন্য কারো হাতে পড়ত। দুজনের শ্রম নষ্ট, আর কেউ বুঝতই না কেন।
+   */
+  it('আজ ছোঁয়া টার্গেট ফেরত যায় না', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    await seed(40);
+
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+
+    const mine = await h.prisma.designTarget.findMany({
+      where: { assignedToId: designer.id },
+      select: { id: true, jobNumber: true },
+      take: 2,
+    });
+
+    // ⭐ "ছোঁয়া" = ফাইলটা খোলা হয়েছে, অর্থাৎ নম্বরটা আজকের ক্রেডিটে আছে
+    await h.prisma.designCredit.create({
+      data: {
+        employeeId: designer.id,
+        designId: String(mine[0].jobNumber),
+        firstWorkDate: workDateOf(TODAY),
+      },
+    });
+
+    const { returned } = await targets.returnUnworked(workDateOf(TODAY));
+
+    expect(returned).toBe(29);
+    const kept = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: mine[0].id },
+    });
+    expect(kept.status).toBe('assigned');
+    expect(kept.assignedToId).toBe(designer.id);
+  });
+
+  /**
+   * ⚠️⚠️ **কাজের নম্বর মুছে যায় না।** নম্বরটা ASIN-এর, বরাদ্দের নয় —
+   * মুছলে সিরিয়াল অকারণে ফুরাত, আর পুরোনো ফাইলের নাম কোনোদিন কিছুর
+   * সাথে মিলত না।
+   */
+  it('ফেরত এলেও নম্বর একই থাকে, আর পরের বার নতুন নম্বর বসে না', async () => {
+    await staff('OX-D1', 'designer', 'd1@test.local');
+    await seed(40);
+
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+
+    const before = await h.prisma.designTarget.findMany({
+      where: { status: 'assigned' },
+      select: { id: true, jobNumber: true },
+      orderBy: { id: 'asc' },
+    });
+
+    await targets.returnUnworked(workDateOf(TODAY));
+    await targets.distribute();
+
+    const after = await h.prisma.designTarget.findMany({
+      where: { id: { in: before.map((b) => b.id) } },
+      select: { id: true, jobNumber: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const byId = new Map(after.map((a) => [a.id, a.jobNumber]));
+    for (const b of before) expect(byId.get(b.id)).toBe(b.jobNumber);
+  });
+
+  /** ⚠️ শেষ হয়ে যাওয়া টার্গেট ফেরত যায় না — ওটা আর কারো কাজ নয় */
+  it('শেষ ও বাদ দেওয়া টার্গেট ছোঁয়া হয় না', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    await seed(40);
+
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+
+    const mine = await h.prisma.designTarget.findMany({
+      where: { assignedToId: designer.id },
+      select: { id: true },
+      take: 2,
+    });
+    await targets.markDone(designer.id, mine[0].id);
+    await targets.skip(designer.id, mine[1].id, 'not usable');
+
+    const { returned } = await targets.returnUnworked(workDateOf(TODAY));
+
+    expect(returned).toBe(28);
+    expect(await h.prisma.designTarget.count({ where: { status: 'done' } })).toBe(1);
+    expect(await h.prisma.designTarget.count({ where: { status: 'skipped' } })).toBe(1);
   });
 });
