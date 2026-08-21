@@ -165,7 +165,9 @@ CREATE TABLE users (
   role              TEXT NOT NULL,          -- owner | manager
   totp_secret       TEXT,                   -- ঐচ্ছিক 2FA
   is_active         BOOLEAN NOT NULL DEFAULT TRUE,
-  must_change_pw    BOOLEAN NOT NULL DEFAULT TRUE,  -- প্রথম লগইনে পাসওয়ার্ড বদলাতেই হবে
+  must_change_pw    BOOLEAN NOT NULL DEFAULT TRUE,  -- ⚠️ ডিফল্ট TRUE-ই আছে, কিন্তু মালিক
+                                                    --    নিজে পাসওয়ার্ড বসালে FALSE বসে
+                                                    --    ([ADR-033](05-Options-Decisions.md))
   pw_changed_at     TIMESTAMPTZ,
   last_login_at     TIMESTAMPTZ,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
