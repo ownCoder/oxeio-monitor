@@ -655,6 +655,18 @@ model DesignTarget {
   assignedToId Int?      @map("assigned_to_id")
   assignedAt   DateTime? @map("assigned_at") @db.Timestamptz(3)
 
+  /**
+   * ⭐⭐ **কাজ শুরু হয়েছে** — ফাইলটা প্রথমবার খোলা হয়েছে *(২৩ আগস্ট)*।
+   *
+   * ⚠️⚠️ **"খোলা" আর "শেষ" এক নয়, আর প্রথমে সেটা গুলিয়ে ফেলা হয়েছিল।**
+   * এজেন্ট শিরোনাম থেকে নম্বরটা তখনই দেখে যখন ফাইলটা **সামনে আসে** —
+   * অর্থাৎ কাজ শুরুর মুহূর্তে। ওটাকে "শেষ" ধরলে টার্গেট খোলামাত্র বন্ধ
+   * হয়ে যেত, আর ডিজাইনার পরদিন সেটা তালিকায় খুঁজেই পেতেন না।
+   *
+   * ⭐ তাই স্বয়ংক্রিয় সংকেতটা এখানে বসে, আর **শেষ হওয়া বলেন ডিজাইনার
+   * নিজে** (Complete বোতাম)। সিস্টেম যা সত্যিই জানে সেটুকুই বলে।
+   */
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(3)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
   /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
   completedVia String? @map("completed_via") @db.VarChar(16)

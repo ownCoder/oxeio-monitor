@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   allocationSizes,
   amazonUrl,
+  asinOf,
   parseBulk,
   POOL_PER_DESIGNER,
   type RejectedLine,
@@ -22,12 +23,37 @@ export interface BulkResult {
   poolSize: number;
 }
 
+/**
+ * ⚠️ এক পাতায় ৫০টা — বেশি দিলে ৩৯ হাজারের টেবিলে স্ক্রল করাই কষ্ট হতো,
+ * কম দিলে গবেষককে বারবার "পরের পাতা" চাপতে হতো।
+ */
+export const TARGET_PAGE_SIZE = 50;
+
+export interface TargetRow {
+  id: number;
+  asin: string;
+  url: string;
+  status: DesignTargetStatus;
+  jobNumber: number | null;
+  /** ⚠️ ছেড়ে যাওয়া কর্মীর সারিতে `null` — নামটা `sourceNote`-এ */
+  assignedTo: { empCode: string; fullName: string } | null;
+  assignedAt: string | null;
+  /** ⭐ ফাইলটা প্রথমবার খোলা হয়েছে — "কাজ চলছে" */
+  startedAt: string | null;
+  completedAt: string | null;
+  completedVia: string | null;
+  /** পুরোনো Excel-এর কাঁচা লেখা — "Hafiz-24-05-2026" */
+  sourceNote: string | null;
+}
+
 export interface MyTarget {
   id: number;
   asin: string;
   url: string;
   jobNumber: number | null;
   assignedAt: string | null;
+  /** ⭐ ফাইলটা খোলা হয়েছে — পর্দায় "কাজ চলছে" */
+  startedAt: string | null;
 }
 
 /**
@@ -46,7 +72,12 @@ export class TargetsService {
   ) {}
 
   /**
-   * ⭐⭐ **কে জমা দিতে পারবেন** — মালিক · ম্যানেজার · **গবেষক**।
+   * ⭐⭐ **কে টার্গেট দেখতে ও জমা দিতে পারবেন** — মালিক · ম্যানেজার ·
+   * **গবেষক** *(২৩ আগস্ট)*।
+   *
+   * ⚠️ পড়া ও লেখার পাহারা **একটাই**, আর সেটা ইচ্ছাকৃত: পুরো তালিকায়
+   * দেখা যায় গোটা দলের কাজ কোথায় দাঁড়িয়ে — সেটা ডিজাইনারের দেখার
+   * জিনিস নয়। ⭐ তিনি নিজের ৩০টা দেখেন `/me/targets`-এ।
    *
    * ⚠️⚠️ **গবেষককে `@Roles()` দিয়ে আটকানো যায় না, আর সেটাই এখানকার
    * আসল কথা।** পোর্টালের রোল তিনটে (owner · manager · employee), আর
@@ -59,7 +90,7 @@ export class TargetsService {
    * ধরন বদলানোর পরেও তাঁর পুরোনো টোকেন **মেয়াদ শেষ না হওয়া পর্যন্ত**
    * পুরোনো অনুমতি নিয়ে ঘুরত।
    */
-  private async assertCanSubmit(actor: SessionUser): Promise<void> {
+  async assertCanUse(actor: SessionUser): Promise<void> {
     if (actor.role === UserRole.owner || actor.role === UserRole.manager) return;
 
     if (actor.employeeId !== null) {
@@ -87,7 +118,7 @@ export class TargetsService {
    * অনুমান করে নয় — "৫০০টা জমা হয়েছে" বলে ৪৩৭টা ঢোকাটা নীরব মিথ্যা।
    */
   async bulkAdd(actor: SessionUser, text: string, ip: string): Promise<BulkResult> {
-    await this.assertCanSubmit(actor);
+    await this.assertCanUse(actor);
 
     const { accepted, rejected } = parseBulk(text);
 
@@ -278,10 +309,15 @@ export class TargetsService {
 
       const open = await this.prisma.designTarget.findMany({
         where: { status: DesignTargetStatus.assigned },
-        select: { id: true, assignedToId: true, jobNumber: true },
+        select: { id: true, assignedToId: true, jobNumber: true, startedAt: true },
       });
 
       const ids = open
+        // ⚠️⚠️ **শুরু হওয়া টার্গেট ফেরত যায় না** — `startedAt` বসা মানে
+        //    ফাইলটা কোনো একদিন খোলা হয়েছে, অর্থাৎ কাজ চলছে। আজকের
+        //    ক্রেডিট দেখাটা তার চেয়ে সংকীর্ণ ছিল: তিন দিন ধরে চলা কাজ
+        //    যেদিন কেউ ফাইলটা খোলেনি, সেদিনই ফেরত চলে যেত।
+        .filter((t) => t.startedAt === null)
         .filter((t) => !keep.has(`${t.assignedToId}:${t.jobNumber}`))
         .map((t) => t.id);
       if (ids.length === 0) return { returned: 0 };
@@ -308,7 +344,13 @@ export class TargetsService {
   async mine(employeeId: number): Promise<MyTarget[]> {
     const rows = await this.prisma.designTarget.findMany({
       where: { assignedToId: employeeId, status: DesignTargetStatus.assigned },
-      select: { id: true, asin: true, jobNumber: true, assignedAt: true },
+      select: {
+        id: true,
+        asin: true,
+        jobNumber: true,
+        assignedAt: true,
+        startedAt: true,
+      },
       // ⚠️ যেটা আগে এসেছে সেটা আগে — নইলে পুরোনো টার্গেট চিরকাল তলায়
       //    পড়ে থাকত আর কেউ ধরত না
       orderBy: { assignedAt: 'asc' },
@@ -320,6 +362,7 @@ export class TargetsService {
       url: amazonUrl(r.asin),
       jobNumber: r.jobNumber,
       assignedAt: r.assignedAt?.toISOString() ?? null,
+      startedAt: r.startedAt?.toISOString() ?? null,
     }));
   }
 
@@ -362,7 +405,16 @@ export class TargetsService {
   }
 
   /**
-   * ⭐⭐ **ফাইলের নাম থেকে "শেষ হয়েছে" ধরা** — কোনো বোতাম ছাড়াই।
+   * ⭐⭐ **ফাইলের নাম থেকে "কাজ শুরু হয়েছে" ধরা।**
+   *
+   * ⚠️⚠️ **আগে এটাকেই "শেষ" ধরা হতো, আর সেটা ভুল ছিল** *(সারানো ২৩
+   * আগস্ট, মালিকের প্রশ্নে)*। এজেন্ট শিরোনাম থেকে নম্বরটা তখনই দেখে যখন
+   * ফাইলটা **সামনে আসে** — অর্থাৎ কাজ শুরুর মুহূর্তে। ওটাকে "শেষ" ধরায়
+   * টার্গেট **খোলামাত্র বন্ধ** হয়ে যেত, আর ডিজাইনার পরদিন সেটা তালিকায়
+   * খুঁজে পেতেন না।
+   *
+   * ⭐ সিস্টেম এখন যা **সত্যিই জানে** সেটুকুই বলে: কাজ শুরু হয়েছে।
+   * শেষ হওয়া বলেন ডিজাইনার নিজে (`markDone`)।
    *
    * ডিজাইনার বরাদ্দ পাওয়া নম্বরটা ফাইলের নামে বসান
    * (`1000042-Funny Cat T-Shirt.ai`), আর ওই নম্বরটাই `design_credits`-এ
@@ -375,7 +427,7 @@ export class TargetsService {
    * ⚠️ কখনো throw করে না — এটা একটা সুবিধা, আর এর জন্য দৈনিক সারাংশ
    * আটকে যাওয়া চলবে না।
    */
-  async closeByJobNumbers(
+  async markStartedByJobNumbers(
     employeeId: number,
     numbers: readonly string[],
     now: Date,
@@ -391,23 +443,97 @@ export class TargetsService {
           jobNumber: { in: ids },
           assignedToId: employeeId,
           status: DesignTargetStatus.assigned,
+          // ⚠️ যেটায় আগেই চিহ্ন বসেছে সেটা আবার ছোঁয়া হয় না — নইলে
+          //    "কবে শুরু" রোজ আজকের তারিখে সরে যেত
+          startedAt: null,
         },
-        data: {
-          status: DesignTargetStatus.done,
-          completedAt: now,
-          completedVia: 'filename',
-        },
+        data: { startedAt: now },
       });
 
       return count;
     } catch (err) {
       this.logger.warn(
-        `Could not close targets by job number: ${
+        `Could not mark targets started: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
       return 0;
     }
+  }
+
+  /**
+   * ⭐⭐ **পুরো তালিকা** *(২৩ আগস্ট, মালিকের চাওয়া)* — ছাঁকনি ও পাতা ভাগসহ।
+   *
+   * ⚠️⚠️ **পাতা ভাগ বাধ্যতামূলক, ঐচ্ছিক নয়:** টেবিলে **৩৯ হাজারের বেশি**
+   * সারি। সব একসাথে পাঠালে উত্তরটা কয়েক MB হতো, আর ব্রাউজার ওই টেবিল
+   * আঁকতে গিয়ে জমে যেত।
+   *
+   * ⭐ `q` দিয়ে **URL বা ASIN** দুটোই খোঁজা যায় — গবেষক একটা লিঙ্ক
+   * পেস্ট করে দেখে নিতে পারেন এটা আগে হয়ে গেছে কি না, আর কে করেছিল।
+   * ⚠️ URL থেকে ASIN বের করতে `asinOf()`-ই ব্যবহার হয়, আলাদা কোনো
+   * পার্সিং নয় — নইলে খোঁজা আর জমা দেওয়া দু-রকম বুঝত।
+   */
+  async list(query: {
+    status?: DesignTargetStatus;
+    q?: string;
+    page?: number;
+  }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
+    const page = Math.max(1, query.page ?? 1);
+
+    let asin: string | undefined;
+    if (query.q && query.q.trim().length > 0) {
+      const parsed = asinOf(query.q.trim());
+      // ⚠️ URL না হলে যা লেখা আছে সেটাই ASIN ধরে খোঁজা — লোকে
+      //    আংশিক আইডিও লেখে
+      asin = 'asin' in parsed ? parsed.asin : query.q.trim().toUpperCase();
+    }
+
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(asin ? { asin: { contains: asin } } : {}),
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.designTarget.count({ where }),
+      this.prisma.designTarget.findMany({
+        where,
+        select: {
+          id: true,
+          asin: true,
+          status: true,
+          jobNumber: true,
+          assignedAt: true,
+          startedAt: true,
+          completedAt: true,
+          completedVia: true,
+          sourceNote: true,
+          assignedTo: { select: { empCode: true, fullName: true } },
+        },
+        // ⚠️ নতুন আগে — গবেষক সদ্য জমা দেওয়াগুলোই আগে দেখতে চান
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * TARGET_PAGE_SIZE,
+        take: TARGET_PAGE_SIZE,
+      }),
+    ]);
+
+    return {
+      rows: rows.map((r) => ({
+        id: r.id,
+        asin: r.asin,
+        url: amazonUrl(r.asin),
+        status: r.status,
+        jobNumber: r.jobNumber,
+        assignedTo: r.assignedTo,
+        assignedAt: r.assignedAt?.toISOString() ?? null,
+        startedAt: r.startedAt?.toISOString() ?? null,
+        completedAt: r.completedAt?.toISOString() ?? null,
+        completedVia: r.completedVia,
+        sourceNote: r.sourceNote,
+      })),
+      total,
+      page,
+      pages: Math.max(1, Math.ceil(total / TARGET_PAGE_SIZE)),
+    };
   }
 
   /** পুলের অবস্থা — ইনবক্সের পর্দায় */

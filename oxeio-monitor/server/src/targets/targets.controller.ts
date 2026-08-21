@@ -7,9 +7,11 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { DesignTargetStatus, UserRole } from '@prisma/client';
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
@@ -22,6 +24,19 @@ class BulkDto {
    */
   @IsString() @MaxLength(60_000)
   text!: string;
+}
+
+class ListQueryDto {
+  @IsOptional() @IsIn(['pool', 'assigned', 'done', 'skipped'])
+  status?: DesignTargetStatus;
+
+  /** ⭐ URL বা ASIN — দুটোই চলে */
+  @IsOptional() @IsString() @MaxLength(200)
+  q?: string;
+
+  /** ⚠️ `@Type` ছাড়া query string-এর `"2"` স্ট্রিং হয়েই থাকত */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  page?: number;
 }
 
 class SkipDto {
@@ -51,8 +66,26 @@ export class TargetsController {
     return this.targets.bulkAdd(actor, dto.text, ip);
   }
 
+  /**
+   * ⭐⭐ **পুরো তালিকা** — মালিক · ম্যানেজার · গবেষক *(২৩ আগস্ট)*।
+   *
+   * ⚠️ পাহারাটা এখানে **হাতে ডাকা**, `@Roles()` দিয়ে নয় — গবেষকের রোল
+   * `employee`, তাই ডেকোরেটর দিয়ে তাঁকে আলাদা করা যায় না।
+   */
+  @Get()
+  async list(@CurrentUser() actor: SessionUser, @Query() q: ListQueryDto) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.list(q);
+  }
+
+  /**
+   * ⚠️ এখানেও একই পাহারা। আগে এটা **খোলা ছিল** — যেকোনো কর্মী পুলের
+   * সংখ্যা পড়তে পারতেন। বড় ফাঁস নয়, কিন্তু একই পর্দার দুটো রুটে দুই
+   * নিয়ম থাকলে একদিন ভুলটা বড় জায়গায় হতো।
+   */
   @Get('stats')
-  stats() {
+  async stats(@CurrentUser() actor: SessionUser) {
+    await this.targets.assertCanUse(actor);
     return this.targets.stats();
   }
 

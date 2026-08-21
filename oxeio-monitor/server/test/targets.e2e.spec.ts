@@ -250,12 +250,17 @@ describe('বণ্টন', () => {
 
 // ════════════════════════════════════════════════════════════════════════════
 
-describe('ফাইলের নাম থেকে শেষ হওয়া', () => {
+describe('ফাইলের নাম থেকে "কাজ শুরু" ধরা', () => {
   /**
    * ⭐⭐ কোনো বোতাম ছাড়াই — ডিজাইনার বরাদ্দ নম্বরটা ফাইলের নামে বসালেই
    * টার্গেট বন্ধ।
    */
-  it('নিজের নম্বরে নিজের টার্গেট বন্ধ হয়', async () => {
+  /**
+   * ⚠️⚠️ **এটা "শেষ" নয়, "শুরু"** — আর তফাতটাই এখানকার মূল কথা *(সারানো
+   * ২৩ আগস্ট)*। শিরোনামে নম্বরটা দেখা যায় ফাইল **খোলার** মুহূর্তে; আগে
+   * ওটাকে "শেষ" ধরায় টার্গেট খোলামাত্র বন্ধ হয়ে যেত।
+   */
+  it('নিজের নম্বরে নিজের টার্গেটে "শুরু" চিহ্ন বসে, বন্ধ হয় না', async () => {
     const designer = await staff('OX-D1', 'designer', 'd1@test.local');
     const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     await post(owner, '/api/v1/design-targets/bulk', { text: URL_OF(1) }).expect(201);
@@ -264,7 +269,7 @@ describe('ফাইলের নাম থেকে শেষ হওয়া', 
     await targets.distribute();
 
     const row = await h.prisma.designTarget.findFirstOrThrow();
-    const closed = await targets.closeByJobNumbers(
+    const closed = await targets.markStartedByJobNumbers(
       designer.id,
       [String(row.jobNumber)],
       new Date(),
@@ -272,8 +277,10 @@ describe('ফাইলের নাম থেকে শেষ হওয়া', 
 
     expect(closed).toBe(1);
     const after = await h.prisma.designTarget.findFirstOrThrow();
-    expect(after.status).toBe('done');
-    expect(after.completedVia).toBe('filename');
+    // ⭐ এখনো ডিজাইনারের হাতেই — শেষ বলেন তিনি নিজে
+    expect(after.status).toBe('assigned');
+    expect(after.startedAt).not.toBeNull();
+    expect(after.completedAt).toBeNull();
   });
 
   /**
@@ -292,14 +299,15 @@ describe('ফাইলের নাম থেকে শেষ হওয়া', 
     const row = await h.prisma.designTarget.findFirstOrThrow();
     // ⚠️ সারিটা OX-D1-এর (কর্মী-কোডের ক্রমে প্রথম), কিন্তু বন্ধ করার
     //    চেষ্টা করছেন OX-D2
-    const closed = await targets.closeByJobNumbers(
+    const closed = await targets.markStartedByJobNumbers(
       other.id,
       [String(row.jobNumber)],
       new Date(),
     );
 
     expect(closed).toBe(0);
-    expect((await h.prisma.designTarget.findFirstOrThrow()).status).toBe('assigned');
+    // ⚠️ চিহ্নটাই বসেনি — অন্যের ফাইল কিছুই ছুঁতে পারে না
+    expect((await h.prisma.designTarget.findFirstOrThrow()).startedAt).toBeNull();
   });
 });
 
@@ -428,5 +436,40 @@ describe('দিন শেষে পুলে ফেরত', () => {
     expect(returned).toBe(28);
     expect(await h.prisma.designTarget.count({ where: { status: 'done' } })).toBe(1);
     expect(await h.prisma.designTarget.count({ where: { status: 'skipped' } })).toBe(1);
+  });
+});
+
+describe('শুরু হওয়া টার্গেট', () => {
+  /**
+   * ⚠️⚠️ **কাজ চলছে এমন টার্গেট রাতে ফেরত যায় না।** "আজ ছোঁয়া" শর্তটা
+   * এর চেয়ে সংকীর্ণ ছিল: তিন দিন ধরে চলা কাজ যেদিন কেউ ফাইলটা খোলেনি,
+   * সেদিনই ফেরত চলে যেত — আর কাল অন্য কারো হাতে পড়ত।
+   */
+  it('আগে শুরু হওয়া টার্গেট পরের দিনও হাতে থাকে', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: 40 }, (_, i) => URL_OF(i + 1)).join(String.fromCharCode(10)),
+    }).expect(201);
+
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+
+    const one = await h.prisma.designTarget.findFirstOrThrow({
+      where: { assignedToId: designer.id },
+    });
+    // ⭐ গতকাল শুরু হয়েছিল, আজ কেউ ফাইলটা খোলেনি
+    await h.prisma.designTarget.update({
+      where: { id: one.id },
+      data: { startedAt: new Date(Date.now() - 86_400_000) },
+    });
+
+    await targets.returnUnworked(workDateOf(new Date()));
+
+    const after = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: one.id },
+    });
+    expect(after.status).toBe('assigned');
+    expect(after.assignedToId).toBe(designer.id);
   });
 });

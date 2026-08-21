@@ -50,6 +50,13 @@ export interface MyTarget {
   url: string;
   jobNumber: number | null;
   assignedAt: string | null;
+  /**
+   * ⭐ ফাইলটা খোলা হয়েছে — "কাজ চলছে"।
+   *
+   * ⚠️ এটা **শেষ হওয়া নয়**: এজেন্ট নম্বরটা দেখে ফাইল খোলার মুহূর্তে।
+   * শেষ হওয়া বলেন ডিজাইনার নিজে, Complete বোতামে।
+   */
+  startedAt: string | null;
 }
 
 export function addTargets(text: string): Promise<BulkResult> {
@@ -68,9 +75,65 @@ export function myTargets(signal?: AbortSignal): Promise<MyTarget[]> {
   return api<MyTarget[]>('/me/targets', { signal });
 }
 
+/**
+ * ⭐⭐ "শেষ করেছি" *(২৩ আগস্ট, মালিকের চাওয়া)*।
+ *
+ * ⚠️ এটা ছাড়া উপায় নেই: সিস্টেম কেবল **শুরু** হওয়া দেখতে পায়
+ * (ফাইল খোলা), শেষ হওয়া নয়।
+ */
+export function completeTarget(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/me/targets/${id}/done`, { method: 'POST' });
+}
+
 export function skipTarget(id: number, reason?: string): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/me/targets/${id}/skip`, {
     method: 'POST',
     body: { reason },
   });
 }
+
+export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped';
+
+export interface TargetRow {
+  id: number;
+  asin: string;
+  url: string;
+  status: TargetStatus;
+  jobNumber: number | null;
+  /** ⚠️ ছেড়ে যাওয়া কর্মীর সারিতে `null` — নামটা তখন `sourceNote`-এ */
+  assignedTo: { empCode: string; fullName: string } | null;
+  assignedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  completedVia: string | null;
+  /** পুরোনো Excel-এর কাঁচা লেখা — `Hafiz-24-05-2026` */
+  sourceNote: string | null;
+}
+
+export interface TargetPage {
+  rows: TargetRow[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+/**
+ * ⭐ পুরো তালিকা — মালিক · ম্যানেজার · গবেষক *(২৩ আগস্ট)*।
+ *
+ * ⚠️ পাতা ভাগ বাধ্যতামূলক: টেবিলে ৩৯ হাজারের বেশি সারি।
+ * ⭐ `q`-তে **URL বা ASIN** দুটোই চলে — একটা লিঙ্ক পেস্ট করে দেখে নেওয়া
+ * যায় ওটা আগে হয়ে গেছে কি না, আর কে করেছিল।
+ */
+export function listTargets(
+  params: { status?: TargetStatus; q?: string; page?: number },
+  signal?: AbortSignal,
+): Promise<TargetPage> {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  if (params.q) qs.set('q', params.q);
+  if (params.page && params.page > 1) qs.set('page', String(params.page));
+
+  const suffix = qs.toString();
+  return api<TargetPage>(`/design-targets${suffix ? `?${suffix}` : ''}`, { signal });
+}
+

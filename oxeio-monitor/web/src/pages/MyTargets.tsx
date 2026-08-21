@@ -1,4 +1,9 @@
-import { myTargets, skipTarget, type MyTarget } from '../api/targets';
+import {
+  completeTarget,
+  myTargets,
+  skipTarget,
+  type MyTarget,
+} from '../api/targets';
 import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { ErrorBox, Loading } from '../components/States';
@@ -8,11 +13,17 @@ import { Chip, MiniButton, Notice, useMutation } from './settings/ui';
 /**
  * **ডিজাইনারের নিজের টার্গেট** *(২২ আগস্ট ২০২৬)* — `/me` পাতায়।
  *
- * ⚠️⚠️ **এই কার্ডে "Done" বোতাম নেই, আর সেটা ইচ্ছাকৃত।** ডিজাইনার বরাদ্দ
- * পাওয়া নম্বরটা ফাইলের নামে বসালেই সিস্টেম নিজে ধরে ফেলে
- * (`design.rules.ts` → `closeByJobNumbers`)। ⭐ এতে oXeio-র পুরোনো নিয়মটাও
- * বহাল থাকে — *"স্টাফের চাপার মতো কোনো বোতাম নেই"* — কেবল **Skip** ছাড়া,
- * যেটা সত্যিকারের সিদ্ধান্ত, ঘণ্টা বা সংখ্যা ছোঁয় না।
+ * ⚠️⚠️ **"Complete" বোতামটা কেন দরকার হলো** *(২৩ আগস্ট, মালিকের প্রশ্নে)*।
+ * প্রথমে ভাবা হয়েছিল সিস্টেম নিজেই শেষ হওয়া ধরে ফেলবে — কিন্তু এজেন্ট
+ * শিরোনামে নম্বরটা দেখে ফাইল **খোলার** মুহূর্তে, শেষ করার নয়। ফলে
+ * টার্গেট খোলামাত্র বন্ধ হয়ে যেত।
+ *
+ * ⭐ এখন ভাগ করা: **সিস্টেম বলে "শুরু হয়েছে"**, আর **শেষ হওয়া বলেন
+ * ডিজাইনার নিজে**। প্রত্যেকে যা সত্যিই জানে, সেটুকুই বলে।
+ *
+ * ⚠️ oXeio-র নিয়মটা তাতেও ভাঙে না ([ADR-032](../../../../docs/05-Options-Decisions.md)):
+ * বোতামটা **কোনো মাপা সংখ্যা বদলায় না** — ঘণ্টা নয়, ডিজাইনের গোনাও নয়
+ * (ওটা ফাইলের নাম থেকেই আসে)। এটা কেবল একটা কাজের ঘোষণা।
  *
  * ⚠️ কারো টার্গেট না থাকলে কার্ডটাই বসে না — গবেষক বা ম্যানেজারের পাতায়
  * একটা খালি "কোনো টার্গেট নেই" বাক্স বসিয়ে লাভ নেই।
@@ -38,8 +49,8 @@ export function MyTargets() {
         */}
         <Notice>
           Start the file name with the number —{' '}
-          <span className="num">1000042-Funny Cat T-Shirt.ai</span>. That is all;{' '}
-          <b>nothing to click when you finish</b>.
+          <span className="num">1000042-Funny Cat T-Shirt.ai</span>, then press{' '}
+          <b>Complete</b> when the design is finished.
         </Notice>
 
         {data.map((t) => (
@@ -47,6 +58,12 @@ export function MyTargets() {
             key={t.id}
             target={t}
             busy={skip.busy}
+            onDone={() =>
+              skip.run(async () => {
+                await completeTarget(t.id);
+                reload();
+              })
+            }
             onSkip={() => skip.run(async () => { await skipTarget(t.id); reload(); })}
           />
         ))}
@@ -58,10 +75,12 @@ export function MyTargets() {
 function TargetRow({
   target,
   busy,
+  onDone,
   onSkip,
 }: {
   target: MyTarget;
   busy: boolean;
+  onDone: () => void;
   onSkip: () => void;
 }) {
   return (
@@ -76,8 +95,16 @@ function TargetRow({
 
       <span className="min-w-0 flex-1">
         <span className="num block text-[13px] text-ink">{target.asin}</span>
+        {/*
+          ⭐ "কাজ চলছে" — সিস্টেম ফাইলটা খুলতে দেখেছে। ⚠️ এটা উৎসাহ নয়,
+             তথ্য: ডিজাইনার দেখেন কোনটায় তিনি হাত দিয়ে ফেলেছেন।
+        */}
         <span className="block text-[11.5px] text-ink-3">
-          {target.assignedAt ? formatAgo(target.assignedAt) : 'just now'}
+          {target.startedAt
+            ? `Started ${formatAgo(target.startedAt)}`
+            : target.assignedAt
+              ? formatAgo(target.assignedAt)
+              : 'just now'}
         </span>
       </span>
 
@@ -105,6 +132,15 @@ function TargetRow({
           Copy
         </MiniButton>
       )}
+
+      {/*
+        ⭐⭐ **Complete** — শেষ হওয়া বলার একমাত্র পথ। ⚠️ `tone` নেই বলে
+           এটা Skip-এর মতোই দেখতে; আলাদা করে বড় করা হয়নি, কারণ দিনে
+           ২৫ বার চাপতে হবে — চোখে লাগলে ক্লান্তিকর হতো।
+      */}
+      <MiniButton disabled={busy} onClick={onDone}>
+        Complete
+      </MiniButton>
 
       <MiniButton disabled={busy} onClick={onSkip}>
         Skip
