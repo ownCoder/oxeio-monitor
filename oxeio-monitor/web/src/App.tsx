@@ -13,6 +13,7 @@ import { GalleryPage } from './pages/GalleryPage';
 import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MonthlyPage } from './pages/MonthlyPage';
+import { TargetsPage } from './pages/TargetsPage';
 import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -151,6 +152,16 @@ function Router() {
           পাতাটা সেটাই দেখায়।
         */}
         <Route path="me" element={<MyDataPage />} />
+
+        {/*
+          ⭐ Targets *(২২ আগস্ট)* — গবেষক · ম্যানেজার · মালিক।
+
+          ⚠️ রুটটা **সবার জন্য খোলা**, আর সেটা ইচ্ছাকৃত: আসল পাহারা
+             সার্ভারে (`assertCanSubmit` → ৪০৩)। কেউ ঠিকানা টাইপ করে
+             এলে পাতাটা সার্ভারের বার্তাই দেখাবে, আর সেটাই এই কোডবেসের
+             নিয়ম — পর্দায় লুকানো প্রথম রক্ষাকবচ, শেষ নয়।
+        */}
+        <Route path="targets" element={<TargetsPage />} />
 
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />

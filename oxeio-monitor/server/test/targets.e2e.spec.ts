@@ -67,7 +67,7 @@ async function staff(
   return employee;
 }
 
-const post = (session: Session, path: string, body: unknown) =>
+const post = (session: Session, path: string, body: object) =>
   session.http.post(path).set('X-CSRF-Token', session.csrf).send(body);
 
 // ════════════════════════════════════════════════════════════════════════════

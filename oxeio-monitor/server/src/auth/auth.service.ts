@@ -46,6 +46,17 @@ export interface MeResult {
   lastLoginAt: Date | null;
   /** I06 — Security পর্দা এটা দেখেই অবস্থা বোঝায় */
   twoFactorEnabled: boolean;
+  /**
+   * ⭐⭐ **এই ব্যবহারকারী ডিজাইন-টার্গেট জমা দিতে পারেন কি না** *(২২ আগস্ট)*।
+   *
+   * ⚠️⚠️ **কেন একটা তৈরি উত্তর, কাঁচা `staffType` নয়।** নিয়মটা হলো
+   * "owner · manager · **অথবা** staffType = researcher" — সেটা পাঠালে
+   * ওয়েবকে ওই শর্তটা **আবার লিখতে** হতো, আর একদিন সার্ভার ও পর্দা
+   * দু-রকম বলত (কেউ মেনু দেখতেন কিন্তু ৪০৩ পেতেন, বা উল্টো)।
+   * ⭐ সার্ভার সিদ্ধান্তটা নেয়, ওয়েব কেবল মানে। শর্তটা
+   * `TargetsService.assertCanSubmit()`-এর হুবহু জোড়া।
+   */
+  canAddTargets: boolean;
 }
 
 @Injectable()
@@ -176,7 +187,12 @@ export class AuthService {
   }
 
   async me(userId: number): Promise<MeResult> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      // ⚠️ কাজের ধরন লাগে `canAddTargets`-এর জন্য — গবেষক ঢোকেন
+      //    `employee` রোলে, তাই রোল দেখে বোঝার উপায় নেই
+      include: { employee: { select: { staffType: true } } },
+    });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('This account is no longer active');
     }
@@ -190,6 +206,10 @@ export class AuthService {
       mustChangePassword: user.mustChangePw,
       lastLoginAt: user.lastLoginAt,
       twoFactorEnabled: decodeEnvelope(user.totpSecret)?.enabled === true,
+      canAddTargets:
+        user.role === UserRole.owner ||
+        user.role === UserRole.manager ||
+        user.employee?.staffType === 'researcher',
     };
   }
 

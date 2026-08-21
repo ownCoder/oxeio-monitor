@@ -10,6 +10,14 @@ export interface Me {
   employeeId: number | null;
   mustChangePassword: boolean;
   lastLoginAt: string | null;
+  /**
+   * ⭐ ডিজাইন-টার্গেট জমা দিতে পারেন কি না *(২২ আগস্ট)*।
+   *
+   * ⚠️⚠️ সার্ভারের তৈরি উত্তর, কাঁচা `staffType` নয় — নিয়মটা ("owner ·
+   * manager · অথবা researcher") ওয়েবে আবার লিখলে একদিন দুটো দু-রকম বলত,
+   * আর কেউ মেনু দেখে ৪০৩ পেতেন।
+   */
+  canAddTargets: boolean;
 }
 
 export function login(

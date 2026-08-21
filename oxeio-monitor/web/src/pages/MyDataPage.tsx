@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getMyDays, getMyDeposit, getMySummary, type MyDay } from '../api/me';
 import { useApi } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
+import { MyTargets } from './MyTargets';
 import { Card, Stat, StatRow } from '../components/Card';
 import { Duration } from '../components/Duration';
 import { Page } from '../components/Page';
@@ -131,6 +132,14 @@ export function MyDataPage() {
               tone={p.paceSec < 0 ? 'attention' : 'counted'}
             />
           </StatRow>
+
+          {/*
+            ⭐⭐ **নিজের ডিজাইন-টার্গেট** *(২২ আগস্ট)* — সবার উপরে, কারণ
+               ডিজাইনারের রোজকার কাজ এখান থেকেই শুরু হয়।
+            ⚠️ যাঁর কোনো টার্গেট নেই তাঁর পাতায় কার্ডটা **বসেই না** —
+               গবেষকের পাতায় একটা খালি বাক্স বসিয়ে লাভ নেই।
+          */}
+          <MyTargets />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card

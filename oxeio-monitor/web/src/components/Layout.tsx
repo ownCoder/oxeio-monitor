@@ -31,6 +31,15 @@ interface NavItem {
   /** কোন ভূমিকা এই ট্যাবটা **দেখতে পাবে** */
   roles: Role[];
   /**
+   * ⭐⭐ **ভূমিকা ছাড়াও একটা বাড়তি শর্ত** *(২২ আগস্ট)*।
+   *
+   * ⚠️⚠️ Targets পাতাটা গবেষকও দেখেন, আর তাঁর ভূমিকা `employee` — অর্থাৎ
+   * `roles`-এ `employee` বসালে **সব কর্মী** ওটা দেখতেন। ⭐ তাই সার্ভারের
+   * তৈরি উত্তরটা (`canAddTargets`) দেখা হয়; নিয়মটা ওয়েবে আবার লেখা
+   * হয় না, নইলে একদিন মেনু দেখা যেত অথচ পাতা ৪০৩ দিত।
+   */
+  when?: (user: { canAddTargets: boolean }) => boolean;
+  /**
    * ⭐ মকআপ ক-এর ভাগের লেবেল — এই আইটেমটার **ঠিক আগে** বসে।
    *
    * ⚠️ কেবল সাইডবারে (`lg`-এর উপরে)। ফোনের আড়াআড়ি সারিতে ভাগের লেবেল
@@ -83,6 +92,22 @@ const NAV: NavItem[] = [
     to: '/worklog',
     label: 'Worklog',
     roles: ['owner', 'manager'],
+  },
+  /**
+   * ⭐⭐ **Targets** *(২২ আগস্ট)* — গবেষকের রোজকার পাতা।
+   *
+   * ⚠️⚠️ **সাইডবারে, Settings-এ নয়** (মালিকের সিদ্ধান্ত): এখানে **রোজ**
+   * আসতে হয়, আর Settings একবার বসিয়ে ভুলে যাওয়ার জায়গা। Deposits-ও
+   * ঠিক এই কারণেই সাইডবারে (09 § ৩ঃ)।
+   *
+   * ⚠️ `roles`-এ `employee` আছে **কেবল গবেষকের জন্য**, আর আসল ছাঁকনিটা
+   * `when` — নইলে ন-জন ডিজাইনারও মেনুতে এটা দেখতেন।
+   */
+  {
+    to: '/targets',
+    label: 'Targets',
+    roles: ['owner', 'manager', 'employee'],
+    when: (user) => user.canAddTargets,
   },
   /**
    * ⭐ **J05** — স্টাফের নিজের পাতা। নামটা tray-র মেনু আইটেমের সাথে
@@ -194,7 +219,10 @@ export function Layout() {
   );
 
   const nav = user
-    ? NAV.filter((item) => item.roles.includes(user.role)).map((item) =>
+    ? NAV.filter(
+        (item) =>
+          item.roles.includes(user.role) && (item.when?.(user) ?? true),
+      ).map((item) =>
         item.to === '/alerts'
           ? { ...item, badge: alerts.data?.total }
           : item,
