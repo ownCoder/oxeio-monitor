@@ -219,6 +219,52 @@ describe('telegramDigest', () => {
   });
 
   /**
+   * ⭐⭐ **ডিজাইনের অংশ** *(২১ আগস্ট)* — মালিকের ২৫-এর টার্গেট।
+   *
+   * ⚠️⚠️ কেবল যাঁদের ম্যাপে এন্ট্রি আছে তাঁরাই ওঠেন — গবেষকেরা নন। নইলে
+   * তাঁরা রোজ "০/২৫" হয়ে তালিকায় থাকতেন, আর সেটা অভিযোগ, তথ্য নয়।
+   */
+  it('ডিজাইনের অংশে কেবল ডিজাইনাররাই ওঠেন', () => {
+    const text = telegramDigest(
+      digestOf([
+        row({ empCode: 'OX-07', fullName: 'Designer A', todayHours: 8 }),
+        row({ empCode: 'OX-04', fullName: 'Researcher B', todayHours: 8 }),
+      ]),
+      'oXeio',
+      {
+        ...EXTRAS,
+        designs: new Map([['OX-07', { done: 24, target: 25 }]]),
+      },
+    );
+
+    expect(text).toContain('DESIGNS TODAY · 1');
+    expect(text).toContain('24/25');
+    // ⚠️ নামটা উপরের ঘণ্টার দলে থাকবেই — দাবিটা তাই **ডিজাইনের
+    //    সংখ্যা** নিয়ে: গবেষকের কোনো "/25" ওঠে না
+    expect(text).not.toContain('/25  Researcher B');
+  });
+
+  /** ⭐ টার্গেট ছুঁলে চিহ্ন — ঘণ্টার নিয়মের সাথে মিলিয়ে (`>=`) */
+  it('টার্গেট ছুঁলে ✅, না ছুঁলে নয়', () => {
+    const make = (done: number) =>
+      // ⚠️ ঘণ্টায় টার্গেটের নিচে রাখা হয়েছে ইচ্ছাকৃতভাবে — নইলে
+      //    "✅ MET THE TARGET" শিরোনামটাই দাবিটা মিথ্যা করে দিত
+      telegramDigest(digestOf([row({ empCode: 'OX-07', fullName: 'A', todayHours: 5 })]), 'oXeio', {
+        ...EXTRAS,
+        designs: new Map([['OX-07', { done, target: 25 }]]),
+      });
+
+    expect(make(25)).toContain('✅');
+    expect(make(24)).not.toContain('✅');
+  });
+
+  /** ⚠️ কারো ডিজাইন-টার্গেট না থাকলে অংশটাই বসে না */
+  it('ডিজাইনার না থাকলে অংশটাই নেই', () => {
+    const text = telegramDigest(digestOf([row()]), 'oXeio', EXTRAS);
+    expect(text).not.toContain('DESIGNS TODAY');
+  });
+
+  /**
    * ⚠️ **লাইন ছোট রাখা** — সরু ফোনে ভাঁজ পড়লে কলামগুলোই ভেঙে যেত, আর
    * তখন monospace রাখার পুরো কারণটাই বৃথা।
    */
@@ -229,7 +275,11 @@ describe('telegramDigest', () => {
         row({ empCode: 'OX-02', fullName: 'Sahariar Ahmed (Ali)', todayHours: 5.62 }),
       ]),
       'oXeio Monitoring',
-      { silentPcs: 2, atTime: '18:30' },
+      {
+        silentPcs: 2,
+        atTime: '18:30',
+        designs: new Map([['OX-01', { done: 24, target: 25 }]]),
+      },
     );
 
     for (const line of text.split('\n')) {

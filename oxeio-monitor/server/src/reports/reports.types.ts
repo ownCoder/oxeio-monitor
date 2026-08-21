@@ -115,6 +115,15 @@ export interface AttendanceRow {
   employeeId: number;
   empCode: string;
   fullName: string;
+  /**
+   * ⭐ কাজের ধরন *(২২ আগস্ট)* — নিয়ম কেবল এর উপরেই বসে।
+   *
+   * ⚠️ নিচের `department` **রাখা হয়েছে** ইচ্ছাকৃতভাবে: পুরোনো সারিতে মান
+   * আছে, আর PDF-এর transliteration পথটা ওই ঘরটাই পরীক্ষা করে। তবে ঘরটা
+   * ফর্ম থেকে তুলে দেওয়া হয়েছে, তাই **নতুন কর্মীর জন্য খালি থাকবে** —
+   * শ্রেণিকরণের জন্য `staffType`-ই ভরসা।
+   */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   department: string | null;
   date: string;
   dayType: DayType;
@@ -123,6 +132,13 @@ export interface AttendanceRow {
   idleHours: number;
   adjustmentHours: number;
   creditedHours: number;
+  /**
+   * ⭐ ওই দিনে **নতুন** ডিজাইনের সংখ্যা *(২১ আগস্ট)*।
+   *
+   * ⚠️ ডিজাইনার না হলে `null` — শূন্য নয়। শূন্য লিখলে গবেষকের সারিতে
+   * "০ ডিজাইন" বসত, আর সেটা পড়তে অভিযোগের মতো লাগে; মাপটাই তাঁর নয়।
+   */
+  designsDone: number | null;
   /**
    * ওই দিনটার টার্গেট — কর্মদিবসে `monthly_target ÷ expected_workdays`
    * (২০৮ ÷ ২৬ = ৮ ঘণ্টা), সাপ্তাহিক ছুটি ও সরকারি ছুটিতে ০।

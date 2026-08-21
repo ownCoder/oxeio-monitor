@@ -260,7 +260,14 @@ export interface PayrollRow {
   employeeId: number;
   empCode: string;
   fullName: string;
-  designation: string | null;
+  /**
+   * ⭐ কাজের ধরন *(২২ আগস্ট)* — আগে এখানে `designation` ছিল।
+   *
+   * ⚠️ পদবির ঘরটা ফর্ম থেকে তুলে দেওয়া হয়েছে (মালিকের সিদ্ধান্ত), তাই
+   * নতুন কর্মীর জন্য ওটা চিরকাল খালি থাকত — অর্থাৎ পর্দায় নীরবে কিছুই
+   * দেখাত না।
+   */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   /**
    * ⭐ `null` = এই কর্মীর বেতন **বসানো নেই** — শূন্য নয়। দুটোকে এক করে
    * দেখালে শিটে চুপচাপ ভুল সংখ্যা যেত।

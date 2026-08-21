@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { workDateOf } from '../src/agent/util/dhaka-time';
 import { ActivityService } from '../src/activity/activity.service';
 import {
   createEmployeeWithCode,
@@ -118,7 +119,17 @@ describe('POST /agent/app-usage — segment state', () => {
     // দুটোই ডাটাবেসে আছে
     expect(await h.prisma.appUsage.count()).toBe(2);
 
-    const day = new Date().toISOString().slice(0, 10);
+    /**
+     * ⚠️⚠️ **ঢাকার তারিখ, UTC-র নয়** — G62-র হুবহু পুনরাবৃত্তি, আর এটাও
+     * একটা ঘুমন্ত সময়-বোমা ছিল *(ফেটেছে ২২ আগস্ট রাত ১২:০৩)*।
+     *
+     * `new Date().toISOString()` UTC দেয়, আর ঢাকা UTC+৬ — তাই মধ্যরাত
+     * থেকে ভোর ৬টার মধ্যে UTC তারিখ **আগের দিন**। তখন কোয়েরিটা ভুল
+     * দিনে যেত, `zoom` সারিটা পাওয়া যেত না, আর টেস্ট ভাঙত — অথচ কোডে
+     * কোনো ভুল নেই। ⭐ ইনজেস্ট নিজে `workDateOf()` দিয়েই দিন ঠিক করে,
+     * তাই টেস্টেরও সেটাই ব্যবহার করা উচিত।
+     */
+    const day = workDateOf(new Date()).toISOString().slice(0, 10);
     const top = await h.app
       .get(ActivityService)
       .top({ from: day, to: day, limit: 10 });

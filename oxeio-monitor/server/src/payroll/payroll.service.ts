@@ -9,7 +9,14 @@ export interface PayrollRow {
   employeeId: number;
   empCode: string;
   fullName: string;
-  designation: string | null;
+  /**
+   * ⭐ কাজের ধরন *(২২ আগস্ট)* — `designation`/`department`-এর জায়গায়।
+   *
+   * ⚠️ ওই দুটো ঘর ফর্ম থেকে তুলে দেওয়া হয়েছে (মালিকের সিদ্ধান্ত), তাই
+   * পর্দায় ওগুলো দেখানো মানে **নীরবে বাসি মান** দেখানো — নতুন কর্মীর
+   * ঘর খালিই থাকত।
+   */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   /** null = এই কর্মীর বেতন বসানো নেই — শূন্য ধরা হয় না, আলাদা করে দেখানো হয় */
   monthlySalary: string | null;
   targetHours: string;
@@ -108,7 +115,7 @@ export class PayrollService {
         id: true,
         empCode: true,
         fullName: true,
-        designation: true,
+        staffType: true,
         monthlySalary: true,
       },
       orderBy: { empCode: 'asc' },
@@ -141,7 +148,7 @@ export class PayrollService {
         employeeId: e.id,
         empCode: e.empCode,
         fullName: e.fullName,
-        designation: e.designation,
+        staffType: e.staffType,
         targetHours: hours(summary.targetSec),
         workdays: summary.expectedWorkdays,
         monthWorkdays: summary.monthWorkdays,

@@ -4,6 +4,7 @@ import { Card } from '../../components/Card';
 import { Hours } from '../../components/Duration';
 import { ProgressBar } from '../../components/ProgressRing';
 import { Caveat, Empty, ErrorBox, Loading } from '../../components/States';
+import { STAFF_TYPE_LABEL } from '../../api/admin';
 import { PersonCell, Table, type Column } from '../../components/Table';
 import { formatMonth, formatTaka, hoursToSeconds } from '../../lib/format';
 
@@ -52,7 +53,7 @@ export function PayrollTab({ month }: { month: string }) {
         <PersonCell
           fullName={row.fullName}
           empCode={row.empCode}
-          note={row.designation ?? undefined}
+          note={row.staffType ? STAFF_TYPE_LABEL[row.staffType] : undefined}
         />
       ),
     },

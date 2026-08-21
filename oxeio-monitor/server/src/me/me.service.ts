@@ -25,6 +25,15 @@ export interface MySummary {
   policySignedAt: string | null;
   /** ⭐ "ছবি কতদিন থাকে" — প্রতিশ্রুতিটা সংখ্যাসহ, পাতাতেই */
   screenshotRetentionDays: number;
+  /**
+   * ⭐⭐ **আজকের ডিজাইন** *(২১ আগস্ট)* — ডিজাইনার না হলে `null`।
+   *
+   * ⚠️⚠️ স্টাফ নিজে দেখতে পান, আর সেটা **ইচ্ছাকৃত**: যে সংখ্যা দিয়ে
+   * তাঁকে মাপা হবে, সেটা তাঁর নিজের কাছেও থাকা দরকার। একই যুক্তিতে
+   * `policySignedAt` ও retention-ও এই পাতায়।
+   * ⚠️ `null` মানে "এই মাপটা আপনার জন্য নয়" — শূন্য নয়।
+   */
+  designs: { done: number; target: number } | null;
 }
 
 /** একটা দিনের সারি — কর্মীর নিজের তালিকায় */
@@ -99,7 +108,7 @@ export class MeService {
   async summary(actor: SessionUser, now = new Date()): Promise<MySummary> {
     const employeeId = this.employeeIdOf(actor);
 
-    const [employee, progress] = await Promise.all([
+    const [employee, progress, designsDone] = await Promise.all([
       this.prisma.employee.findUniqueOrThrow({
         where: { id: employeeId },
         select: {
@@ -108,9 +117,15 @@ export class MeService {
           designation: true,
           joinedOn: true,
           policySignedAt: true,
+          staffType: true,
+          policy: { select: { dailyDesignTarget: true } },
         },
       }),
       this.progress.forEmployee(employeeId, now),
+      // ⭐ আজ দাবি করা ডিজাইন — ইনডেক্স করা (employee_id, first_work_date)
+      this.prisma.designCredit.count({
+        where: { employeeId, firstWorkDate: workDateOf(now) },
+      }),
     ]);
 
     return {
@@ -123,6 +138,12 @@ export class MeService {
       progress,
       policySignedAt: isoDate(employee.policySignedAt),
       screenshotRetentionDays: SCREENSHOT_RETENTION_DAYS,
+      // ⚠️ ডিজাইনার না হলে, বা টার্গেট ০ হলে — কিছুই নয়, শূন্য নয়
+      designs:
+        employee.staffType === 'designer' &&
+        (employee.policy?.dailyDesignTarget ?? 0) > 0
+          ? { done: designsDone, target: employee.policy!.dailyDesignTarget }
+          : null,
     };
   }
 

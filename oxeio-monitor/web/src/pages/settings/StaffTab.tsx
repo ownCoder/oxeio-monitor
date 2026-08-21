@@ -158,11 +158,7 @@ export function StaffTab() {
                বুলিয়ে "কার ধরন বসানো নেই" ধরা পড়া দরকার (মাঠে দুজনের
                খালি ছিল, আর তাঁদের একজন আসলে ডিজাইনার)।
           */
-          note={
-            emp.staffType
-              ? `${STAFF_TYPE_LABEL[emp.staffType]}${emp.designation ? ` · ${emp.designation}` : ''}`
-              : (emp.designation ?? undefined)
-          }
+          /* ⚠️ পদবি আর দেখানো হয় না — ধরনটা পাশের কলামেই আছে (২২ আগস্ট) */
           accent={emp.portalRole === 'manager'}
           accentTitle="Manager — sees everyone's Live Board and reports"
         />
@@ -170,8 +166,18 @@ export function StaffTab() {
     },
     {
       key: 'department',
-      header: 'Department',
-      render: (emp) => emp.department ?? '—',
+      header: 'Type',
+      /* ⚠️ ধরন বসানো না থাকলে **লাল** — মাঠে দুজনের খালি ছিল, আর তাঁদের
+         একজন আসলে ডিজাইনার (১৩৩টা ডিজাইন)। ফাঁকটা চোখে পড়া দরকার,
+         কারণ ধরন ছাড়া টার্গেটের হিসাব ওই কর্মীকে ছেড়ে দেয়। */
+      render: (emp) =>
+        emp.staffType ? (
+          STAFF_TYPE_LABEL[emp.staffType]
+        ) : (
+          <span className="text-brand" title="No target rules apply until this is set">
+            Not set
+          </span>
+        ),
     },
     {
       key: 'policy',
@@ -513,8 +519,6 @@ interface StaffForm {
   empCode: string;
   fullName: string;
   email: string;
-  designation: string;
-  department: string;
   /** ⚠️ খালি স্ট্রিং = "বসানো নেই" — `StaffType | ''` */
   staffType: string;
   policyId: string;
@@ -527,8 +531,6 @@ function formOf(employee: EmployeeView | null): StaffForm {
     empCode: employee?.empCode ?? '',
     fullName: employee?.fullName ?? '',
     email: employee?.email ?? '',
-    designation: employee?.designation ?? '',
-    department: employee?.department ?? '',
     staffType: employee?.staffType ?? '',
     policyId:
       employee?.policyId === null || employee?.policyId === undefined
@@ -560,12 +562,6 @@ function patchOf(
   // ⚠️ ফাঁকা ঘর মানে `null` ("মুছে দাও"), `''` নয় — `''` পাঠালে
   //    `@IsEmail`/`@Matches` ভেঙে ৪০০ হতো
   if (after.email.trim() !== before.email) patch.email = orNull(after.email);
-  if (after.designation.trim() !== before.designation) {
-    patch.designation = orNull(after.designation);
-  }
-  if (after.department.trim() !== before.department) {
-    patch.department = orNull(after.department);
-  }
   // ⚠️ ফাঁকা মানে `null` ("ধরন তুলে নাও") — সার্ভার `null` মেনে নেয়
   if (after.staffType !== before.staffType) {
     patch.staffType = after.staffType === '' ? null : (after.staffType as StaffType);
@@ -646,12 +642,6 @@ function EmployeeForm({
           ...(form.staffType === ''
             ? {}
             : { staffType: form.staffType as StaffType }),
-          ...(orUndefined(form.designation)
-            ? { designation: form.designation.trim() }
-            : {}),
-          ...(orUndefined(form.department)
-            ? { department: form.department.trim() }
-            : {}),
           ...(form.policyId ? { policyId: Number(form.policyId) } : {}),
           ...(form.joinedOn ? { joinedOn: form.joinedOn } : {}),
           ...(canSeeSalary && orUndefined(form.monthlySalary)
@@ -754,19 +744,18 @@ function EmployeeForm({
             ]}
             hint="Designers get a daily design target; the others do not"
           />
-          <TextField
-            label="Designation"
-            value={form.designation}
-            onChange={set('designation')}
-            maxLength={120}
-            hint="Job title, free text — shown on the board"
-          />
-          <TextField
-            label="Department"
-            value={form.department}
-            onChange={set('department')}
-            maxLength={120}
-          />
+          {/*
+            ⚠️⚠️ **"Designation" ও "Department" ঘর দুটো তুলে দেওয়া হয়েছে**
+               *(২২ আগস্ট, মালিকের সিদ্ধান্ত: "Designation and Department
+               remove kore dao")*।
+
+            ⭐ কারণ উপরের **Staff type**-ই এখন একমাত্র শ্রেণিকরণ, আর তিনটে
+               আলাদা ঘরে একই কথা লেখা মানে তিন রকম বানান — "Designer",
+               "Graphic Designer", "Design" — যার উপর কোনো নিয়ম বসানো যায় না।
+
+            ⚠️ ডাটাবেসের কলাম দুটো **মোছা হয়নি**: পুরোনো সারিতে মান আছে, আর
+               সেগুলো মুছলে ইতিহাস হারাত। শুধু আর সম্পাদনা বা দেখানো হয় না।
+          */}
           <TextField
             label="Joined on"
             type="date"

@@ -95,6 +95,7 @@ export class DigestService {
     const plain = telegramDigest(digest, this.orgName, {
       silentPcs: await this.silentPcsToday(now),
       atTime: dhakaClock(now),
+      designs: await this.designsToday(digest.workDate),
     });
 
     const telegramOutcome = await this.telegram.sendHtml(asPreBlock(plain), plain);
@@ -164,6 +165,55 @@ export class DigestService {
       );
       return 0;
     }
+  }
+
+  /**
+   * ⭐ আজ কে কতগুলো ডিজাইন করেছেন — `empCode` ধরে *(২১ আগস্ট)*।
+   *
+   * ⚠️⚠️ **কেবল `staff_type = 'designer'`**, আর কেবল টার্গেট চালু থাকলে।
+   * সবাইকে ধরলে গবেষকেরা রোজ "০/২৫" হয়ে তালিকায় উঠতেন — অভিযোগ, তথ্য নয়।
+   *
+   * ⚠️ কখনো throw করে না — ডিজাইনের সংখ্যা বাড়তি মাপ; ওটার জন্য গোটা
+   * দৈনিক রিপোর্ট আটকে যাওয়া চলবে না।
+   */
+  private async designsToday(
+    workDate: string,
+  ): Promise<Map<string, { done: number; target: number }>> {
+    const out = new Map<string, { done: number; target: number }>();
+
+    try {
+      const designers = await this.prisma.employee.findMany({
+        where: { status: 'active', staffType: 'designer' },
+        select: {
+          id: true,
+          empCode: true,
+          policy: { select: { dailyDesignTarget: true } },
+        },
+      });
+      if (designers.length === 0) return out;
+
+      const counts = await this.prisma.designCredit.groupBy({
+        by: ['employeeId'],
+        where: {
+          employeeId: { in: designers.map((d) => d.id) },
+          firstWorkDate: new Date(`${workDate}T00:00:00.000Z`),
+        },
+        _count: { _all: true },
+      });
+      const byId = new Map(counts.map((c) => [c.employeeId, c._count._all]));
+
+      for (const d of designers) {
+        const target = d.policy?.dailyDesignTarget ?? 0;
+        // ⚠️ টার্গেট ০ = বন্ধ, তখন সারিটাই দেখানো হয় না
+        if (target > 0) out.set(d.empCode, { done: byId.get(d.id) ?? 0, target });
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Could not count designs: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    return out;
   }
 
   /** ⭐ শুধু সংখ্যা — ইমেইল ছাড়াই টেস্ট বা ভবিষ্যতের কোনো প্রিভিউ ডাকতে পারে */

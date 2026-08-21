@@ -91,6 +91,8 @@ interface ResolvedEmployee {
   empCode: string;
   fullName: string;
   department: string | null;
+  /** ⭐ কাজের ধরন — ডিজাইনের কলামটা কেবল ডিজাইনারদের জন্য ভরে (২১ আগস্ট) */
+  staffType: 'designer' | 'researcher' | 'manager' | null;
   joinedOn: Date | null;
   leftOn: Date | null;
   monthlyTargetSec: number;
@@ -179,6 +181,7 @@ export class ReportsService {
         workDate: true,
         workedSec: true,
         idleSec: true,
+        designsDone: true,
         adjustmentSec: true,
         creditedSec: true,
       },
@@ -213,6 +216,7 @@ export class ReportsService {
           employeeId: employee.id,
           empCode: employee.empCode,
           fullName: employee.fullName,
+          staffType: employee.staffType,
           department: employee.department,
           date: toIsoDate(date),
           dayType: dayTypeOf(date, rule),
@@ -224,6 +228,9 @@ export class ReportsService {
           idleHours: secondsToHours(summary?.idleSec ?? 0),
           adjustmentHours: secondsToHours(summary?.adjustmentSec ?? 0),
           creditedHours: secondsToHours(credited),
+          // ⚠️ ডিজাইনার না হলে `null` — কলামটা তখন খালি থাকে
+          designsDone:
+            employee.staffType === 'designer' ? (summary?.designsDone ?? 0) : null,
           targetHours: secondsToHours(dayTarget),
         });
 
@@ -652,6 +659,7 @@ export class ReportsService {
           empCode: true,
           fullName: true,
           department: true,
+          staffType: true,
           status: true,
           joinedOn: true,
           leftOn: true,
@@ -709,6 +717,7 @@ export class ReportsService {
         empCode: e.empCode,
         fullName: e.fullName,
         department: e.department,
+        staffType: e.staffType,
         joinedOn: e.joinedOn,
         leftOn: e.leftOn,
         monthlyTargetSec,

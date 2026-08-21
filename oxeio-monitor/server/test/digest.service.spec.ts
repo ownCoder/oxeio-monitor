@@ -52,14 +52,17 @@ const attendance: AttendanceReport = {
       employeeId: 1,
       empCode: 'OX-001',
       fullName: 'মামুনুর রশিদ',
-      department: null,
+      staffType: null,
+    department: null,
       date: '2026-08-11',
       dayType: 'workday',
       status: 'worked',
       workedHours: 7.5,
       idleHours: 0.5,
       adjustmentHours: 0,
-      creditedHours: 7.5,
+      // ⭐ ডিজাইনের সংখ্যা (২১ আগস্ট) — ডিজাইনার না হলে null
+    designsDone: null,
+    creditedHours: 7.5,
       targetHours: 8,
     },
   ],
@@ -121,6 +124,14 @@ function makeService(
     },
     // ⚠️ "আজ কতগুলো PC চুপ ছিল" — টেলিগ্রামের এক লাইনের জন্য (১৮ আগস্ট)
     alert: { findMany: () => Promise.resolve([]) },
+    /**
+     * ⚠️⚠️ ডিজাইনের সংখ্যা *(২১ আগস্ট)*। স্টাব না দিলে `designsToday()`
+     * ছুড়ত, আর সেটা ধরা পড়ে `logger.warn`-এ — ফলে "SMTP নেই" টেস্টের
+     * warn-গোনা ১ থেকে ২ হয়ে যেত। ⭐ ব্যর্থতাটা নীরব নয়, সেটাই চাই;
+     * শুধু টেস্টে সেটা ঘটার কারণ থাকা উচিত নয়।
+     */
+    employee: { findMany: () => Promise.resolve([]) },
+    designCredit: { groupBy: () => Promise.resolve([]) },
   } as unknown as PrismaService;
 
   const reports = {

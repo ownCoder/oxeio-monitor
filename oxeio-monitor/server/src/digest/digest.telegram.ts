@@ -80,6 +80,13 @@ export interface DigestExtras {
   silentPcs: number;
   /** পাঠানোর সময় (ঢাকা), যেমন `18:30` — সংখ্যাগুলো কোন মুহূর্তের সেটা বলে */
   atTime: string;
+  /**
+   * ⭐ ডিজাইনারদের আজকের সংখ্যা — `empCode` ধরে *(২১ আগস্ট)*।
+   *
+   * ⚠️ কেবল ডিজাইনারদেরই থাকে; বাকিদের এখানে এন্ট্রিই নেই। খালি ম্যাপ
+   * মানে "কারো ডিজাইন-টার্গেট নেই", আর তখন অংশটাই বসে না।
+   */
+  designs?: ReadonlyMap<string, { done: number; target: number }>;
 }
 
 /**
@@ -185,6 +192,28 @@ export function telegramDigest(
       "Behind excludes today's target, and days",
       'before tracking started for someone.',
     );
+  }
+
+  /**
+   * ⭐⭐ **আজকের ডিজাইন** *(২১ আগস্ট)* — মালিকের ২৫-এর টার্গেট।
+   *
+   * ⚠️ ঘণ্টার দলগুলোর **ভেতরে** ঢোকানো হয়নি ইচ্ছাকৃতভাবে: একজন ঘণ্টায়
+   * পিছিয়ে থেকেও ডিজাইনে টার্গেট ছুঁতে পারেন, আর উল্টোটাও। দুটো আলাদা
+   * মাপ, তাই আলাদা অংশ — নইলে "কে পিছিয়ে" প্রশ্নের দুটো উত্তর একসাথে
+   * মিশে যেত।
+   *
+   * ⚠️ ক্রম এখানেও কর্মী-কোড ধরে, সংখ্যা ধরে নয়।
+   */
+  const designRows = rows.filter((r) => extras.designs?.has(r.empCode));
+
+  if (designRows.length > 0) {
+    out.push('', `🎨 DESIGNS TODAY · ${designRows.length}`);
+
+    for (const r of designRows) {
+      const d = extras.designs!.get(r.empCode)!;
+      const mark = d.done >= d.target ? '✅' : '  ';
+      out.push(`  ${String(d.done).padStart(3)}/${d.target} ${mark} ${r.fullName}`);
+    }
   }
 
   if (extras.silentPcs > 0) {

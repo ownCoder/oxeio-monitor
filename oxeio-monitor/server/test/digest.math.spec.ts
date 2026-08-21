@@ -21,6 +21,7 @@ function day(over: Partial<AttendanceRow> = {}): AttendanceRow {
     employeeId: 1,
     empCode: 'OX-001',
     fullName: 'Jane Doe',
+    staffType: null,
     department: null,
     date: '2026-08-11',
     dayType: 'workday',
@@ -28,6 +29,8 @@ function day(over: Partial<AttendanceRow> = {}): AttendanceRow {
     workedHours: 7.5,
     idleHours: 0.5,
     adjustmentHours: 0,
+    // ⭐ ডিজাইনের সংখ্যা (২১ আগস্ট) — ডিজাইনার না হলে null
+    designsDone: null,
     creditedHours: 7.5,
     targetHours: 8,
     ...over,

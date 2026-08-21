@@ -54,6 +54,9 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
   const columns: ExcelColumn<AttendanceRow>[] = [
     { header: 'Emp code', width: 14, value: (r) => r.empCode },
     { header: 'Name', width: 26, value: (r) => r.fullName },
+    // ⭐ ধরনটা আগে — শ্রেণিকরণ এখন এটাই (২২ আগস্ট)
+    { header: 'Staff type', width: 14, value: (r) => r.staffType },
+    // ⚠️ ঘরটা ফর্ম থেকে তুলে দেওয়া হয়েছে, তাই নতুন কর্মীর জন্য খালি
     { header: 'Department', width: 18, value: (r) => r.department },
     { header: 'Date', width: 13, value: (r) => r.date },
     { header: 'Day type', width: 16, value: (r) => DAY_TYPE_LABEL[r.dayType] },
@@ -63,6 +66,12 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
     hours('Credited (hours)', (r: AttendanceRow) => r.creditedHours),
     hours('Target (hours)', (r: AttendanceRow) => r.targetHours),
     hours('Idle (hours)', (r: AttendanceRow) => r.idleHours),
+    /*
+      ⭐ ডিজাইনের সংখ্যা *(২১ আগস্ট)* — মালিকের ২৫-এর টার্গেট।
+      ⚠️ ডিজাইনার না হলে ঘরটা **খালি**, ০ নয়: স্প্রেডশিটে ০ মানে "মেপে
+         শূন্য পাওয়া গেছে", আর সেটা এখানে মিথ্যা হতো।
+    */
+    { header: 'Designs', width: 10, value: (r: AttendanceRow) => r.designsDone },
   ];
 
   return buildWorkbook(
