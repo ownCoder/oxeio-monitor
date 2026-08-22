@@ -1041,8 +1041,8 @@ function PortalAccountForm({
       <div className="space-y-3.5">
         <Notice>
           {existing
-            ? 'Change the email or the role, then Save. Resetting gives them a new temporary password — shown only once, and it does not change anything else.'
-            : 'Set a password below, or leave it empty and one will be generated — a generated password has to be changed at first sign-in.'}
+            ? 'Change the email or the role, then Save. Resetting gives them a new password — shown only once, and it does not change anything else.'
+            : 'Set a password below, or leave it empty and one will be generated for you. Either way they can sign in straight away.'}
         </Notice>
 
         <TextField
@@ -1064,7 +1064,7 @@ function PortalAccountForm({
           type="password"
           value={password}
           onChange={setPassword}
-          hint="At least 10 characters. Leave empty to generate one they must change."
+          hint="At least 10 characters. Leave it empty and one will be generated."
         />
 
         {!ownerAccount && (

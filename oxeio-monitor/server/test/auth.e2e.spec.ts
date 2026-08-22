@@ -191,7 +191,13 @@ describe('role guard', () => {
 });
 
 describe('owner-এর পাসওয়ার্ড রিসেট (G33)', () => {
-  it('অস্থায়ী পাসওয়ার্ড দেয় ও mustChangePw বসায়', async () => {
+  /**
+   * ⚠️⚠️ **রিসেট আর বাধ্যতামূলক বদল বসায় না** *(২৩ আগস্ট, ADR-033)*।
+   * মালিক দুবার বলেছেন ওই দেয়ালটা চান না, আর দ্বিতীয়বার তিনি নিজেই
+   * ওতে আটকেছিলেন — Reset চেপে, পাসওয়ার্ডের ঘর খালি রেখে।
+   * ⭐ এলোমেলো পাসওয়ার্ড এখনো দেওয়া হয়, শুধু বদলাতে বলা হয় না।
+   */
+  it('অস্থায়ী পাসওয়ার্ড দেয়, কিন্তু বদলাতে বলে না', async () => {
     const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     const manager = await h.prisma.user.findFirstOrThrow({
       where: { email: MANAGER_EMAIL },
@@ -207,7 +213,7 @@ describe('owner-এর পাসওয়ার্ড রিসেট (G33)', ()
     const after = await h.prisma.user.findFirstOrThrow({
       where: { id: manager.id },
     });
-    expect(after.mustChangePw).toBe(true);
+    expect(after.mustChangePw).toBe(false);
 
     // নতুন পাসওয়ার্ড সত্যিই কাজ করে
     await h
@@ -257,7 +263,8 @@ describe('স্টাফের self-view অ্যাকাউন্ট', () =>
     });
     expect(created.role).toBe('employee');
     expect(created.employeeId).toBe(employee.id);
-    expect(created.mustChangePw).toBe(true);
+    // ⚠️ নতুন অ্যাকাউন্টেও নয় — ADR-033
+    expect(created.mustChangePw).toBe(false);
   });
 });
 

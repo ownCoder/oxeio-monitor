@@ -295,8 +295,9 @@ export class AuthService {
       where: { id: targetUserId },
       data: {
         passwordHash: await this.passwords.hash(tempPassword),
-        mustChangePw: chosen === undefined,
-        pwChangedAt: chosen === undefined ? null : new Date(),
+        // ⚠️ রিসেটেও একই — কখনো বাধ্যতামূলক নয় (উপরের নোট দেখুন)
+        mustChangePw: false,
+        pwChangedAt: new Date(),
       },
     });
 
@@ -473,10 +474,22 @@ export class AuthService {
         fullName: employee.fullName,
         role,
         employeeId,
-        // ⭐ মালিকের বসানো পাসওয়ার্ড বদলাতে বলা হয় না — তিনি জানেন,
-        //    আর কর্মী চাইলে Security পাতায় নিজেই বদলাতে পারেন
-        mustChangePw: chosen === undefined,
-        pwChangedAt: chosen === undefined ? null : new Date(),
+        /**
+         * ⚠️⚠️ **কখনো বাধ্যতামূলক নয়** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত —
+         * দ্বিতীয়বার)*।
+         *
+         * প্রথমে ঘরটা খালি রাখলে পুরোনো আচরণ (বাধ্যতামূলক বদল) রেখে
+         * দেওয়া হয়েছিল, "নিরাপত্তার জাল ছিঁড়ব না" যুক্তিতে। ⚠️ কিন্তু
+         * মালিক পরদিনই আবার ওই দেয়ালে আটকালেন — Reset চেপে, ঘরটা খালি
+         * রেখে। **তিনি যা চেয়েছিলেন সেটাই করা হয়নি**, আর আধা-মানা
+         * সিদ্ধান্ত মানে অর্ধেক সময় পুরোনো আচরণই ফিরে আসা।
+         *
+         * ⭐ পাসওয়ার্ড না দিলে এলোমেলো একটা বানানো হয় (মালিককে একবার
+         * দেখানো হয়) — কিন্তু বদলাতে **বলা হয় না**। কর্মী চাইলে
+         * Security পাতায় নিজেই বদলাবেন।
+         */
+        mustChangePw: false,
+        pwChangedAt: new Date(),
       },
     });
 
