@@ -3,23 +3,24 @@ import { useState } from 'react';
 import {
   addTargets,
   distributeTargets,
-  listTargets,
   REJECT_TEXT,
   targetStats,
   type BulkResult,
-  type TargetRow,
-  type TargetStatus,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { Button, Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
-import { Table } from '../components/Table';
 import { useAuth } from '../auth/AuthContext';
-import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/ui';
+import { Chip, Notice, ServerError, useMutation } from './settings/ui';
+import { Table } from '../components/Table';
 
 /**
- * **ডিজাইন-টার্গেট জমা** *(২২ আগস্ট ২০২৬)*।
+ * **ডিজাইন-টার্গেট জমা** *(২২ আগস্ট ২০২৬)* — সাইডবারে "Add Design Targets"।
+ *
+ * ⚠️ তালিকাটা **আলাদা পাতায়** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)*: জমা
+ * দেওয়া আর ঘেঁটে দেখা দুটো আলাদা কাজ, আর এক পাতায় থাকলে ৫০০ লাইন
+ * পেস্ট করতে গিয়ে প্রতিবার তালিকাটাও লোড হতো।
  *
  * ⭐ গবেষকেরা রোজ ~৫০০টা Amazon URL জমা দেন; সকাল ৮টায় ডিজাইনারদের
  * মধ্যে র‍্যান্ডম বণ্টন হয়।
@@ -42,7 +43,7 @@ export function TargetsPage() {
 
   return (
     <Page
-      title="Design targets"
+      title="Add design targets"
       subtitle="Amazon links the designers will work from"
     >
       <div className="space-y-3">
@@ -132,205 +133,9 @@ export function TargetsPage() {
           </div>
         </Card>
 
-        <TargetList />
       </div>
     </Page>
   );
-}
-
-const FILTERS: { key: TargetStatus | 'all'; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pool', label: 'Waiting' },
-  { key: 'assigned', label: 'In hand' },
-  { key: 'done', label: 'Done' },
-  { key: 'skipped', label: 'Skipped' },
-];
-
-/**
- * ⭐⭐ **পুরো তালিকা** *(২৩ আগস্ট, মালিকের চাওয়া)*।
- *
- * ⚠️⚠️ **পাতা ভাগ ছাড়া এটা বানানো যেত না** — টেবিলে ৩৯ হাজারের বেশি
- * সারি। সব একসাথে আনলে উত্তরটা কয়েক MB হতো, আর ব্রাউজার টেবিলটা আঁকতে
- * গিয়ে জমে যেত।
- *
- * ⭐ খোঁজার ঘরে **URL বা ASIN** দুটোই চলে — গবেষক একটা লিঙ্ক পেস্ট করে
- * দেখে নিতে পারেন ওটা আগে হয়ে গেছে কি না, আর কে করেছিল।
- */
-function TargetList() {
-  const [filter, setFilter] = useState<TargetStatus | 'all'>('all');
-  const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
-
-  const data = useApi(
-    (signal) =>
-      listTargets(
-        {
-          ...(filter === 'all' ? {} : { status: filter }),
-          ...(q.trim() ? { q: q.trim() } : {}),
-          page,
-        },
-        signal,
-      ),
-    [filter, q, page],
-  );
-
-  /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
-   *  থেকে "কিছু নেই" দেখা যেত, অথচ ফল আছে */
-  const change = (next: () => void) => {
-    setPage(1);
-    next();
-  };
-
-  return (
-    <Card
-      title="Every target"
-      hint={data.data ? `${data.data.total} in total` : 'Loading…'}
-      padded={false}
-    >
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => change(() => setFilter(f.key))}
-            className={`rounded-full border px-3 py-1 text-[12.5px] transition ${
-              filter === f.key
-                ? 'border-brand bg-brand-bg font-semibold text-brand-ink'
-                : 'border-line text-ink-2 hover:border-brand'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-
-        <input
-          value={q}
-          onChange={(e) => change(() => setQ(e.target.value))}
-          placeholder="Paste a link or ASIN…"
-          className="num ml-auto w-full max-w-[260px] rounded-md border border-line bg-paper px-2.5 py-1 text-[12.5px] text-ink"
-        />
-      </div>
-
-      {data.loading && !data.data && <Loading />}
-      {data.error && <ErrorBox error={data.error} retry={data.reload} />}
-
-      {data.data && data.data.rows.length === 0 && (
-        <div className="px-4 py-6 text-[13px] text-ink-3">
-          Nothing matches that.
-        </div>
-      )}
-
-      {data.data && data.data.rows.length > 0 && (
-        <>
-          <Table
-            rows={data.data.rows}
-            rowKey={(r) => String(r.id)}
-            columns={[
-              {
-                key: 'asin',
-                header: 'ASIN',
-                render: (r) => (
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    // ⚠️ tabnabbing ঠেকাতে — নতুন ট্যাব যেন এই পাতা সরাতে না পারে
-                    rel="noreferrer noopener"
-                    className="num text-data hover:underline"
-                  >
-                    {r.asin}
-                  </a>
-                ),
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (r) => <StatusChip row={r} />,
-              },
-              {
-                key: 'no',
-                header: 'Job no.',
-                align: 'right',
-                render: (r) => (
-                  <span className="num text-ink-3">{r.jobNumber ?? '—'}</span>
-                ),
-              },
-              {
-                key: 'who',
-                header: 'Designer',
-                /*
-                  ⚠️ ইমপোর্ট করা পুরোনো সারিতে `assignedTo` **নেই** — নামটা
-                     কাঁচা লেখায় (`Hafiz-24-05-2026`), কারণ ওই কর্মীদের
-                     অনেকেই আর সিস্টেমে নেই। তাই দুটোই দেখানো হয়।
-                */
-                render: (r) =>
-                  r.assignedTo ? (
-                    <span className="text-ink">{r.assignedTo.fullName}</span>
-                  ) : r.sourceNote ? (
-                    <span className="num text-[12px] text-ink-3">{r.sourceNote}</span>
-                  ) : (
-                    <span className="text-ink-3">—</span>
-                  ),
-              },
-            ]}
-          />
-
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[12.5px] text-ink-3">
-            <span className="num">
-              Page {data.data.page} of {data.data.pages}
-            </span>
-            <span className="flex gap-2">
-              <MiniButton
-                disabled={data.data.page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </MiniButton>
-              <MiniButton
-                disabled={data.data.page >= data.data.pages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </MiniButton>
-            </span>
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
-/**
- * ⚠️ "শেষ" হলে **কীভাবে** শেষ হলো সেটাও বলা হয় — সিস্টেম ফাইলের নাম
- * থেকে ধরেছে, নাকি কেউ হাতে বলেছে, নাকি পুরোনো তালিকা থেকে এসেছে।
- * সংখ্যাটা এক, কিন্তু ভরসা এক নয়।
- */
-function StatusChip({ row }: { row: TargetRow }) {
-  if (row.status === 'done') {
-    /*
-      ⚠️ পুরোনো Excel থেকে আসা সারিগুলো আলাদা করে বলা হয় — ওগুলোর
-         সংখ্যাটা সত্যি, কিন্তু oXeio সেটা **মাপেনি**, শুধু ইতিহাস
-         হিসেবে নিয়েছে। ভরসার মাত্রা এক নয়।
-      ⚠️ `filename` আর আসে না (২৩ আগস্ট থেকে ওটা "শুরু"); পুরোনো সারিতে
-         থাকতে পারে বলে ঘরটা রাখা।
-    */
-    return (
-      <Chip tone="counted">
-        {row.completedVia === 'import' ? 'Done (old list)' : 'Done'}
-      </Chip>
-    );
-  }
-  // ⭐ "কাজ চলছে" আলাদা করে দেখানো — মালিক দেখেন কোনগুলোয় সত্যিই হাত
-  //    পড়েছে, আর কোনগুলো পড়ে আছে
-  if (row.status === 'assigned') {
-    return row.startedAt ? (
-      <Chip tone="pending">Started</Chip>
-    ) : (
-      <Chip tone="muted">In hand</Chip>
-    );
-  }
-  if (row.status === 'skipped') return <Chip tone="attention">Skipped</Chip>;
-
-  return <Chip>Waiting</Chip>;
 }
 
 function Tile({ n, label, tone }: { n: number; label: string; tone: string }) {

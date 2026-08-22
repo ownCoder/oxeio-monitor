@@ -536,6 +536,65 @@ export class TargetsService {
     };
   }
 
+  /**
+   * ⭐⭐ **তালিকা সম্পাদনা** *(২৩ আগস্ট, মালিকের চাওয়া)* — owner ·
+   * manager · গবেষক।
+   *
+   * ⚠️⚠️ **ASIN বদলানো যায় না, আর সেটা ইচ্ছাকৃত।** ওটা সারিটার
+   * **পরিচয়** — বদলালে ডুপ্লিকেট-প্রহরীর গোটা ভিত্তিটাই নড়ে যেত, আর
+   * ইতিহাসে "এই পণ্যটা হয়েছিল" কথাটা মিথ্যা হয়ে যেত। ভুল ASIN হলে
+   * সারিটা মুছে নতুন করে জমা দিন।
+   *
+   * ⭐ যা বদলানো যায়: **অবস্থা**। পুলে ফেরত পাঠানো (কারো হাত থেকে
+   * তুলে নেওয়া), শেষ বলে চিহ্ন দেওয়া, বা বাদ দেওয়া।
+   */
+  async update(
+    id: number,
+    status: DesignTargetStatus,
+    now: Date,
+  ): Promise<{ ok: boolean }> {
+    /**
+     * ⚠️ পুলে ফেরত পাঠানো মানে **মালিকানাও ছেড়ে দেওয়া** — নইলে সারিটা
+     * পুলে থেকেও কারো নামে বাঁধা থাকত, আর পরের বণ্টনে দুজনের হাতে
+     * পড়ার পথ খুলে যেত।
+     * ⚠️ কাজের নম্বর মুছি না — ওটা ASIN-এর, বরাদ্দের নয়।
+     */
+    const data =
+      status === DesignTargetStatus.pool
+        ? {
+            status,
+            assignedToId: null,
+            assignedAt: null,
+            startedAt: null,
+            completedAt: null,
+            completedVia: null,
+          }
+        : status === DesignTargetStatus.done
+          ? { status, completedAt: now, completedVia: 'manual' }
+          : { status };
+
+    const { count } = await this.prisma.designTarget.updateMany({
+      where: { id },
+      data,
+    });
+
+    return { ok: count > 0 };
+  }
+
+  /**
+   * ⚠️⚠️ **মুছে ফেলা — আর এর একটা নীরব দাম আছে।**
+   *
+   * শেষ হয়ে যাওয়া একটা সারি মুছলে **ডুপ্লিকেট-প্রহরী ওটা ভুলে যায়**,
+   * আর কাল কেউ ওই ASIN আবার জমা দিলে সেটা নতুন কাজ হিসেবে ঢুকে পড়বে।
+   * ⭐ তাই পর্দায় কথাটা লেখা আছে; সাধারণত "বাদ দেওয়া" (skipped) বেশি
+   * নিরাপদ — ওটা তালিকায় থাকে, কিন্তু কারো কাজ নয়।
+   */
+  async remove(id: number): Promise<{ ok: boolean }> {
+    const { count } = await this.prisma.designTarget.deleteMany({ where: { id } });
+
+    return { ok: count > 0 };
+  }
+
   /** পুলের অবস্থা — ইনবক্সের পর্দায় */
   async stats(): Promise<Record<DesignTargetStatus, number> & { perDesigner: number }> {
     const rows = await this.prisma.designTarget.groupBy({

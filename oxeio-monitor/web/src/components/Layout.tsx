@@ -105,7 +105,18 @@ const NAV: NavItem[] = [
    */
   {
     to: '/targets',
-    label: 'Targets',
+    label: 'Add Design Targets',
+    roles: ['owner', 'manager', 'employee'],
+    when: (user) => user.canAddTargets,
+  },
+  /**
+   * ⭐ তালিকাটা **আলাদা পাতায়** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)* — জমা
+   * দেওয়া আর ঘেঁটে দেখা দুটো আলাদা কাজ। ⚠️ এক পাতায় থাকলে ৫০০ লাইন
+   * পেস্ট করতে গিয়ে প্রতিবার ৩৯ হাজারের তালিকাও লোড হতো।
+   */
+  {
+    to: '/targets/all',
+    label: 'All Design Targets',
     roles: ['owner', 'manager', 'employee'],
     when: (user) => user.canAddTargets,
   },

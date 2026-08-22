@@ -137,3 +137,24 @@ export function listTargets(
   return api<TargetPage>(`/design-targets${suffix ? `?${suffix}` : ''}`, { signal });
 }
 
+/**
+ * ⭐ তালিকা সম্পাদনা *(২৩ আগস্ট)* — owner · manager · গবেষক।
+ *
+ * ⚠️ ASIN বদলানোর পথ **নেই** — ওটা সারিটার পরিচয়; বদলালে
+ * ডুপ্লিকেট-প্রহরীর ভিত্তিই নড়ে যেত। কেবল **অবস্থা** বদলানো যায়।
+ */
+export function updateTarget(id: number, status: TargetStatus): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}`, {
+    method: 'PATCH',
+    body: { status },
+  });
+}
+
+/**
+ * ⚠️⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়** — কাল কেউ আবার জমা
+ * দিলে নতুন কাজ হিসেবে ঢুকবে। সাধারণত "Skipped" বেশি নিরাপদ।
+ */
+export function deleteTarget(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}`, { method: 'DELETE' });
+}
+

@@ -6,8 +6,10 @@ import {
   Ip,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { DesignTargetStatus, UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
@@ -37,6 +39,11 @@ class ListQueryDto {
   /** ⚠️ `@Type` ছাড়া query string-এর `"2"` স্ট্রিং হয়েই থাকত */
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)
   page?: number;
+}
+
+class UpdateTargetDto {
+  @IsIn(['pool', 'assigned', 'done', 'skipped'])
+  status!: DesignTargetStatus;
 }
 
 class SkipDto {
@@ -87,6 +94,35 @@ export class TargetsController {
   async stats(@CurrentUser() actor: SessionUser) {
     await this.targets.assertCanUse(actor);
     return this.targets.stats();
+  }
+
+  /**
+   * ⭐ তালিকা সম্পাদনা — owner · manager · গবেষক *(২৩ আগস্ট)*।
+   *
+   * ⚠️ ASIN বদলানোর কোনো পথ **নেই** — ওটা সারিটার পরিচয়; বদলালে
+   * ডুপ্লিকেট-প্রহরীর ভিত্তিই নড়ে যেত।
+   */
+  @Patch(':id')
+  async update(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTargetDto,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.update(id, dto.status, new Date());
+  }
+
+  /**
+   * ⚠️⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়** — কাল কেউ আবার
+   * জমা দিলে নতুন কাজ হিসেবে ঢুকবে। পর্দায় কথাটা লেখা আছে।
+   */
+  @Delete(':id')
+  async remove(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.remove(id);
   }
 
   /**

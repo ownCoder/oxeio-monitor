@@ -13,6 +13,7 @@ import { GalleryPage } from './pages/GalleryPage';
 import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MonthlyPage } from './pages/MonthlyPage';
+import { AllTargetsPage } from './pages/AllTargetsPage';
 import { TargetsPage } from './pages/TargetsPage';
 import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -162,6 +163,7 @@ function Router() {
              নিয়ম — পর্দায় লুকানো প্রথম রক্ষাকবচ, শেষ নয়।
         */}
         <Route path="targets" element={<TargetsPage />} />
+        <Route path="targets/all" element={<AllTargetsPage />} />
 
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />
