@@ -16,6 +16,7 @@ import {
   humanBytes,
   isExpectedSilence,
   isNoActivityWindow,
+  isOfficeOpen,
   isTamperStop,
   isThrottled,
   isWithinStartupGrace,
@@ -180,6 +181,88 @@ describe('ঢাকার সময়', () => {
 // ════════════════════════════════════════════════════════════════════════════
 // G01 — এজেন্ট চুপ
 // ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⭐⭐ **অফিস খোলা আছে কি না** — `agent_down` কখন চুপ থাকবে (২২ আগস্ট ২০২৬)।
+ *
+ * ⚠️ ২০২৬-০৮-২৪ সোমবার (ISO ১), ২০২৬-০৮-২৮ শুক্রবার (ISO ৫)।
+ */
+describe('অফিস সময়ের বাইরে agent_down চুপ', () => {
+  const OFFICE = { officeFrom: '09:00', officeTo: '18:00' };
+  const open = (iso: string, extra = {}) =>
+    isOfficeOpen({
+      now: dhaka(iso),
+      ...OFFICE,
+      weeklyOffDay: 5,
+      isHoliday: false,
+      ...extra,
+    });
+
+  it('অফিস সময়ে খোলা', () => {
+    expect(open('2026-08-24T09:00:00')).toBe(true);
+    expect(open('2026-08-24T13:30:00')).toBe(true);
+    expect(open('2026-08-24T17:59:00')).toBe(true);
+  });
+
+  /** ⭐ ঠিক ৬টা **বন্ধ** — জানালাটা `[from, to)`, নইলে ১৮:০০-এ একটা অ্যালার্ট গলত */
+  it('ঠিক শেষ মুহূর্তে বন্ধ', () => {
+    expect(open('2026-08-24T18:00:00')).toBe(false);
+  });
+
+  it('সকাল ৯টার আগে ও সন্ধ্যার পরে বন্ধ', () => {
+    expect(open('2026-08-24T08:59:00')).toBe(false);
+    expect(open('2026-08-24T18:01:00')).toBe(false);
+    expect(open('2026-08-24T23:30:00')).toBe(false);
+    expect(open('2026-08-24T03:00:00')).toBe(false);
+  });
+
+  /** ⚠️ মাঠে যে তিনটে গুচ্ছ মাপা হয়েছিল — ১৮টা, ০০টা, ০৬টা — তিনটেই বন্ধ */
+  it('মাঠে মাপা তিনটে গুচ্ছই এখন চুপ', () => {
+    expect(open('2026-08-24T18:00:00')).toBe(false);
+    expect(open('2026-08-25T00:00:00')).toBe(false);
+    expect(open('2026-08-25T06:00:00')).toBe(false);
+  });
+
+  it('সাপ্তাহিক ছুটির দিনে সারাদিনই বন্ধ', () => {
+    expect(open('2026-08-28T11:00:00')).toBe(false);
+  });
+
+  it('ক্যালেন্ডারের ছুটিতেও বন্ধ', () => {
+    expect(open('2026-08-24T11:00:00', { isHoliday: true })).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ এই তিনটেই একই কথা বলে: **সময় জানা না থাকলে খোলা ধরা হয়**।
+   * ভুলের দুটো দিকই খারাপ, কিন্তু সমান নয় — বেশি অ্যালার্ট বিরক্তিকর,
+   * নীরবে বন্ধ হয়ে যাওয়া পাহারা বিপজ্জনক।
+   */
+  it('সময় না বসানো থাকলে সারাদিন খোলা', () => {
+    expect(open('2026-08-24T23:00:00', { officeFrom: null, officeTo: null }))
+      .toBe(true);
+    expect(open('2026-08-24T23:00:00', { officeFrom: '09:00', officeTo: null }))
+      .toBe(true);
+  });
+
+  it('বেঠিক লেখা সময়ও খোলা ধরা হয়', () => {
+    expect(open('2026-08-24T23:00:00', { officeFrom: '9am', officeTo: '6pm' }))
+      .toBe(true);
+    expect(open('2026-08-24T23:00:00', { officeFrom: '25:00', officeTo: '18:00' }))
+      .toBe(true);
+  });
+
+  /** ⚠️ উল্টো জানালা (শেষ ≤ শুরু) — বন্ধ নয়, খোলা */
+  it('উল্টো জানালা খোলা ধরা হয়', () => {
+    expect(open('2026-08-24T03:00:00', { officeFrom: '18:00', officeTo: '09:00' }))
+      .toBe(true);
+    expect(open('2026-08-24T03:00:00', { officeFrom: '09:00', officeTo: '09:00' }))
+      .toBe(true);
+  });
+
+  /** ⭐ সাপ্তাহিক ছুটি না থাকলে (null) শুক্রবারও কর্মদিবস */
+  it('সাপ্তাহিক ছুটি null হলে শুক্রবারও খোলা', () => {
+    expect(open('2026-08-28T11:00:00', { weeklyOffDay: null })).toBe(true);
+  });
+});
 
 describe('G01 — নীরবতার ব্যাখ্যা আছে কি না', () => {
   const now = new Date('2026-08-11T14:00:00Z');

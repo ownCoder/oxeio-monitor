@@ -129,6 +129,19 @@ function WorkPoliciesSection() {
         ),
     },
     {
+      key: 'office',
+      header: 'Office hours',
+      render: (policy) =>
+        policy.officeFrom && policy.officeTo ? (
+          <span className="num">
+            {policy.officeFrom}–{policy.officeTo}
+          </span>
+        ) : (
+          // ⚠️ "সারাদিন" মানে অ্যালার্ট কখনো চুপ থাকবে না — সেটা লুকোনো নয়
+          <span className="text-ink-3">all day</span>
+        ),
+    },
+    {
       key: 'window',
       header: 'Screenshot window',
       render: (policy) => (
@@ -292,6 +305,8 @@ interface PolicyFormState {
   weeklyOffDay: string;
   screenshotFrom: string;
   screenshotTo: string;
+  officeFrom: string;
+  officeTo: string;
   idleThresholdSec: string;
   slotMinutes: string;
 }
@@ -315,6 +330,11 @@ function PolicyForm({
         : String(policy.weeklyOffDay),
     screenshotFrom: policy?.screenshotFrom ?? '07:00',
     screenshotTo: policy?.screenshotTo ?? '23:00',
+    // ⚠️ খালি থাকলে ৯টা–৬টা দেখানো হয়, আর সংরক্ষণে সেটাই বসে যায়।
+    //    ইচ্ছাকৃত: ঘরটা ফাঁকা রেখে সংরক্ষণ করলে সার্ভার '' বাতিল করত, আর
+    //    মালিক বুঝতেন না কেন কিছু হলো না।
+    officeFrom: policy?.officeFrom ?? '09:00',
+    officeTo: policy?.officeTo ?? '18:00',
     idleThresholdSec: String(policy?.idleThresholdSec ?? 300),
     slotMinutes: String(policy?.slotMinutes ?? 10),
   });
@@ -333,6 +353,8 @@ function PolicyForm({
         weeklyOffDay: form.weeklyOffDay === '' ? null : Number(form.weeklyOffDay),
         screenshotFrom: form.screenshotFrom,
         screenshotTo: form.screenshotTo,
+        officeFrom: form.officeFrom,
+        officeTo: form.officeTo,
         idleThresholdSec: Number(form.idleThresholdSec),
         slotMinutes: Number(form.slotMinutes),
       };
@@ -413,6 +435,22 @@ function PolicyForm({
             options={OFF_DAY_OPTIONS}
             hint="This is not a block — hours worked on a day off still count in full"
           />
+          <TextField
+            label="Office opens"
+            type="time"
+            value={form.officeFrom}
+            onChange={set('officeFrom')}
+            mono
+          />
+          <TextField
+            label="Office closes"
+            type="time"
+            value={form.officeTo}
+            onChange={set('officeTo')}
+            mono
+            hint="Outside these hours — and on the weekly off day and holidays — a quiet PC raises no alert. Hours worked outside them still count in full."
+          />
+
           <TextField
             label="Idle threshold"
             type="number"

@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_SILENCE_MIN } from './alerts.constants';
 import {
   agentDownCandidates,
+  isOfficeOpen,
   recoveredAlertIds,
   silentMinutes,
   CLEAN_STOP_EVENTS,
@@ -32,29 +34,84 @@ export class AgentDownCheck {
   async runOnce(now = new Date()): Promise<number> {
     const silenceFloor = new Date(now.getTime() - AGENT_SILENCE_MIN * 60_000);
 
-    const devices = await this.prisma.device.findMany({
-      where: {
-        // ⚠️ revoke করা ডিভাইস বাদ — ওগুলোর চুপ থাকাটাই তো উদ্দেশ্য
-        status: 'active',
-        lastSeenAt: { not: null, lt: silenceFloor },
-      },
-      select: {
-        id: true,
-        hostname: true,
-        lastSeenAt: true,
-        employeeId: true,
-        employee: { select: { fullName: true } },
-      },
-    });
+    const [devices, holiday, fallbackPolicy] = await Promise.all([
+      this.prisma.device.findMany({
+        where: {
+          // ⚠️ revoke করা ডিভাইস বাদ — ওগুলোর চুপ থাকাটাই তো উদ্দেশ্য
+          status: 'active',
+          lastSeenAt: { not: null, lt: silenceFloor },
+        },
+        select: {
+          id: true,
+          hostname: true,
+          lastSeenAt: true,
+          employeeId: true,
+          employee: {
+            select: {
+              fullName: true,
+              policy: {
+                select: {
+                  officeFrom: true,
+                  officeTo: true,
+                  weeklyOffDay: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.holiday.findUnique({
+        where: { holidayDate: workDateOf(now) },
+        select: { name: true },
+      }),
+      /**
+       * ⚠️ যে ডিভাইস কোনো কর্মীর সাথে বাঁধা নয় (employeeId null) তার জন্য
+       *    ফলব্যাক — নইলে ওই ডিভাইসগুলো অফিস-সময়ের নিয়মের বাইরে থেকে
+       *    যেত, আর রাতেও অ্যালার্ট দিত।
+       */
+      this.prisma.workPolicy.findFirst({
+        where: { isActive: true },
+        select: { officeFrom: true, officeTo: true, weeklyOffDay: true },
+      }),
+    ]);
 
     if (devices.length === 0) return 0;
 
+    /**
+     * ⭐⭐ **অফিস বন্ধ থাকলে চুপ** *(২২ আগস্ট ২০২৬, মালিকের সিদ্ধান্ত)*।
+     *
+     * ⚠️ ছাঁকাটা এখানে, `agentDownCandidates()`-এর ভেতরে নয় — ওই ফাংশনের
+     *    প্রশ্ন "এই নীরবতার ব্যাখ্যা আছে কি?", আর এটার প্রশ্ন "এই মুহূর্তে
+     *    প্রশ্নটাই কি অর্থপূর্ণ?"। দুটো আলাদা, তাই আলাদাই থাকল।
+     *
+     * ⚠️⚠️ ডিভাইস **সরানো হয় না, শুধু অ্যালার্ট তোলা হয় না** — `lastSeenAt`
+     *    আগের মতোই লেখা থাকে, তাই সকালে অফিস খুললে যে PC তখনো চুপ, তার
+     *    জন্য অ্যালার্ট ঠিকই উঠবে।
+     */
+    const open = devices.filter((d) =>
+      isOfficeOpen({
+        now,
+        officeFrom: d.employee?.policy?.officeFrom ?? fallbackPolicy?.officeFrom ?? null,
+        officeTo: d.employee?.policy?.officeTo ?? fallbackPolicy?.officeTo ?? null,
+        weeklyOffDay:
+          d.employee?.policy?.weeklyOffDay ?? fallbackPolicy?.weeklyOffDay ?? null,
+        isHoliday: holiday !== null,
+      }),
+    );
+
+    if (open.length === 0) {
+      this.logger.debug(
+        `${devices.length} devices silent, but the office is closed — not raising`,
+      );
+      return 0;
+    }
+
     const lastStops = await this.lastCleanStops(
-      devices.map((d) => d.id),
+      open.map((d) => d.id),
       now,
     );
 
-    const silences: DeviceSilence[] = devices.map((d) => ({
+    const silences: DeviceSilence[] = open.map((d) => ({
       deviceId: d.id,
       lastSeenAt: d.lastSeenAt,
       lastCleanStopAt: lastStops.get(d.id) ?? null,
@@ -65,7 +122,7 @@ export class AgentDownCheck {
     );
     if (down.size === 0) return 0;
 
-    const inputs: RaiseInput[] = devices
+    const inputs: RaiseInput[] = open
       .filter((d) => down.has(d.id))
       .map((d) => {
         const minutes = silentMinutes(d.lastSeenAt, now) ?? 0;

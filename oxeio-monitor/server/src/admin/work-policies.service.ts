@@ -25,6 +25,9 @@ export interface WorkPolicyView {
   weeklyOffDay: number | null;
   screenshotFrom: string | null;
   screenshotTo: string | null;
+  /** ⭐ অফিস কখন খোলা — `agent_down` অ্যালার্টের জানালা। null = সারাদিন খোলা */
+  officeFrom: string | null;
+  officeTo: string | null;
   idleThresholdSec: number;
   /** ⭐ ডিজাইনারের দৈনিক টার্গেট — কেবল `staffType = designer`-এ খাটে */
   dailyDesignTarget: number;
@@ -91,6 +94,11 @@ export class WorkPoliciesService {
         weeklyOffDay: dto.weeklyOffDay ?? null,
         screenshotFrom,
         screenshotTo,
+        // ⚠️ ডিফল্ট বসানো হয় **না** — খালি মানে "সারাদিন খোলা", অর্থাৎ
+        //    আগের আচরণ। নতুন পলিসিতে চুপচাপ অ্যালার্ট বন্ধ হয়ে যাওয়ার
+        //    চেয়ে বেশি অ্যালার্ট নিরাপদ।
+        officeFrom: dto.officeFrom ?? null,
+        officeTo: dto.officeTo ?? null,
         ...(dto.idleThresholdSec === undefined
           ? {}
           : { idleThresholdSec: dto.idleThresholdSec }),
@@ -135,6 +143,17 @@ export class WorkPoliciesService {
       DEFAULT_CAPTURE_WINDOW.screenshotTo;
     this.assertWindow(screenshotFrom, screenshotTo);
 
+    /**
+     * ⭐ অফিসের সময়ও একই ভাবে **মিলিয়ে** যাচাই — শুধু একটা প্রান্ত এলে
+     * পুরোনোটার সাথে জোড়া বেঁধে দেখতে হয়।
+     *
+     * ⚠️ পার্থক্য একটাই: এখানে **খালি রাখা বৈধ** (= সারাদিন খোলা), তাই
+     * দুটোর একটাও না থাকলে যাচাইয়ের প্রশ্নই ওঠে না।
+     */
+    const officeFrom = dto.officeFrom ?? before.officeFrom;
+    const officeTo = dto.officeTo ?? before.officeTo;
+    if (officeFrom && officeTo) this.assertWindow(officeFrom, officeTo);
+
     const row = await this.prisma.workPolicy.update({
       where: { id },
       data: {
@@ -150,6 +169,8 @@ export class WorkPoliciesService {
           : { weeklyOffDay: dto.weeklyOffDay }),
         screenshotFrom,
         screenshotTo,
+        officeFrom,
+        officeTo,
         ...(dto.idleThresholdSec === undefined
           ? {}
           : { idleThresholdSec: dto.idleThresholdSec }),
@@ -306,6 +327,8 @@ function toView(policy: WorkPolicy, employeeCount: number): WorkPolicyView {
     weeklyOffDay: policy.weeklyOffDay,
     screenshotFrom: policy.screenshotFrom,
     screenshotTo: policy.screenshotTo,
+    officeFrom: policy.officeFrom,
+    officeTo: policy.officeTo,
     idleThresholdSec: policy.idleThresholdSec,
     dailyDesignTarget: policy.dailyDesignTarget,
     slotMinutes: policy.slotMinutes,

@@ -257,6 +257,14 @@ export interface WorkPolicyView {
   /** `'HH:MM'` — ক্যাপচার উইন্ডো, ডিফল্ট ০৭:০০–২৩:০০ */
   screenshotFrom: string | null;
   screenshotTo: string | null;
+  /**
+   * ⭐ `'HH:MM'` — অফিস কখন খোলা। ⚠️ ক্যাপচার উইন্ডো **নয়**: ওটা চওড়া
+   * (০৭:০০–২৩:০০) যাতে কেউ আগে-পরে কাজ করলেও ছবি ওঠে, আর এটা সংকীর্ণ
+   * (৯টা–৬টা) যাতে অফিস বন্ধ থাকলে "এজেন্ট চুপ" অ্যালার্ট না ওঠে।
+   * `null` হলে সারাদিনই খোলা ধরা হয়।
+   */
+  officeFrom: string | null;
+  officeTo: string | null;
   idleThresholdSec: number;
   slotMinutes: number;
   timezone: string;
@@ -272,6 +280,8 @@ export type WorkPolicyBody = Partial<{
   weeklyOffDay: number | null;
   screenshotFrom: string;
   screenshotTo: string;
+  officeFrom: string;
+  officeTo: string;
   idleThresholdSec: number;
   slotMinutes: number;
 }>;

@@ -238,6 +238,19 @@ export class CreateWorkPolicyDto {
   @IsOptional() @Matches(HHMM, { message: "screenshotTo must be in 'HH:MM' format" })
   screenshotTo?: string;
 
+  /**
+   * ⭐⭐ **অফিস কখন খোলা** — শুধু `agent_down` অ্যালার্ট কখন **তোলা হবে না**
+   * তা ঠিক করে (G01)। ⚠️ ঘণ্টা গোনায় কোনো প্রভাব নেই।
+   *
+   * ⚠️ না দিলে খালি থাকে, আর খালি মানে **সারাদিনই খোলা** — অর্থাৎ আগের
+   *    আচরণ। "নীরবে পাহারা বন্ধ" হওয়ার চেয়ে "বেশি অ্যালার্ট" নিরাপদ।
+   */
+  @IsOptional() @Matches(HHMM, { message: "officeFrom must be in 'HH:MM' format" })
+  officeFrom?: string;
+
+  @IsOptional() @Matches(HHMM, { message: "officeTo must be in 'HH:MM' format" })
+  officeTo?: string;
+
   @IsOptional() @IsInt() @Min(10) @Max(3600)
   idleThresholdSec?: number;
 
@@ -271,6 +284,13 @@ export class UpdateWorkPolicyDto {
 
   @IsOptional() @Matches(HHMM)
   screenshotTo?: string;
+
+  /** ⭐ অফিসের সময় — `agent_down` অ্যালার্টের জানালা (G01) */
+  @IsOptional() @Matches(HHMM)
+  officeFrom?: string;
+
+  @IsOptional() @Matches(HHMM)
+  officeTo?: string;
 
   @IsOptional() @IsInt() @Min(10) @Max(3600)
   idleThresholdSec?: number;

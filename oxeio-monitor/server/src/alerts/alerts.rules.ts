@@ -125,6 +125,63 @@ export function dhakaIsoWeekday(instant: Date): number {
   return day === 0 ? 7 : day;
 }
 
+/** ঢাকার স্থানীয় সময় দিনের কত মিনিটে (০–১৪৩৯) */
+export function dhakaMinuteOfDay(instant: Date): number {
+  const hhmmss = dhakaPathParts(instant).hhmmss;
+  return Number(hhmmss.slice(0, 2)) * 60 + Number(hhmmss.slice(2, 4));
+}
+
+/** 'HH:MM' → দিনের মিনিট। বেঠিক হলে null (তখন কলার "খোলা" ধরে) */
+export function parseHhmm(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+export interface OfficeHoursInput {
+  now: Date;
+  /** 'HH:MM' — খালি হলে সারাদিনই খোলা */
+  officeFrom: string | null;
+  officeTo: string | null;
+  /** পলিসির সাপ্তাহিক ছুটি (ISO দিন, শুক্র = ৫), না থাকলে null */
+  weeklyOffDay: number | null;
+  /** আজ ক্যালেন্ডারে ছুটি কি না */
+  isHoliday: boolean;
+}
+
+/**
+ * ⭐⭐ **অফিস কি এখন খোলা?** *(২২ আগস্ট ২০২৬)*
+ *
+ * ⚠️⚠️ এই ফাংশনটার একমাত্র উদ্দেশ্য **চুপ থাকা** — `agent_down` অ্যালার্ট
+ * কখন তোলা হবে না তা ঠিক করা। মালিকের কথা: *"office close er pore agent
+ * gula down thakobe. seita abar alart kore dekhate hobe ken?"*
+ *
+ * ⭐ মাঠের মাপ (১৪ দিন, ঢাকার ঘণ্টা অনুযায়ী): ১৮টা → ৯০, ০০টা → ৭৮,
+ * ০৬টা → ৭৮, ১২টা → ৩৩। অর্থাৎ অফিস ছুটির পর PC নিভলেই অ্যালার্ট, আর
+ * `THROTTLE_HOURS = 6` বলে সেটা সারা রাত ধরে তিনবার ফিরে আসে।
+ *
+ * ⚠️ **সময় না বসানো থাকলে "খোলা" ধরা হয়**, বন্ধ নয়। ভুলের দুটো দিকই
+ * খারাপ, কিন্তু সমান নয়: বেশি অ্যালার্ট বিরক্তিকর, আর **নীরবে বন্ধ হয়ে
+ * যাওয়া অ্যালার্ট বিপজ্জনক** — কেউ টেরই পাবে না যে পাহারা নেই।
+ * একই কারণে `officeTo <= officeFrom` (উল্টো বা সমান) হলেও খোলা ধরা হয়।
+ */
+export function isOfficeOpen(input: OfficeHoursInput): boolean {
+  const { now, officeFrom, officeTo, weeklyOffDay, isHoliday } = input;
+
+  if (isHoliday) return false;
+  if (weeklyOffDay !== null && dhakaIsoWeekday(now) === weeklyOffDay) {
+    return false;
+  }
+
+  const from = parseHhmm(officeFrom);
+  const to = parseHhmm(officeTo);
+  if (from === null || to === null || to <= from) return true;
+
+  const minute = dhakaMinuteOfDay(now);
+  return minute >= from && minute < to;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // ৩. G01 — এজেন্ট ১০ মিনিট চুপ
 // ════════════════════════════════════════════════════════════════════════════
