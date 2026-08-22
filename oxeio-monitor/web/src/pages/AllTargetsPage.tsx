@@ -315,7 +315,7 @@ function RowActions({
   if (confirming) {
     return (
       <span className="flex justify-end gap-1.5 whitespace-nowrap">
-        <MiniButton disabled={busy} onClick={onDelete}>
+        <MiniButton tone="danger" disabled={busy} onClick={onDelete}>
           Really delete
         </MiniButton>
         <MiniButton disabled={busy} onClick={() => setConfirming(false)}>
@@ -333,17 +333,24 @@ function RowActions({
           To pool
         </MiniButton>
       )}
+      {/*
+        ⚠️ নামটা **"Complete"**, "Done" নয় — ডিজাইনারের পাতায় ঠিক এই
+           বোতামটাই ওই নামে আছে, আর দুটো আলাদা শব্দ মানে মালিক ভাবতেন
+           দুটো আলাদা কাজ (মালিকের প্রশ্ন, ২৩ আগস্ট)।
+        ⭐ নিয়মটা: **বোতামে ক্রিয়া** (Complete · Skip), **চিহ্নে অবস্থা**
+           (Done · Skipped)।
+      */}
       {row.status !== 'done' && (
-        <MiniButton disabled={busy} onClick={() => onChange('done')}>
-          Done
+        <MiniButton tone="good" disabled={busy} onClick={() => onChange('done')}>
+          Complete
         </MiniButton>
       )}
       {row.status !== 'skipped' && (
-        <MiniButton disabled={busy} onClick={() => onChange('skipped')}>
+        <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
           Skip
         </MiniButton>
       )}
-      <MiniButton disabled={busy} onClick={() => setConfirming(true)}>
+      <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
         Delete
       </MiniButton>
     </span>

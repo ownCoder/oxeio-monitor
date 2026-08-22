@@ -447,14 +447,25 @@ export function MiniButton({
 }: {
   children: ReactNode;
   onClick: () => void;
-  tone?: 'default' | 'danger';
+  tone?: 'default' | 'danger' | 'good';
   disabled?: boolean;
   title?: string;
 }) {
+  /**
+   * ⭐ রং **করণীয় ধরে**, গুরুত্ব ধরে নয় *(২৩ আগস্ট, মালিকের চাওয়া)*:
+   * সবুজ = কাজ শেষ, লাল = বাদ/মুছে ফেলা।
+   *
+   * ⚠️ কেবল **বর্ডার ও লেখা** রঙিন, ভরাট নয় — টার্গেটের তালিকায় এক
+   * সারিতে চারটে বোতাম বসে, আর সবগুলো ভরাট হলে চোখ কোথায় যাবে বোঝাই
+   * যেত না। ⚠️ রঙই একমাত্র সংকেত নয়: লেখাটাও ("Complete"/"Skip") নিজেই
+   * বলে দেয়, তাই বর্ণান্ধ কারো কাছে কিছু হারায় না।
+   */
   const style =
     tone === 'danger'
-      ? 'border-line text-brand-ink hover:border-brand'
-      : 'border-line text-ink-2 hover:border-brand hover:text-ink';
+      ? 'border-brand/50 text-brand-ink hover:border-brand hover:bg-brand-bg'
+      : tone === 'good'
+        ? 'border-ok/50 text-ok-ink hover:border-ok hover:bg-ok-bg'
+        : 'border-line text-ink-2 hover:border-brand hover:text-ink';
 
   return (
     <button

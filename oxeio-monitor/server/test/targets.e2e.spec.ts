@@ -473,3 +473,40 @@ describe('শুরু হওয়া টার্গেট', () => {
     expect(after.assignedToId).toBe(designer.id);
   });
 });
+
+describe('কাজের নম্বর', () => {
+  /**
+   * ⭐⭐ **প্রতিটা টার্গেটেই নম্বর, জমা দেওয়ার মুহূর্ত থেকেই**
+   * *(২৩ আগস্ট, মালিকের চাওয়া)*। আগে নম্বর বসত বরাদ্দের সময়, তাই পুলে
+   * পড়ে থাকা সারির কোনো পরিচয় থাকত না।
+   */
+  it('পুলে বসেই নম্বর পায়, আর সব আলাদা', async () => {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: [URL_OF(1), URL_OF(2), URL_OF(3)].join(String.fromCharCode(10)),
+    }).expect(201);
+
+    const rows = await h.prisma.designTarget.findMany({
+      select: { status: true, jobNumber: true },
+    });
+
+    expect(rows).toHaveLength(3);
+    expect(rows.every((r) => r.status === 'pool')).toBe(true);
+    expect(rows.every((r) => r.jobNumber !== null)).toBe(true);
+    expect(new Set(rows.map((r) => r.jobNumber)).size).toBe(3);
+  });
+
+  /** ⚠️ বরাদ্দ হলেও নম্বরটা **বদলায় না** — ওটা ASIN-এর, বরাদ্দের নয় */
+  it('বরাদ্দের পরেও নম্বর একই থাকে', async () => {
+    await staff('OX-D1', 'designer', 'd1@test.local');
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', { text: URL_OF(1) }).expect(201);
+
+    const before = await h.prisma.designTarget.findFirstOrThrow();
+    await h.app.get(TargetsService).distribute();
+    const after = await h.prisma.designTarget.findFirstOrThrow();
+
+    expect(after.jobNumber).toBe(before.jobNumber);
+    expect(after.status).toBe('assigned');
+  });
+});

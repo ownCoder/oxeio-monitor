@@ -138,11 +138,11 @@ function TargetRow({
            এটা Skip-এর মতোই দেখতে; আলাদা করে বড় করা হয়নি, কারণ দিনে
            ২৫ বার চাপতে হবে — চোখে লাগলে ক্লান্তিকর হতো।
       */}
-      <MiniButton disabled={busy} onClick={onDone}>
+      <MiniButton tone="good" disabled={busy} onClick={onDone}>
         Complete
       </MiniButton>
 
-      <MiniButton disabled={busy} onClick={onSkip}>
+      <MiniButton tone="danger" disabled={busy} onClick={onSkip}>
         Skip
       </MiniButton>
     </div>

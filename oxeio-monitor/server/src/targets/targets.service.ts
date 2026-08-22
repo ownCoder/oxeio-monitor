@@ -122,13 +122,31 @@ export class TargetsService {
 
     const { accepted, rejected } = parseBulk(text);
 
+    /**
+     * ⭐⭐ **কাজের নম্বর বসে জমা দেওয়ার মুহূর্তেই** *(২৩ আগস্ট, মালিকের
+     * চাওয়া: "every target er job no thakobe")*।
+     *
+     * ⚠️ আগে নম্বরটা বসত **বরাদ্দের সময়**, যাতে কখনো বরাদ্দ না হওয়া
+     * সারি সিরিয়াল না খায়। কিন্তু তাতে পুলে পড়ে থাকা সারির কোনো পরিচয়
+     * থাকত না — মালিক তালিকায় একটা সারি দেখিয়ে বলতে পারতেন না "এই
+     * নম্বরটা"। ⭐ সিরিয়াল ৪ বাইটের int, তাই ৩৯ হাজার নয়, ২০০ কোটি
+     * পর্যন্ত চলে; খরচটা কল্পিত ছিল।
+     *
+     * ⚠️ `createMany` দিয়ে `nextval` ডাকা যায় না, তাই raw insert —
+     * কিন্তু `ON CONFLICT DO NOTHING` রাখা হয়েছে, নইলে ৫০০টার মধ্যে
+     * একটা পুরোনো ASIN থাকলেই গোটা ব্যাচ বাতিল হতো।
+     */
     const created =
       accepted.length === 0
         ? { count: 0 }
-        : await this.prisma.designTarget.createMany({
-            data: accepted.map((t) => ({ asin: t.asin, addedById: actor.userId })),
-            skipDuplicates: true,
-          });
+        : {
+            count: await this.prisma.$executeRaw`
+              INSERT INTO design_targets (asin, added_by_id, job_number)
+              SELECT a, ${actor.userId}, nextval('design_job_number_seq')
+              FROM unnest(${accepted.map((t) => t.asin)}::text[]) AS a
+              ON CONFLICT (asin) DO NOTHING
+            `,
+          };
 
     const poolSize = await this.prisma.designTarget.count({
       where: { status: DesignTargetStatus.pool },
