@@ -48,6 +48,13 @@ interface NavItem {
    */
   section?: string;
   /**
+   * ⭐ ভাগের **ভেতরের** আইটেম — একটু ডানে সরে বসে *(২৩ আগস্ট)*।
+   *
+   * ⚠️ শুধু শিরোনাম দিলে "নিচে আছে" ব্যাপারটা যথেষ্ট চোখে পড়ে না;
+   * সরিয়ে বসালে চোখ এক নজরেই দেখে কোনটা কার অধীনে।
+   */
+  child?: boolean;
+  /**
    * ⭐ নামের পাশে একটা সংখ্যা (মকআপে `Alerts 2`)।
    *
    * ⚠️⚠️ `undefined` আর `0` **এক নয়**: `0` মানে "গুনেছি, কিছু নেই" — ব্যাজ
@@ -115,16 +122,18 @@ const NAV: NavItem[] = [
    */
   {
     to: '/targets',
-    label: 'Add targets',
+    label: 'Add target design',
     roles: ['owner', 'manager', 'employee'],
     when: (user) => user.canAddTargets,
     section: 'Targets',
+    child: true,
   },
   {
     to: '/targets/all',
-    label: 'All targets',
+    label: 'All design targets',
     roles: ['owner', 'manager', 'employee'],
     when: (user) => user.canAddTargets,
+    child: true,
   },
   /**
    * ⭐ **J05** — স্টাফের নিজের পাতা। নামটা tray-র মেনু আইটেমের সাথে
@@ -399,7 +408,13 @@ export function Layout() {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `mb-0.5 flex items-center justify-between gap-2 rounded-md px-2.5 py-2 text-[13px] transition ${
+                  `mb-0.5 flex items-center justify-between gap-2 rounded-md py-2 text-[13px] transition ${
+                    // ⚠️ ভেতরের আইটেম ডানে সরে, আর বাঁয়ে একটা সরু রেখা —
+                    //    রেখাটাই বলে দেয় ওরা উপরের শিরোনামের অধীনে
+                    item.child
+                      ? 'ml-2.5 border-l border-line pr-2.5 pl-3'
+                      : 'px-2.5'
+                  } ${
                     isActive
                       ? 'bg-ok/10 font-semibold text-ok-ink'
                       : 'text-ink-2 hover:bg-paper hover:text-ink'
