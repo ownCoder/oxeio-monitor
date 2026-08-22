@@ -103,20 +103,26 @@ const NAV: NavItem[] = [
    * ⚠️ `roles`-এ `employee` আছে **কেবল গবেষকের জন্য**, আর আসল ছাঁকনিটা
    * `when` — নইলে ন-জন ডিজাইনারও মেনুতে এটা দেখতেন।
    */
-  {
-    to: '/targets',
-    label: 'Add Design Targets',
-    roles: ['owner', 'manager', 'employee'],
-    when: (user) => user.canAddTargets,
-  },
   /**
-   * ⭐ তালিকাটা **আলাদা পাতায়** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)* — জমা
-   * দেওয়া আর ঘেঁটে দেখা দুটো আলাদা কাজ। ⚠️ এক পাতায় থাকলে ৫০০ লাইন
-   * পেস্ট করতে গিয়ে প্রতিবার ৩৯ হাজারের তালিকাও লোড হতো।
+   * ⭐ দুটো পাতা **একটা ভাগের নিচে** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)* —
+   * `Oversight → Alerts`-এর মতোই। ⚠️ ভাগের লেবেলটা কেবল সাইডবারে
+   * (`lg`-এর উপরে) দেখা যায়, তাই আইটেমের নাম দুটো **নিজেরাই** যথেষ্ট
+   * হতে হবে: ফোনের আড়াআড়ি সারিতে "Add targets"/"All targets" একা
+   * দাঁড়িয়েও বোঝা যায়।
+   *
+   * ⚠️ নাম দুটোয় আর "Design" নেই — ভাগের শিরোনামেই ওটা লেখা, আর
+   * "Targets → Add Design Targets" পড়তে দুবার একই কথা।
    */
   {
+    to: '/targets',
+    label: 'Add targets',
+    roles: ['owner', 'manager', 'employee'],
+    when: (user) => user.canAddTargets,
+    section: 'Targets',
+  },
+  {
     to: '/targets/all',
-    label: 'All Design Targets',
+    label: 'All targets',
     roles: ['owner', 'manager', 'employee'],
     when: (user) => user.canAddTargets,
   },
@@ -130,7 +136,13 @@ const NAV: NavItem[] = [
    * (রুটটা তবু সবার জন্য খোলা — যিনি সত্যিই কর্মী, তিনি সরাসরি গিয়ে
    * দেখতে পারবেন।)
    */
-  { to: '/me', label: 'My data', roles: ['employee'] },
+  /**
+   * ⚠️⚠️ **এই শিরোনামটা কেবল সাজসজ্জা নয় — এটাই উপরের ভাগটা বন্ধ করে।**
+   * ভাগের লেবেল কেবল **শুরু** চিহ্নিত করে, শেষ নয়; তাই "Targets"-এর পরে
+   * কোনো শিরোনাম না থাকলে My data · Staff · Screenshots — সবই ওই
+   * ভাগের ভেতরে বলে মনে হতো *(২৩ আগস্ট)*।
+   */
+  { to: '/me', label: 'My data', roles: ['employee'], section: 'Team' },
   /**
    * ⭐ মকআপ ক-এর সাইডবারে Live Board-এর ঠিক পরেই।
    *
@@ -139,7 +151,12 @@ const NAV: NavItem[] = [
    *    আছে (`StaffPage`), তাই ট্যাবটাও ফিরল।
    * ⚠️ **Settings → Staff-এর নকল নয়**: ওখানে সম্পাদনা, এখানে দেখা।
    */
-  { to: '/staff', label: 'Staff', roles: ['owner', 'manager'] },
+  /**
+   * ⚠️ owner/manager-এর তালিকায় `My data` থাকে না, তাই ভাগের শিরোনামটা
+   * এখানেও লাগে — নইলে তাঁদের পর্দায় "Targets" ভাগটা কখনো বন্ধই হতো না।
+   * ⭐ দুটোর একটাই দেখা যায়, তাই শিরোনাম দুবার বসে না।
+   */
+  { to: '/staff', label: 'Staff', roles: ['owner', 'manager'], section: 'Team' },
   {
     to: '/screenshots',
     label: 'Screenshots',
