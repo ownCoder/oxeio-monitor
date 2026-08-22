@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   designIdOf,
+  keepKnownLongIds,
+  KNOWN_JOB_FROM,
   designIdsInDay,
   designView,
   hasDesignTarget,
@@ -193,5 +195,56 @@ describe('hasDesignTarget · designView', () => {
     });
     expect(designView('designer', 24, 25)?.met).toBe(false);
     expect(designView('designer', 39, 25)?.met).toBe(true);
+  });
+});
+
+/**
+ * ⭐⭐ **সাত অঙ্ক হলে নম্বরটা সত্যিই বরাদ্দ করা হতে হবে** *(২২ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ কারণ সাত অঙ্কের স্টক-আইডিও আছে — মাঠে এক দিনেই চারটে ঢুকেছিল
+ * (`1536601`, `5005369`, `5524618`, `9937760`), আর ওগুলো ডিজাইন বলে
+ * গোনা হচ্ছিল।
+ */
+describe('keepKnownLongIds — লম্বা নম্বর তালিকায় থাকতেই হবে', () => {
+  it('সীমাটা দশ লাখ', () => {
+    expect(KNOWN_JOB_FROM).toBe(1_000_000);
+  });
+
+  it('জানা কাজের নম্বর টেকে', () => {
+    const kept = keepKnownLongIds(new Set(['1000042']), new Set(['1000042']));
+    expect([...kept]).toEqual(['1000042']);
+  });
+
+  /** ⚠️ মাঠে পাওয়া আসল স্টক-আইডিগুলো */
+  it.each(['1536601', '5005369', '5524618', '9937760'])(
+    'অজানা লম্বা নম্বর বাদ — %s',
+    (id) => {
+      expect(keepKnownLongIds(new Set([id]), new Set()).size).toBe(0);
+    },
+  );
+
+  /**
+   * ⚠️⚠️ ছয় অঙ্ক বা কম **এই শর্তের বাইরে** — পুরোনো কাজের (৩৭৯৩৩ ধাঁচের)
+   * কোনো টার্গেট-সারি নেই। শর্তে ফেললে পুরো ইতিহাস নীরবে শূন্য হতো।
+   * ⭐ এই টেস্টটাই সেই ভুলের পাহারাদার।
+   */
+  it.each(['193', '3218', '37933', '973065'])(
+    'ছোট নম্বর তালিকা ছাড়াই টেকে — %s',
+    (id) => {
+      expect([...keepKnownLongIds(new Set([id]), new Set())]).toEqual([id]);
+    },
+  );
+
+  it('মেশানো সেটে কেবল অজানা লম্বাগুলোই পড়ে', () => {
+    const kept = keepKnownLongIds(
+      new Set(['37933', '1000042', '5524618', '973065']),
+      new Set(['1000042']),
+    );
+    expect([...kept].sort()).toEqual(['1000042', '37933', '973065']);
+  });
+
+  /** ⭐ তালিকা খালি হলে (টার্গেট চালুর আগের দিন) সব লম্বা নম্বর বাদ */
+  it('তালিকা খালি হলে লম্বা নম্বর টেকে না', () => {
+    expect(keepKnownLongIds(new Set(['1000042']), new Set()).size).toBe(0);
   });
 });

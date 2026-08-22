@@ -4,7 +4,7 @@ import { SegmentState, type Prisma } from '@prisma/client';
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { TargetsService } from '../targets/targets.service';
-import { designIdsInDay } from './design.rules';
+import { designIdsInDay, keepKnownLongIds, KNOWN_JOB_FROM } from './design.rules';
 import { prorate } from './proration';
 import {
   elapsedWorkdays,
@@ -247,7 +247,39 @@ export class SummaryService {
 
     try {
       for (const [employeeId, rows] of byEmployee) {
-        const ids = designIdsInDay(rows);
+        const raw = designIdsInDay(rows);
+        if (raw.size === 0) continue;
+
+        /**
+         * ⭐⭐ **সাত অঙ্ক বা বেশি হলে নম্বরটা সত্যিই বরাদ্দ করা হতে হবে**
+         * *(২২ আগস্ট ২০২৬)*।
+         *
+         * ⚠️⚠️ শিরোনাম-নিয়মটা সাত অঙ্ক পর্যন্ত নেয় (কাজের নম্বর
+         * ১০,০০,০০০ থেকে শুরু), কিন্তু সাত অঙ্কের **স্টক-আইডিও** আছে —
+         * `1536601_4406`, `5524618`, `9937760`। মাঠে এক দিনেই চারটে
+         * ঢুকেছিল, আর ওগুলো ডিজাইন বলে গোনা হচ্ছিল।
+         *
+         * ⭐ অঙ্ক গুনে অনুমান করার বদলে **তালিকায় আছে কি না** দেখা হয় —
+         * এটাই একমাত্র নিখুঁত পার্থক্য।
+         *
+         * ⚠️ কুয়েরিটা কেবল লম্বা নম্বরগুলোর জন্য; দিনে সাধারণত ০–৪টা।
+         */
+        const longOnes = [...raw]
+          .map((id) => Number.parseInt(id, 10))
+          .filter((n) => Number.isSafeInteger(n) && n >= KNOWN_JOB_FROM);
+
+        const known = new Set<string>();
+        if (longOnes.length > 0) {
+          const found = await this.prisma.designTarget.findMany({
+            where: { jobNumber: { in: longOnes } },
+            select: { jobNumber: true },
+          });
+          for (const f of found) {
+            if (f.jobNumber !== null) known.add(String(f.jobNumber));
+          }
+        }
+
+        const ids = keepKnownLongIds(raw, known);
         if (ids.size === 0) continue;
 
         await this.prisma.designCredit.createMany({
