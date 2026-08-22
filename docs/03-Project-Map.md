@@ -382,6 +382,14 @@ oxeio-monitor/
 │       ├── pages/AlertsPage.tsx            ✅ ⭐ G01–G07 · K04 — অ্যালার্ট ও হেলথ
 │   │   ├── DepositsPage.tsx                ✅ ⭐ R21 জামানত — সাইডবারে, Settings-এ নয় (09 § ৩ঃ)
 │       │   #  ⚠️ `api/alerts.ts` অনেক আগে লেখা, কিন্তু কোনো পাতা ছোঁয়নি
+│       ├── pages/TargetsPage.tsx           ✅ ⭐ E14 — "Add target design" (সাইডবার)
+│       ├── pages/AllTargetsPage.tsx        ✅ ⭐ E14 — "All design targets"
+│       │  #  ⚠️ দুটো আলাদা পাতা: এক পাতায় থাকলে ৫০০ লাইন পেস্ট করতে গিয়ে
+│       │  #     প্রতিবার ৩৯ হাজারের তালিকাও লোড হতো
+│       │  #  ⚠️⚠️ ASIN বদলানোর পথ নেই — ওটা সারিটার পরিচয়
+│       ├── pages/MyTargets.tsx             ✅ ⭐ ডিজাইনারের নিজের ৩০টা (/me-তে)
+│       │  #  ⭐ নম্বরটাই সবচেয়ে বড় লেখা — ওটাই ফাইলের নামে বসে
+│       │  #  ⚠️ "Complete" বোতাম **দরকার**: সিস্টেম কেবল শুরু হওয়া দেখে
 │       ├── pages/settings/                 ✅ E09 · E10 · E11 · D06 — পুরোটা owner-only
 │       │   ├── AgentVersionsTab.tsx        ✅ ⭐ H04 — নতুন বিল্ড বিলি করা · ধাপ বদল · Download MSI
 │       │   ├── FleetCard.tsx               ✅ ⭐ **কোন PC কোন বিল্ডে** — ওই ট্যাবেরই দ্বিতীয় কার্ড
