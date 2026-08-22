@@ -19,10 +19,23 @@
     চালানো:
         powershell -ExecutionPolicy Bypass -File deploy\pull-backups.ps1
 
-    রোজ নিজে থেকে চালাতে (একবার, আপনার নিজের অ্যাকাউন্টে):
-        $s = "$PWD\oxeio-monitor\deploy\pull-backups.ps1"
-        schtasks /create /tn "oXeio backup pull" /sc daily /st 21:30 `
-                 /tr "powershell -ExecutionPolicy Bypass -File `"$s`""
+    রোজ নিজে থেকে চালাতে — **বসানো আছে** (২২ আগস্ট ২০২৬):
+        কাজের নাম : "oXeio backup pull"
+        সময়       : রোজ রাত ৯:৩০
+        লগ        : %USERPROFILE%\oXeio-backups\pull-log.txt
+
+    ⚠️⚠️ কাজটা `-File` দিয়ে বসানো হয়নি, `-Command` + try/catch দিয়ে।
+       কারণ এই স্ক্রিপ্টে `$ErrorActionPreference = 'Stop'`, তাই ssh
+       ব্যর্থ হলে ভুলটা **terminating** হয়ে যায় আর `*>>` রিডাইরেক্ট
+       ডিঙিয়ে বেরিয়ে পড়ে — লগে তখন শুধু "শুরু হয়েছিল" লেখা থাকত,
+       কেন থামল তা নয়। মেপে দেখা হয়েছে ভুল IP দিয়ে চালিয়ে।
+
+    ⭐ ঠিক আচরণ যাচাই করতে:
+        Get-ScheduledTaskInfo 'oXeio backup pull' |
+            Select LastRunTime, LastTaskResult   # ০ = সফল
+
+    ⚠️ PC রাত ৯:৩০-এ বন্ধ থাকলে কাজটা হারায় না — `StartWhenAvailable`
+       বসানো, তাই পরেরবার চালু হলেই চলবে।
 #>
 
 [CmdletBinding()]
