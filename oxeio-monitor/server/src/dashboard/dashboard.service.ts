@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import type { SegmentState } from '@prisma/client';
 
-import { workDateOf } from '../agent/util/dhaka-time';
+import { nextLocalMidnight, workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   decideLiveStatus,
@@ -67,7 +67,10 @@ export interface LiveCard {
    * ⚠️ হালনাগাদ হয় সারাংশ-রিফ্রেশে (১৫ মিনিট), অর্থাৎ **লাইভ নয়** —
    * ঘণ্টার মতো সেকেন্ডে সেকেন্ডে নড়ে না।
    */
+  /** ⭐ আজ কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে (শিরোনামের নম্বর ধরে) */
   designsDone: number;
+  /** ⭐ আজ কতগুলো বরাদ্দ টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম) */
+  designsFinished: number;
   /** ⚠️ ০ মানে টার্গেট বন্ধ; পর্দা তখন কিছুই দেখায় না */
   designTargetPerDay: number;
   status: LiveStatus;
@@ -368,7 +371,7 @@ export class DashboardService {
       set.add(l.leaveDate.getTime());
     }
 
-    const [devices, todaySums, designToday, monthSums, recentSegments] =
+    const [devices, todaySums, designToday, finishedToday, monthSums, recentSegments] =
       await Promise.all([
       // ⚠️ revoked ডিভাইস বাদ — ওগুলোর lastSeenAt চিরকাল পুরোনো হয়ে
       //    আটকে থাকে, ফলে PC বদলে দেওয়া কর্মীও চিরকাল 🔴 দেখাত।
@@ -407,6 +410,29 @@ export class DashboardService {
       this.prisma.designCredit.groupBy({
         by: ['employeeId'],
         where: { employeeId: { in: ids }, firstWorkDate: today },
+        _count: { _all: true },
+      }),
+      /**
+       * ⭐⭐ **আজ কতগুলো টার্গেট "শেষ" বলা হয়েছে** *(২২ আগস্ট ২০২৬)*।
+       *
+       * ⚠️⚠️ উপরেরটা (`designCredit`) বলে **কতগুলো ফাইল খোলা হয়েছে**, এটা
+       * বলে **কতগুলো শেষ হয়েছে**। দুটো এক নয়, আর সেটাই মালিকের বাছাই:
+       * *"দুটোই — শুরু ও শেষ আলাদা"*। এক করে দেখালে ফাইল খোলামাত্র কাজটা
+       * শেষ বলে গোনা হতো — ঠিক যে ভুলটা ২৩ আগস্ট ধরা পড়েছিল (ADR-033-এর
+       * পাশের নোট, `completed_via = 'filename'` ফিরিয়ে দেওয়া)।
+       *
+       * ⚠️ `completedAt` timestamptz, তাই ঢাকার দিনের **সীমানা** দিয়ে
+       * ছাঁকা হয় — `workDate` কলাম নেই বলে সমান-তুলনা করা যেত না।
+       */
+      this.prisma.designTarget.groupBy({
+        by: ['assignedToId'],
+        where: {
+          assignedToId: { in: ids },
+          completedAt: {
+            gte: new Date(nextLocalMidnight(now).getTime() - 86_400_000),
+            lt: nextLocalMidnight(now),
+          },
+        },
         _count: { _all: true },
       }),
       this.prisma.activitySegment.groupBy({
@@ -448,6 +474,12 @@ export class DashboardService {
 
     const todaySec = sumByEmployee(todaySums);
     const designsBy = new Map(designToday.map((d) => [d.employeeId, d._count._all]));
+    // ⚠️ `assignedToId` null হতে পারে (পুলে ফেরত যাওয়া সারি) — বাদ
+    const finishedBy = new Map(
+      finishedToday
+        .filter((d) => d.assignedToId !== null)
+        .map((d) => [d.assignedToId as number, d._count._all]),
+    );
     const monthSec = sumByEmployee(monthSums);
 
     // ⚠️ `orderBy endedAt desc` + "প্রথমটাই রাখা" — তাই কর্মীপ্রতি সবচেয়ে
@@ -502,6 +534,7 @@ export class DashboardService {
         designation: e.designation,
         staffType: e.staffType,
         designsDone: designsBy.get(e.id) ?? 0,
+        designsFinished: finishedBy.get(e.id) ?? 0,
         designTargetPerDay: e.policy?.dailyDesignTarget ?? 0,
         status: decideLiveStatus({
           devices: own,

@@ -62,7 +62,16 @@ export function restingStartsAt(rows: readonly LiveCard[]): number {
 }
 
 export interface DesignView {
+  /** ⭐ আজ কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে (শিরোনামের নম্বর ধরে) */
   done: number;
+  /**
+   * ⭐ আজ কতগুলো টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম)।
+   *
+   * ⚠️⚠️ `done`-এর সাথে গুলিয়ে ফেলা যাবে না: শিরোনামে নম্বরটা দেখা যায়
+   * ফাইল **খোলার** মুহূর্তে, শেষ করার নয় — এই পার্থক্যটা না রাখায় একবার
+   * টার্গেট খোলামাত্র বন্ধ হয়ে যাচ্ছিল (২৩ আগস্ট, ADR-033-এর পাশের নোট)।
+   */
+  finished: number;
   /** ⚠️ `null` = **এই কর্মীর কোনো ডিজাইন-টার্গেট নেই** — শূন্য টার্গেট নয় */
   target: number | null;
   /** টার্গেট না থাকলে সবসময় `false` — "ব্যর্থ" নয়, "প্রযোজ্য নয়" */
@@ -89,10 +98,26 @@ export interface DesignView {
  */
 export function designView(card: LiveCard): DesignView | null {
   const done = card.designsDone;
+  const finished = card.designsFinished;
 
+  /**
+   * ⚠️⚠️ `met` এখনো **খোলা** সংখ্যা ধরে, "শেষ" ধরে নয় — ইচ্ছাকৃত।
+   *
+   * Complete বোতামটা সবে বসেছে আর মাঠে **এখনো একজনও চাপেননি** (মেপে দেখা,
+   * ২২ আগস্ট: `completed_via = 'button'` → ০)। এখনই ✅-কে "শেষ"-এর সাথে
+   * বাঁধলে পরদিন সকালে **সবাই টার্গেট-মিস** দেখাত, অথচ কাজ ঠিকই হয়েছে।
+   * ⭐ বোতামটা অভ্যাসে দাঁড়ালে এটা এক লাইনে বদলানো যাবে।
+   */
   if (card.staffType === 'designer' && card.designTargetPerDay > 0) {
-    return { done, target: card.designTargetPerDay, met: done >= card.designTargetPerDay };
+    return {
+      done,
+      finished,
+      target: card.designTargetPerDay,
+      met: done >= card.designTargetPerDay,
+    };
   }
 
-  return done > 0 ? { done, target: null, met: false } : null;
+  return done > 0 || finished > 0
+    ? { done, finished, target: null, met: false }
+    : null;
 }

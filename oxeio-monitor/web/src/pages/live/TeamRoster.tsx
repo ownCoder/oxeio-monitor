@@ -115,9 +115,11 @@ export function TeamRoster({
       ? [
           {
             key: 'designs',
-            header: 'Designs',
+            // ⚠️ শিরোনামেই দুটো শব্দ — নইলে "১৮ · ১২" দেখে কেউ বুঝত না
+            //    কোনটা কী, আর ভুল সংখ্যাটা মনে গেঁথে যেত।
+            header: 'Designs · opened / done',
             align: 'right' as const,
-            className: 'hidden min-w-[96px] md:table-cell',
+            className: 'hidden min-w-[132px] md:table-cell',
             render: (c: LiveCard) => <DesignCell card={c} />,
           },
         ]
@@ -455,9 +457,25 @@ function DesignCell({ card }: { card: LiveCard }) {
 
   return (
     <span className="num whitespace-nowrap">
+      {/* ⭐ **খোলা** — নিজে থেকে গোনা হয়, ফাইলের নামের নম্বর ধরে */}
       <span className={view.met ? 'font-semibold text-ok' : 'font-medium text-ink'}>
         {view.done}
       </span>
+
+      {/*
+        ⭐⭐ **শেষ** — ডিজাইনার নিজে Complete চেপে বলেছেন।
+
+        ⚠️⚠️ ০ হলে ঘরটা **খালি রাখা হয়**, "০" লেখা হয় না। কারণ বোতামটা
+        সবে বসেছে; "১৮ · ০" দেখতে "কিছুই শেষ হয়নি"-র মতো লাগত, অথচ আসল
+        কথা হলো কেউ এখনো বোতামটা ব্যবহার করছেন না — দুটো আলাদা ব্যাপার।
+      */}
+      {view.finished > 0 && (
+        <>
+          <span className="text-ink-3"> · </span>
+          <span className="font-medium text-ok">{view.finished}</span>
+        </>
+      )}
+
       {/*
         ⚠️ টার্গেট না থাকলে "/ ২৫"-ও নেই — ওই কর্মীর কোনো টার্গেটই নেই,
            তাই ভগ্নাংশটা লিখলে সেটা একটা দাবি হয়ে যেত যা সত্যি নয়।

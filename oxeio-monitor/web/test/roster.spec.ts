@@ -25,6 +25,8 @@ function card(over: Partial<LiveCard> = {}): LiveCard {
     // ⭐ ডিজাইনের টার্গেট (২১ আগস্ট) — গবেষকের জন্য খাটে না
     staffType: 'researcher',
     designsDone: 0,
+    // ⭐ "শেষ" আলাদা ঘর (২২ আগস্ট) — খোলা আর শেষ এক নয়
+    designsFinished: 0,
     designTargetPerDay: 25,
     status: 'active',
     todayWorkedSec: 3_600,
@@ -153,7 +155,48 @@ describe('designView — আজকের ডিজাইন', () => {
    */
   it('ডিজাইনার নন, তবু কাজ করেছেন — সংখ্যা ওঠে, টার্গেট ছাড়া', () => {
     const view = designView(card({ staffType: 'manager', designsDone: 43 }));
-    expect(view).toEqual({ done: 43, target: null, met: false });
+    expect(view).toEqual({ done: 43, finished: 0, target: null, met: false });
+  });
+
+  /**
+   * ⭐⭐ **"খোলা" আর "শেষ" আলাদা** *(মালিকের বাছাই, ২২ আগস্ট)*।
+   *
+   * ⚠️⚠️ শিরোনামে নম্বরটা দেখা যায় ফাইল **খোলার** মুহূর্তে, শেষ করার নয়।
+   * এই পার্থক্যটা না রাখায় একবার টার্গেট খোলামাত্র বন্ধ হয়ে যাচ্ছিল।
+   */
+  it('খোলা আর শেষ — দুটো আলাদা সংখ্যা', () => {
+    const view = designView(
+      card({ staffType: 'designer', designsDone: 18, designsFinished: 12 }),
+    );
+    expect(view).toEqual({ done: 18, finished: 12, target: 25, met: false });
+  });
+
+  /**
+   * ⚠️⚠️ `met` এখনো **খোলা** ধরে, "শেষ" ধরে নয় — ইচ্ছাকৃত, কারণ Complete
+   * বোতাম মাঠে এখনো ব্যবহৃত হচ্ছে না (মেপে দেখা: ০ চাপ)। এটা বদলালে
+   * পরদিন সকালে সবাই টার্গেট-মিস দেখাত।
+   *
+   * ⭐ এই টেস্টটাই সেই সিদ্ধান্তের পাহারাদার — কেউ নীরবে `finished` ধরে
+   * বসিয়ে দিলে এটা ভাঙবে।
+   */
+  it('টার্গেট ছোঁয়ার হিসাব "খোলা" ধরে, "শেষ" ধরে নয়', () => {
+    const view = designView(
+      card({ staffType: 'designer', designsDone: 25, designsFinished: 0 }),
+    );
+    expect(view?.met).toBe(true);
+
+    const other = designView(
+      card({ staffType: 'designer', designsDone: 0, designsFinished: 25 }),
+    );
+    expect(other?.met).toBe(false);
+  });
+
+  /** ⭐ কেউ কিছু খোলেননি কিন্তু শেষ বলেছেন — ঘরটা তবু দেখাতে হবে */
+  it('খোলা ০ কিন্তু শেষ আছে — সারিটা লুকোনো হয় না', () => {
+    const view = designView(
+      card({ staffType: 'manager', designsDone: 0, designsFinished: 3 }),
+    );
+    expect(view).toEqual({ done: 0, finished: 3, target: null, met: false });
   });
 
   /** ⚠️⚠️ টার্গেট ছাড়া কারো `met` কখনো `true` নয় — ৪৩ > ২৫ হলেও */
@@ -164,6 +207,7 @@ describe('designView — আজকের ডিজাইন', () => {
   it('ডিজাইনারের টার্গেটসহ হিসাব', () => {
     expect(designView(card({ staffType: 'designer', designsDone: 25 }))).toEqual({
       done: 25,
+      finished: 0,
       target: 25,
       met: true,
     });

@@ -40,7 +40,10 @@ export interface LiveCard {
    * "কাজ করেননি" নয়, "এই মাপটা তাঁর জন্য নয়"; পর্দা তাই ঘরটাই খালি রাখে।
    * ⚠️ সারাংশ-রিফ্রেশে হালনাগাদ হয় (~১৫ মিনিট), ঘণ্টার মতো লাইভ নয়।
    */
+  /** ⭐ আজ কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে */
   designsDone: number;
+  /** ⭐ আজ কতগুলো টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম) */
+  designsFinished: number;
   /** ⚠️ ০ মানে টার্গেট বন্ধ */
   designTargetPerDay: number;
   status: LiveStatus;

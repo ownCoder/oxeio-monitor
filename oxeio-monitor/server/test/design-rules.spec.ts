@@ -59,6 +59,45 @@ describe('designIdOf — শিরোনাম থেকে নম্বর', ()
   });
 
   /** ⚠️ `4 [Converted].eps` মাঠে আছে — এক অঙ্ক কাজের নম্বর নয় */
+  /**
+   * ⭐⭐ **সাত অঙ্কের কাজের নম্বর** *(২২ আগস্ট ২০২৬)* — টার্গেটের সিরিয়াল
+   * শুরু হয়েছে ১০,০০,০০০ থেকে।
+   *
+   * ⚠️⚠️ আগের নিয়মে (`/^(\d{3,6})/`, সীমানা ছাড়া) এগুলো **প্রথম ছয় অঙ্কে
+   * কেটে যেত**, আর পরপর দশটা কাজ একটাই নম্বর হয়ে যেত। নিচের দ্বিতীয়
+   * টেস্টটাই সেই ভুলের পাহারাদার।
+   */
+  it.each([
+    ['1000042-Bird Vintage T-Shirt.ai @ 54 % (RGB/Preview)', '1000042'],
+    ['1000299-Cat Retro.psd', '1000299'],
+    ['1000000-First One.ai', '1000000'],
+  ])('সাত অঙ্কের কাজের নম্বর — %s → %s', (title, id) => {
+    expect(designIdOf('Illustrator.exe', title)).toBe(id);
+  });
+
+  /** ⚠️⚠️ পরপর দুটো কাজ **আলাদা** থাকতেই হবে — এটাই ছিল আসল ক্ষতি */
+  it('পরপর কাজের নম্বর মিশে যায় না', () => {
+    const a = designIdOf('Illustrator.exe', '1000042-Bird.ai');
+    const b = designIdOf('Illustrator.exe', '1000043-Cat.ai');
+    expect(a).toBe('1000042');
+    expect(b).toBe('1000043');
+    expect(a).not.toBe(b);
+  });
+
+  /**
+   * ⭐ আট বা তার বেশি অঙ্ক = স্টক ফাইলের আইডি, কাজের নম্বর নয়।
+   *
+   * ⚠️⚠️ মাঠে এগুলোই `design_credits`-এ ৬৬টা ভুল সারি বানিয়েছিল —
+   * `10163372_181` → `101633` হয়ে ডিজাইন বলে গোনা হতো।
+   */
+  it.each([
+    '10163372_181_Vector.eps',
+    '136482370_79_stock.ai',
+    '20260820164512_export.psd',
+  ])('আট+ অঙ্কের স্টক আইডি বাদ — %s', (title) => {
+    expect(designIdOf('Illustrator.exe', title)).toBeNull();
+  });
+
   it('তিন অঙ্কের কম হলে নয়', () => {
     expect(designIdOf('Illustrator.exe', '4 [Converted].eps')).toBeNull();
     expect(designIdOf('Illustrator.exe', '99-x.ai')).toBeNull();
