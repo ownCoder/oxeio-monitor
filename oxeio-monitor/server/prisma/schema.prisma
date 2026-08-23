@@ -268,6 +268,8 @@ model User {
   mustChangePw Boolean   @default(true) @map("must_change_pw")
   pwChangedAt  DateTime? @map("pw_changed_at") @db.Timestamptz(3)
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  /// ⭐ যেসব ডিজাইন-টার্গেট ইনি "শেষ" বলেছেন
+  completedTargets DesignTarget[] @relation("designTargetCompletedBy")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   employee           Employee?        @relation(fields: [employeeId], references: [id])
@@ -688,6 +690,20 @@ model DesignTarget {
    */
   startedAt   DateTime? @map("started_at") @db.Timestamptz(3)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  /**
+   * ⭐⭐ **কে "শেষ" বলেছেন** *(২৩ আগস্ট ২০২৬, মালিকের রিপোর্ট)*।
+   *
+   * ⚠️⚠️ `completedVia` বলে **কীভাবে** হয়েছে (`manual` / `filename`),
+   * কিন্তু **কে** করেছেন সেটা কোথাও লেখা হতো না। ফলে তালিকায় যাঁর নাম
+   * দেখা যেত তিনি ছিলেন **যাঁকে বরাদ্দ করা হয়েছিল** — মালিক নিজে
+   * Complete চাপলেও ডিজাইনারের নামই দেখাত, যা সরাসরি ভুল তথ্য।
+   *
+   * ⭐ `User`-এর সাথে জোড়া, `Employee`-এর নয়: দুটো পথেই (ডিজাইনারের
+   * নিজের পাতা আর মালিকের তালিকা) যিনি চাপেন তিনি লগইন করা ব্যবহারকারী।
+   * Employee-তে জুড়লে মালিক/ম্যানেজারের কোনো সারিই থাকত না।
+   */
+  completedById Int?    @map("completed_by_id")
+  completedBy   User?   @relation("designTargetCompletedBy", fields: [completedById], references: [id])
   /**
    * ⭐⭐ **আপলোড হয়েছে** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)*।
    *

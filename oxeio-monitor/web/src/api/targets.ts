@@ -113,6 +113,13 @@ export interface TargetRow {
   startedAt: string | null;
   completedAt: string | null;
   completedVia: string | null;
+  /**
+   * ⭐ কে "শেষ" বলেছেন *(২৩ আগস্ট)*।
+   *
+   * ⚠️ `assignedTo`-র সাথে গুলিয়ে ফেলা যাবে না — বরাদ্দ পাওয়া মানুষ আর
+   * শেষ বলা মানুষ এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)।
+   */
+  completedBy: { fullName: string; role: string } | null;
   uploadedAt: string | null;
   liveAt: string | null;
   /** ⚠️ **আমাদের নিজের** পণ্যের ASIN — উপরের `asin` নমুনার */

@@ -428,7 +428,13 @@ describe('দিন শেষে পুলে ফেরত', () => {
       select: { id: true },
       take: 2,
     });
-    await targets.markDone(designer.id, mine[0].id);
+    /**
+     * ⚠️ তৃতীয় প্যারামিটার = **কে চেপেছেন** *(২৩ আগস্ট)*। এই টেস্টের
+     * প্রশ্ন "কে" নয়, "কতগুলো ফেরত যায়" — তাই যেকোনো বৈধ user চলবে,
+     * কিন্তু FK মানতে হবে বলে ডাটাবেস থেকেই নেওয়া হয়।
+     */
+    const anyUser = await h.prisma.user.findFirstOrThrow({ select: { id: true } });
+    await targets.markDone(designer.id, mine[0].id, anyUser.id);
     await targets.skip(designer.id, mine[1].id, 'not usable');
 
     const { returned } = await targets.returnUnworked(workDateOf(TODAY));

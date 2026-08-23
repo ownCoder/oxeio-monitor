@@ -172,14 +172,33 @@ function TargetList() {
                      কাঁচা লেখায় (`Hafiz-24-05-2026`), কারণ ওই কর্মীদের
                      অনেকেই আর সিস্টেমে নেই। তাই দুটোই দেখানো হয়।
                 */
-                render: (r) =>
-                  r.assignedTo ? (
-                    <span className="text-ink">{r.assignedTo.fullName}</span>
-                  ) : r.sourceNote ? (
-                    <span className="num text-[12px] text-ink-3">{r.sourceNote}</span>
-                  ) : (
-                    <span className="text-ink-3">—</span>
-                  ),
+                render: (r) => (
+                  <span className="block">
+                    {r.assignedTo ? (
+                      <span className="text-ink">{r.assignedTo.fullName}</span>
+                    ) : r.sourceNote ? (
+                      <span className="num text-[12px] text-ink-3">{r.sourceNote}</span>
+                    ) : (
+                      <span className="text-ink-3">—</span>
+                    )}
+
+                    {/*
+                      ⭐⭐ **কে "শেষ" বলেছেন** *(২৩ আগস্ট, মালিকের রিপোর্ট)*।
+                      আগে কেবল বরাদ্দ পাওয়া মানুষের নাম দেখাত, তাই মালিক
+                      নিজে Complete চাপলেও ডিজাইনারের নামই উঠত — সরাসরি
+                      ভুল তথ্য।
+
+                      ⚠️ নামটা তখনই আসে যখন কেউ সত্যিই চেপেছেন। পুরোনো
+                      সারিগুলোয় (Excel থেকে আনা, বা সংশোধনের আগের) ঘরটা
+                      খালি থাকে — অনুমান করে কিছু বসানো হয় না।
+                    */}
+                    {r.completedBy && (
+                      <span className="block text-[11.5px] text-ink-3">
+                        ✓ marked by {r.completedBy.fullName}
+                      </span>
+                    )}
+                  </span>
+                ),
               },
               {
                 key: 'edit',

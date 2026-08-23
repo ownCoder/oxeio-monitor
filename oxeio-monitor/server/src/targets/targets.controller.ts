@@ -143,7 +143,7 @@ export class TargetsController {
     @Body() dto: UpdateTargetDto,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.update(id, dto.status, new Date());
+    return this.targets.update(id, dto.status, new Date(), actor.userId);
   }
 
   /**
@@ -241,7 +241,7 @@ export class MyTargetsController {
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.targets.markDone(employeeIdOf(actor), id);
+    return this.targets.markDone(employeeIdOf(actor), id, actor.userId);
   }
 }
 

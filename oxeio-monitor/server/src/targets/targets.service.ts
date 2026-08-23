@@ -433,13 +433,19 @@ export class TargetsService {
    * ⚠️ `completedVia: 'manual'` লেখা থাকে, যাতে পরে বলা যায় কোনটা সিস্টেম
    * নিজে ধরেছে আর কোনটা কেউ হাতে বলেছে। সংখ্যাটা এক, কিন্তু ভরসা এক নয়।
    */
-  async markDone(employeeId: number, id: number): Promise<{ ok: boolean }> {
+  async markDone(
+    employeeId: number,
+    id: number,
+    userId: number,
+  ): Promise<{ ok: boolean }> {
     const { count } = await this.prisma.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
       data: {
         status: DesignTargetStatus.done,
         completedAt: new Date(),
         completedVia: 'manual',
+        // ⭐ কে চেপেছেন — `completedVia` কেবল "কীভাবে" বলে (২৩ আগস্ট)
+        completedById: userId,
       },
     });
 
@@ -553,6 +559,9 @@ export class TargetsService {
           liveAsin: true,
           sourceNote: true,
           assignedTo: { select: { empCode: true, fullName: true } },
+          // ⭐ কে "শেষ" বলেছেন — বরাদ্দ পাওয়া মানুষ আর শেষ করা মানুষ
+          //    এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)
+          completedBy: { select: { fullName: true, role: true } },
         },
         // ⚠️ নতুন আগে — গবেষক সদ্য জমা দেওয়াগুলোই আগে দেখতে চান
         orderBy: { id: 'desc' },
@@ -573,6 +582,7 @@ export class TargetsService {
         startedAt: r.startedAt?.toISOString() ?? null,
         completedAt: r.completedAt?.toISOString() ?? null,
         completedVia: r.completedVia,
+        completedBy: r.completedBy,
         uploadedAt: r.uploadedAt?.toISOString() ?? null,
         liveAt: r.liveAt?.toISOString() ?? null,
         liveAsin: r.liveAsin,
@@ -600,6 +610,7 @@ export class TargetsService {
     id: number,
     status: DesignTargetStatus,
     now: Date,
+    userId: number,
   ): Promise<{ ok: boolean }> {
     /**
      * ⚠️ পুলে ফেরত পাঠানো মানে **মালিকানাও ছেড়ে দেওয়া** — নইলে সারিটা
@@ -616,9 +627,12 @@ export class TargetsService {
             startedAt: null,
             completedAt: null,
             completedVia: null,
+            // ⚠️ এটাও মুছতে হয় — নইলে পুলে ফেরত যাওয়া সারিতে "কে শেষ
+            //    করেছিল" লেখা থেকে যেত, অথচ কাজটা আর শেষ নয়
+            completedById: null,
           }
         : status === DesignTargetStatus.done
-          ? { status, completedAt: now, completedVia: 'manual' }
+          ? { status, completedAt: now, completedVia: 'manual', completedById: userId }
           : { status };
 
     const { count } = await this.prisma.designTarget.updateMany({
