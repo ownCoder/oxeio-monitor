@@ -116,11 +116,16 @@ export function TeamRoster({
       ? [
           {
             key: 'designs',
-            // ⚠️ শিরোনামেই দুটো শব্দ — নইলে "১৮ · ১২" দেখে কেউ বুঝত না
-            //    কোনটা কী, আর ভুল সংখ্যাটা মনে গেঁথে যেত।
-            header: 'Designs · opened / done',
+            /**
+             * ⭐ একটাই শব্দ — একটাই সংখ্যা ধরা হয় ([ADR-037](../../../../docs/05-Options-Decisions.md))।
+             *
+             * ⚠️⚠️ আগে লেখা ছিল `Designs · opened / done`। ঘরের সংখ্যা
+             * বদলানোর পরও শিরোনামটা বাদ পড়েছিল — ধরা পড়েছে লাইভ বান্ডল
+             * গ্রেপ করে, তাই সারাইয়ের পর আবার দেখা হয়েছে ([09 § ৩ঞ২](../../../../docs/09-Build-Log.md))।
+             */
+            header: 'Designs',
             align: 'right' as const,
-            className: 'hidden min-w-[132px] md:table-cell',
+            className: 'hidden min-w-[92px] md:table-cell',
             render: (c: LiveCard) => <DesignCell card={c} />,
           },
         ]
