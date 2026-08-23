@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
@@ -35,6 +36,23 @@ export function configureApp(
   enableBigIntJson();
 
   app.setGlobalPrefix('api/v1');
+
+  /**
+   * ⭐⭐ **JSON বডির ছাদ ৮ MB** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)*।
+   *
+   * ⚠️⚠️ Express-এর ডিফল্ট **১০০ KB**, আর সেটা এখানে বসানো ছিল না। ফলে
+   * গবেষক বড় তালিকা পেস্ট করলে অনুরোধটা **যাচাইয়ে পৌঁছনোর আগেই** ৪১৩
+   * খেয়ে ফিরত — পর্দায় কোনো বোধগম্য কারণ ছাড়াই।
+   *
+   * ⚠️ ছাদটা DTO-র ছাদের (৫ MB) **চেয়ে বড়** ইচ্ছাকৃতভাবে: বেশি পেস্ট
+   * করলে মানুষ যেন Express-এর নীরব ৪১৩ নয়, আমাদের নিজের বোধগম্য
+   * বার্তাটা পান ("text must be shorter than…")।
+   */
+  //  ⚠️ `useBodyParser` কেবল Express অ্যাডাপ্টারে আছে, `INestApplication`-এ
+  //     নয় — তাই টাইপটা এখানে সংকীর্ণ করা হয়। Fastify-তে গেলে এই লাইনটাই
+  //     প্রথম ভাঙবে, আর সেটাই ঠিক: নীরবে ১০০ KB-তে ফিরে যাওয়ার চেয়ে ভালো।
+  (app as NestExpressApplication).useBodyParser('json', { limit: '8mb' });
+
   app.use(helmet());
   app.use(cookieParser());
 

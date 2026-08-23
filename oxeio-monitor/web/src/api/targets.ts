@@ -31,7 +31,10 @@ export interface BulkResult {
   added: number;
   /** ⚠️ ভুল নয়, কিন্তু লুকোনোও নয় — "৫০০ দিলাম, ৪৭৩ ঢুকল" রহস্য থাকা চলবে না */
   alreadyKnown: number;
+  /** ⚠️ সর্বোচ্চ ২০০টা — আসল সংখ্যা `rejectedTotal`-এ */
   rejected: RejectedLine[];
+  /** ⭐ কতগুলো সত্যিই বাদ পড়েছে, তালিকা ছাঁটা হলেও */
+  rejectedTotal: number;
   poolSize: number;
 }
 

@@ -19,12 +19,27 @@ import {
   type RejectedLine,
 } from './targets.rules';
 
+/**
+ * ⚠️⚠️ পর্দায় সর্বোচ্চ কতগুলো বাদ-পড়া লাইন দেখানো হবে *(২৩ আগস্ট ২০২৬)*।
+ *
+ * ছাদ তোলার পর ৪৫,০০০ লাইন পেস্ট করা সম্ভব। কেউ ভুল ফাইল পেস্ট করলে
+ * **সবগুলোই** বাদ পড়ত, আর তখন গোটা তালিকা ব্রাউজারে পাঠালে উত্তরটা কয়েক
+ * MB হতো আর পর্দায় ৪৫,০০০ সারির টেবিল বসত — ব্রাউজার জমে যেত।
+ *
+ * ⭐ সংখ্যাটা (`rejectedTotal`) **সত্যি থাকে**, কেবল তালিকাটা ছাঁটা হয়।
+ * ২০০টা দেখলেই ভুলের ধরনটা বোঝা যায়; ২০১তম সারি নতুন কিছু বলে না।
+ */
+export const REJECTED_SHOWN = 200;
+
 export interface BulkResult {
   /** নতুন করে যতগুলো ঢুকল */
   added: number;
   /** ⚠️ আগে থেকেই ছিল — ভুল নয়, কিন্তু জানা দরকার */
   alreadyKnown: number;
+  /** ⚠️ সর্বোচ্চ `REJECTED_SHOWN`টা — আসল সংখ্যা `rejectedTotal`-এ */
   rejected: RejectedLine[];
+  /** ⭐ কতগুলো সত্যিই বাদ পড়েছে — তালিকা ছাঁটা হলেও এটা পুরো সংখ্যা */
+  rejectedTotal: number;
   /** পুলে এখন কতগুলো অপেক্ষায় */
   poolSize: number;
 }
@@ -176,7 +191,10 @@ export class TargetsService {
     return {
       added: created.count,
       alreadyKnown: accepted.length - created.count,
-      rejected,
+      // ⚠️ ছাঁটাটা এখানে, `parseBulk()`-এ নয় — ওই ফাংশনের কাজ সত্যি বলা,
+      //    পর্দার সুবিধা দেখা নয়। ছাদটা সীমান্তে বসে (audit-এও পুরো সংখ্যাই যায়)।
+      rejected: rejected.slice(0, REJECTED_SHOWN),
+      rejectedTotal: rejected.length,
       poolSize,
     };
   }

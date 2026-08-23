@@ -180,10 +180,25 @@ function BulkOutcome({ result }: { result: BulkResult }) {
         <span className="num font-semibold">{result.added}</span> added ·{' '}
         {/* ⚠️ "আগে থেকেই ছিল" ভুল নয়, কিন্তু সংখ্যাটা লুকোনোও নয় */}
         <span className="num font-semibold">{result.alreadyKnown}</span> already
-        known · <span className="num font-semibold">{result.rejected.length}</span>{' '}
+        known · <span className="num font-semibold">{result.rejectedTotal}</span>{' '}
         could not be used — pool is now{' '}
         <span className="num font-semibold">{result.poolSize}</span>
       </div>
+
+      {/*
+        ⚠️⚠️ ছাদ তোলার পর ৪৫,০০০ লাইন পেস্ট করা সম্ভব। ভুল ফাইল পেস্ট
+        করলে সবগুলোই বাদ পড়ত, আর গোটা তালিকা আঁকতে গেলে ব্রাউজার জমে
+        যেত। ⭐ তাই সার্ভার ২০০টা পাঠায়, কিন্তু **সংখ্যাটা সত্যি থাকে** —
+        আর কতগুলো দেখানো হচ্ছে না সেটাও লেখা হয়, নীরবে কাটা হয় না।
+      */}
+      {result.rejectedTotal > result.rejected.length && (
+        <div className="text-[12px] text-ink-3">
+          Showing the first{' '}
+          <span className="num">{result.rejected.length}</span> of{' '}
+          <span className="num">{result.rejectedTotal}</span> — enough to see
+          what went wrong.
+        </div>
+      )}
 
       {result.rejected.length > 0 && (
         <Table
