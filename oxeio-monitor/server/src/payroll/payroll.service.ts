@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { EmployeeStatus } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import { DepositsService } from '../deposits/deposits.service';
@@ -117,18 +118,30 @@ export class PayrollService {
      * **তাঁর পুরোনো মাসের শিট থেকেও উধাও** হয়ে যেতেন, যদিও সেই বেতন
      * দেওয়া হয়ে গেছে। শিটটা ছাপা হয়েছিল একরকম, পরে খুললে আরেকরকম।
      *
-     * ⭐ এখন প্রশ্নটা তারিখের: ওই মাস শেষ হওয়ার আগে যোগ দিয়েছেন, আর
-     * মাস শুরুর আগে ছেড়ে যাননি।
+     * ⭐ এখন প্রশ্নটা একটাই: **মাস শুরুর আগে ছেড়ে গেছেন কি না**।
      */
     const monthStart = new Date(`${yearMonth}-01T00:00:00Z`);
-    const monthEnd = new Date(monthStart);
-    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
 
     const employees = await this.prisma.employee.findMany({
       where: {
-        AND: [
-          { OR: [{ joinedOn: null }, { joinedOn: { lt: monthEnd } }] },
-          { OR: [{ leftOn: null }, { leftOn: { gte: monthStart } }] },
+        /**
+         * ⚠️⚠️ **`joinedOn` ধরে ছাঁকা হয় না — ইচ্ছাকৃতভাবে** *(CI ধরিয়ে
+         * দিয়েছে, ২৩ আগস্ট)*।
+         *
+         * প্রথমে লেখা হয়েছিল "ওই মাসে কর্মরত ছিলেন যাঁরা", আর তাতে
+         * `joinedOn < monthEnd` শর্তও ছিল। ⛔ কিন্তু তাতে **পরে যোগ দেওয়া
+         * কর্মী আগের মাসের শিট থেকে উধাও** হয়ে যেতেন — অথচ নথিভুক্ত
+         * আচরণ হলো তিনি সারিতে থাকবেন, `payable = 0.00` নিয়ে
+         * (`proration.e2e.spec.ts` — "মাসের পরে যোগ দিলে ওই মাসে প্রদেয় শূন্য")।
+         *
+         * ⭐ আসল বাগটা ছিল **চলে যাওয়া** কর্মী নিয়ে, যোগ দেওয়া নিয়ে নয় —
+         * তাই শর্তটা কেবল সেদিকেই।
+         */
+        OR: [
+          { status: EmployeeStatus.active },
+          // ⭐ মাস শুরুর পরে ছেড়ে গেছেন — ওই মাসের বেতন তাঁর প্রাপ্য ছিল,
+          //    তাই শিটে থাকতেই হবে
+          { leftOn: { gte: monthStart } },
         ],
       },
       select: {
