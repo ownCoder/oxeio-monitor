@@ -381,7 +381,7 @@ oxeio-monitor/
 │       ├── pages/ReportsPage.tsx           ✅ F01–F06 · ⭐ পে-রোল ট্যাব owner ছাড়া **বানানোই হয় না**
 │       ├── pages/AlertsPage.tsx            ✅ ⭐ G01–G07 · K04 — অ্যালার্ট ও হেলথ
 │   │   ├── DepositsPage.tsx                ✅ ⭐ R21 জামানত — সাইডবারে, Settings-এ নয় (09 § ৩ঃ)
-│       │   #  ⚠️ `api/alerts.ts` অনেক আগে লেখা, কিন্তু কোনো পাতা ছোঁয়নি
+│       │   #  ⚠️ `api/alerts.ts` — Layout · AlertsPage · LiveBoardPage · OpenAlerts চারটে ফাইলই ব্যবহার করে, মুছলে ভাঙবে (২৩ আগস্ট যাচাই)
 │       ├── pages/TargetsPage.tsx           ✅ ⭐ E14 — "Add target design" (সাইডবার)
 │       ├── pages/AllTargetsPage.tsx        ✅ ⭐ E14 — "All design targets"
 │       │  #  ⚠️ দুটো আলাদা পাতা: এক পাতায় থাকলে ৫০০ লাইন পেস্ট করতে গিয়ে
@@ -411,7 +411,7 @@ oxeio-monitor/
 │       ├── roster.spec.ts                  ✅ ১২টি — সারির ক্রম **কখনো ঘণ্টা ধরে নয়** (লিডারবোর্ড হয়ে যেত)
 │       └── fleet.spec.ts                   ✅ ২১টি — সবচেয়ে জরুরিটা *"০.৪.১০ ০.৪.৯-এর চেয়ে নতুন"*
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
-│       # ⚠️ ব্রাউজারে লগইন করে দেখা হয়নি ([09 § ৩ঈ](09-Build-Log.md))
+│       # ✅ ব্রাউজারে লগইন করে দেখা হয়েছে — ১১ আগস্ট মালিক ছ-টা পাতাই দুই থিমে ([09 § ৩ঈ](09-Build-Log.md)); ⚠️ বাকি কেবল স্বয়ংক্রিয় ব্রাউজার-টেস্ট
 │
 ├── (রেপো রুটে) docs/                       # ← এই ডকুমেন্টগুলো — oxeio-monitor-এর **বাইরে**
 │   ├── monitoring-policy-template.md       # স্টাফের সই করার পলিসি
@@ -433,8 +433,8 @@ oxeio-monitor/
 │   ├── vps-update.sh                       ✅ ⭐ পরের প্রতিটা হালনাগাদ — pull · migration · রিবিল্ড · স্বাস্থ্য
 │   │                                          ⚠️ seed চালায় না — ওটা কর্মীর নাম/বেতন/তারিখ চাপা দিত
 │   └── vps-harden.sh                       ⚠️ R6-এর অর্ধেক — fail2ban + security-only auto-update
-│                                              ⚠️ **একবারও চালানো হয়নি**, কোনো মেশিনে নয়
-│                                              ⚠️ বাকি অর্ধেক এখনো হয়নি: Caddy-তে `/api/v1/auth/*` rate limit
+│                                              ✅ **VPS-এ চালানো হয়েছে** (১৫ আগস্ট) — প্রথম মিনিটেই ছ-টা IP ব্যান
+│                                              ✅ বাকি অর্ধেকও হয়েছে — Caddy-তে `POST /api/v1/auth/login` ৩০/মিনিট (G116)
 └── (রেপো রুটে) .github/workflows/ci.yml   ✅ server · web · docker — তিনটি job
 ```
 
