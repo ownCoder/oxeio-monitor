@@ -20,14 +20,24 @@ import { Chip, MiniButton, ServerError, useMutation } from './settings/ui';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
- * "All Design Targets"।
+ * **"Design Pool"** *(মালিকের দেওয়া নাম, ২৩ আগস্ট)*।
+ *
+ * ⚠️ ফাইলের নাম `AllTargetsPage` রয়ে গেছে ইচ্ছাকৃতভাবে — রুট
+ * (`targets/all`), import আর App.tsx সব একসাথে বদলানো মানে অকারণ churn,
+ * অথচ ব্যবহারকারী ফাইলের নাম দেখেন না। ⭐ পর্দার নাম আর ফাইলের নাম
+ * আলাদা হলে বিভ্রান্তি হতে পারে, তাই কথাটা এখানে লেখা রইল।
+ *
+ * ⚠️⚠️ **"Pool" শব্দটা এই পাতাতেই আবার আসে** — অবস্থার চিপে (`Pool` =
+ * এখনো কারো হাতে যায়নি)। অর্থাৎ পাতার নাম "Design Pool" হলেও পাতাটা
+ * **সব অবস্থাই** দেখায়, কেবল pool নয়। subtitle ("Every link, and where
+ * it stands") ইচ্ছাকৃতভাবে রাখা হয়েছে ঠিক সেই কারণেই।
  *
  * ⚠️ জমা দেওয়ার পাতাটা আলাদা: দুটো আলাদা কাজ, আর এক পাতায় থাকলে
  * ৫০০ লাইন পেস্ট করতে গিয়ে প্রতিবার ৩৯ হাজারের তালিকাও লোড হতো।
  */
 export function AllTargetsPage() {
   return (
-    <Page title="All design targets" subtitle="Every link, and where it stands">
+    <Page title="Design Pool" subtitle="Every link, and where it stands">
       <TargetList />
     </Page>
   );

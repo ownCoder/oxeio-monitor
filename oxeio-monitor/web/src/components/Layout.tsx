@@ -130,7 +130,7 @@ const NAV: NavItem[] = [
   },
   {
     to: '/targets/all',
-    label: 'All design targets',
+    label: 'Design Pool',
     roles: ['owner', 'manager', 'employee'],
     when: (user) => user.canAddTargets,
     child: true,
