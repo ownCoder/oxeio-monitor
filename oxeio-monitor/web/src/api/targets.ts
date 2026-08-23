@@ -143,12 +143,24 @@ export interface TargetPage {
  * যায় ওটা আগে হয়ে গেছে কি না, আর কে করেছিল।
  */
 export function listTargets(
-  params: { status?: TargetStatus; q?: string; page?: number },
+  params: {
+    status?: TargetStatus;
+    q?: string;
+    page?: number;
+    /** ⭐ কোন ডিজাইনারের *(২৩ আগস্ট)* */
+    staffId?: number;
+    /** ⭐ `YYYY-MM-DD` — শেষ কাজের তারিখ এই সীমার ভেতরে */
+    from?: string;
+    to?: string;
+  },
   signal?: AbortSignal,
 ): Promise<TargetPage> {
   const qs = new URLSearchParams();
   if (params.status) qs.set('status', params.status);
   if (params.q) qs.set('q', params.q);
+  if (params.staffId) qs.set('staffId', String(params.staffId));
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
   if (params.page && params.page > 1) qs.set('page', String(params.page));
 
   const suffix = qs.toString();
@@ -187,4 +199,15 @@ export function markLive(id: number, liveAsin?: string): Promise<{ ok: boolean }
     method: 'POST',
     body: liveAsin ? { liveAsin } : {},
   });
+}
+
+/** ⭐ ছাঁকনির ড্রপডাউনের জন্য — যাঁদের নামে কোনো টার্গেট আছে */
+export interface TargetDesigner {
+  id: number;
+  empCode: string;
+  fullName: string;
+}
+
+export function listTargetDesigners(signal?: AbortSignal): Promise<TargetDesigner[]> {
+  return api<TargetDesigner[]>('/design-targets/designers', { signal });
 }

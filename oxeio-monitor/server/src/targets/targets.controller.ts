@@ -58,6 +58,27 @@ class ListQueryDto {
   /** ⚠️ `@Type` ছাড়া query string-এর `"2"` স্ট্রিং হয়েই থাকত */
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)
   page?: number;
+
+  /** ⭐ কোন ডিজাইনারের — `employees.id` *(২৩ আগস্ট)* */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  staffId?: number;
+
+  /**
+   * ⭐ তারিখের সীমা — **শেষ যা ঘটেছে** তার দিন ধরে।
+   *
+   * ⚠️ `YYYY-MM-DD` ছাড়া কিছু নেওয়া হয় না: আলগা পার্সিং মানে
+   * `03-04-2026` কারো কাছে মার্চ, কারো কাছে এপ্রিল — আর ভুল ফল
+   * "কিছু পাওয়া গেল না" হয়ে দেখা দিত, ভুল বলে নয়।
+   */
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: "from must be a date like 2026-08-23",
+  })
+  from?: string;
+
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: "to must be a date like 2026-08-23",
+  })
+  to?: string;
 }
 
 class UpdateTargetDto {
@@ -124,6 +145,13 @@ export class TargetsController {
    * সংখ্যা পড়তে পারতেন। বড় ফাঁস নয়, কিন্তু একই পর্দার দুটো রুটে দুই
    * নিয়ম থাকলে একদিন ভুলটা বড় জায়গায় হতো।
    */
+  /** ⭐ ছাঁকনির ড্রপডাউনের জন্য — owner · manager · গবেষক *(২৩ আগস্ট)* */
+  @Get('designers')
+  async designers(@CurrentUser() actor: SessionUser) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.designers();
+  }
+
   @Get('stats')
   async stats(@CurrentUser() actor: SessionUser) {
     await this.targets.assertCanUse(actor);

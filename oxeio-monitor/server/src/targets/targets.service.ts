@@ -525,6 +525,12 @@ export class TargetsService {
     status?: DesignTargetStatus;
     q?: string;
     page?: number;
+    /** ⭐ কোন ডিজাইনারের — `employees.id` */
+    staffId?: number;
+    /** ⭐ 'YYYY-MM-DD' — শেষ কাজের তারিখ এই দিন থেকে */
+    from?: string;
+    /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
+    to?: string;
   }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
     const page = Math.max(1, query.page ?? 1);
 
@@ -536,9 +542,37 @@ export class TargetsService {
       asin = 'asin' in parsed ? parsed.asin : query.q.trim().toUpperCase();
     }
 
+    /**
+     * ⭐⭐ **তারিখটা `lastActivityAt` ধরে** *(২৩ আগস্ট ২০২৬)* — অর্থাৎ
+     * "শেষ যা ঘটেছে"।
+     *
+     * ⚠️⚠️ অবস্থাভেদে আলাদা ঘর ধরা হয়নি (done হলে completedAt, assigned
+     * হলে assignedAt) — সেটা করলে "কোন তারিখ ছাঁকা হচ্ছে" প্রশ্নটা
+     * প্রতিবার বদলাত, আর ক্রম ও ছাঁকনি দুটো আলাদা ভিত্তিতে দাঁড়াত।
+     *
+     * ⭐ এক ভিত্তি রাখায় ফলটা স্বাভাবিকভাবেই ঠিক হয়: `done` বাছলে ওই
+     * সারির `lastActivityAt` মানেই `completedAt`, কারণ সেটাই সবচেয়ে পরের।
+     *
+     * ⚠️ `to`-তে দিনটা **অন্তর্ভুক্ত** — মানুষ "২৩ তারিখ পর্যন্ত" বললে
+     * ২৩ তারিখটাও বোঝায়। তাই পরের দিনের শুরু পর্যন্ত (`lt`) দেখা হয়।
+     */
+    const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
+    const nextDay = (day: string): Date =>
+      new Date(dhakaStart(day).getTime() + 86_400_000);
+
+    const activity =
+      query.from || query.to
+        ? {
+            ...(query.from ? { gte: dhakaStart(query.from) } : {}),
+            ...(query.to ? { lt: nextDay(query.to) } : {}),
+          }
+        : undefined;
+
     const where = {
       ...(query.status ? { status: query.status } : {}),
       ...(asin ? { asin: { contains: asin } } : {}),
+      ...(query.staffId ? { assignedToId: query.staffId } : {}),
+      ...(activity ? { lastActivityAt: activity } : {}),
     };
 
     const [total, rows] = await Promise.all([
@@ -563,8 +597,18 @@ export class TargetsService {
           //    এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)
           completedBy: { select: { fullName: true, role: true } },
         },
-        // ⚠️ নতুন আগে — গবেষক সদ্য জমা দেওয়াগুলোই আগে দেখতে চান
-        orderBy: { id: 'desc' },
+        /**
+         * ⭐⭐ **শেষ যা ঘটেছে, সেটাই আগে** *(২৩ আগস্ট ২০২৬)*।
+         *
+         * ⚠️⚠️ আগে ছিল `id desc` — অর্থাৎ **কবে যোগ হয়েছে**, কবে কাজ
+         * হয়েছে নয়। ৩১,৩১১টা `done` সারির মাঝে দশ মিনিট আগে করা একটা
+         * ভুল যেকোনো জায়গায় থাকত, আর খুঁজে পাওয়া যেত না।
+         *
+         * ⚠️ `id` দ্বিতীয় ধাপ হিসেবে রাখা — একই মুহূর্তে জমা হওয়া
+         * সারিগুলোর ক্রম যাতে প্রতিবার এক থাকে (নইলে পাতা বদলালে
+         * একই সারি দুবার বা শূন্যবার দেখা যেত)।
+         */
+        orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * TARGET_PAGE_SIZE,
         take: TARGET_PAGE_SIZE,
       }),
@@ -658,6 +702,24 @@ export class TargetsService {
   }
 
   /** পুলের অবস্থা — ইনবক্সের পর্দায় */
+  /**
+   * ⭐ **ছাঁকনির ড্রপডাউনের জন্য ডিজাইনারের তালিকা** *(২৩ আগস্ট ২০২৬)*।
+   *
+   * ⚠️⚠️ সাধারণ স্টাফ-তালিকার রুট ব্যবহার করা যেত না — ওটা owner/manager
+   * only, অথচ এই পাতা **গবেষকও** দেখেন। তাই আলাদা, আর এখানে কেবল
+   * নাম-কোড যায়; বেতন বা ফোন নম্বরের মতো কিছু নয়।
+   *
+   * ⚠️ ছেড়ে যাওয়া কর্মীও থাকেন — তাঁদের নামেই পুরোনো টার্গেট বাঁধা,
+   *    আর ছাঁকনি থেকে বাদ দিলে ওই সারিগুলো কোনোদিন খুঁজে পাওয়া যেত না।
+   */
+  async designers(): Promise<{ id: number; empCode: string; fullName: string }[]> {
+    return this.prisma.employee.findMany({
+      where: { designTargets: { some: {} } },
+      select: { id: true, empCode: true, fullName: true },
+      orderBy: { empCode: 'asc' },
+    });
+  }
+
   async stats(): Promise<
     Record<DesignTargetStatus, number> & {
       perDesigner: number;

@@ -732,6 +732,20 @@ model DesignTarget {
    * থেকে ফল পর্যন্ত।
    */
   liveAsin    String?   @map("live_asin") @db.VarChar(20)
+  /**
+   * ⭐⭐ **শেষ যা ঘটেছে** *(২৩ আগস্ট ২০২৬)* — তালিকার ক্রম ও তারিখ-ফিল্টারের ভিত্তি।
+   *
+   * ⚠️⚠️ **ডাটাবেসে স্বয়ংগণিত** (`GENERATED ALWAYS AS ... STORED`) — কোড
+   * এতে কখনো লেখে না, লিখতে গেলে PostgreSQL নিজেই আটকাবে। তাই "কেউ
+   * হালনাগাদ করতে ভুলে গেল" বলে কোনো অবস্থা তৈরি হতে পারে না।
+   *
+   * ⭐ `GREATEST` NULL উপেক্ষা করে, আর `addedAt` NOT NULL — তাই ঘরটা
+   * কখনো খালি থাকে না, এমনকি পুলে পড়ে থাকা সারিতেও।
+   *
+   * ⚠️ Prisma-তে ঐচ্ছিক (`?`) লেখা হয়েছে যাতে কোনো `create` একে বাধ্যতামূলক
+   * না ভাবে — আসল ডাটাবেসে ঘরটা কখনো NULL হয় না।
+   */
+  lastActivityAt DateTime? @map("last_activity_at") @db.Timestamptz(3)
   /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
   completedVia String? @map("completed_via") @db.VarChar(16)
 

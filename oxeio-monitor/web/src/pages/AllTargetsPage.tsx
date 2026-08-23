@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import {
   deleteTarget,
+  listTargetDesigners,
   listTargets,
   markLive,
   markUploaded,
@@ -50,11 +51,22 @@ const FILTERS: { key: TargetStatus | 'all'; label: string }[] = [
  * ⭐ খোঁজার ঘরে **URL বা ASIN** দুটোই চলে — গবেষক একটা লিঙ্ক পেস্ট করে
  * দেখে নিতে পারেন ওটা আগে হয়ে গেছে কি না, আর কে করেছিল।
  */
+/** ঢাকার আজকের তারিখ, `YYYY-MM-DD` */
+function dhakaToday(): string {
+  // ⚠️ `toISOString()` UTC দেয় — ঢাকায় ভোর ৬টার আগে সেটা গতকাল দেখাত
+  return new Date(Date.now() + 6 * 3_600_000).toISOString().slice(0, 10);
+}
+
 function TargetList() {
   const [filter, setFilter] = useState<TargetStatus | 'all'>('all');
   const [q, setQ] = useState('');
+  const [staffId, setStaffId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const edit = useMutation();
+
+  const designers = useApi(listTargetDesigners, []);
 
   const data = useApi(
     (signal) =>
@@ -62,11 +74,14 @@ function TargetList() {
         {
           ...(filter === 'all' ? {} : { status: filter }),
           ...(q.trim() ? { q: q.trim() } : {}),
+          ...(staffId ? { staffId: Number(staffId) } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
           page,
         },
         signal,
       ),
-    [filter, q, page],
+    [filter, q, staffId, from, to, page],
   );
 
   /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
@@ -98,12 +113,99 @@ function TargetList() {
           </button>
         ))}
 
+        {/*
+          ⭐⭐ **"আজ শেষ হয়েছে"** *(২৩ আগস্ট, মালিকের চাওয়া)* — ভুল করে
+          Complete চাপা কাজ খুঁজে বের করার সবচেয়ে ছোট পথ।
+
+          ⚠️ হাতে তিনটে ঘর সাজানোর বদলে এক ক্লিক, কারণ এটাই সবচেয়ে
+          বেশি দরকার হবে — আর দরকারের মুহূর্তে মানুষ ফর্ম ভরতে চায় না।
+        */}
+        <button
+          type="button"
+          onClick={() =>
+            change(() => {
+              setFilter('done');
+              setStaffId('');
+              setFrom(dhakaToday());
+              setTo(dhakaToday());
+            })
+          }
+          className="rounded-full border border-line px-3 py-1 text-[12.5px] text-ink-2 transition hover:border-brand"
+        >
+          Completed today
+        </button>
+
         <input
           value={q}
           onChange={(e) => change(() => setQ(e.target.value))}
           placeholder="Paste a link or ASIN…"
           className="num ml-auto w-full max-w-[260px] rounded-md border border-line bg-paper px-2.5 py-1 text-[12.5px] text-ink"
         />
+      </div>
+
+      {/*
+        ⭐ দ্বিতীয় সারি — কর্মী ও তারিখ। ⚠️ প্রথম সারিতে ঢোকানো হয়নি:
+        অবস্থার চিপগুলো রোজ ব্যবহার হয়, আর এই দুটো মাঝেমধ্যে; এক সারিতে
+        রাখলে চিপগুলো ছোট পর্দায় নিচে নেমে যেত।
+      */}
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+        <select
+          value={staffId}
+          onChange={(e) => change(() => setStaffId(e.target.value))}
+          className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+        >
+          <option value="">Everyone</option>
+          {(designers.data ?? []).map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.empCode} · {d.fullName}
+            </option>
+          ))}
+        </select>
+
+        <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
+          From
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => change(() => setFrom(e.target.value))}
+            className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+          />
+        </label>
+
+        <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
+          to
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => change(() => setTo(e.target.value))}
+            className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+          />
+        </label>
+
+        {/*
+          ⚠️ ছাঁকনি বসানো থাকলে সেটা **দেখা যেতে হবে** — নইলে কেউ কাল
+          এসে খালি তালিকা দেখে ভাবত ডেটা হারিয়ে গেছে, অথচ গতকালের
+          তারিখটাই বসে ছিল।
+        */}
+        {(staffId || from || to) && (
+          <button
+            type="button"
+            onClick={() =>
+              change(() => {
+                setStaffId('');
+                setFrom('');
+                setTo('');
+              })
+            }
+            className="text-[12px] text-data hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
+
+        <span className="ml-auto text-[11.5px] text-ink-3">
+          Newest activity first
+        </span>
       </div>
 
       <div className="px-4">
