@@ -88,7 +88,7 @@ export function TopUsage({
         <>
           <div className="grid gap-3 lg:grid-cols-2">
             <UsagePanel
-              title="Top apps"
+              title="Top Apps"
               hint="By process name"
               report={data.apps}
               emptyText="No app rows on this day"
@@ -99,7 +99,7 @@ export function TopUsage({
                  হচ্ছে তার জানার অধিকার আছে যে পুরো URL কোথাও জমা হয় না।
             */}
             <UsagePanel
-              title="Top sites"
+              title="Top Sites"
               hint="Domains only — full URLs are never stored"
               report={data.sites}
               emptyText="No browser time found"

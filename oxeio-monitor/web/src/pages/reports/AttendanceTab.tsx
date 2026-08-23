@@ -155,7 +155,7 @@ export function AttendanceTab({
       </StatRow>
 
       <div className="mt-4">
-        <Card title="Day by day" padded={false}>
+        <Card title="Day by Day" padded={false}>
           <Table
             columns={columns}
             rows={shown}

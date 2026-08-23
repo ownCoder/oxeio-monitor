@@ -165,7 +165,7 @@ export function HolidaysSection() {
       )}
 
       {rows.length > 0 && (
-        <Card padded={false} title={`${year} · ${rows.length} days`}>
+        <Card padded={false} title={`${year} · ${rows.length} Days`}>
           <Table
             columns={columns}
             rows={rows}

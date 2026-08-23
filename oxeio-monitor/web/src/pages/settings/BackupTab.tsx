@@ -57,7 +57,7 @@ export function BackupTab() {
   return (
     <div className="space-y-3">
       <Card
-        title="Offsite copy — Backblaze B2"
+        title="Offsite Copy — Backblaze B2"
         hint="A second copy of the nightly backup, off this server"
       >
         <div className="space-y-3.5 p-4">
@@ -194,7 +194,7 @@ export function BackupTab() {
         ⭐ "কনফিগ করেছি" আর "ব্যাকআপ সত্যিই হচ্ছে" এক কথা নয় — তাই শেষ
            রানের অবস্থাটাও একই পর্দায়।
       */}
-      <Card title="Nightly backup" hint="What the server managed last night">
+      <Card title="Nightly Backup" hint="What the server managed last night">
         <div className="p-4">
           {health.loading && !backup && <Loading />}
           {health.error && !backup && (

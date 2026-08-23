@@ -63,7 +63,7 @@ export function AgentVersionsTab() {
       </Notice>
 
       <Card
-        title="Agent versions"
+        title="Agent Versions"
         hint="Which build each PC is offered, and how widely"
         padded={false}
         actions={<Button onClick={() => setPublishing(true)}>Publish</Button>}

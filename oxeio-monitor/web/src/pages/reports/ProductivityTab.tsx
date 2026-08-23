@@ -197,7 +197,7 @@ export function ProductivityTab({
 
       <div className="mt-4 space-y-4">
         <Card
-          title="Top apps and sites"
+          title="Top Apps and Sites"
           hint="Sites show the domain only — the full address is never stored"
           padded={false}
         >
@@ -215,7 +215,7 @@ export function ProductivityTab({
           )}
         </Card>
 
-        <Card title="By staff" padded={false}>
+        <Card title="By Staff" padded={false}>
           {data.byEmployee.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-ink-3">
               No usage was recorded for anyone in this range.

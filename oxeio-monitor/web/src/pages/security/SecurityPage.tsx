@@ -47,7 +47,7 @@ export function SecurityPage() {
     >
       <Card>
         <SectionHead
-          title="Two-factor authentication (2FA)"
+          title="Two-Factor Authentication (2FA)"
           hint={
             data.enabled
               ? `On · ${data.recoveryCodesLeft} recovery codes left`

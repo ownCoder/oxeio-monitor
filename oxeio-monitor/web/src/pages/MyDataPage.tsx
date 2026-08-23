@@ -143,7 +143,7 @@ export function MyDataPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
-              title="Where you are"
+              title="Where You Are"
               hint="The same numbers your tray icon shows"
             >
               <div className="flex flex-wrap items-center gap-6">
@@ -208,7 +208,7 @@ export function MyDataPage() {
             {deposit.data &&
               (deposit.data.totalPaisa > 0 || deposit.data.settlement) && (
                 <Card
-                  title="Security deposit"
+                  title="Security Deposit"
                   hint={
                     deposit.data.settlement
                       ? 'Settled — this is the record'
@@ -260,7 +260,7 @@ export function MyDataPage() {
                 </Card>
               )}
 
-            <Card title="What is recorded" hint="And for how long">
+            <Card title="What Is Recorded" hint="And for how long">
               <dl className="space-y-2.5 text-[13px]">
                 <Row term="Screenshots">
                   Kept {summary.data.screenshotRetentionDays} days, then deleted
@@ -292,7 +292,7 @@ export function MyDataPage() {
       {linked && (
         <div className="mt-4 space-y-4">
           <Card
-            title="Day by day"
+            title="Day by Day"
             hint="Last 30 days · days off and empty days are shown too"
             padded={false}
           >

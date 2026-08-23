@@ -48,7 +48,7 @@ export function TargetsPage() {
     >
       <div className="space-y-3">
         <Card
-          title="The pipeline"
+          title="The Pipeline"
           hint="From collected link to a product that sells"
         >
           <div className="p-4">
@@ -86,7 +86,7 @@ export function TargetsPage() {
           </div>
         </Card>
 
-        <Card title="Add links" hint="One per line — paste as many as you like">
+        <Card title="Add Links" hint="One per line — paste as many as you like">
           <div className="space-y-3 p-4">
             <Notice>
               Paste them however they come — <span className="num">/dp/</span>,{' '}

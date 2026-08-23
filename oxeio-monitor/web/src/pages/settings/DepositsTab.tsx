@@ -63,7 +63,7 @@ export function DepositsTab() {
       <ServerError error={mutation.error} />
 
       <Card
-        title="Security deposit"
+        title="Security Deposit"
         hint={
           data
             ? `${data.policy.amount} a month · refundable with ${data.policy.noticeDays} days' notice`

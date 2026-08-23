@@ -188,7 +188,7 @@ export function SummaryTab({
         গিয়ে ভাবতেন Shortfall কলামে ভুল আছে।
       */}
       <Card
-        title={groupBy === 'month' ? 'Month by month' : 'Week by week'}
+        title={groupBy === 'month' ? 'Month by Month' : 'Week by Week'}
         hint="Counted = worked + adjustment. Shortfall is measured only against what was expected by yesterday — days before tracking started, and today, are never counted as a shortfall."
         padded={false}
       >

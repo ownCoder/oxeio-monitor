@@ -38,7 +38,7 @@ export function MyTargets() {
 
   return (
     <Card
-      title="Your design targets"
+      title="Your Design Targets"
       hint={`${data.length} in hand — oldest first`}
     >
       <div className="space-y-3 p-4">

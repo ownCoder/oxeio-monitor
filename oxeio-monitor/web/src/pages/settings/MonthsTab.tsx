@@ -54,7 +54,7 @@ export function MonthsTab() {
       <ServerError error={mutation.error} />
 
       <Card
-        title="Closing the month"
+        title="Closing the Month"
         hint="Once closed, that month's hours and targets stop moving"
         padded={false}
       >

@@ -264,7 +264,7 @@ export function AuditTab() {
       {rows.length > 0 && (
         <Card
           padded={false}
-          title={`${formatCount(total)} events`}
+          title={`${formatCount(total)} Events`}
           hint={`Page ${page} of ${lastPage} · newest first`}
           actions={
             <div className="flex gap-1.5">

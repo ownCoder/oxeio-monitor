@@ -103,7 +103,7 @@ function TargetList() {
 
   return (
     <Card
-      title="Every target"
+      title="Every Target"
       hint={data.data ? `${data.data.total} in total` : 'Loading…'}
       padded={false}
     >

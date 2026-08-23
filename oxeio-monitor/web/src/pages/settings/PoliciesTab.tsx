@@ -370,7 +370,7 @@ function PolicyForm({
 
   return (
     <Modal
-      title={policy ? `${policy.name} — edit` : 'New work policy'}
+      title={policy ? `${policy.name} — Edit` : 'New Work Policy'}
       hint={
         policy && policy.employeeCount > 0
           ? `${policy.employeeCount} people are on this policy`

@@ -68,7 +68,7 @@ export function Adjustments({
 
   return (
     <Card
-      title="Hour corrections"
+      title="Hour Corrections"
       hint="Time given back when the system — not the person — lost the hours"
       actions={
         isOwner ? (

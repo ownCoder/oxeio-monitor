@@ -83,7 +83,7 @@ export function AlertsPage() {
         />
 
         <Card
-          title={showAll ? 'All alerts' : 'Open alerts'}
+          title={showAll ? 'All Alerts' : 'Open Alerts'}
           hint="Nothing is ever deleted — acknowledging just marks it seen"
           padded={false}
           actions={
@@ -282,7 +282,7 @@ function HealthCard({
 
   return (
     <Card
-      title="Server health"
+      title="Server Health"
       hint={data ? `Checked ${formatAgo(data.checkedAt)}` : undefined}
       actions={
         <div className="flex gap-2">

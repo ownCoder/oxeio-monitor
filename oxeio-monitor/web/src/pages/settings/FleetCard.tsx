@@ -45,7 +45,7 @@ export function FleetCard({ versions }: { versions: AgentVersionView[] }) {
 
   return (
     <Card
-      title="Where the fleet stands"
+      title="Where the Fleet Stands"
       hint="Which PC is running which build right now"
       padded={false}
     >

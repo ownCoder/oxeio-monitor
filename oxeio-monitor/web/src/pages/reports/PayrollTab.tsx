@@ -173,7 +173,7 @@ export function PayrollTab({ month }: { month: string }) {
   return (
     <>
       <Card
-        title={`Payroll hours · ${formatMonth(month)}`}
+        title={`Payroll Hours · ${formatMonth(month)}`}
         hint="Deduction = salary × shortfall ÷ target. Every view of this sheet is written to the audit log."
         padded={false}
       >

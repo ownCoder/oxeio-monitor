@@ -476,7 +476,7 @@ export function LiveBoardPage() {
         */}
         <div className="mt-3 grid gap-3 lg:grid-cols-[2fr_1fr_1fr]">
           <Card
-            title="Shape of the day"
+            title="Shape of the Day"
             hint="Hours the whole team put in, by hour · Dhaka time"
             padded={false}
           >
@@ -499,14 +499,14 @@ export function LiveBoardPage() {
           </Card>
 
           <Card
-            title="Right now"
+            title="Right Now"
             hint="Every card falls in exactly one of these"
             padded={false}
           >
             <StatusStrip cards={cards} />
           </Card>
           <Card
-            title="Last 7 days"
+            title="Last 7 Days"
             hint="Per day · dashed = before tracking"
             padded={false}
           >
@@ -529,7 +529,7 @@ export function LiveBoardPage() {
           */}
           <Card
             title={
-              stats.withTarget === 0 ? 'Hours today' : "Against today's target"
+              stats.withTarget === 0 ? 'Hours Today' : "Against Today's Target"
             }
             hint={
               stats.withTarget === 0
@@ -548,7 +548,7 @@ export function LiveBoardPage() {
           */}
           <div className="grid content-start gap-3">
           <Card
-            title="Where today went"
+            title="Where Today Went"
             hint="Whole team · counted app time only"
             padded={false}
           >
@@ -562,7 +562,7 @@ export function LiveBoardPage() {
           </Card>
           {isOwner && (
             <Card
-              title="Needs attention"
+              title="Needs Attention"
               hint="Not acknowledged yet"
               padded={false}
             >
@@ -600,7 +600,7 @@ export function LiveBoardPage() {
                "কে বেশিদিন আছে" বলে।
           */}
           <Card
-            title="Top performers"
+            title="Top Performers"
             hint={
               leaderWindow === '30d'
                 ? 'Most hours counted in the last 30 days'
@@ -631,7 +631,7 @@ export function LiveBoardPage() {
             )}
           </Card>
           <Card
-            title="This month"
+            title="This Month"
             hint="Counted against the team target"
             padded={false}
           >
