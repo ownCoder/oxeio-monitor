@@ -169,9 +169,9 @@ function MonthlyBoard() {
             <Stat
               label="Everyone's monthly target"
               value={
-                grid.totals.monthTargetHours === null
+                grid.totals.targetHoursInRange === null
                   ? '—'
-                  : `${grid.totals.monthTargetEstimated ? '≈' : ''}${formatHoursAsDuration(grid.totals.monthTargetHours)}`
+                  : `${grid.totals.monthTargetEstimated ? '≈' : ''}${formatHoursAsDuration(grid.totals.targetHoursInRange)}`
               }
               tone="muted"
             />

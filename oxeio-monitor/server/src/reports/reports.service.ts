@@ -123,6 +123,12 @@ interface ReportContext {
    * সংজ্ঞা ও কেন সার্ভারে, দুটোই ওই টাইপের নোটে।
    */
   expectedHours: Record<number, number>;
+  /**
+   * ⭐⭐ কর্মীপ্রতি **এই পরিসরের মোট টার্গেট**, ঘণ্টায় — অফিস-ডে × দৈনিক
+   * টার্গেট, শুক্রবার · সরকারি ছুটি · তার নিজের ছুটি বাদ। সংজ্ঞা
+   * `ReportMeta.targetHoursInRange`-এর নোটে।
+   */
+  targetHoursInRange: Record<number, number>;
   /** ওই কর্মীর ওই দিনের টার্গেট, সেকেন্ডে (ছুটির দিনে ০) */
   targetSecOf(employee: ResolvedEmployee, date: Date): number;
   /**
@@ -915,6 +921,35 @@ export class ReportsService {
      *    শেষ-হওয়া দিনেও দেখা হয়নি) — তখন প্রত্যাশা ০, আর ০-এর বিপরীতে
      *    কারও ঘাটতিও থাকতে পারে না। সেটাই কাম্য।
      */
+    /**
+     * ⭐⭐ **অফিস-ডে × দৈনিক টার্গেট − ছুটি** — এই প্রকল্পের একমাত্র
+     * টার্গেট-সূত্র, আর এখানে **একবারই** লেখা।
+     *
+     * ⚠️⚠️ আগে সূত্রটা দু-জায়গায় লেখা হতো, আর ঠিক সেভাবেই G117 জন্মেছিল:
+     * এক পাশে ছুটি বাদ যেত, অন্য পাশে যেত না। ⭐ এখন দুটো কলার (প্রত্যাশা
+     * আর পরিসরের টার্গেট) কেবল **আলাদা জানালা** পাঠায়, আলাদা অঙ্ক নয়।
+     *
+     * ⚠️ R2 — ছুটি আলাদা করে বাদ দিতে হয়, কারণ `targetSecIn()` গুণ করে
+     *    (দিনে-দিনে যোগ করে না)। না কাটলে meta-র সংখ্যা আর সারিগুলোর
+     *    যোগফল মিলত না — ওই সমতাটাই `test/reports.target.spec.ts` পাহারা দেয়।
+     */
+    const netTargetSecIn = (
+      employee: ResolvedEmployee,
+      span: DateSpan,
+    ): number => {
+      const onLeave = countLeaveWorkdays(
+        leaveBy.get(employee.id),
+        span.from,
+        span.to,
+        employee.weeklyOffDay,
+        holidays,
+      );
+      return (
+        targetSecIn(span, ruleOf(employee), employee.dailyTargetSec) -
+        onLeave * employee.dailyTargetSec
+      );
+    };
+
     const expectedSecOf = (
       employee: ResolvedEmployee,
       span: DateSpan,
@@ -925,23 +960,7 @@ export class ReportsService {
       const seen = overlapOf(window, span);
       if (seen === null) return 0;
 
-      /**
-       * ⚠️ R2 — গুণফল থেকে ছুটির দিনগুলো বাদ। `targetSecIn()` গুণ করে
-       *    (দিনে-দিনে যোগ করে না), তাই ছুটি এখানে আলাদা করে না কাটলে
-       *    meta-র প্রত্যাশা আর সারিগুলোর যোগফল আর মিলত না — অথচ ওই
-       *    সমতাটাই `test/reports.target.spec.ts` পাহারা দেয়।
-       */
-      const onLeave = countLeaveWorkdays(
-        leaveBy.get(employee.id),
-        seen.from,
-        seen.to,
-        employee.weeklyOffDay,
-        holidays,
-      );
-      return (
-        targetSecIn(seen, ruleOf(employee), employee.dailyTargetSec) -
-        onLeave * employee.dailyTargetSec
-      );
+      return netTargetSecIn(employee, seen);
     };
 
     const expectedHours: Record<number, number> = {};
@@ -951,11 +970,48 @@ export class ReportsService {
       );
     }
 
+    /**
+     * ⭐⭐ **এই পরিসরে তার মোট টার্গেট** — মালিকের নিয়ম *(২৩ আগস্ট ২০২৬)*:
+     * *"daily 8 ghonta kore, without holiday and friday"*, আর
+     * *"maser hisab na kore office day hisab koro"*।
+     *
+     * অর্থাৎ **অফিস-ডে গোনা হয়, মাস নয়** — যে ক-দিন দেখা হচ্ছে সেই
+     * পরিসরের কর্মদিবস × দৈনিক টার্গেট, শুক্রবার ও সরকারি ছুটি বাদ।
+     *
+     * ⚠️⚠️ এটাই G117 সারাল: আগে এখানে বসত পলিসির **ফ্ল্যাট ২০৮**, অথচ
+     * অক্টোবরে অফিস-ডে ২৪ (= ১৯২ঘ)। ফলে রিপোর্ট ১৬ ঘণ্টার **ভুতুড়ে
+     * ঘাটতি** দেখাত, আর tray একই মাসে অন্য সংখ্যা বলত।
+     *
+     * ⭐ মাস ধরে না গোনায় *"কোন মাসের টার্গেট"* প্রশ্নটাই আর ওঠে না —
+     * এক মাস, আধা মাস, তিন মাস, সবেতেই সংখ্যাটার মানে এক।
+     *
+     * ⚠️ **ব্যক্তিগত ছুটিও বাদ** (`netTargetSecIn`) — নইলে সবেতন ছুটির
+     *    দিনগুলো ঘাটতি হয়ে দাঁড়াত, আর tray/`monthly_summary`/পে-রোলের
+     *    সাথে আবার দুই সংখ্যা হতো, কেবল উল্টো চিহ্নে।
+     *
+     * ⚠️ কর্মকালে ছাঁটা — জয়েনের আগের বা ছাড়ার পরের দিন কারো টার্গেট নয়।
+     *    ছেদ খালি হলে **০**, আর ০ একটা বৈধ উত্তর ("তার কোনো অফিস-ডে নেই")।
+     */
+    const targetHoursInRange: Record<number, number> = {};
+    for (const employee of employees) {
+      const employed = overlapOf(
+        { from: range.from, to: range.to },
+        {
+          from: employee.joinedOn ?? range.from,
+          to: employee.leftOn ?? range.to,
+        },
+      );
+      targetHoursInRange[employee.id] = secondsToHours(
+        employed === null ? 0 : Math.round(netTargetSecIn(employee, employed)),
+      );
+    }
+
     return {
       range,
       employees,
       excluded,
       expectedHours,
+      targetHoursInRange,
       expectedSecOf,
       /**
        * ⭐⭐ **ঠিক সেই সারিগুলো**, যেগুলো দিয়ে উপরের `holidays` সেটটা — আর
@@ -1109,16 +1165,11 @@ function metaOf(ctx: ReportContext): ReportMeta {
     //    ভগ্নাংশও নড়ে — তাই চুপ করে থাকা যায় না।
     approximateHolidayDates: ctx.approximateHolidayDates,
 
-    // ⭐ **নীতিতে লেখা** মাসিক টার্গেট (২০৮) — হিসাব নয়। ওয়েব পাতা এটা
-    //    নিজে বানাতে গিয়ে সরকারি ছুটি বাদ দিতে ভুলত (২০৮ → ২১৬)।
-    // ⚠️⚠️ ওই মাসের **আসল** মোট টার্গেট এটা নয়: দৈনিক টার্গেট এখন
-    //    ২০৮ ÷ ২৬ ধ্রুবক, তাই ২৫ কর্মদিবসের মাসে মোট দাঁড়ায় ২০০ ঘণ্টা
-    //    (`monthly_summary.target_sec`-ও ঠিক তাই)। রেঞ্জ একাধিক মাস ছুঁতে
-    //    পারে বলে এখানে মাস-নির্ভর একটা সংখ্যা বসানো যায় না —
-    //    docs/08-Gap-Analysis.md-এ খোলা প্রশ্ন হিসেবে লেখা আছে।
-    monthTargetHours: Object.fromEntries(
-      ctx.employees.map((e) => [e.id, e.monthlyTargetSec / HOUR]),
-    ),
+    // ⭐⭐ এই পরিসরে তার **আসল** টার্গেট — অফিস-ডে × দৈনিক টার্গেট (G117)।
+    // ⚠️ আগে এখানে বসত পলিসির ফ্ল্যাট ২০৮, যেটা কেবল ২৬ অফিস-ডের মাসে
+    //    ঠিক হতো; অক্টোবরে ২৪ দিন = ১৯২ঘ, অর্থাৎ ১৬ ঘণ্টার ভুতুড়ে ঘাটতি।
+    // ⭐ হিসাবটা `context()`-এ, `expectedHours`-এর সাথে **একই সূত্রে**।
+    targetHoursInRange: ctx.targetHoursInRange,
 
     // ⭐⭐ "এ পর্যন্ত কত হওয়ার কথা ছিল" — জানালাটা `elapsedWindow()`-এর,
     //    অর্থাৎ tray ও Live Board-এর সাথে হুবহু একই সংজ্ঞা।

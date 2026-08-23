@@ -72,7 +72,7 @@ export interface EmployeeGridRow {
   /** এক কর্মদিবসের টার্গেট — মাসজুড়ে ধ্রুব। জানা না গেলে `null` */
   dailyTargetHours: number | null;
   /** পুরো মাসের টার্গেট (সাধারণত ২০৮)। বের করা না গেলে `null` */
-  monthTargetHours: number | null;
+  targetHoursInRange: number | null;
   /** ⚠️ সত্যি হলে সংখ্যাটা আন্দাজ — পর্দায় `≈` দিয়ে দেখাতে হবে */
   monthTargetEstimated: boolean;
 
@@ -92,7 +92,7 @@ export interface MonthGrid {
     employees: number;
     creditedHours: number;
     expectedHours: number;
-    monthTargetHours: number | null;
+    targetHoursInRange: number | null;
     monthTargetEstimated: boolean;
     /** যাঁরা `expected`-এর চেয়ে পিছিয়ে */
     behind: number;
@@ -190,7 +190,7 @@ export function buildMonthGrid(
     //    দেখাত, অর্থাৎ প্রত্যেকে ৮ ঘণ্টা বেশি পিছিয়ে আছেন মনে হতো।
     //    অথচ পে-রোল হিসাব করত ২০৮ ধরে — ড্যাশবোর্ড আর বেতন দুটো আলাদা
     //    সংখ্যা বললে কোনোটাই বিশ্বাসযোগ্য থাকে না।
-    const monthTarget = report.meta.monthTargetHours[employeeId] ?? null;
+    const monthTarget = report.meta.targetHoursInRange[employeeId] ?? null;
 
     /**
      * ⭐⭐ **প্রত্যাশা সার্ভার থেকে আসে — এখানে যোগ করা হয় না।**
@@ -236,7 +236,7 @@ export function buildMonthGrid(
       paceHours: creditedHours - expectedHours,
       daysWithWork,
       dailyTargetHours: dailyTarget,
-      monthTargetHours: monthTarget,
+      targetHoursInRange: monthTarget,
       // সার্ভার থেকে আসা সংখ্যা — আর অনুমান নয়
       monthTargetEstimated: false,
       // ⭐ মাসের মাঝে যোগ দিলে/ছেড়ে গেলে তাঁর টার্গেট এমনিতেই কম — সেটা
@@ -330,7 +330,7 @@ function officeOffDaysOf(
 function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
   let creditedHours = 0;
   let expectedHours = 0;
-  let monthTargetHours = 0;
+  let targetHoursInRange = 0;
   let monthTargetKnown = false;
   let monthTargetEstimated = false;
   let behind = 0;
@@ -338,8 +338,8 @@ function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
   for (const row of rows) {
     creditedHours += row.creditedHours;
     expectedHours += row.expectedHours;
-    if (row.monthTargetHours !== null) {
-      monthTargetHours += row.monthTargetHours;
+    if (row.targetHoursInRange !== null) {
+      targetHoursInRange += row.targetHoursInRange;
       monthTargetKnown = true;
       if (row.monthTargetEstimated) monthTargetEstimated = true;
     }
@@ -350,7 +350,7 @@ function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
     employees: rows.length,
     creditedHours,
     expectedHours,
-    monthTargetHours: monthTargetKnown ? monthTargetHours : null,
+    targetHoursInRange: monthTargetKnown ? targetHoursInRange : null,
     monthTargetEstimated,
     behind,
   };

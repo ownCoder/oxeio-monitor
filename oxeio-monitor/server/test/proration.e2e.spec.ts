@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { ReportsService } from '../src/reports/reports.service';
 import { SummaryService } from '../src/summary/summary.service';
 import {
   createHarness,
@@ -24,6 +25,7 @@ import {
 let h: Harness;
 let owner: Session;
 let summary: SummaryService;
+let reports: ReportsService;
 
 /** পরীক্ষার মাস — আগস্ট ২০২৬: শুক্রবার ৭, ১৪, ২১, ২৮ → ২৭ কর্মদিবস */
 const YEAR_MONTH = '2026-08';
@@ -35,6 +37,7 @@ const HOUR = 3600;
 beforeAll(async () => {
   h = await createHarness();
   summary = h.app.get(SummaryService);
+  reports = h.app.get(ReportsService);
 });
 
 afterAll(async () => {
@@ -308,5 +311,92 @@ describe('পে-রোল — বেতনও prorate হয়', () => {
 
     const res = await payroll();
     expect(rowFor(res.body, 'PR-NONE').payable).toBe('0.00');
+  });
+});
+
+/**
+ * ⭐⭐ **G117 — রিপোর্টের টার্গেটও অফিস-ডে ধরে** *(২৩ আগস্ট ২০২৬)*।
+ *
+ * মালিকের নিয়ম: *"daily 8 ghonta kore, without holiday and friday"*, আর
+ * *"maser hisab na kore office day hisab koro"*।
+ *
+ * ⚠️⚠️ **কেন এই টেস্টগুলো আলাদা করে দরকার:** এই সংখ্যাটার উপর গোটা রেপোতে
+ * আগে **একটাও assertion ছিল না** — তিন জায়গায় কেবল খালি `{}` ফিক্সচার।
+ * অর্থাৎ `meta` ফ্ল্যাট ২০৮ ফেরালেও সব সবুজ থাকত, আর ঠিক তাই থাকত।
+ *
+ * ⭐ প্রতিটা দাবিতে ধ্রুবকের **সাথে সাথে** `monthly_summary.target_sec`-ও
+ * মেলানো হয় — কেবল ধ্রুবক মেলালে দুটো আবার আলাদা হয়ে গেলেও টেস্ট সবুজ
+ * থাকত, আর G117 নীরবে ফিরে আসত।
+ */
+describe('G117 — রিপোর্টের টার্গেট অফিস-ডে ধরে, ফ্ল্যাট ২০৮ নয়', () => {
+  const monthTarget = async (employeeId: number): Promise<number> => {
+    const r = await reports.attendance({ from: '2026-08-01', to: '2026-08-31' });
+    return r.meta.targetHoursInRange[employeeId];
+  };
+
+  it('পুরো মাস থাকলে ২১৬ ঘণ্টা — আর সংখ্যাটা monthly_summary-র সাথে হুবহু এক', async () => {
+    const id = await makeEmployee({ empCode: 'G117-FULL' });
+    await rollup();
+
+    // ২৭ অফিস-ডে × ৮ঘ। ⚠️ পলিসির ফ্ল্যাট ২০৮ হলে এই দাবিটাই ভাঙবে।
+    expect(await monthTarget(id)).toBe(216);
+
+    // ⭐⭐ আসল পাহারা — দুই পথে গোনা দুটো সংখ্যা এক কি না
+    expect(await monthTarget(id)).toBe((await monthRow(id)).targetSec / HOUR);
+  });
+
+  it('১৭ আগস্ট যোগ দিলে কেবল তার নিজের ১৩ অফিস-ডে গোনা হয়', async () => {
+    const id = await makeEmployee({ empCode: 'G117-MID', joinedOn: utc(17) });
+    await rollup();
+
+    expect(await monthTarget(id)).toBe(13 * 8);
+    expect(await monthTarget(id)).toBe((await monthRow(id)).targetSec / HOUR);
+  });
+
+  /**
+   * ⭐⭐ **এটাই "মাস ধরে নয়, অফিস-ডে ধরে"-র আসল প্রমাণ।**
+   *
+   * ১–১০ আগস্ট = ১০ দিন, তার মধ্যে ৭ তারিখ শুক্রবার → **৯ অফিস-ডে = ৭২ঘ**।
+   * ⚠️ পুরোনো কোড এখানেও ২০৮ বলত, কারণ সংখ্যাটা পরিসর দেখত না।
+   */
+  it('আধা মাস চাইলে আধা মাসেরই টার্গেট — ৯ অফিস-ডে = ৭২ ঘণ্টা', async () => {
+    const id = await makeEmployee({ empCode: 'G117-HALF' });
+    await rollup();
+
+    const r = await reports.attendance({ from: '2026-08-01', to: '2026-08-10' });
+    expect(r.meta.targetHoursInRange[id]).toBe(72);
+  });
+
+  /**
+   * ⚠️ R2 — সবেতন ছুটির দিন টার্গেট থেকে বাদ, নইলে ছুটিটাই ঘাটতি হয়ে দাঁড়াত।
+   * ⭐ ৩ ও ৪ আগস্ট (সোম, মঙ্গল) — দুটোই অফিস-ডে, তাই ২১৬ − ১৬ = ২০০।
+   */
+  it('ছুটির দিনও বাদ যায়, আর tray-র সংখ্যার সাথেই মেলে', async () => {
+    const id = await makeEmployee({ empCode: 'G117-LEAVE' });
+    // ⚠️ `created_by` বাধ্যতামূলক — কে ছুটি বসাল সেটা খাতায় থাকতেই হবে
+    await h.prisma.leave.createMany({
+      data: [
+        { employeeId: id, leaveDate: utc(3), type: 'casual', createdBy: OWNER_EMAIL },
+        { employeeId: id, leaveDate: utc(4), type: 'casual', createdBy: OWNER_EMAIL },
+      ],
+    });
+    await rollup();
+
+    expect(await monthTarget(id)).toBe(200);
+    expect(await monthTarget(id)).toBe((await monthRow(id)).targetSec / HOUR);
+  });
+
+  /**
+   * ⚠️⚠️ ০ এখন একটা **বৈধ** উত্তর — আগে ছিল না (ফ্ল্যাট ২০৮ কখনো ০ হতো না)।
+   * ⭐ ওয়েবে এটা "0h 0m, ০%" নয়, "No target" দেখায় (`HeatGrid.tsx`)।
+   */
+  it('মাসের পরে যোগ দিলে টার্গেট ০ — ব্যর্থতা নয়, অফিস-ডে-ই নেই', async () => {
+    const id = await makeEmployee({
+      empCode: 'G117-LATE',
+      joinedOn: new Date(Date.UTC(2026, 8, 10)),
+    });
+    await rollup();
+
+    expect(await monthTarget(id)).toBe(0);
   });
 });

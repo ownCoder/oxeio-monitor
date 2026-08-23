@@ -968,7 +968,7 @@ const meta: ReportMeta = {
   days: 7,
   generatedAt: '2026-08-14T12:00:00.000Z',
   excludedEmployees: [],
-  monthTargetHours: {},
+  targetHoursInRange: {},
   // ⚠️ এই দুটো সাপ্তাহিক সারাংশ পড়ে না — শুধু `ReportMeta` পূরণ করতে
   expectedHours: {},
   approximateHolidayDates: [],

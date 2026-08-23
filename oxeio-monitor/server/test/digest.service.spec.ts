@@ -31,7 +31,7 @@ const meta: ReportMeta = {
   days: 11,
   generatedAt: '2026-08-11T12:30:00.000Z',
   excludedEmployees: [],
-  monthTargetHours: {},
+  targetHoursInRange: {},
   /**
    * ⭐ কর্মী ১-এর জন্য "গতকাল পর্যন্ত ৬৪ ঘণ্টা হওয়ার কথা ছিল" — সার্ভারের
    * একটাই সংজ্ঞা থেকে আসা সংখ্যা (`elapsedWindow()`)। নিচের summary সারিতে

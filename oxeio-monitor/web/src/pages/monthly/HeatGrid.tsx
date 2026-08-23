@@ -220,9 +220,9 @@ export function HeatGrid({
                 <Pace hours={grid.totals.creditedHours - grid.totals.expectedHours} />
               </td>
               <td className="num px-3 py-2 text-right text-ink-3">
-                {grid.totals.monthTargetHours === null
+                {grid.totals.targetHoursInRange === null
                   ? '—'
-                  : `${grid.totals.monthTargetEstimated ? '≈' : ''}${formatHoursAsDuration(grid.totals.monthTargetHours)}`}
+                  : `${grid.totals.monthTargetEstimated ? '≈' : ''}${formatHoursAsDuration(grid.totals.targetHoursInRange)}`}
               </td>
             </tr>
           </tfoot>
@@ -418,13 +418,34 @@ function Pace({ hours, compact = false }: { hours: number; compact?: boolean }) 
 }
 
 function MonthTarget({ row }: { row: EmployeeGridRow }) {
-  if (row.monthTargetHours === null) {
+  if (row.targetHoursInRange === null) {
     return (
       <span
         className="num text-ink-3"
-        title="The whole month's target cannot be worked out for this person yet"
+        title="This person's target for these dates cannot be worked out yet"
       >
         —
+      </span>
+    );
+  }
+
+  /**
+   * ⚠️⚠️ **০ আর "নেই" এক কথা নয়** — আর ০ এখন সত্যিই ঘটতে পারে।
+   *
+   * আগে এই ঘরে বসত পলিসির ফ্ল্যাট ২০৮, যা কখনো ০ হতো না। এখন সংখ্যাটা
+   * অফিস-ডে ধরে গোনা, তাই পুরো সময়টা ছুটিতে থাকলে বা মাসের একেবারে শেষে
+   * যোগ দিলে ০ আসে — বৈধভাবেই।
+   *
+   * ⭐ ProgressBar-এ পাঠালে `max={0}` হয়ে পর্দায় দাঁড়াত **"0h 0m, ০%"**,
+   * অর্থাৎ "উনি ব্যর্থ" — অথচ আসল কথা ওঁর কোনো টার্গেটই ছিল না।
+   */
+  if (row.targetHoursInRange === 0) {
+    return (
+      <span
+        className="num text-ink-3"
+        title="No office days for this person in these dates — on leave throughout, or joined at the very end"
+      >
+        No target
       </span>
     );
   }
@@ -433,7 +454,7 @@ function MonthTarget({ row }: { row: EmployeeGridRow }) {
     <span className="inline-flex items-center justify-end gap-2">
       <ProgressBar
         value={row.creditedHours}
-        max={row.monthTargetHours}
+        max={row.targetHoursInRange}
         className="w-14"
         ariaLabel="This month"
       />
@@ -446,7 +467,7 @@ function MonthTarget({ row }: { row: EmployeeGridRow }) {
         }
       >
         {row.monthTargetEstimated ? '≈' : ''}
-        {formatHoursAsDuration(row.monthTargetHours)}
+        {formatHoursAsDuration(row.targetHoursInRange)}
       </span>
     </span>
   );

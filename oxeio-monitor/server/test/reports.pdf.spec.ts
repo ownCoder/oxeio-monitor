@@ -43,7 +43,7 @@ const meta: ReportMeta = {
   days: 11,
   generatedAt: '2026-08-11T12:34:56.000Z',
   excludedEmployees: [],
-  monthTargetHours: {},
+  targetHoursInRange: {},
   expectedHours: {},
   // ⚠️ এই নমুনা জগতে কোনো ছুটিই নেই, তাই খালি — "কোনো সম্ভাব্য তারিখ নেই"
   approximateHolidayDates: [],
