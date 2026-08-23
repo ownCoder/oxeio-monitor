@@ -335,9 +335,16 @@ export interface ReportFile {
 }
 
 /**
- * ⭐ এই একটা বাক্যই O4-কে খোলা রাখে। "OT × কোনো হার" লিখে ফেললে সেই হারটাই
- * নীরবে কোম্পানির নীতি হয়ে যেত, অথচ সিদ্ধান্তটা কেউ নেয়নি (ADR-023 note,
- * docs/05-Options-Decisions.md)।
+ * ⭐⭐ **O4 নিষ্পত্তি হয়েছে (২৩ আগস্ট ২০২৬)** — মালিকের উত্তর: ওভারটাইমের
+ * **আলাদা রেট নেই**। অর্থাৎ অতিরিক্ত ঘণ্টা টাকায় বদলায় না, কখনো বদলাবেও না।
+ *
+ * ⚠️ আগে এখানে লেখা ছিল *"no rate has been decided (open question O4)"* —
+ * সেটা এখন **মিথ্যা**: সিদ্ধান্ত হয়েছে, আর সিদ্ধান্তটা হলো "রেট নেই"।
+ * ⭐ পার্থক্যটা ছাপা কাগজে গুরুত্বপূর্ণ: "এখনো ঠিক হয়নি" পড়লে কর্মী ভাবতেন
+ * পরে হয়তো টাকা আসবে, আর সেই ভুল আশাটা আমাদের কাগজই তৈরি করত।
+ *
+ * ⚠️ [reports.pages.ts](reports.pages.ts)-এর `OVERTIME_NOTE_EN` একই কথা বলে
+ * (ছাপার উপযোগী রূপ) — একটা বদলালে অন্যটাও।
  */
 export const OVERTIME_NOTE =
-  'Overtime pay is not calculated — no rate has been decided (open question O4)';
+  'Overtime pay is not calculated — there is no separate overtime rate';

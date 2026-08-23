@@ -43,12 +43,28 @@ export interface PayrollLine {
   payablePaisa: number;
   /**
    * ⚠️ অতিরিক্ত ঘণ্টার **টাকা হিসাব করা হয় না** — শুধু ঘণ্টাটা জানানো হয়।
-   * OT-র হার কত হবে (১×, ১.৫×, নাকি কিছুই না) সেটা ব্যবসায়িক সিদ্ধান্ত,
-   * আর সেটা কেউ নেয়নি। নিজে থেকে একটা হার ধরে নিলে সেটা নীরবে নীতি
-   * হয়ে যেত।
+   * OT-র হার কত হবে (১×, ১.৫×, নাকি কিছুই না) সেটা ব্যবসায়িক সিদ্ধান্ত।
+   *
+   * ⭐ **সিদ্ধান্তটা এসেছে ২৩ আগস্ট ২০২৬** — মালিক: আলাদা রেট **নেই**।
+   * অর্থাৎ ঘরটা চিরকাল ঘণ্টাই দেখাবে, আর সেটা এখন **অজানা নয়, জানা নিয়ম**।
    */
-  overtimeNote: 'Not calculated — no rate has been decided';
+  overtimeNote: typeof PAYROLL_OVERTIME_NOTE;
 }
+
+/**
+ * ⭐⭐ **O4 নিষ্পত্তি হয়েছে (২৩ আগস্ট ২০২৬)** — মালিকের উত্তর: ওভারটাইমের
+ * **আলাদা রেট নেই**। তাই বাক্যটা আর "ঠিক হয়নি" বলে না, বলে "রেট নেই"।
+ *
+ * ⚠️⚠️ আগে এই একই বাক্য **তিন জায়গায় হাতে লেখা** ছিল। literal type থাকায়
+ * কম্পাইলার অমিল ধরত ঠিকই, কিন্তু বদলাতে হলে তিনটেই খুঁজে বের করতে হতো —
+ * আর ঠিক এভাবেই এই প্রকল্পে বারবার একটা বদলেছে, বাকিগুলো নয়।
+ * ⭐ এখন একটাই উৎস, আর টাইপটাও সেখান থেকেই (`typeof`)।
+ *
+ * ⚠️ রিপোর্টের `OVERTIME_NOTE` আলাদা বাক্য (ওখানে প্রসঙ্গ আলাদা), কিন্তু
+ * **একই সিদ্ধান্ত** বলে — একটা বদলালে ওটাও দেখতে হবে।
+ */
+export const PAYROLL_OVERTIME_NOTE =
+  'Not calculated — there is no separate overtime rate';
 
 /**
  * ⚠️ শূন্য বা ঋণাত্মক টার্গেটে ভাগ করা যায় না। এমনটা হওয়ার কথা নয়
@@ -111,7 +127,7 @@ export function computePayroll(input: PayrollInput): PayrollLine {
       deductionPaisa: 0,
       // ⚠️ কর্মদিবস ০ মানে d/D-ও ০, তাই এটা ০ — শুধু D = ০ হলে পুরো বেতন
       payablePaisa: salaryPaisa,
-      overtimeNote: 'Not calculated — no rate has been decided',
+      overtimeNote: PAYROLL_OVERTIME_NOTE,
     };
   }
 
@@ -137,7 +153,7 @@ export function computePayroll(input: PayrollInput): PayrollLine {
     // কর্তন কখনো বেতনের বেশি হতে পারে না — কেউ পুরো মাস অনুপস্থিত থাকলে
     // deficit = target, তখন কর্তন = পুরো বেতন, প্রদেয় = ০। ঋণাত্মক নয়।
     payablePaisa: Math.max(0, salaryPaisa - deductionPaisa),
-    overtimeNote: 'Not calculated — no rate has been decided',
+    overtimeNote: PAYROLL_OVERTIME_NOTE,
   };
 }
 

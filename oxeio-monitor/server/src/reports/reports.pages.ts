@@ -61,10 +61,13 @@ const CATEGORY_NOTE =
  * বাইটের রকম যত কম থাকে (reports.pdf.text.ts-এর নিয়ম)। দুটো এক কথা বলে —
  * একটা বদলালে অন্যটাও বদলাতে হবে, নইলে একদিন xlsx আর PDF দুই রকম নীতি
  * বলত (O4)।
+ *
+ * ⭐⭐ **O4 নিষ্পত্তি ২৩ আগস্ট ২০২৬** — আলাদা রেট **নেই**। তাই "এখনো ঠিক
+ * হয়নি" নয়, লেখা হয় "আলাদা রেট নেই" ([reports.types.ts](reports.types.ts))।
  */
 const OVERTIME_NOTE_EN =
-  'Overtime hours are not converted to money - no rate has been decided ' +
-  '(open question O4).';
+  'Overtime hours are not converted to money - there is no separate ' +
+  'overtime rate.';
 
 /**
  * ⭐⭐ ছাপা কাগজে **তিনটে সংখ্যা তিনটে আলাদা প্রশ্নের উত্তর** — বাক্যটা
