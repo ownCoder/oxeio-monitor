@@ -25,6 +25,7 @@ import {
 
 import { isWorkday, monthBoundsOf } from '../reports/reports.range';
 import { prorate } from '../summary/proration';
+import { designTargetOf } from '../summary/design.rules';
 
 const HOUR = 3600;
 
@@ -323,6 +324,8 @@ export class DashboardService {
         //    মাঝপথে যোগ দেওয়া কর্মীর মাসিক টার্গেট পুরো মাসেরটা নয়।
         joinedOn: true,
         leftOn: true,
+        /** ⭐ তার নিজের ডিজাইন-টার্গেট — খালি হলে পলিসিরটা খাটে (২৩ আগস্ট) */
+        dailyDesignTarget: true,
         policy: {
           // ⭐⭐ `expectedWorkdays` — দৈনিক টার্গেটের **হর**। এটা না আনলে
           //    এখানে ক্যালেন্ডার কর্মদিবস দিয়ে ভাগ করতে হতো, আর সেটাই ছিল
@@ -535,7 +538,10 @@ export class DashboardService {
         staffType: e.staffType,
         designsDone: designsBy.get(e.id) ?? 0,
         designsFinished: finishedBy.get(e.id) ?? 0,
-        designTargetPerDay: e.policy?.dailyDesignTarget ?? 0,
+        designTargetPerDay: designTargetOf(
+          e.dailyDesignTarget,
+          e.policy?.dailyDesignTarget,
+        ),
         status: decideLiveStatus({
           devices: own,
           fallbackState: segmentState.get(e.id) ?? null,

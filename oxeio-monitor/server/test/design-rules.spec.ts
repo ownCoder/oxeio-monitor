@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  designIdOf,
-  keepKnownLongIds,
   KNOWN_JOB_FROM,
+  designIdOf,
   designIdsInDay,
+  designTargetOf,
   designView,
   hasDesignTarget,
+  keepKnownLongIds,
 } from '../src/summary/design.rules';
 
 /**
@@ -246,5 +247,44 @@ describe('keepKnownLongIds — লম্বা নম্বর তালিক�
   /** ⭐ তালিকা খালি হলে (টার্গেট চালুর আগের দিন) সব লম্বা নম্বর বাদ */
   it('তালিকা খালি হলে লম্বা নম্বর টেকে না', () => {
     expect(keepKnownLongIds(new Set(['1000042']), new Set()).size).toBe(0);
+  });
+});
+
+describe('designTargetOf — কার টার্গেট কত', () => {
+  /**
+   * ⭐⭐ **মালিকের চাওয়া** *(schema-তে তাঁর নিজের কথা)*:
+   * *"karo daily target 25 ta, kono designer er daily target 15 ta"*।
+   *
+   * ⚠️⚠️ কলামটা অনেক আগেই বানানো হয়েছিল, কিন্তু **কেউ পড়ত না, কেউ লিখতও
+   * না** — তিন জায়গায় হাতে লেখা ছিল `policy?.dailyDesignTarget ?? 0`।
+   * ২৩ আগস্ট ২০২৬-এ নিয়মটা এক জায়গায় আনা হলো, আর এই টেস্টই তার পাহারা।
+   */
+  it('নিজের সংখ্যা থাকলে সেটাই জেতে', () => {
+    expect(designTargetOf(15, 25)).toBe(15);
+  });
+
+  it('নিজের সংখ্যা না থাকলে পলিসিরটা খাটে', () => {
+    expect(designTargetOf(null, 25)).toBe(25);
+    expect(designTargetOf(undefined, 25)).toBe(25);
+  });
+
+  /**
+   * ⭐⭐ **এই টেস্টটাই সবচেয়ে জরুরি।** `??`-এর বদলে `||` লিখলে এটা ভাঙবে,
+   * আর ভাঙা না ধরলে মালিক কারো টার্গেট **বন্ধ করতে চাইলেও পারতেন না** —
+   * ০ বসানোর পরেও নীরবে পলিসির ২৫ ফিরে আসত।
+   */
+  it('⚠️⚠️ ০ মানে "টার্গেট বন্ধ" — পলিসিতে ফিরে যায় না', () => {
+    expect(designTargetOf(0, 25)).toBe(0);
+  });
+
+  /** ⚠️ পলিসিও না থাকলে ০ — অর্থাৎ টার্গেট নেই, `designView` তখন ঘর দেখায় না */
+  it('দুটোর কোনোটাই না থাকলে ০', () => {
+    expect(designTargetOf(null, null)).toBe(0);
+    expect(designTargetOf(undefined, undefined)).toBe(0);
+  });
+
+  /** ⭐ পলিসির ০-ও সম্মান পায় — "সবার টার্গেট বন্ধ" একটা বৈধ সিদ্ধান্ত */
+  it('পলিসিতে ০ বসালে সেটাও খাটে', () => {
+    expect(designTargetOf(null, 0)).toBe(0);
   });
 });

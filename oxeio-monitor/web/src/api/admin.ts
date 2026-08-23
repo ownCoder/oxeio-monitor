@@ -62,6 +62,14 @@ export interface EmployeeView {
    */
   staffType: StaffType | null;
   department: string | null;
+  /**
+   * ⭐⭐ **এই ডিজাইনারের নিজের দৈনিক ডিজাইন-টার্গেট** *(২৩ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ `null` = **বসানো নেই** → পলিসির সংখ্যাটা (২৫) খাটবে। শূন্য নয়।
+   * ⚠️⚠️ `0` = **টার্গেট বন্ধ** — সংখ্যা গোনা চলবে, কিন্তু কেউ "পিছিয়ে" নয়।
+   *    দুটো আলাদা অবস্থা, আর সেটাই এখানে `number | null` রাখার কারণ।
+   */
+  dailyDesignTarget: number | null;
   policyId: number | null;
   /** `YYYY-MM-DD` */
   joinedOn: string | null;
@@ -130,6 +138,8 @@ export interface CreateEmployeeBody {
   designation?: string;
   department?: string;
   staffType?: StaffType;
+  /** ⚠️ না পাঠালে বা `null` হলে পলিসির টার্গেট খাটবে; `0` = বন্ধ */
+  dailyDesignTarget?: number | null;
   policyId?: number;
   /**
    * ⭐⚠️ টাকা **স্ট্রিং** হিসেবে পাঠাতে হবে (`'13000'` বা `'13000.50'`)।
@@ -151,6 +161,8 @@ export type UpdateEmployeeBody = Partial<{
   designation: string | null;
   department: string | null;
   staffType: StaffType | null;
+  /** ⚠️ `null` = "নিজের সংখ্যা মুছে পলিসিতে ফেরাও"; `0` = টার্গেট বন্ধ */
+  dailyDesignTarget: number | null;
   policyId: number | null;
   monthlySalary: string | null;
   joinedOn: string | null;

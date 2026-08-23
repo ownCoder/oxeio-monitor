@@ -521,6 +521,8 @@ interface StaffForm {
   email: string;
   /** ⚠️ খালি স্ট্রিং = "বসানো নেই" — `StaffType | ''` */
   staffType: string;
+  /** ⚠️ খালি স্ট্রিং = "বসানো নেই" → পলিসির ২৫ খাটবে; `'0'` = বন্ধ */
+  dailyDesignTarget: string;
   policyId: string;
   joinedOn: string;
   monthlySalary: string;
@@ -532,6 +534,11 @@ function formOf(employee: EmployeeView | null): StaffForm {
     fullName: employee?.fullName ?? '',
     email: employee?.email ?? '',
     staffType: employee?.staffType ?? '',
+    dailyDesignTarget:
+      employee?.dailyDesignTarget === null ||
+      employee?.dailyDesignTarget === undefined
+        ? ''
+        : String(employee.dailyDesignTarget),
     policyId:
       employee?.policyId === null || employee?.policyId === undefined
         ? ''
@@ -565,6 +572,14 @@ function patchOf(
   // ⚠️ ফাঁকা মানে `null` ("ধরন তুলে নাও") — সার্ভার `null` মেনে নেয়
   if (after.staffType !== before.staffType) {
     patch.staffType = after.staffType === '' ? null : (after.staffType as StaffType);
+  }
+  // ⚠️ ফাঁকা মানে `null` ("নিজের সংখ্যা মুছে পলিসিতে ফেরাও"), `0` নয় —
+  //    `0` পাঠালে টার্গেট **বন্ধ** হয়ে যেত, যা সম্পূর্ণ আলাদা কথা
+  if (after.dailyDesignTarget.trim() !== before.dailyDesignTarget) {
+    patch.dailyDesignTarget =
+      after.dailyDesignTarget.trim() === ''
+        ? null
+        : Number(after.dailyDesignTarget);
   }
   if (after.joinedOn !== before.joinedOn) {
     patch.joinedOn = orNull(after.joinedOn);
@@ -642,6 +657,9 @@ function EmployeeForm({
           ...(form.staffType === ''
             ? {}
             : { staffType: form.staffType as StaffType }),
+          ...(form.dailyDesignTarget.trim() === ''
+            ? {}
+            : { dailyDesignTarget: Number(form.dailyDesignTarget) }),
           ...(form.policyId ? { policyId: Number(form.policyId) } : {}),
           ...(form.joinedOn ? { joinedOn: form.joinedOn } : {}),
           ...(canSeeSalary && orUndefined(form.monthlySalary)
@@ -744,6 +762,24 @@ function EmployeeForm({
             ]}
             hint="Designers get a daily design target; the others do not"
           />
+          {/*
+            ⭐⭐ **ঘরটা কেবল ডিজাইনারের জন্যই ওঠে** — সার্ভারের
+               `hasDesignTarget()` ঠিক এই একই শর্ত দেখে। অন্যদের দেখালে
+               ঘরটা ভরা যেত, অথচ কোনো পর্দায় কিছুই বদলাত না — একটা ঘর
+               যা কিছুই করে না, সেটা ভুল সংখ্যার চেয়েও বিভ্রান্তিকর।
+
+            ⚠️ ধরন বদলে "Designer" থেকে সরালে ঘরটা লুকোবে, কিন্তু বসানো
+               মানটা **মুছবে না** — আবার ডিজাইনার করলে সংখ্যাটা ফিরে আসবে।
+          */}
+          {form.staffType === 'designer' && (
+            <TextField
+              label="Daily design target"
+              value={form.dailyDesignTarget}
+              onChange={set('dailyDesignTarget')}
+              placeholder="25"
+              hint="Leave empty to use the shared target from the work policy. 0 turns the target off — the count still shows, but nobody is marked behind."
+            />
+          )}
           {/*
             ⚠️⚠️ **"Designation" ও "Department" ঘর দুটো তুলে দেওয়া হয়েছে**
                *(২২ আগস্ট, মালিকের সিদ্ধান্ত: "Designation and Department

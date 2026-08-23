@@ -73,6 +73,8 @@ const EMPLOYEE_SELECT = {
   designation: true,
   department: true,
   staffType: true,
+  /** ⭐ তার নিজের ডিজাইন-টার্গেট — `null` মানে পলিসিরটা খাটবে (২৩ আগস্ট) */
+  dailyDesignTarget: true,
   policyId: true,
   monthlySalary: true,
   joinedOn: true,
@@ -266,6 +268,10 @@ export class EmployeesService {
     // ⚠️ `null`-ও একটা বৈধ মান (ধরন তুলে নেওয়া), তাই `!== undefined`
     if (dto.staffType !== undefined) data.staffType = dto.staffType;
     if (dto.monthlySalary !== undefined) data.monthlySalary = dto.monthlySalary;
+    // ⚠️ `null`-ও বৈধ মান — "নিজের সংখ্যা মুছে পলিসিতে ফেরাও"
+    if (dto.dailyDesignTarget !== undefined) {
+      data.dailyDesignTarget = dto.dailyDesignTarget;
+    }
     if (dto.joinedOn !== undefined) {
       data.joinedOn =
         dto.joinedOn === null ? null : this.calendarDate(dto.joinedOn, 'joinedOn');
@@ -775,6 +781,8 @@ export class EmployeesService {
       designation: dto.designation ?? null,
       department: dto.department ?? null,
       staffType: dto.staffType ?? null,
+      // ⚠️ null = "নিজের সংখ্যা নেই" → পলিসির টার্গেট খাটবে, শূন্য নয়
+      dailyDesignTarget: dto.dailyDesignTarget ?? null,
       policyId: dto.policyId ?? null,
       // ⭐ স্ট্রিং সরাসরি Decimal-এ — মাঝপথে কোনো float নেই
       monthlySalary: dto.monthlySalary ?? null,

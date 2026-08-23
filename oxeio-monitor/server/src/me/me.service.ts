@@ -2,7 +2,11 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 
 import { ProgressService, type EmployeeProgress } from '../agent/progress.service';
 import { workDateOf } from '../agent/util/dhaka-time';
-import { designView, type DesignView } from '../summary/design.rules';
+import {
+  designTargetOf,
+  designView,
+  type DesignView,
+} from '../summary/design.rules';
 import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseWorkDate, toIsoDate } from '../reports/reports.range';
@@ -119,6 +123,7 @@ export class MeService {
           joinedOn: true,
           policySignedAt: true,
           staffType: true,
+          dailyDesignTarget: true,
           policy: { select: { dailyDesignTarget: true } },
         },
       }),
@@ -147,7 +152,10 @@ export class MeService {
       designs: designView(
         employee.staffType,
         designsDone,
-        employee.policy?.dailyDesignTarget ?? 0,
+        designTargetOf(
+          employee.dailyDesignTarget,
+          employee.policy?.dailyDesignTarget,
+        ),
       ),
     };
   }

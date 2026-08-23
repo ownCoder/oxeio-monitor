@@ -8,7 +8,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { monthBoundsOf, toIsoDate } from '../reports/reports.range';
 import { ReportsService } from '../reports/reports.service';
 import { buildDigest, digestBody, digestSubject, type Digest } from './digest.math';
-import { designView, type DesignView } from '../summary/design.rules';
+import {
+  designTargetOf,
+  designView,
+  type DesignView,
+} from '../summary/design.rules';
 import { asPreBlock, telegramDigest } from './digest.telegram';
 
 /** লেটারহেড ও ইমেইলের শিরোনামে — `reports.service.ts`-এর সাথে একই env */
@@ -195,6 +199,7 @@ export class DigestService {
           id: true,
           empCode: true,
           staffType: true,
+          dailyDesignTarget: true,
           policy: { select: { dailyDesignTarget: true } },
         },
       });
@@ -228,7 +233,7 @@ export class DigestService {
         const view = designView(
           d.staffType,
           byId.get(d.id) ?? 0,
-          d.policy?.dailyDesignTarget ?? 0,
+          designTargetOf(d.dailyDesignTarget, d.policy?.dailyDesignTarget),
         );
         if (view !== null) out.set(d.empCode, view);
       }

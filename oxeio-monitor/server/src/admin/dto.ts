@@ -78,6 +78,18 @@ export class CreateEmployeeDto {
 
   @IsOptional() @Matches(DATE_ONLY, { message: 'joinedOn must be in YYYY-MM-DD format' })
   joinedOn?: string;
+
+  /**
+   * ⭐⭐ **এই ডিজাইনারের নিজের দৈনিক টার্গেট** *(২৩ আগস্ট ২০২৬)* — মালিকের
+   * কথায়: *"karo daily target 25 ta, kono designer er daily target 15 ta"*।
+   *
+   * ⚠️ **খালি রাখলে পলিসির সংখ্যাটাই খাটে** (`work_policies`-এর ২৫), শূন্য নয়।
+   * `null` পাঠিয়ে আগের মান মুছে পলিসিতে ফেরানো যায়।
+   * ⚠️⚠️ **০ বৈধ** — "এর টার্গেট বন্ধ"; সংখ্যা গোনা চলবে, কিন্তু কেউ পিছিয়ে নয়।
+   * ⚠️ ছাদ ৫০০ — টাইপো ধরার জন্য, নীতির জন্য নয় (পলিসির ঘরের মতোই)।
+   */
+  @IsOptional() @IsInt() @Min(0) @Max(500)
+  dailyDesignTarget?: number | null;
 }
 
 /**
@@ -122,6 +134,18 @@ export class UpdateEmployeeDto {
 
   @IsOptional() @Matches(DATE_ONLY)
   joinedOn?: string | null;
+
+  /**
+   * ⭐⭐ **এই ডিজাইনারের নিজের দৈনিক টার্গেট** *(২৩ আগস্ট ২০২৬)* — মালিকের
+   * কথায়: *"karo daily target 25 ta, kono designer er daily target 15 ta"*।
+   *
+   * ⚠️ **খালি রাখলে পলিসির সংখ্যাটাই খাটে** (`work_policies`-এর ২৫), শূন্য নয়।
+   * `null` পাঠিয়ে আগের মান মুছে পলিসিতে ফেরানো যায়।
+   * ⚠️⚠️ **০ বৈধ** — "এর টার্গেট বন্ধ"; সংখ্যা গোনা চলবে, কিন্তু কেউ পিছিয়ে নয়।
+   * ⚠️ ছাদ ৫০০ — টাইপো ধরার জন্য, নীতির জন্য নয় (পলিসির ঘরের মতোই)।
+   */
+  @IsOptional() @IsInt() @Min(0) @Max(500)
+  dailyDesignTarget?: number | null;
 }
 
 /**
