@@ -398,6 +398,31 @@ export function LiveBoardPage() {
           />
 
           {/*
+            ⭐⭐ **আজকের ডিজাইন** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)*।
+
+            মালিক Live Board-এ খুঁজেছিলেন, কিন্তু সংখ্যাটা ছিল Worklog-এর
+            টেবিলে — কারণ ওই টেবিলটাই ১৭ আগস্ট বোর্ড থেকে সরানো হয়েছিল।
+
+            ⭐ **বড় সংখ্যাটা "শেষ"** — কেবল ওটাই সত্যিকারের উৎপাদন বোঝায়।
+            "খোলা" নিচে ছোট করে, কারণ একটা ফাইল খোলা আর কাজ শেষ করা এক নয়।
+
+            ⚠️ কর্মীভিত্তিক ভাগটা এখানে **নকল করা হয়নি** — বোর্ড দেয় মোট,
+            আর "কে কতটা" এক ক্লিক দূরে Worklog-এ। দুই জায়গায় একই টেবিল
+            রাখলে একদিন একটা বদলাত আর অন্যটা নয়।
+
+            ⚠️ কেউ ডিজাইন না করলে টাইলটাই ওঠে না — "০" দেখতে ব্যর্থতার
+            মতো লাগে, অথচ গবেষকদের দিনে ওটা কেবল "প্রযোজ্য নয়"।
+          */}
+          {stats.designsOpened + stats.designsFinished > 0 && (
+            <Stat
+              label="Designs Today"
+              value={stats.designsFinished}
+              tone="counted"
+              sub={`${stats.designsOpened} opened`}
+            />
+          )}
+
+          {/*
             ⚠️⚠️ এখানে একটা **"Agents up"** টাইল ছিল, লাল হতো, আর লিখত
                "hours are being lost"। সেটা তুলে দেওয়া হয়েছে *(১৭ আগস্ট)*
                কারণ সংখ্যাটা আসত `agent_down` স্ট্যাটাস থেকে, আর ওই
@@ -837,6 +862,10 @@ export function LiveBoardPage() {
     /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
     withTarget: number;
     metTarget: number;
+    /** ⭐ আজ সারা দলে কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে */
+    designsOpened: number;
+    /** ⭐ আজ সারা দলে কতগুলো **শেষ** বলা হয়েছে (Complete বোতাম) */
+    designsFinished: number;
   }
 
   /**
@@ -860,6 +889,8 @@ export function LiveBoardPage() {
     let todaySec = 0;
     let withTarget = 0;
     let metTarget = 0;
+    let designsOpened = 0;
+    let designsFinished = 0;
 
     for (const card of cards) {
       // ⚠️ ট্যাবের ভাগের সাথে **একই** শর্ত — দুই জায়গায় দুবার লিখলে
@@ -873,6 +904,17 @@ export function LiveBoardPage() {
        *    পাঠায়, আর তখন "০ সেকেন্ড ≥ ০ টার্গেট" সত্যি হয়ে সবাই টার্গেট
        *    ছুঁয়ে ফেলত — কেউ এক মিনিটও কাজ না করে।
        */
+      /**
+       * ⭐⭐ **আজকের ডিজাইন** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)* — সংখ্যাটা
+       * Worklog-এর টেবিলে কর্মীভিত্তিক আছে, কিন্তু মালিক বোর্ডেও চেয়েছেন।
+       *
+       * ⚠️ কার্ডেই সংখ্যা দুটো আছে, তাই সার্ভারে নতুন কিছু লাগেনি —
+       * শুধু যোগ করা। ⭐ কর্মীভিত্তিক ভাগটা এখানে **নকল করা হয়নি**;
+       * বোর্ড দেয় মোট, আর "কে কতটা" এক ক্লিক দূরে Worklog-এ।
+       */
+      designsOpened += card.designsDone;
+      designsFinished += card.designsFinished;
+
       if (card.todayIsWorkday && card.dailyTargetSec > 0) {
         withTarget += 1;
         if (card.todayWorkedSec >= card.dailyTargetSec) metTarget += 1;
@@ -886,6 +928,8 @@ export function LiveBoardPage() {
       todaySec,
       withTarget,
       metTarget,
+      designsOpened,
+      designsFinished,
     };
   }
 
