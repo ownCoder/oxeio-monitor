@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AGENT_SILENCE_MIN } from './alerts.constants';
 import {
   agentDownCandidates,
-  isOfficeOpen,
+  isAgentWatchOpen,
   recoveredAlertIds,
   silentMinutes,
   CLEAN_STOP_EVENTS,
@@ -89,7 +89,7 @@ export class AgentDownCheck {
      *    জন্য অ্যালার্ট ঠিকই উঠবে।
      */
     const open = devices.filter((d) =>
-      isOfficeOpen({
+      isAgentWatchOpen({
         now,
         officeFrom: d.employee?.policy?.officeFrom ?? fallbackPolicy?.officeFrom ?? null,
         officeTo: d.employee?.policy?.officeTo ?? fallbackPolicy?.officeTo ?? null,
@@ -101,7 +101,7 @@ export class AgentDownCheck {
 
     if (open.length === 0) {
       this.logger.debug(
-        `${devices.length} devices silent, but the office is closed — not raising`,
+        `${devices.length} devices silent, but nobody is expected yet — not raising`,
       );
       return 0;
     }

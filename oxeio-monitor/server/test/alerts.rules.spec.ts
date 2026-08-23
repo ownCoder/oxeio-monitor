@@ -15,6 +15,7 @@ import {
   diskVerdict,
   humanBytes,
   isExpectedSilence,
+  isAgentWatchOpen,
   isNoActivityWindow,
   isOfficeOpen,
   isTamperStop,
@@ -261,6 +262,69 @@ describe('অফিস সময়ের বাইরে agent_down চুপ',
   /** ⭐ সাপ্তাহিক ছুটি না থাকলে (null) শুক্রবারও কর্মদিবস */
   it('সাপ্তাহিক ছুটি null হলে শুক্রবারও খোলা', () => {
     expect(open('2026-08-28T11:00:00', { weeklyOffDay: null })).toBe(true);
+  });
+});
+
+/**
+ * ⭐⭐ **অফিস খোলার পর ১৫ মিনিট ছাড়** *(২৩ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ মাঠে মাপা: আজ সবাই কাজ শুরু করেছেন ০৮:৪৮–০৯:০৩-এর মধ্যে, অথচ ঠিক
+ * ৯:০০-এ **ছটা** অ্যালার্ট উঠেছিল — আর ছটার সবাই ৯:০৯-এর মধ্যে ফিরে
+ * এসেছিলেন। একটাও আসল ছিল না।
+ */
+describe('অফিস খোলার পর ছাড় — সবার হাজির থাকার সময়', () => {
+  const OFFICE = { officeFrom: '09:00', officeTo: '18:00' };
+  const watch = (iso: string, extra = {}) =>
+    isAgentWatchOpen({
+      now: dhaka(iso),
+      ...OFFICE,
+      weeklyOffDay: 5,
+      isHoliday: false,
+      ...extra,
+    });
+
+  /** ⚠️⚠️ ঠিক ৯:০০ — অফিস খোলা, কিন্তু এখনো কারো হাজির থাকার কথা নয় */
+  it('৯:০০-এ অফিস খোলা, তবু পাহারা শুরু হয় না', () => {
+    expect(isOfficeOpen({ now: dhaka('2026-08-24T09:00:00'), ...OFFICE,
+      weeklyOffDay: 5, isHoliday: false })).toBe(true);
+    expect(watch('2026-08-24T09:00:00')).toBe(false);
+  });
+
+  it('১৪ মিনিট পরেও নয়, ১৫ মিনিটে হ্যাঁ', () => {
+    expect(watch('2026-08-24T09:14:00')).toBe(false);
+    expect(watch('2026-08-24T09:15:00')).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **ছাড় কেবল শুরুতে, শেষে নয়** — বিকেলে কারো PC হঠাৎ বন্ধ হয়ে
+   * যাওয়া সত্যিকারের খবর, আর ছুটির আগে সেটা চাপা পড়া উচিত নয়।
+   */
+  it('বিকেলে পাহারা পুরোদমে, শেষ মুহূর্ত পর্যন্ত', () => {
+    expect(watch('2026-08-24T13:00:00')).toBe(true);
+    expect(watch('2026-08-24T17:59:00')).toBe(true);
+    expect(watch('2026-08-24T18:00:00')).toBe(false);
+  });
+
+  it('অফিস বন্ধ থাকলে ছাড়ের প্রশ্নই ওঠে না', () => {
+    expect(watch('2026-08-24T22:00:00')).toBe(false);
+    expect(watch('2026-08-28T10:00:00')).toBe(false); // শুক্রবার
+    expect(watch('2026-08-24T10:00:00', { isHoliday: true })).toBe(false);
+  });
+
+  /** ⭐ সময় বসানো না থাকলে "খোলার পর" বলে কোনো মুহূর্তই নেই, তাই ছাড়ও নেই */
+  it('অফিসের সময় না থাকলে সারাদিনই পাহারা', () => {
+    expect(watch('2026-08-24T03:00:00', { officeFrom: null, officeTo: null }))
+      .toBe(true);
+  });
+
+  /** ⚠️ ছাড় বদলানো যায় — টেস্টে ০ দিলে আচরণ `isOfficeOpen`-এর সমান */
+  it('ছাড় ০ হলে অফিস খোলার সাথে সাথেই পাহারা', () => {
+    expect(
+      isAgentWatchOpen(
+        { now: dhaka('2026-08-24T09:00:00'), ...OFFICE, weeklyOffDay: 5, isHoliday: false },
+        0,
+      ),
+    ).toBe(true);
   });
 });
 

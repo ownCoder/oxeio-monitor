@@ -10,6 +10,7 @@
 import { dhakaPathParts, workDateOf } from '../agent/util/dhaka-time';
 import {
   AGENT_SILENCE_MIN,
+  OFFICE_OPEN_GRACE_MIN,
   CLEAN_STOP_GRACE_MIN,
   DISK_CRITICAL_PCT,
   DISK_WARN_PCT,
@@ -180,6 +181,34 @@ export function isOfficeOpen(input: OfficeHoursInput): boolean {
 
   const minute = dhakaMinuteOfDay(now);
   return minute >= from && minute < to;
+}
+
+/**
+ * ⭐⭐ **এখন কি সবার হাজির থাকার কথা?** *(২৩ আগস্ট ২০২৬)*
+ *
+ * ⚠️⚠️ এটা `isOfficeOpen()` **নয়** — নামটা আলাদা রাখা হয়েছে ইচ্ছাকৃতভাবে।
+ * অফিস ৯:০০-এ খোলেই; কিন্তু ৯:০০-এ **সবার PC চালু থাকার কথা নয়**, কারণ
+ * মানুষ তখন সবে এসে বসছেন। দুটো আলাদা প্রশ্ন, তাই আলাদা ফাংশন —
+ * `isOfficeOpen()`-এ ছাড় ঢোকালে সে নিজের নাম নিয়ে মিথ্যা বলত।
+ *
+ * ⭐ মাঠে মাপা (২৩ আগস্ট): শুরুর সময় ০৮:৪৮–০৯:০৩, অথচ ৯:০০-এ ছটা
+ * অ্যালার্ট — একটাও আসল নয়।
+ *
+ * ⚠️ ছাড়টা কেবল **শুরুতে**, শেষে নয়: বিকেলে কারো PC হঠাৎ বন্ধ হয়ে
+ * যাওয়া সত্যিকারের খবর, আর ছুটির আগে সেটা চাপা পড়া উচিত নয়।
+ */
+export function isAgentWatchOpen(
+  input: OfficeHoursInput,
+  graceMin = OFFICE_OPEN_GRACE_MIN,
+): boolean {
+  if (!isOfficeOpen(input)) return false;
+
+  const from = parseHhmm(input.officeFrom);
+  // ⚠️ সময় জানা না থাকলে `isOfficeOpen()` সারাদিন খোলা ধরে — তখন
+  //    "খোলার পর" বলে কোনো মুহূর্তই নেই, তাই ছাড়ও নেই।
+  if (from === null) return true;
+
+  return dhakaMinuteOfDay(input.now) >= from + graceMin;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
