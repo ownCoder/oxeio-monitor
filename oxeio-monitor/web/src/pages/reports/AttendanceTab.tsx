@@ -125,37 +125,29 @@ export function AttendanceTab({
       render: (row) => <Hours hours={row.targetHours} tone="muted" />,
     },
     /**
-     * ⭐⭐ **ডিজাইনের দুটো সংখ্যা** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)* —
+     * ⭐⭐ **আজ কতগুলো ডিজাইন শেষ হয়েছে** *(২৩ আগস্ট ২০২৬)* —
      * "kon designer daily koyta design korche seta kothay dekhote pab?"
      *
-     * ⚠️⚠️ সংখ্যা দুটো Excel-এ আগে থেকেই ছিল, কিন্তু **পর্দায় ছিল না** —
-     * অর্থাৎ দেখতে হলে ফাইল নামাতে হতো। ডেটা এমনিতেই আসছিল, শুধু
-     * দেখানো হচ্ছিল না।
+     * ⚠️⚠️ সংখ্যাটা Excel-এ আগে থেকেই ছিল, কিন্তু **পর্দায় ছিল না** —
+     * অর্থাৎ দেখতে হলে ফাইল নামাতে হতো।
+     *
+     * ⚠️ এক সময় এখানে দুটো কলাম ছিল (Opened ও Finished)। **"খোলা"টা তুলে
+     * দেওয়া হয়েছে** *(মালিকের সিদ্ধান্ত, ২৩ আগস্ট)* — ওই গণনা "যে বানায়"
+     * আর "যে দেখে" দুজনকে আলাদা করতে পারত না।
      *
      * ⚠️ ০ হলে ঘর **খালি**, "০" নয় — ডিজাইন-বহির্ভূত কর্মীর সারিতে ০
      * লেখা মানে "মেপে শূন্য পাওয়া গেছে", আর সেটা মিথ্যা হতো।
      */
     {
       key: 'designs',
-      header: 'Opened',
+      header: 'Designs',
       align: 'right',
       render: (row) =>
         row.designsDone === null ? (
           <span className="text-ink-3">—</span>
         ) : (
-          <span className="num text-ink">{row.designsDone}</span>
-        ),
-    },
-    {
-      key: 'finished',
-      header: 'Finished',
-      align: 'right',
-      render: (row) =>
-        row.designsFinished === null ? (
-          <span className="text-ink-3">—</span>
-        ) : (
           // ⭐ সবুজ — এটাই একমাত্র সংখ্যা যেটা "কাজ শেষ" বোঝায়
-          <span className="num font-medium text-ok">{row.designsFinished}</span>
+          <span className="num font-medium text-ok">{row.designsDone}</span>
         ),
     },
   ];

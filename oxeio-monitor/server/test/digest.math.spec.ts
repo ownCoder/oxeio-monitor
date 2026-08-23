@@ -31,8 +31,6 @@ function day(over: Partial<AttendanceRow> = {}): AttendanceRow {
     adjustmentHours: 0,
     // ⭐ ডিজাইনের সংখ্যা (২১ আগস্ট) — ডিজাইনার না হলে null
     designsDone: null,
-    // ⭐ "শেষ" আলাদা ঘর (২৩ আগস্ট) — খোলা আর শেষ এক নয়
-    designsFinished: null,
     creditedHours: 7.5,
     targetHours: 8,
     ...over,

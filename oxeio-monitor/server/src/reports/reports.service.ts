@@ -181,7 +181,6 @@ export class ReportsService {
         workDate: true,
         workedSec: true,
         idleSec: true,
-        designsDone: true,
         adjustmentSec: true,
         creditedSec: true,
       },
@@ -275,19 +274,16 @@ export class ReportsService {
            * ⭐ ডিজাইনার না হয়েও কেউ করলে সংখ্যাটা ওঠে — ম্যানেজার নিজেও
            * ডিজাইন করেন, আর সেটা লুকোনো মানে তথ্য হারানো (২২ আগস্ট)।
            */
-          designsDone: (summary?.designsDone ?? 0) > 0 ? summary!.designsDone : null,
           /**
-           * ⭐ কতগুলো **শেষ** বলা হয়েছে — Complete বোতাম।
+           * ⭐ **কেবল "শেষ"** *(মালিকের সিদ্ধান্ত, ২৩ আগস্ট)* — আগে এখানে
+           * `daily_summary.designsDone` বসত, অর্থাৎ কতগুলো ফাইল **খোলা**
+           * হয়েছে। ⚠️ ওই সংখ্যা মাঠে বিভ্রান্তি তৈরি করেছিল: ম্যানেজার
+           * ১৯টা ফাইলে ৪৪ মিনিট দিয়ে "১৬" দেখাচ্ছিলেন।
            *
-           * ⚠️⚠️ `designsDone`-এর সাথে গুলিয়ে ফেলা যাবে না: ওটা কতগুলো
-           * ফাইল **খোলা** হয়েছে (শিরোনামের নম্বর ধরে), আর এটা কতগুলো
-           * শেষ হয়েছে। ফাইল খোলা আর শেষ করা এক নয়।
-           *
-           * ⚠️ ০ হলে `null` — `designsDone`-এর মতোই। স্প্রেডশিটে ০ মানে
-           * "মেপে শূন্য পাওয়া গেছে", আর ডিজাইন-বহির্ভূত কর্মীর সারিতে
-           * সেটা মিথ্যা হতো।
+           * ⚠️ ০ হলে `null` — স্প্রেডশিটে ০ মানে "মেপে শূন্য পাওয়া গেছে",
+           * আর ডিজাইন-বহির্ভূত কর্মীর সারিতে সেটা মিথ্যা হতো।
            */
-          designsFinished:
+          designsDone:
             finishedByKey.get(`${employee.id}|${date.getTime()}`) ?? null,
           targetHours: secondsToHours(dayTarget),
         });

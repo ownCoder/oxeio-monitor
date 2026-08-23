@@ -62,16 +62,14 @@ export function restingStartsAt(rows: readonly LiveCard[]): number {
 }
 
 export interface DesignView {
-  /** ⭐ আজ কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে (শিরোনামের নম্বর ধরে) */
-  done: number;
   /**
-   * ⭐ আজ কতগুলো টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম)।
+   * ⭐ আজ কতগুলো ডিজাইন **শেষ** হয়েছে — Complete বোতাম *(২৩ আগস্ট)*।
    *
-   * ⚠️⚠️ `done`-এর সাথে গুলিয়ে ফেলা যাবে না: শিরোনামে নম্বরটা দেখা যায়
-   * ফাইল **খোলার** মুহূর্তে, শেষ করার নয় — এই পার্থক্যটা না রাখায় একবার
-   * টার্গেট খোলামাত্র বন্ধ হয়ে যাচ্ছিল (২৩ আগস্ট, ADR-033-এর পাশের নোট)।
+   * ⚠️⚠️ ফাইল **খোলা** গোনা হয় না, ইচ্ছাকৃতভাবে: ওই গণনা "যে বানায়" আর
+   * "যে দেখে" — দুজনকে আলাদা করতে পারে না (ম্যানেজার ১৯টা ফাইলে ৪৪
+   * মিনিট দিয়ে "১৬" দেখাচ্ছিলেন)।
    */
-  finished: number;
+  done: number;
   /** ⚠️ `null` = **এই কর্মীর কোনো ডিজাইন-টার্গেট নেই** — শূন্য টার্গেট নয় */
   target: number | null;
   /** টার্গেট না থাকলে সবসময় `false` — "ব্যর্থ" নয়, "প্রযোজ্য নয়" */
@@ -97,8 +95,23 @@ export interface DesignView {
  * প্রকল্পে আগে পড়া হয়েছে (`fleet.ts`-এর `compareVersion`-এর নোট)।
  */
 export function designView(card: LiveCard): DesignView | null {
-  const done = card.designsDone;
-  const finished = card.designsFinished;
+  /**
+   * ⭐⭐ **কেবল "শেষ" গোনা হয়** *(২৩ আগস্ট ২০২৬, মালিকের সিদ্ধান্ত)* —
+   * *"file khoila hole seta count koro na, only complete dile count koro"*।
+   *
+   * ⚠️⚠️ **কেন বদলাল।** আগে বাঁ দিকে "খোলা" সংখ্যাও দেখানো হতো। মাঠে ধরা
+   * পড়ল ম্যানেজার (OX-01) দেখাচ্ছেন **১৬** — অথচ মেপে দেখা গেল তিনি
+   * ১৯টা ফাইলে মোট **৪৪ মিনিট** দিয়েছেন (একটায় ১০ মিনিট, বেশিরভাগে
+   * ১–৪ মিনিট)। অর্থাৎ তিনি ফাইল **খুলে দেখছিলেন**, বানাননি।
+   *
+   * ⭐ "খোলা" গণনা **যে বানায় আর যে দেখে — দুজনকে আলাদা করতে পারে না**।
+   * Complete বোতামের সংখ্যাটা পারে, কারণ ডিজাইনার নিজে বলেন।
+   *
+   * ⚠️ `card.designsDone` (খোলা) এখনো API-তে আসে ও `daily_summary`-তে
+   * জমা থাকে — ওটা "কাজ শুরু" শনাক্ত করতে কাজে লাগে। শুধু **দেখানো**
+   * হয় না, কারণ সংখ্যা হিসেবে সেটা বিভ্রান্তিকর।
+   */
+  const done = card.designsFinished;
 
   /**
    * ⚠️⚠️ `met` এখনো **খোলা** সংখ্যা ধরে, "শেষ" ধরে নয় — ইচ্ছাকৃত।
@@ -111,13 +124,10 @@ export function designView(card: LiveCard): DesignView | null {
   if (card.staffType === 'designer' && card.designTargetPerDay > 0) {
     return {
       done,
-      finished,
       target: card.designTargetPerDay,
       met: done >= card.designTargetPerDay,
     };
   }
 
-  return done > 0 || finished > 0
-    ? { done, finished, target: null, met: false }
-    : null;
+  return done > 0 ? { done, target: null, met: false } : null;
 }

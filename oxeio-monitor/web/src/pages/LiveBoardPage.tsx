@@ -413,12 +413,12 @@ export function LiveBoardPage() {
             ⚠️ কেউ ডিজাইন না করলে টাইলটাই ওঠে না — "০" দেখতে ব্যর্থতার
             মতো লাগে, অথচ গবেষকদের দিনে ওটা কেবল "প্রযোজ্য নয়"।
           */}
-          {stats.designsOpened + stats.designsFinished > 0 && (
+          {stats.designsFinished > 0 && (
             <Stat
               label="Designs Today"
               value={stats.designsFinished}
               tone="counted"
-              sub={`${stats.designsOpened} opened`}
+              sub="marked complete"
             />
           )}
 
@@ -862,9 +862,7 @@ export function LiveBoardPage() {
     /** ⚠️ আজ যাদের সত্যিই টার্গেট আছে (ছুটিতে থাকা কেউ এতে নেই) */
     withTarget: number;
     metTarget: number;
-    /** ⭐ আজ সারা দলে কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে */
-    designsOpened: number;
-    /** ⭐ আজ সারা দলে কতগুলো **শেষ** বলা হয়েছে (Complete বোতাম) */
+    /** ⭐ আজ সারা দলে কতগুলো ডিজাইন **শেষ** হয়েছে (Complete বোতাম) */
     designsFinished: number;
   }
 
@@ -889,7 +887,6 @@ export function LiveBoardPage() {
     let todaySec = 0;
     let withTarget = 0;
     let metTarget = 0;
-    let designsOpened = 0;
     let designsFinished = 0;
 
     for (const card of cards) {
@@ -912,7 +909,7 @@ export function LiveBoardPage() {
        * শুধু যোগ করা। ⭐ কর্মীভিত্তিক ভাগটা এখানে **নকল করা হয়নি**;
        * বোর্ড দেয় মোট, আর "কে কতটা" এক ক্লিক দূরে Worklog-এ।
        */
-      designsOpened += card.designsDone;
+      // ⚠️ কেবল "শেষ" — ফাইল খোলা গোনা হয় না (মালিকের সিদ্ধান্ত, ২৩ আগস্ট)
       designsFinished += card.designsFinished;
 
       if (card.todayIsWorkday && card.dailyTargetSec > 0) {
@@ -928,7 +925,6 @@ export function LiveBoardPage() {
       todaySec,
       withTarget,
       metTarget,
-      designsOpened,
       designsFinished,
     };
   }

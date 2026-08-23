@@ -149,74 +149,68 @@ describe('restingStartsAt — দলছুট ব্যান্ড কোথা
 
 describe('designView — আজকের ডিজাইন', () => {
   /**
-   * ⭐⭐ **মালিকের বাছাই, ২২ আগস্ট** — ম্যানেজার (OX-01) নিজেও ডিজাইন
-   * করেন, তিন দিনে ৪৩টা। ধরন বদলানোর পর সংখ্যাটা উধাও হয়ে যাচ্ছিল,
-   * অথচ কাজটা সত্যি।
+   * ⭐⭐ **কেবল "শেষ" গোনা হয়** *(মালিকের সিদ্ধান্ত, ২৩ আগস্ট ২০২৬)* —
+   * *"file khoila hole seta count koro na, only complete dile count koro"*।
+   *
+   * ⚠️⚠️ **কেন বদলাল।** আগে "খোলা" সংখ্যাও দেখানো হতো, আর `met`ও ওটাই
+   * ধরত। মাঠে ধরা পড়ল ম্যানেজার (OX-01) দেখাচ্ছেন **১৬** — অথচ তিনি
+   * ১৯টা ফাইলে মোট **৪৪ মিনিট** দিয়ে সেগুলো **খুলে দেখছিলেন**, বানাননি।
+   *
+   * ⭐ এই ব্লকটাই সেই সিদ্ধান্তের পাহারাদার: কেউ নীরবে `designsDone`
+   * (খোলা) ধরে বসিয়ে দিলে নিচের টেস্টগুলো ভাঙবে।
    */
-  it('ডিজাইনার নন, তবু কাজ করেছেন — সংখ্যা ওঠে, টার্গেট ছাড়া', () => {
-    const view = designView(card({ staffType: 'manager', designsDone: 43 }));
-    expect(view).toEqual({ done: 43, finished: 0, target: null, met: false });
+  it('⭐⭐ ফাইল খোলা গোনা হয় না — কেবল Complete', () => {
+    /**
+     * ⚠️⚠️ **ঠিক বেলালের ঘটনাটাই** — ম্যানেজার ১০০টা ফাইল খুলেছেন কিন্তু
+     * একটাও শেষ বলেননি। আগে এটা "১০০" দেখাত; এখন কিছুই দেখায় না।
+     *
+     * ⭐ ম্যানেজার বাছা হয়েছে ইচ্ছাকৃতভাবে: ডিজাইনারের টার্গেট থাকলে
+     * `০ / ২৫` দেখানোই সঠিক (তিনি মাপের আওতায়), তাই সেখানে `null` হয় না।
+     */
+    expect(
+      designView(card({ staffType: 'manager', designsDone: 100, designsFinished: 0 })),
+    ).toBeNull();
+
+    /** ⭐ একটাও খোলেননি, কিন্তু ৩টা শেষ বলেছেন → সংখ্যাটা ওঠে */
+    expect(
+      designView(card({ staffType: 'manager', designsDone: 0, designsFinished: 3 })),
+    ).toEqual({ done: 3, target: null, met: false });
+
+    /** ⚠️ ডিজাইনার শূন্যেও দেখা যান — টার্গেট আছে, তাই মাপটা প্রযোজ্য */
+    expect(
+      designView(card({ staffType: 'designer', designsDone: 100, designsFinished: 0 })),
+    ).toEqual({ done: 0, target: 25, met: false });
   });
 
   /**
-   * ⭐⭐ **"খোলা" আর "শেষ" আলাদা** *(মালিকের বাছাই, ২২ আগস্ট)*।
-   *
-   * ⚠️⚠️ শিরোনামে নম্বরটা দেখা যায় ফাইল **খোলার** মুহূর্তে, শেষ করার নয়।
-   * এই পার্থক্যটা না রাখায় একবার টার্গেট খোলামাত্র বন্ধ হয়ে যাচ্ছিল।
+   * ⭐⭐ **মালিকের বাছাই, ২২ আগস্ট** — ম্যানেজার নিজেও ডিজাইন করেন।
+   * ⚠️ ধরন বদলানোর পর সংখ্যাটা উধাও হয়ে যাচ্ছিল, অথচ কাজটা সত্যি।
    */
-  it('খোলা আর শেষ — দুটো আলাদা সংখ্যা', () => {
-    const view = designView(
-      card({ staffType: 'designer', designsDone: 18, designsFinished: 12 }),
-    );
-    expect(view).toEqual({ done: 18, finished: 12, target: 25, met: false });
-  });
-
-  /**
-   * ⚠️⚠️ `met` এখনো **খোলা** ধরে, "শেষ" ধরে নয় — ইচ্ছাকৃত, কারণ Complete
-   * বোতাম মাঠে এখনো ব্যবহৃত হচ্ছে না (মেপে দেখা: ০ চাপ)। এটা বদলালে
-   * পরদিন সকালে সবাই টার্গেট-মিস দেখাত।
-   *
-   * ⭐ এই টেস্টটাই সেই সিদ্ধান্তের পাহারাদার — কেউ নীরবে `finished` ধরে
-   * বসিয়ে দিলে এটা ভাঙবে।
-   */
-  it('টার্গেট ছোঁয়ার হিসাব "খোলা" ধরে, "শেষ" ধরে নয়', () => {
-    const view = designView(
-      card({ staffType: 'designer', designsDone: 25, designsFinished: 0 }),
-    );
-    expect(view?.met).toBe(true);
-
-    const other = designView(
-      card({ staffType: 'designer', designsDone: 0, designsFinished: 25 }),
-    );
-    expect(other?.met).toBe(false);
-  });
-
-  /** ⭐ কেউ কিছু খোলেননি কিন্তু শেষ বলেছেন — ঘরটা তবু দেখাতে হবে */
-  it('খোলা ০ কিন্তু শেষ আছে — সারিটা লুকোনো হয় না', () => {
-    const view = designView(
-      card({ staffType: 'manager', designsDone: 0, designsFinished: 3 }),
-    );
-    expect(view).toEqual({ done: 0, finished: 3, target: null, met: false });
+  it('ডিজাইনার নন, তবু শেষ করেছেন — সংখ্যা ওঠে, টার্গেট ছাড়া', () => {
+    const view = designView(card({ staffType: 'manager', designsFinished: 43 }));
+    expect(view).toEqual({ done: 43, target: null, met: false });
   });
 
   /** ⚠️⚠️ টার্গেট ছাড়া কারো `met` কখনো `true` নয় — ৪৩ > ২৫ হলেও */
   it('টার্গেট ছাড়া কেউ কখনো সবুজ হয় না', () => {
-    expect(designView(card({ staffType: 'manager', designsDone: 999 }))?.met).toBe(false);
+    expect(
+      designView(card({ staffType: 'manager', designsFinished: 999 }))?.met,
+    ).toBe(false);
   });
 
   it('ডিজাইনারের টার্গেটসহ হিসাব', () => {
-    expect(designView(card({ staffType: 'designer', designsDone: 25 }))).toEqual({
-      done: 25,
-      finished: 0,
-      target: 25,
-      met: true,
-    });
-    expect(designView(card({ staffType: 'designer', designsDone: 24 }))?.met).toBe(false);
+    expect(
+      designView(card({ staffType: 'designer', designsFinished: 25 })),
+    ).toEqual({ done: 25, target: 25, met: true });
+
+    expect(
+      designView(card({ staffType: 'designer', designsFinished: 24 }))?.met,
+    ).toBe(false);
   });
 
   /** ⚠️ কাজ না করলে কিছুই নয় — "০" পড়তে অভিযোগের মতো লাগে */
   it('ডিজাইন না করলে কিছুই নয়', () => {
-    expect(designView(card({ staffType: 'researcher', designsDone: 0 }))).toBeNull();
+    expect(designView(card({ staffType: 'researcher', designsFinished: 0 }))).toBeNull();
     expect(designView(card({ staffType: null, designsDone: 0 }))).toBeNull();
   });
 });

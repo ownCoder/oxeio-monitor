@@ -200,15 +200,29 @@ export class DigestService {
       });
       if (staff.length === 0) return out;
 
-      const counts = await this.prisma.designCredit.groupBy({
-        by: ['employeeId'],
-        where: {
-          employeeId: { in: staff.map((d) => d.id) },
-          firstWorkDate: new Date(`${workDate}T00:00:00.000Z`),
-        },
-        _count: { _all: true },
-      });
-      const byId = new Map(counts.map((c) => [c.employeeId, c._count._all]));
+      /**
+       * ⭐⭐ **কেবল "শেষ" গোনা হয়** *(২৩ আগস্ট ২০২৬, মালিকের সিদ্ধান্ত)* —
+       * *"file khoila hole seta count koro na, only complete dile count koro"*।
+       *
+       * ⚠️⚠️ আগে এখানে `designCredit` গোনা হতো, অর্থাৎ কতগুলো ফাইল
+       * **খোলা** হয়েছে। মাঠে ধরা পড়ল ম্যানেজার (OX-01) "১৬" দেখাচ্ছেন,
+       * অথচ তিনি ১৯টা ফাইলে মোট **৪৪ মিনিট** দিয়ে সেগুলো খুলে দেখছিলেন।
+       * ⭐ খোলা-গণনা "যে বানায়" আর "যে দেখে" — দুজনকে আলাদা করতে পারে না।
+       *
+       * ⚠️ `completed_at` timestamptz, তাই ঢাকার দিনে ভাগ করতে raw কুয়েরি;
+       * Prisma-র `groupBy` তারিখ কাটতে পারে না।
+       */
+      const rows = await this.prisma.$queryRaw<
+        { employee_id: number; n: number }[]
+      >`
+        SELECT assigned_to_id AS employee_id, count(*)::int AS n
+          FROM design_targets
+         WHERE assigned_to_id = ANY(${staff.map((d) => d.id)}::int[])
+           AND completed_at IS NOT NULL
+           AND (completed_at AT TIME ZONE 'Asia/Dhaka')::date = ${workDate}::date
+         GROUP BY 1
+      `;
+      const byId = new Map(rows.map((r) => [r.employee_id, Number(r.n)]));
 
       for (const d of staff) {
         const view = designView(

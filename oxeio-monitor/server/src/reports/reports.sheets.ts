@@ -71,15 +71,13 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
       ⚠️ ডিজাইনার না হলে ঘরটা **খালি**, ০ নয়: স্প্রেডশিটে ০ মানে "মেপে
          শূন্য পাওয়া গেছে", আর সেটা এখানে মিথ্যা হতো।
     */
-    { header: 'Designs', width: 10, value: (r: AttendanceRow) => r.designsDone },
     /**
-     * ⭐ কতগুলো **শেষ** বলা হয়েছে (Complete বোতাম) *(২৩ আগস্ট ২০২৬)*।
+     * ⭐ কতগুলো ডিজাইন **শেষ** হয়েছে (Complete বোতাম)।
      *
-     * ⚠️ পাশের `Designs` কলামটা বলে কতগুলো ফাইল **খোলা** হয়েছে। দুটো
-     * আলাদা কলাম, কারণ ফাইল খোলা আর কাজ শেষ করা এক নয় — এক কলামে
-     * মিলিয়ে দিলে ঠিক সেই ভুলটাই ফিরে আসত যেটা ২৩ আগস্ট সারানো হয়েছে।
+     * ⚠️⚠️ ফাইল **খোলা** গোনা হয় না *(মালিকের সিদ্ধান্ত, ২৩ আগস্ট)* —
+     * ওই গণনা "যে বানায়" আর "যে দেখে" দুজনকে আলাদা করতে পারত না।
      */
-    { header: 'Finished', width: 10, value: (r: AttendanceRow) => r.designsFinished },
+    { header: 'Designs', width: 10, value: (r: AttendanceRow) => r.designsDone },
   ];
 
   return buildWorkbook(
