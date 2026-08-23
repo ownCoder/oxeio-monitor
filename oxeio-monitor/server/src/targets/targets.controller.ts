@@ -13,7 +13,15 @@ import {
 } from '@nestjs/common';
 import { DesignTargetStatus, UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
@@ -44,6 +52,21 @@ class ListQueryDto {
 class UpdateTargetDto {
   @IsIn(['pool', 'assigned', 'done', 'skipped'])
   status!: DesignTargetStatus;
+}
+
+class LiveDto {
+  /**
+   * ⭐ লাইভ হওয়া **নতুন** পণ্যের ASIN — ঐচ্ছিক।
+   *
+   * ⚠️⚠️ গবেষকের আনা নমুনা ASIN-এর সাথে গুলিয়ে ফেলা যাবে না; এটা
+   * আমাদের নিজের বিক্রয়যোগ্য পণ্যের। ⚠️ ঐচ্ছিক রাখা হয়েছে কারণ হাতে
+   * না থাকলেও "লাইভ হয়েছে" বলা যাওয়া উচিত — নইলে ঘরটা ভরার জন্য কেউ
+   * ভুল কিছু বসিয়ে দিত।
+   */
+  @IsOptional() @IsString() @Matches(/^[A-Z0-9]{10}$/, {
+    message: 'liveAsin must be a 10-character Amazon ASIN',
+  })
+  liveAsin?: string;
 }
 
 class SkipDto {
@@ -131,6 +154,32 @@ export class TargetsController {
    * ⚠️ owner/manager-only: বণ্টন একবার হয়ে গেলে ফেরানো যায় না (নম্বর
    * বসে যায়), তাই বোতামটা সবার হাতে থাকা উচিত নয়।
    */
+  /**
+   * ⭐⭐ **"আপলোড হয়েছে"** *(২৩ আগস্ট ২০২৬)* — owner · manager · গবেষক।
+   *
+   * ⚠️ ডিজাইনার নন: ফাইল বানানো আর Amazon-এ পাঠানো দুটো আলাদা কাজ, আর
+   *    দ্বিতীয়টা যিনি করেন তিনিই বলবেন।
+   */
+  @Post(':id/uploaded')
+  async uploaded(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.markUploaded(id, new Date());
+  }
+
+  /** ⭐ **"Amazon-এ লাইভ"** — সাথে নতুন পণ্যের ASIN (ঐচ্ছিক) */
+  @Post(':id/live')
+  async live(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: LiveDto,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.markLive(id, dto.liveAsin ?? null, new Date());
+  }
+
   @Roles(UserRole.owner, UserRole.manager)
   @Post('distribute')
   distribute() {

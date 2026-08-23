@@ -11,6 +11,7 @@ import { Prisma } from '@prisma/client';
 import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
+import { supersededThrough } from '../payroll/payroll.math';
 import { PrismaService } from '../prisma/prisma.service';
 import { nextEmployeeCode } from './next-code';
 import { ADMIN_TARGET } from './admin-audit';
@@ -572,6 +573,18 @@ export class EmployeesService {
     });
   }
 
+  /**
+   * ⭐⭐ **বেতন বদলালে পুরোনো মানটা রেখে দেওয়া** *(২৩ আগস্ট ২০২৬)*।
+   *
+   * ⚠️⚠️ আগে কেবল audit-এ "কত থেকে কত" লেখা হতো, আর পে-রোল বেতন পড়ত
+   * `employees.monthly_salary` থেকে — **লাইভ**। ফলে কারো বেতন বাড়ালে
+   * **বন্ধ মাসের পে-রোলও নীরবে বদলে যেত**, আর যে কাগজে বেতন দেওয়া
+   * হয়েছিল তার সাথে আর মিলত না। audit বলত বদলটা হয়েছে, কিন্তু শিট
+   * নতুন সংখ্যাতেই ছাপা হতো।
+   *
+   * ⚠️ `from === null` হলে সারি বসে **না** — আগে কোনো বেতনই ছিল না, তাই
+   *    "পুরোনো মান" বলে কিছু নেই (নতুন কর্মী)।
+   */
   private async recordSalaryChange(
     actor: SessionUser,
     ip: string,
@@ -580,6 +593,32 @@ export class EmployeesService {
     to: string | null,
   ): Promise<void> {
     if (from === to) return;
+
+    if (from !== null) {
+      const yearMonth = workDateOf(new Date()).toISOString().slice(0, 7);
+      const closed = await this.prisma.monthClosure.findUnique({
+        where: { yearMonth },
+        select: { yearMonth: true },
+      });
+
+      await this.prisma.salaryPeriod.upsert({
+        where: {
+          employeeId_throughMonth: {
+            employeeId,
+            throughMonth: supersededThrough(yearMonth, closed !== null),
+          },
+        },
+        // ⚠️ একই মাসে দুবার বদলালে **প্রথম** মানটাই থাকা উচিত — ওটাই ওই
+        //    মাস পর্যন্ত সত্যিই চলেছিল। তাই `update` খালি।
+        update: {},
+        create: {
+          employeeId,
+          throughMonth: supersededThrough(yearMonth, closed !== null),
+          monthlySalary: from,
+          changedById: actor.userId,
+        },
+      });
+    }
 
     await this.audit.record({
       userId: actor.userId,

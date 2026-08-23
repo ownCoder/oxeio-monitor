@@ -41,6 +41,10 @@ export interface TargetStats {
   done: number;
   skipped: number;
   perDesigner: number;
+  /** ⭐ Amazon-এ পাঠানো হয়েছে — `done`-এর উপরে, বদলে নয় */
+  uploaded: number;
+  /** ⭐ বিক্রির জন্য উঠেছে */
+  live: number;
 }
 
 export interface MyTarget {
@@ -106,6 +110,10 @@ export interface TargetRow {
   startedAt: string | null;
   completedAt: string | null;
   completedVia: string | null;
+  uploadedAt: string | null;
+  liveAt: string | null;
+  /** ⚠️ **আমাদের নিজের** পণ্যের ASIN — উপরের `asin` নমুনার */
+  liveAsin: string | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — `Hafiz-24-05-2026` */
   sourceNote: string | null;
 }
@@ -158,3 +166,15 @@ export function deleteTarget(id: number): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/design-targets/${id}`, { method: 'DELETE' });
 }
 
+/** ⭐ "আপলোড হয়েছে" — owner · manager · গবেষক */
+export function markUploaded(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}/uploaded`, { method: 'POST' });
+}
+
+/** ⭐ "Amazon-এ লাইভ" — নতুন পণ্যের ASIN ঐচ্ছিক */
+export function markLive(id: number, liveAsin?: string): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}/live`, {
+    method: 'POST',
+    body: liveAsin ? { liveAsin } : {},
+  });
+}

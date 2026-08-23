@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { DesignTargetStatus, UserRole } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
@@ -524,6 +530,9 @@ export class TargetsService {
           startedAt: true,
           completedAt: true,
           completedVia: true,
+          uploadedAt: true,
+          liveAt: true,
+          liveAsin: true,
           sourceNote: true,
           assignedTo: { select: { empCode: true, fullName: true } },
         },
@@ -546,6 +555,9 @@ export class TargetsService {
         startedAt: r.startedAt?.toISOString() ?? null,
         completedAt: r.completedAt?.toISOString() ?? null,
         completedVia: r.completedVia,
+        uploadedAt: r.uploadedAt?.toISOString() ?? null,
+        liveAt: r.liveAt?.toISOString() ?? null,
+        liveAsin: r.liveAsin,
         sourceNote: r.sourceNote,
       })),
       total,
@@ -614,11 +626,28 @@ export class TargetsService {
   }
 
   /** পুলের অবস্থা — ইনবক্সের পর্দায় */
-  async stats(): Promise<Record<DesignTargetStatus, number> & { perDesigner: number }> {
-    const rows = await this.prisma.designTarget.groupBy({
-      by: ['status'],
-      _count: { _all: true },
-    });
+  async stats(): Promise<
+    Record<DesignTargetStatus, number> & {
+      perDesigner: number;
+      uploaded: number;
+      live: number;
+    }
+  > {
+    /**
+     * ⭐⭐ **আপলোড ও লাইভ আলাদা করে গোনা** *(২৩ আগস্ট ২০২৬)*।
+     *
+     * ⚠️ `status` দিয়ে গোনা যায় না — ওগুলো তারিখ, অবস্থা নয় (ইচ্ছাকৃত,
+     * schema-র নোট দেখুন)। একটা কাজ একই সাথে `done` **আর** আপলোড **আর**
+     * লাইভ হতে পারে, আর সেটাই ঠিক।
+     */
+    const [rows, uploaded, live] = await Promise.all([
+      this.prisma.designTarget.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+      this.prisma.designTarget.count({ where: { uploadedAt: { not: null } } }),
+      this.prisma.designTarget.count({ where: { liveAt: { not: null } } }),
+    ]);
 
     const out = {
       pool: 0,
@@ -626,9 +655,68 @@ export class TargetsService {
       done: 0,
       skipped: 0,
       perDesigner: POOL_PER_DESIGNER,
+      uploaded,
+      live,
     };
     for (const r of rows) out[r.status] = r._count._all;
 
     return out;
+  }
+
+  /**
+   * ⭐ **"আপলোড হয়েছে"** — owner · manager · গবেষক *(২৩ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ শেষ হওয়ার আগে আপলোড হতে পারে না, তাই `completedAt` না থাকলে
+   *    আটকানো হয় — নইলে পাইপলাইনের ক্রমটাই অর্থহীন হতো।
+   */
+  async markUploaded(id: number, now: Date): Promise<{ ok: true }> {
+    const target = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: { completedAt: true, uploadedAt: true },
+    });
+    if (!target) throw new NotFoundException('No design target with this id');
+    if (target.completedAt === null) {
+      throw new BadRequestException(
+        'This design is not finished yet, so it cannot be marked uploaded.',
+      );
+    }
+    // ⚠️ আগে চিহ্ন বসে থাকলে তারিখটা সরানো হয় না — "কবে আপলোড হলো"
+    //    প্রতিবার আজকের তারিখে লাফ দিত
+    if (target.uploadedAt !== null) return { ok: true };
+
+    await this.prisma.designTarget.update({
+      where: { id },
+      data: { uploadedAt: now },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * ⭐⭐ **"Amazon-এ লাইভ হয়েছে"** — সাথে নতুন পণ্যের ASIN।
+   *
+   * ⚠️⚠️ ASIN-টা **আমাদের নিজের** পণ্যের, গবেষকের আনা নমুনার নয়। এটাই
+   * ভবিষ্যতে বিক্রির হিসাবের সাথে জোড়া লাগার সেতু।
+   *
+   * ⚠️ আপলোড না হয়ে লাইভ হতে পারে না — Amazon-এ কিছু ওঠাতে হলে আগে
+   *    পাঠাতেই হয়।
+   */
+  async markLive(id: number, liveAsin: string | null, now: Date): Promise<{ ok: true }> {
+    const target = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: { uploadedAt: true, liveAt: true },
+    });
+    if (!target) throw new NotFoundException('No design target with this id');
+    if (target.uploadedAt === null) {
+      throw new BadRequestException(
+        'This design has not been uploaded yet, so it cannot be live.',
+      );
+    }
+    if (target.liveAt !== null) return { ok: true };
+
+    await this.prisma.designTarget.update({
+      where: { id },
+      data: { liveAt: now, liveAsin },
+    });
+    return { ok: true };
   }
 }

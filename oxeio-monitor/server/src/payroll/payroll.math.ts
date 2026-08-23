@@ -147,3 +147,80 @@ export function paisaToTaka(paisa: number): string {
   const abs = Math.abs(paisa);
   return `${sign}${Math.floor(abs / PAISA_PER_TAKA)}.${String(abs % PAISA_PER_TAKA).padStart(2, '0')}`;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// ⭐⭐ কোন মাসে কত বেতন ছিল — অতীত যাতে না নড়ে (২৩ আগস্ট ২০২৬)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * এক টুকরো **পুরোনো** বেতন — "এই মাস পর্যন্ত এটাই ছিল"।
+ *
+ * ⚠️ সংখ্যাটা `string`, `number` নয় — Prisma-র `Decimal` স্ট্রিং হয়ে আসে,
+ *    আর মাঝপথে `Number` করলে টাকার মান নীরবে গোল হতে পারত।
+ */
+export interface SalarySlice {
+  /** 'YYYY-MM' — এই মাস পর্যন্ত (অন্তর্ভুক্ত) */
+  throughMonth: string;
+  monthlySalary: string;
+}
+
+/**
+ * ⭐⭐ **ওই মাসে যে বেতন সত্যিই চলছিল।**
+ *
+ * ⚠️⚠️ কেন দরকার: পে-রোল আগে `employees.monthly_salary` **লাইভ** পড়ত,
+ * তাই কারো বেতন বাড়ালে **বন্ধ মাসের পে-রোলও বদলে যেত** — আর যে কাগজে
+ * বেতন দেওয়া হয়েছিল তার সাথে আর মিলত না।
+ *
+ * নিয়মটা একটাই: **সবচেয়ে ছোট `throughMonth` যেটা ওই মাসের সমান বা বড়**।
+ *
+ * ```
+ * চাওয়া হলো ২০২৬-০৭
+ * সারি: [২০২৬-০৬ → ১২০০০]  [২০২৬-০৮ → ১৩০০০]
+ *                            ↑ এটাই — জুলাই এর আওতায় পড়ে
+ * ```
+ *
+ * ⚠️ কোনো সারি না মিললে **এখনকার বেতনই** ফেরত যায়। খালি টেবিল মানে
+ * "বেতন কোনোদিন বদলায়নি", আর তখন এখনকার মানই সব মাসের জন্য সত্যি।
+ *
+ * ⚠️ `null` ফেরত মানে **বেতন বসানোই নেই** — শূন্য নয়, আর পর্দাতেও দুটো
+ * আলাদা করে দেখানো হয় (`payroll.service.ts`-এর `monthlySalary`)।
+ */
+export function salaryForMonth(
+  yearMonth: string,
+  currentSalary: string | null,
+  slices: readonly SalarySlice[],
+): string | null {
+  let best: SalarySlice | null = null;
+
+  for (const slice of slices) {
+    if (slice.throughMonth < yearMonth) continue;
+    if (best === null || slice.throughMonth < best.throughMonth) best = slice;
+  }
+
+  return best === null ? currentSalary : best.monthlySalary;
+}
+
+/**
+ * বেতন বদলালে **পুরোনো মানটা কোন মাস পর্যন্ত চলেছিল**।
+ *
+ * ⭐ সাধারণ নিয়ম: নতুন বেতন **চলতি মাস থেকে**, তাই পুরোনোটা চলেছিল
+ * **আগের মাস পর্যন্ত**।
+ *
+ * ⚠️⚠️ ব্যতিক্রম — **চলতি মাস আগেই বন্ধ হয়ে থাকলে**। তখন ওই মাসের বেতন
+ * দেওয়া হয়ে গেছে, তাই নতুন সংখ্যাটা ওখানে বসানো যাবে না; পুরোনোটা
+ * **চলতি মাস পর্যন্তই** চলেছিল ধরা হয়, আর নতুনটা পরের মাস থেকে।
+ * এটা না রাখলে বন্ধ মাসের পে-রোল আবার নড়ত — ঠিক যে রোগ সারাতে এই
+ * টেবিলটা বানানো।
+ */
+export function supersededThrough(
+  yearMonth: string,
+  currentMonthClosed: boolean,
+): string {
+  if (currentMonthClosed) return yearMonth;
+
+  const [y, m] = yearMonth.split('-').map((s) => Number.parseInt(s, 10));
+  const prevMonth = m === 1 ? 12 : m - 1;
+  const prevYear = m === 1 ? y - 1 : y;
+
+  return `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+}

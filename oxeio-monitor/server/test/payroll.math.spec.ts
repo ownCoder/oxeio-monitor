@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { computePayroll, paisaToTaka } from '../src/payroll/payroll.math';
+import {
+  computePayroll,
+  paisaToTaka,
+  salaryForMonth,
+  supersededThrough,
+} from '../src/payroll/payroll.math';
 
 /** ২০৮ ঘণ্টা, সেকেন্ডে */
 const TARGET = 208 * 3600;
@@ -228,5 +233,69 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
         expect(line.deductionPaisa + line.payablePaisa).toBe(salary * 100);
       }
     }
+  });
+});
+
+/**
+ * ⭐⭐ **অতীতের বেতন যাতে না নড়ে** *(২৩ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ আগে পে-রোল `employees.monthly_salary` **লাইভ** পড়ত, তাই কারো বেতন
+ * বাড়ালে **বন্ধ মাসের পে-রোলও বদলে যেত**। এই ব্লকটাই সেই রোগের পাহারাদার।
+ */
+describe('salaryForMonth — ওই মাসে কত বেতন ছিল', () => {
+  const slices = [
+    { throughMonth: '2026-06', monthlySalary: '12000.00' },
+    { throughMonth: '2026-08', monthlySalary: '13000.00' },
+  ];
+
+  it('পুরোনো মাস পুরোনো বেতনই পায়', () => {
+    expect(salaryForMonth('2026-05', '15000.00', slices)).toBe('12000.00');
+    expect(salaryForMonth('2026-06', '15000.00', slices)).toBe('12000.00');
+  });
+
+  /** ⭐ জুলাই ২০২৬-০৬-এর আওতার বাইরে, তাই পরের টুকরোটা */
+  it('মাঝের মাস পরের টুকরো পায়', () => {
+    expect(salaryForMonth('2026-07', '15000.00', slices)).toBe('13000.00');
+    expect(salaryForMonth('2026-08', '15000.00', slices)).toBe('13000.00');
+  });
+
+  it('সব টুকরোর পরের মাস এখনকার বেতন পায়', () => {
+    expect(salaryForMonth('2026-09', '15000.00', slices)).toBe('15000.00');
+  });
+
+  /** ⚠️ খালি টেবিল = "বেতন কোনোদিন বদলায়নি" — সব মাসেই এখনকার মান */
+  it('কোনো ইতিহাস না থাকলে এখনকার বেতন', () => {
+    expect(salaryForMonth('2026-01', '15000.00', [])).toBe('15000.00');
+  });
+
+  /** ⚠️ null = বেতন বসানোই নেই — শূন্য নয় */
+  it('বেতন বসানো না থাকলে null-ই থাকে', () => {
+    expect(salaryForMonth('2026-01', null, [])).toBeNull();
+  });
+
+  /** ⚠️ ক্রম এলোমেলো হলেও সবচেয়ে ছোট মানানসই টুকরোই জেতে */
+  it('সারির ক্রমে ফল বদলায় না', () => {
+    const shuffled = [...slices].reverse();
+    expect(salaryForMonth('2026-07', '15000.00', shuffled)).toBe('13000.00');
+  });
+});
+
+describe('supersededThrough — পুরোনো বেতন কোন মাস পর্যন্ত', () => {
+  it('সাধারণত আগের মাস পর্যন্ত', () => {
+    expect(supersededThrough('2026-08', false)).toBe('2026-07');
+  });
+
+  it('জানুয়ারিতে আগের বছরের ডিসেম্বর', () => {
+    expect(supersededThrough('2026-01', false)).toBe('2025-12');
+  });
+
+  /**
+   * ⚠️⚠️ চলতি মাস বন্ধ থাকলে ওই মাসের বেতন **দেওয়া হয়ে গেছে**, তাই নতুন
+   * সংখ্যাটা ওখানে বসানো যাবে না — পুরোনোটা চলতি মাস পর্যন্তই চলেছিল।
+   * এটা না রাখলে বন্ধ মাসের পে-রোল আবার নড়ত।
+   */
+  it('চলতি মাস বন্ধ থাকলে ওই মাস পর্যন্তই', () => {
+    expect(supersededThrough('2026-08', true)).toBe('2026-08');
+    expect(supersededThrough('2026-01', true)).toBe('2026-01');
   });
 });

@@ -3,9 +3,11 @@ import { useState } from 'react';
 import {
   deleteTarget,
   listTargets,
-  updateTarget,
+  markLive,
+  markUploaded,
   type TargetRow,
   type TargetStatus,
+  updateTarget,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
@@ -192,6 +194,18 @@ function TargetList() {
                         data.reload();
                       })
                     }
+                    onUploaded={() =>
+                      edit.run(async () => {
+                        await markUploaded(r.id);
+                        data.reload();
+                      })
+                    }
+                    onLive={() =>
+                      edit.run(async () => {
+                        await markLive(r.id);
+                        data.reload();
+                      })
+                    }
                     onDelete={() =>
                       edit.run(async () => {
                         await deleteTarget(r.id);
@@ -303,11 +317,15 @@ function RowActions({
   row,
   busy,
   onChange,
+  onUploaded,
+  onLive,
   onDelete,
 }: {
   row: TargetRow;
   busy: boolean;
   onChange: (status: TargetStatus) => void;
+  onUploaded: () => void;
+  onLive: () => void;
   onDelete: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -343,6 +361,25 @@ function RowActions({
       {row.status !== 'done' && (
         <MiniButton tone="good" disabled={busy} onClick={() => onChange('done')}>
           Complete
+        </MiniButton>
+      )}
+      {/*
+        ⭐⭐ **পরের দুটো ধাপ** *(২৩ আগস্ট ২০২৬)* — শেষ হওয়ার পরে আপলোড,
+        আপলোডের পরে লাইভ।
+
+        ⚠️⚠️ বোতামটা **ক্রম মেনে দেখা যায়**: শেষ না হলে "Uploaded" নেই,
+        আপলোড না হলে "Live" নেই। সবগুলো একসাথে দেখালে যে-কেউ যেকোনো
+        ক্রমে চাপতে পারতেন, আর তখন পাইপলাইনের সংখ্যাগুলোই অর্থ হারাত।
+        সার্ভারও একই পাহারা দেয় — পর্দা একমাত্র রক্ষী নয়।
+      */}
+      {row.completedAt !== null && row.uploadedAt === null && (
+        <MiniButton disabled={busy} onClick={onUploaded}>
+          Uploaded
+        </MiniButton>
+      )}
+      {row.uploadedAt !== null && row.liveAt === null && (
+        <MiniButton tone="good" disabled={busy} onClick={onLive}>
+          Live
         </MiniButton>
       )}
       {row.status !== 'skipped' && (

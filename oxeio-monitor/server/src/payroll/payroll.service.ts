@@ -3,7 +3,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { computePayroll, paisaToTaka } from './payroll.math';
+import { computePayroll, paisaToTaka, salaryForMonth } from './payroll.math';
 
 export interface PayrollRow {
   employeeId: number;
@@ -109,14 +109,45 @@ export class PayrollService {
       throw new BadRequestException('The month must be in YYYY-MM format');
     }
 
+    /**
+     * ⭐⭐ **ওই মাসে যাঁরা কর্মরত ছিলেন** *(২৩ আগস্ট ২০২৬)*, আজ যাঁরা আছেন
+     * তাঁরা নন।
+     *
+     * ⚠️⚠️ আগে ছাঁকনি ছিল `status: 'active'` — অর্থাৎ কেউ চাকরি ছাড়লে
+     * **তাঁর পুরোনো মাসের শিট থেকেও উধাও** হয়ে যেতেন, যদিও সেই বেতন
+     * দেওয়া হয়ে গেছে। শিটটা ছাপা হয়েছিল একরকম, পরে খুললে আরেকরকম।
+     *
+     * ⭐ এখন প্রশ্নটা তারিখের: ওই মাস শেষ হওয়ার আগে যোগ দিয়েছেন, আর
+     * মাস শুরুর আগে ছেড়ে যাননি।
+     */
+    const monthStart = new Date(`${yearMonth}-01T00:00:00Z`);
+    const monthEnd = new Date(monthStart);
+    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+
     const employees = await this.prisma.employee.findMany({
-      where: { status: 'active' },
+      where: {
+        AND: [
+          { OR: [{ joinedOn: null }, { joinedOn: { lt: monthEnd } }] },
+          { OR: [{ leftOn: null }, { leftOn: { gte: monthStart } }] },
+        ],
+      },
       select: {
         id: true,
         empCode: true,
         fullName: true,
         staffType: true,
         monthlySalary: true,
+        /**
+         * ⭐ পুরোনো বেতনের টুকরোগুলো — `salaryForMonth()` এখান থেকেই
+         * ওই মাসের সত্যিকারের সংখ্যাটা বাছে।
+         *
+         * ⚠️ কেবল যেগুলো ওই মাস বা তার পরে শেষ হয়েছে — তার আগেরগুলো
+         * এই মাসের কোনো উত্তর দেয় না, টেনে আনার মানে নেই।
+         */
+        salaryPeriods: {
+          where: { throughMonth: { gte: yearMonth } },
+          select: { throughMonth: true, monthlySalary: true },
+        },
       },
       orderBy: { empCode: 'asc' },
     });
@@ -144,6 +175,23 @@ export class PayrollService {
         continue;
       }
 
+      /**
+       * ⚠️⚠️ **এখনকার বেতন নয় — ওই মাসে যেটা চলছিল।**
+       *
+       * আগে সরাসরি `e.monthlySalary` পড়া হতো, তাই কারো বেতন বাড়ালে
+       * **বন্ধ মাসের শিটও বদলে যেত** (R1 কেবল ঘণ্টা সুরক্ষিত করেছিল)।
+       * ইতিহাস খালি থাকলে `salaryForMonth()` এখনকার মানই ফেরত দেয়,
+       * তাই যাঁদের বেতন কোনোদিন বদলায়নি তাঁদের কিছুই বদলায় না।
+       */
+      const salaryThatMonth = salaryForMonth(
+        yearMonth,
+        e.monthlySalary === null ? null : String(e.monthlySalary),
+        e.salaryPeriods.map((s) => ({
+          throughMonth: s.throughMonth,
+          monthlySalary: String(s.monthlySalary),
+        })),
+      );
+
       const base = {
         employeeId: e.id,
         empCode: e.empCode,
@@ -157,7 +205,7 @@ export class PayrollService {
         overtimeHours: hours(Math.max(0, summary.creditedSec - summary.targetSec)),
       };
 
-      if (e.monthlySalary === null) {
+      if (salaryThatMonth === null) {
         // ⚠️ শূন্য ধরে নেওয়া হয় না। "বেতন বসানো নেই" আর "বেতন শূন্য" এক নয়,
         //    আর প্রথমটাকে দ্বিতীয়টা ধরে নিলে শিটে চুপচাপ ভুল সংখ্যা যেত।
         missingSalary.push(e.fullName);
@@ -177,7 +225,8 @@ export class PayrollService {
       }
 
       const line = computePayroll({
-        monthlySalary: Number(e.monthlySalary),
+        // ⚠️ ওই মাসের বেতন — এখনকারটা নয় (উপরের নোট দেখুন)
+        monthlySalary: Number(salaryThatMonth),
         targetSec: summary.targetSec,
         creditedSec: summary.creditedSec,
         // ⭐ G37 — d ও D সারিতেই লেখা আছে, এখানে আবার গোনা হয় না।
@@ -201,7 +250,9 @@ export class PayrollService {
 
       rows.push({
         ...base,
-        monthlySalary: e.monthlySalary.toFixed(2),
+        // ⚠️ `Number(...).toFixed(2)` নয় — স্ট্রিংটাই Decimal থেকে এসেছে,
+        //    আর মাঝপথে number-এ নিলে টাকার মান নীরবে গোল হতে পারত
+        monthlySalary: Number(salaryThatMonth).toFixed(2),
         hourlyRate: paisaToTaka(line.hourlyRatePaisa),
         deduction: paisaToTaka(line.deductionPaisa),
         payable: paisaToTaka(line.payablePaisa),

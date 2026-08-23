@@ -210,6 +210,8 @@ model Employee {
   /// ঘাটতির টাকা বের করতে লাগে: (বেতন ÷ মাসিক টার্গেট ঘণ্টা) × ঘাটতি-ঘণ্টা।
   /// ⚠️ Decimal, Float নয় — টাকা কখনো binary float-এ রাখা হয় না।
   monthlySalary  Decimal?       @map("monthly_salary") @db.Decimal(12, 2)
+  /// ⭐ পুরোনো বেতনগুলো — অতীতের পে-রোল যাতে না নড়ে (SalaryPeriod-এর ডক দেখুন)
+  salaryPeriods  SalaryPeriod[]
   joinedOn       DateTime?      @map("joined_on") @db.Date
 
   /**
@@ -686,6 +688,34 @@ model DesignTarget {
    */
   startedAt   DateTime? @map("started_at") @db.Timestamptz(3)
   completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  /**
+   * ⭐⭐ **আপলোড হয়েছে** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)*।
+   *
+   * ⚠️⚠️ **নতুন অবস্থা নয়, তারিখ** — ঠিক `startedAt`/`completedAt`-এর মতো।
+   * `status`-এ ঢোকালে একটা কাজ "done" থেকে "uploaded" হয়ে যেত, আর
+   * `status = 'done'` ধরে যত গণনা আছে সব নীরবে কমে যেত। তারিখ হিসেবে
+   * রাখলে **সবগুলো ধাপই একসাথে সত্যি থাকে**, আর কবে কোনটা হলো তাও জানা যায়।
+   */
+  uploadedAt  DateTime? @map("uploaded_at") @db.Timestamptz(3)
+  /**
+   * ⭐ **Amazon-এ লাইভ হয়েছে** — অর্থাৎ বিক্রির জন্য উঠেছে।
+   *
+   * ⚠️ আপলোড আর লাইভ এক নয়: Amazon পর্যালোচনা করে, বাতিলও করে। দুটো
+   * আলাদা রাখায় পাইপলাইনের ফুটোটা দেখা যায় — কতগুলো আপলোড হয়ে **আটকে
+   * আছে বা বাতিল হয়েছে**।
+   */
+  liveAt      DateTime? @map("live_at") @db.Timestamptz(3)
+  /**
+   * ⭐⭐ লাইভ হওয়া **নতুন** পণ্যের ASIN।
+   *
+   * ⚠️⚠️ উপরের `asin`-এর সাথে গুলিয়ে ফেলা যাবে না — ওটা গবেষকের খুঁজে
+   * আনা **নমুনা** পণ্য (যা দেখে ডিজাইন হয়েছে), আর এটা আমাদের নিজের
+   * **বিক্রয়যোগ্য** পণ্য। একই ঘরে রাখলে "কোনটা কার" চিরকাল ধোঁয়াশা থাকত।
+   *
+   * ⭐ এই ঘরটাই ভবিষ্যতে বিক্রির হিসাবের সাথে জোড়া লাগার সেতু — পরিশ্রম
+   * থেকে ফল পর্যন্ত।
+   */
+  liveAsin    String?   @map("live_asin") @db.VarChar(20)
   /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
   completedVia String? @map("completed_via") @db.VarChar(16)
 
@@ -773,6 +803,54 @@ model DailySummary {
 }
 
 /// ⭐ প্রধান রিপোর্টিং টেবিল — একমাত্র মাপকাঠি এখানেই
+/**
+ * ⭐⭐ **পুরোনো বেতন** *(২৩ আগস্ট ২০২৬)* — যাতে অতীতের পে-রোল না নড়ে।
+ *
+ * ⚠️⚠️ **কেন দরকার হলো।** [R1](../../docs/10-Roadmap.md) মাস বন্ধ করে
+ * *ঘণ্টা* সুরক্ষিত করেছে — বন্ধ মাসে `refreshMonth()` আর ছোঁয় না। কিন্তু
+ * পে-রোল বেতনের সংখ্যাটা নেয় `employees.monthly_salary` থেকে, **লাইভ**।
+ * ফলে কারো বেতন বাড়ালে **বন্ধ মাসের পে-রোলও নীরবে বদলে যেত**, আর যে
+ * কাগজে বেতন দেওয়া হয়েছিল তার সাথে আর মিলত না।
+ *
+ * ⭐⭐ **R1 স্ন্যাপশট টেবিল ইচ্ছাকৃতভাবে বাদ দিয়েছিল** — *"সংখ্যা কপি করা
+ * মানে একই সংখ্যা দু'জায়গায় রাখা, আর তখন 'কোনটা সত্যি' প্রশ্নটা চিরকালের
+ * জন্য খুলে যেত"*। এই টেবিল সেই ভুল করে না, কারণ **কোনো overlap নেই**:
+ *
+ * | প্রশ্ন | উত্তর কোথায় |
+ * |---|---|
+ * | এখন কত বেতন? | `employees.monthly_salary` — একটাই ঘর |
+ * | ২০২৬-০৭-এ কত ছিল? | এখানকার সারি, যদি থাকে |
+ *
+ * ⚠️ সারি বসে **কেবল বেতন বদলালে** — পুরোনো মানটা "কোন মাস পর্যন্ত
+ * চলেছিল" সহ। বদল না হলে টেবিল খালি, আর পে-রোল আগের মতোই কর্মীর ঘর
+ * থেকে পড়ে। অর্থাৎ **যা বদলায়নি তার কোনো নকল নেই**।
+ */
+model SalaryPeriod {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int      @map("employee_id")
+  /**
+   * 'YYYY-MM' — **এই মাস পর্যন্ত (অন্তর্ভুক্ত)** এই বেতনই ছিল।
+   *
+   * ⚠️ "কবে থেকে" নয়, "কোন মাস পর্যন্ত" — কারণ প্রশ্নটা সবসময় অতীত নিয়ে
+   *    ("জুলাইয়ে কত ছিল?"), আর এভাবে লিখলে সবচেয়ে ছোট `through_month >=
+   *    ওই মাস` সারিটাই উত্তর। "কবে থেকে" রাখলে শেষ সারির পরে একটা খোলা
+   *    সীমা থাকত, আর সেটা এখনকার বেতনের সাথে ঠোকাঠুকি খেত।
+   */
+  throughMonth  String   @map("through_month") @db.Char(7)
+  monthlySalary Decimal  @map("monthly_salary") @db.Decimal(12, 2)
+  /// কে বদলাল ও কেন — audit-এ সারি থাকে, কিন্তু পে-রোল পর্দায় এটাই কাছে
+  note          String?
+  changedById   Int?     @map("changed_by_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  /// ⚠️ একই কর্মীর একই মাসের জন্য দুটো সারি থাকলে "কোনটা সত্যি" ফিরে আসত
+  @@unique([employeeId, throughMonth])
+  @@index([employeeId])
+  @@map("salary_periods")
+}
+
 model MonthlySummary {
   employeeId       Int       @map("employee_id")
   /// '2026-08'

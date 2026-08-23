@@ -47,22 +47,41 @@ export function TargetsPage() {
       subtitle="Amazon links the designers will work from"
     >
       <div className="space-y-3">
-        <Card title="The pool" hint="Where every collected link sits">
+        <Card
+          title="The pipeline"
+          hint="From collected link to a product that sells"
+        >
           <div className="p-4">
             {stats.loading && !s && <Loading />}
             {stats.error && !s && <ErrorBox error={stats.error} retry={stats.reload} />}
 
             {s && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Tile n={s.pool} label="Waiting in the pool" tone="text-ink" />
-                <Tile n={s.assigned} label="In hand" tone="text-data" />
-                <Tile n={s.done} label="Done" tone="text-ok" />
+              <>
+                {/*
+                  ⭐⭐ **ক্রমটাই এখানে আসল কথা** *(২৩ আগস্ট ২০২৬)*।
+                  আগে চারটে টাইল পাশাপাশি ছিল, আর তাতে বোঝা যেত না কাজটা
+                  কোন পথে এগোয়। ⚠️ এখন বাঁ থেকে ডানে পড়লেই ফুটোটা দেখা
+                  যায়: ৩০ দেওয়া → ২৫ ডিজাইন → ২০ আপলোড → ১২ লাইভ।
+                */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  <Tile n={s.pool} label="In the pool" tone="text-ink" />
+                  <Tile n={s.assigned} label="In hand" tone="text-data" />
+                  <Tile n={s.done} label="Designed" tone="text-ink" />
+                  <Tile n={s.uploaded} label="Uploaded" tone="text-data" />
+                  {/* ⭐ শেষ ধাপটাই একমাত্র যেটা টাকা আনে — তাই সবুজ */}
+                  <Tile n={s.live} label="Live on Amazon" tone="text-ok" />
+                </div>
+
                 {/*
                   ⚠️ "বাদ দেওয়া" লুকোনো হয় না — সংখ্যাটা বাড়তে থাকলে
                      বোঝা যায় সংগ্রহের মান পড়ছে, আর সেটা জানা দরকার।
+                  ⭐ তবে পাইপলাইনের বাইরে, কারণ এটা ধাপ নয় — বেরিয়ে যাওয়া।
                 */}
-                <Tile n={s.skipped} label="Skipped" tone="text-ink-3" />
-              </div>
+                <div className="mt-3 text-[12px] text-ink-3">
+                  Dropped along the way:{' '}
+                  <span className="num font-medium">{s.skipped}</span>
+                </div>
+              </>
             )}
           </div>
         </Card>
