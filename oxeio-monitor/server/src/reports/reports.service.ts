@@ -991,16 +991,27 @@ export class ReportsService {
      *
      * ⚠️ কর্মকালে ছাঁটা — জয়েনের আগের বা ছাড়ার পরের দিন কারো টার্গেট নয়।
      *    ছেদ খালি হলে **০**, আর ০ একটা বৈধ উত্তর ("তার কোনো অফিস-ডে নেই")।
+     *
+     * ⚠️⚠️ **জানালা `requestedTo`, `to` নয় — এটা নীরব পছন্দ নয়।**
+     *
+     * `range.to` আজকের দিনে ছাঁটা (`clampedToToday`)। ওটা ধরলে ২৩ আগস্টে
+     * আগস্টের টার্গেট দাঁড়াত **১৬০ঘ** (২০ অফিস-ডে), অথচ আগস্টের টার্গেট
+     * ২০৮ — মাস শেষ হয়নি বলে টার্গেট ছোট হয়ে যায় না।
+     *
+     * ⭐ আর ছাঁটলে সংখ্যাটা কার্যত `expectedHours`-এর **নকল** হয়ে যেত, অথচ
+     * দুটোর কাজ আলাদা: এটা *"মোট কত হওয়ার কথা"* (অগ্রগতির হর), আর ওটা
+     * *"এ পর্যন্ত কত হওয়ার কথা"* (ঘাটতির মাপকাঠি)। একটাকে অন্যটার সমান
+     * করে দিলে Monthly পাতার অগ্রগতি-বার সারাদিন ১০০%-এর কাছে বসে থাকত।
+     *
+     * ⚠️ ধরা পড়েছে CI-তে, এই ফাইলের টেস্ট লাল হয়ে — প্রথমে `to` ধরা হয়েছিল।
      */
     const targetHoursInRange: Record<number, number> = {};
+    const targetSpan = { from: range.from, to: range.requestedTo };
     for (const employee of employees) {
-      const employed = overlapOf(
-        { from: range.from, to: range.to },
-        {
-          from: employee.joinedOn ?? range.from,
-          to: employee.leftOn ?? range.to,
-        },
-      );
+      const employed = overlapOf(targetSpan, {
+        from: employee.joinedOn ?? targetSpan.from,
+        to: employee.leftOn ?? targetSpan.to,
+      });
       targetHoursInRange[employee.id] = secondsToHours(
         employed === null ? 0 : Math.round(netTargetSecIn(employee, employed)),
       );

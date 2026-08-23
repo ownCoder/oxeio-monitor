@@ -387,16 +387,23 @@ describe('G117 — রিপোর্টের টার্গেট অফি�
   });
 
   /**
-   * ⚠️⚠️ ০ এখন একটা **বৈধ** উত্তর — আগে ছিল না (ফ্ল্যাট ২০৮ কখনো ০ হতো না)।
-   * ⭐ ওয়েবে এটা "0h 0m, ০%" নয়, "No target" দেখায় (`HeatGrid.tsx`)।
+   * ⚠️ যিনি ওই পরিসরে কর্মীই ছিলেন না, তিনি রিপোর্টে **থাকেনই না** — তাই
+   * ঘরটা `undefined`, ০ নয়। ⭐ পার্থক্যটা আসল: ০ মানে *"অফিস-ডে নেই"*,
+   * আর `undefined` মানে *"এই কাগজে তাঁর কোনো সারিই নেই"*।
+   *
+   * ⚠️⚠️ তবু ০ **পৌঁছনীয়** — পুরো পরিসরটা ছুটিতে কাটালে। আগে ছিল না
+   * (ফ্ল্যাট ২০৮ কখনো ০ হতো না), তাই ওয়েবে সেটা "0h 0m, ০%" না দেখিয়ে
+   * "No target" দেখানো হয় (`HeatGrid.tsx`)।
    */
-  it('মাসের পরে যোগ দিলে টার্গেট ০ — ব্যর্থতা নয়, অফিস-ডে-ই নেই', async () => {
+  it('পরের মাসে যোগ দিলে তিনি এই কাগজেই নেই — ০ নয়, অনুপস্থিত', async () => {
     const id = await makeEmployee({
       empCode: 'G117-LATE',
       joinedOn: new Date(Date.UTC(2026, 8, 10)),
     });
     await rollup();
 
-    expect(await monthTarget(id)).toBe(0);
+    const r = await reports.attendance({ from: '2026-08-01', to: '2026-08-31' });
+    expect(r.meta.targetHoursInRange[id]).toBeUndefined();
+    expect(r.rows.some((row) => row.employeeId === id)).toBe(false);
   });
 });
