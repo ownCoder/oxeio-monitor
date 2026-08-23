@@ -12,6 +12,7 @@ import { formatAgo, formatDuration, formatHours } from '../../lib/format';
 import type { GalleryItem } from '../../api/screenshots';
 import { getLatestShots, NO_SHOTS } from './latestShots';
 import { isWorking } from './onTheClock';
+import { DesignCell } from './DesignCell';
 import { designView, meterKind, restingStartsAt, rosterRows } from './roster';
 import { ShotLightbox } from './ShotLightbox';
 
@@ -441,48 +442,3 @@ function heartbeatLabel(card: LiveCard): string {
   }
 }
 
-/**
- * ⭐⭐ **আজকের ডিজাইন — সংখ্যা, রঙ নয়** *(২১ আগস্ট ২০২৬)*।
- *
- * ⚠️⚠️ টার্গেট ছোঁয়া হলে সবুজ, না হলে **নিরপেক্ষ** — লাল নয়। দিনটা তখনো
- * চলছে, আর দুপুর ১২টায় "১২/২৫" লাল দেখানো মানে প্রত্যেককে রোজ অর্ধেক দিন
- * ব্যর্থ ঘোষণা করা। ⭐ ঘণ্টার মিটারেও নিয়মটা এক (`TodayMeter`)।
- *
- * ⚠️ ডিজাইনার না হলে ঘরটা **খালি**, "০" নয় — "০/২৫" দেখতে অভিযোগের মতো
- * লাগে, অথচ মাপটাই তাঁর জন্য নয়।
- */
-function DesignCell({ card }: { card: LiveCard }) {
-  const view = designView(card);
-  if (view === null) return <span className="text-ink-3">—</span>;
-
-  return (
-    <span className="num whitespace-nowrap">
-      {/* ⭐ **খোলা** — নিজে থেকে গোনা হয়, ফাইলের নামের নম্বর ধরে */}
-      <span className={view.met ? 'font-semibold text-ok' : 'font-medium text-ink'}>
-        {view.done}
-      </span>
-
-      {/*
-        ⭐⭐ **শেষ** — ডিজাইনার নিজে Complete চেপে বলেছেন।
-
-        ⚠️⚠️ ০ হলে ঘরটা **খালি রাখা হয়**, "০" লেখা হয় না। কারণ বোতামটা
-        সবে বসেছে; "১৮ · ০" দেখতে "কিছুই শেষ হয়নি"-র মতো লাগত, অথচ আসল
-        কথা হলো কেউ এখনো বোতামটা ব্যবহার করছেন না — দুটো আলাদা ব্যাপার।
-      */}
-      {view.finished > 0 && (
-        <>
-          <span className="text-ink-3"> · </span>
-          <span className="font-medium text-ok">{view.finished}</span>
-        </>
-      )}
-
-      {/*
-        ⚠️ টার্গেট না থাকলে "/ ২৫"-ও নেই — ওই কর্মীর কোনো টার্গেটই নেই,
-           তাই ভগ্নাংশটা লিখলে সেটা একটা দাবি হয়ে যেত যা সত্যি নয়।
-      */}
-      {view.target !== null && (
-        <span className="text-ink-3"> / {view.target}</span>
-      )}
-    </span>
-  );
-}

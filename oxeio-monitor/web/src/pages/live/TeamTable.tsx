@@ -1,4 +1,6 @@
 import type { LiveCard } from '../../api/dashboard';
+import { DesignCell } from './DesignCell';
+import { designView } from './roster';
 import { ProgressBar } from '../../components/ProgressRing';
 import { StatusChip } from '../../components/StatusDot';
 import { PersonCell, Table, type Column } from '../../components/Table';
@@ -95,6 +97,28 @@ export function TeamTable({ cards }: { cards: LiveCard[] }) {
         </span>
       ),
     },
+    /**
+     * ⭐⭐ **আজকের ডিজাইন** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)* — "ei colame
+     * kon staff koto design korlo today seta bosiye dao"।
+     *
+     * ⚠️ কোষটা `DesignCell`-এ **ভাগ করা** — Worklog-এর রোস্টারেও একই
+     * জিনিস। নকল করলে একদিন একটা বদলাত আর অন্যটা নয়।
+     *
+     * ⚠️⚠️ কলামটা **কেবল তখনই** বসে যখন দলে অন্তত একজনের ডিজাইন আছে।
+     * সবসময় বসালে গবেষকদের সারিতে রোজ একটা খালি ঘর থাকত, আর খালি ঘর
+     * দেখতে "ডেটা আসেনি"-র মতো লাগে — অথচ মাপটাই তাঁদের নয়।
+     */
+    ...(cards.some((c) => designView(c) !== null)
+      ? [
+          {
+            key: 'designs',
+            header: 'Designs',
+            align: 'right' as const,
+            className: 'whitespace-nowrap',
+            render: (c: LiveCard) => <DesignCell card={c} />,
+          },
+        ]
+      : []),
     {
       key: 'progress',
       header: 'Progress',
