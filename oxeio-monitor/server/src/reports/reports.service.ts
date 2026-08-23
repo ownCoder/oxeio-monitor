@@ -191,6 +191,48 @@ export class ReportsService {
       daily.map((d) => [`${d.employeeId}|${d.workDate.getTime()}`, d]),
     );
 
+    /**
+     * ⭐⭐ **কে কোন দিনে কতগুলো টার্গেট "শেষ" বলেছেন** *(২৩ আগস্ট ২০২৬,
+     * মালিকের চাওয়া)*।
+     *
+     * ⚠️⚠️ `daily_summary`-তে এটা নেই, আর থাকার কথাও নয় — ওই টেবিল সময়ের
+     * হিসাব রাখে, আর এটা কাজের। তাই `design_targets` থেকে সরাসরি।
+     *
+     * ⚠️ `completed_at` timestamptz, আর সারিগুলো **ঢাকার দিনে** ভাগ করতে
+     * হবে — তাই raw কুয়েরি; Prisma-র `groupBy` তারিখ কাটতে পারে না।
+     *
+     * ⭐ **একটাই কুয়েরি পুরো সীমার জন্য** — প্রতি সারিতে আলাদা করে গুনলে
+     * ৩০ দিন × ১৩ জন = ৩৯০টা কুয়েরি হতো (N+1)।
+     */
+    const finishedRows = await this.prisma.$queryRaw<
+      { employee_id: number; work_date: Date; n: number }[]
+    >`
+      SELECT assigned_to_id AS employee_id,
+             (completed_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,
+             count(*)::int AS n
+        FROM design_targets
+       WHERE assigned_to_id = ANY(${ctx.employees.map((e) => e.id)}::int[])
+         AND completed_at IS NOT NULL
+         AND (completed_at AT TIME ZONE 'Asia/Dhaka')::date
+             BETWEEN ${range.from}::date AND ${range.to}::date
+       GROUP BY 1, 2
+    `;
+
+    /**
+     * ⚠️ চাবিটা `daily_summary`-র মতোই — UTC-মধ্যরাতের Date। raw কুয়েরি
+     *    `date` ফেরত দেয়, তাই ঘণ্টা-মিনিট ছেঁটে একই আকারে আনা হয়।
+     */
+    const finishedByKey = new Map(
+      finishedRows.map((r) => [
+        `${r.employee_id}|${Date.UTC(
+          r.work_date.getUTCFullYear(),
+          r.work_date.getUTCMonth(),
+          r.work_date.getUTCDate(),
+        )}`,
+        Number(r.n),
+      ]),
+    );
+
     const dates = eachDate(range.from, range.to);
     const rows: AttendanceRow[] = [];
     let workedSec = 0;
@@ -234,6 +276,19 @@ export class ReportsService {
            * ডিজাইন করেন, আর সেটা লুকোনো মানে তথ্য হারানো (২২ আগস্ট)।
            */
           designsDone: (summary?.designsDone ?? 0) > 0 ? summary!.designsDone : null,
+          /**
+           * ⭐ কতগুলো **শেষ** বলা হয়েছে — Complete বোতাম।
+           *
+           * ⚠️⚠️ `designsDone`-এর সাথে গুলিয়ে ফেলা যাবে না: ওটা কতগুলো
+           * ফাইল **খোলা** হয়েছে (শিরোনামের নম্বর ধরে), আর এটা কতগুলো
+           * শেষ হয়েছে। ফাইল খোলা আর শেষ করা এক নয়।
+           *
+           * ⚠️ ০ হলে `null` — `designsDone`-এর মতোই। স্প্রেডশিটে ০ মানে
+           * "মেপে শূন্য পাওয়া গেছে", আর ডিজাইন-বহির্ভূত কর্মীর সারিতে
+           * সেটা মিথ্যা হতো।
+           */
+          designsFinished:
+            finishedByKey.get(`${employee.id}|${date.getTime()}`) ?? null,
           targetHours: secondsToHours(dayTarget),
         });
 

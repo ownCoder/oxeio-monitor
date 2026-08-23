@@ -72,6 +72,14 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
          শূন্য পাওয়া গেছে", আর সেটা এখানে মিথ্যা হতো।
     */
     { header: 'Designs', width: 10, value: (r: AttendanceRow) => r.designsDone },
+    /**
+     * ⭐ কতগুলো **শেষ** বলা হয়েছে (Complete বোতাম) *(২৩ আগস্ট ২০২৬)*।
+     *
+     * ⚠️ পাশের `Designs` কলামটা বলে কতগুলো ফাইল **খোলা** হয়েছে। দুটো
+     * আলাদা কলাম, কারণ ফাইল খোলা আর কাজ শেষ করা এক নয় — এক কলামে
+     * মিলিয়ে দিলে ঠিক সেই ভুলটাই ফিরে আসত যেটা ২৩ আগস্ট সারানো হয়েছে।
+     */
+    { header: 'Finished', width: 10, value: (r: AttendanceRow) => r.designsFinished },
   ];
 
   return buildWorkbook(

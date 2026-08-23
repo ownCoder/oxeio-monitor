@@ -88,6 +88,7 @@ function att(over: Partial<AttendanceRow> = {}): AttendanceRow {
     adjustmentHours: 0,
     // ⭐ ডিজাইনের সংখ্যা (২১ আগস্ট) — ডিজাইনার না হলে null
     designsDone: null,
+    designsFinished: null,
     creditedHours: 8,
     targetHours: DAY_TARGET,
     ...over,

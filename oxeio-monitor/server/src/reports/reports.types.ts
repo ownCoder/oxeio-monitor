@@ -139,6 +139,8 @@ export interface AttendanceRow {
    * "০ ডিজাইন" বসত, আর সেটা পড়তে অভিযোগের মতো লাগে; মাপটাই তাঁর নয়।
    */
   designsDone: number | null;
+  /** ⭐ কতগুলো টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম) — ০ হলে null */
+  designsFinished: number | null;
   /**
    * ওই দিনটার টার্গেট — কর্মদিবসে `monthly_target ÷ expected_workdays`
    * (২০৮ ÷ ২৬ = ৮ ঘণ্টা), সাপ্তাহিক ছুটি ও সরকারি ছুটিতে ০।

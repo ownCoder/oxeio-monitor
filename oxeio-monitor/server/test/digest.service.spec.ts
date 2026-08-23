@@ -62,6 +62,7 @@ const attendance: AttendanceReport = {
       adjustmentHours: 0,
       // ⭐ ডিজাইনের সংখ্যা (২১ আগস্ট) — ডিজাইনার না হলে null
     designsDone: null,
+    designsFinished: null,
     creditedHours: 7.5,
       targetHours: 8,
     },

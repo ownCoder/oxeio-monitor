@@ -83,6 +83,10 @@ export interface AttendanceRow {
   dayType: DayType;
   status: DayStatus;
   /** ⚠️ ঘণ্টা (দশমিক), সেকেন্ড নয় — `formatHoursAsDuration()` দিয়ে দেখান */
+  /** ⭐ কতগুলো ডিজাইন-ফাইল **খোলা** হয়েছে — ০ হলে `null` (খালি ঘর) */
+  designsDone: number | null;
+  /** ⭐ কতগুলো টার্গেট **শেষ** বলা হয়েছে (Complete বোতাম) — ০ হলে `null` */
+  designsFinished: number | null;
   workedHours: number;
   idleHours: number;
   adjustmentHours: number;
