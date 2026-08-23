@@ -78,25 +78,18 @@ export function TeamTable({ cards }: { cards: LiveCard[] }) {
           </span>
         ),
     },
-    {
-      key: 'month',
-      header: 'Month',
-      align: 'right',
-      /*
-        ⭐ মকআপের এই কলামটাই বারে ছিল না — বোর্ডে "এই মাসে কার কত" দেখতে
-           হলে Monthly পাতায় যেতে হতো।
-        ⚠️ হর `monthTargetSec`, ফ্ল্যাট ২০৮ নয় — মাঝপথে যোগ দেওয়া কর্মীর
-           টার্গেট ছোট (G37), আর ছুটি নিলে আরও ছোট (R2)।
-      */
-      render: (c) => (
-        <span className="num text-ink-2">
-          {formatDuration(c.monthWorkedSec)}
-          <small className="ml-1 text-[11px] text-ink-3">
-            /{Math.round(c.monthTargetSec / 3600)}h
-          </small>
-        </span>
-      ),
-    },
+    /*
+      ⚠️⚠️ এখানে একটা **Month** কলাম ছিল — "এই মাসে কার কত ঘণ্টা"
+      *(মালিকের নির্দেশে তুলে দেওয়া, ২৩ আগস্ট)*।
+
+      ⭐ যোগ করার কারণ ছিল "Monthly পাতায় যেতে হতো"। কিন্তু বোর্ডের এই
+      টেবিলের প্রশ্ন **আজ** নিয়ে — Today · Target · Designs · Progress।
+      মাসের সংখ্যাটা ওখানে অন্য প্রশ্নের উত্তর দিচ্ছিল, আর টেবিলটাকে
+      চওড়া করছিল।
+
+      ⚠️ তথ্যটা হারায়নি: **Monthly** পাতায় আছে, আর **Worklog**-এর
+      রোস্টারেও `This month` কলাম আছে। এক ক্লিক দূরে, মুছে যায়নি।
+    */
     /**
      * ⭐⭐ **আজকের ডিজাইন** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)* — "ei colame
      * kon staff koto design korlo today seta bosiye dao"।
