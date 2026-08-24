@@ -48,6 +48,15 @@ export interface TargetStats {
   uploaded: number;
   /** ⭐ বিক্রির জন্য উঠেছে */
   live: number;
+  /**
+   * ⭐⭐ **গবেষকের কিউ** *(২৪ আগস্ট ২০২৬)* — শেষ হয়েছে অথচ আপলোড হয়নি।
+   *
+   * ⚠️ ২৩ আগস্টের আগের সারিগুলো গোনা হয় না — ইমপোর্ট করা ২৭ হাজার
+   * পুরোনো কাজ অনেক আগেই Amazon-এ গেছে, তখন বোতামটাই ছিল না।
+   */
+  toUpload: number;
+  /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
+  toLive: number;
 }
 
 export interface MyTarget {
@@ -152,6 +161,8 @@ export function listTargets(
     /** ⭐ `YYYY-MM-DD` — শেষ কাজের তারিখ এই সীমার ভেতরে */
     from?: string;
     to?: string;
+    /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
+    stage?: 'to_upload' | 'to_live';
   },
   signal?: AbortSignal,
 ): Promise<TargetPage> {
@@ -161,6 +172,7 @@ export function listTargets(
   if (params.staffId) qs.set('staffId', String(params.staffId));
   if (params.from) qs.set('from', params.from);
   if (params.to) qs.set('to', params.to);
+  if (params.stage) qs.set('stage', params.stage);
   if (params.page && params.page > 1) qs.set('page', String(params.page));
 
   const suffix = qs.toString();

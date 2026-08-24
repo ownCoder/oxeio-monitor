@@ -16,8 +16,21 @@ import {
   asinOf,
   parseBulk,
   POOL_PER_DESIGNER,
+  UPLOAD_QUEUE_FROM,
   type RejectedLine,
 } from './targets.rules';
+
+/**
+ * ⭐⭐ 'YYYY-MM-DD' → ওই দিনের **ঢাকার মধ্যরাত**।
+ *
+ * ⚠️ মডিউল-স্তরে রাখা হয়েছে ইচ্ছাকৃতভাবে: `list()`-এর ছাঁকনি আর
+ * `stats()`-এর গণনা — দুটোকে **হুবহু এক তারিখ** ধরতে হয়। চিপে ১৩২ লিখে
+ * ক্লিক করার পর ৯০টা এলে কেউ আর কোনো সংখ্যাই বিশ্বাস করবে না, আর এই
+ * প্রকল্পে ঠিক এভাবেই একই সূত্র দুই জায়গায় লেখা হয়ে বাগ জন্মেছে।
+ */
+const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
+const nextDay = (day: string): Date =>
+  new Date(dhakaStart(day).getTime() + 86_400_000);
 
 /**
  * ⚠️⚠️ পর্দায় সর্বোচ্চ কতগুলো বাদ-পড়া লাইন দেখানো হবে *(২৩ আগস্ট ২০২৬)*।
@@ -531,6 +544,8 @@ export class TargetsService {
     from?: string;
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
     to?: string;
+    /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
+    stage?: 'to_upload' | 'to_live';
   }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
     const page = Math.max(1, query.page ?? 1);
 
@@ -556,9 +571,6 @@ export class TargetsService {
      * ⚠️ `to`-তে দিনটা **অন্তর্ভুক্ত** — মানুষ "২৩ তারিখ পর্যন্ত" বললে
      * ২৩ তারিখটাও বোঝায়। তাই পরের দিনের শুরু পর্যন্ত (`lt`) দেখা হয়।
      */
-    const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
-    const nextDay = (day: string): Date =>
-      new Date(dhakaStart(day).getTime() + 86_400_000);
 
     const activity =
       query.from || query.to
@@ -568,11 +580,31 @@ export class TargetsService {
           }
         : undefined;
 
+    /**
+     * ⭐⭐ **গবেষকের দুটো কিউ** *(২৪ আগস্ট ২০২৬)* — শেকলের ঠিক কোন ধাপে
+     * সারিটা আটকে আছে।
+     *
+     * ⚠️ `to_upload`-এ **কাটা-তারিখ** আছে, `to_live`-এ নেই — কারণটা
+     *    [targets.rules.ts](./targets.rules.ts)-এর `UPLOAD_QUEUE_FROM`-এ:
+     *    পুরোনো ২৭ হাজার ইমপোর্ট-করা সারি বাদ না দিলে কিউটা পাহাড় হতো।
+     *    `to_live`-এ ওই সমস্যা নেই, কারণ Uploaded চাপা সারিই মাত্র একটা।
+     */
+    const stage =
+      query.stage === 'to_upload'
+        ? {
+            completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
+            uploadedAt: null,
+          }
+        : query.stage === 'to_live'
+          ? { uploadedAt: { not: null }, liveAt: null }
+          : {};
+
     const where = {
       ...(query.status ? { status: query.status } : {}),
       ...(asin ? { asin: { contains: asin } } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(activity ? { lastActivityAt: activity } : {}),
+      ...stage,
     };
 
     const [total, rows] = await Promise.all([
@@ -725,6 +757,10 @@ export class TargetsService {
       perDesigner: number;
       uploaded: number;
       live: number;
+      /** ⭐ গবেষকের কিউ — শেষ হয়েছে অথচ আপলোড হয়নি (কাটা-তারিখের পরের) */
+      toUpload: number;
+      /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
+      toLive: number;
     }
   > {
     /**
@@ -734,13 +770,27 @@ export class TargetsService {
      * schema-র নোট দেখুন)। একটা কাজ একই সাথে `done` **আর** আপলোড **আর**
      * লাইভ হতে পারে, আর সেটাই ঠিক।
      */
-    const [rows, uploaded, live] = await Promise.all([
+    const [rows, uploaded, live, toUpload, toLive] = await Promise.all([
       this.prisma.designTarget.groupBy({
         by: ['status'],
         _count: { _all: true },
       }),
       this.prisma.designTarget.count({ where: { uploadedAt: { not: null } } }),
       this.prisma.designTarget.count({ where: { liveAt: { not: null } } }),
+      /**
+       * ⚠️⚠️ এই দুটো সংখ্যা **`list()`-এর ছাঁকনির হুবহু যমজ** হতে হবে —
+       * চিপে ১৩২ লিখে ক্লিক করলে ৯০টা এলে কেউ আর সংখ্যাটা বিশ্বাস করবে না।
+       * ⭐ কাটা-তারিখটা এক জায়গায় (`UPLOAD_QUEUE_FROM`), তাই দুটো একসাথেই নড়ে।
+       */
+      this.prisma.designTarget.count({
+        where: {
+          completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
+          uploadedAt: null,
+        },
+      }),
+      this.prisma.designTarget.count({
+        where: { uploadedAt: { not: null }, liveAt: null },
+      }),
     ]);
 
     const out = {
@@ -751,6 +801,8 @@ export class TargetsService {
       perDesigner: POOL_PER_DESIGNER,
       uploaded,
       live,
+      toUpload,
+      toLive,
     };
     for (const r of rows) out[r.status] = r._count._all;
 

@@ -6,11 +6,13 @@ import {
   listTargets,
   markLive,
   markUploaded,
+  targetStats,
   type TargetRow,
   type TargetStatus,
   updateTarget,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
+import { useAuth } from '../auth/AuthContext';
 import { Card } from '../components/Card';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
@@ -43,7 +45,28 @@ export function AllTargetsPage() {
   );
 }
 
-const FILTERS: { key: TargetStatus | 'all'; label: string }[] = [
+type Stage = 'to_upload' | 'to_live';
+type FilterKey = TargetStatus | 'all' | Stage;
+
+/**
+ * ⭐⭐ **প্রথম দুটো গবেষকের রোজকার কিউ** *(২৪ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ ক্রমটা ইচ্ছাকৃত — কাজের দুটো সবার আগে, তদারকির ছাঁকনিগুলো পরে।
+ * Uploaded ও Live বোতাম দুটো প্রতিটা সারিতে **আগে থেকেই ছিল**, আর অনুমতিও
+ * গবেষকের ছিল; যা ছিল না তা হলো *"কোনগুলো"* — ৩৯ হাজার সারির স্তূপ থেকে
+ * আজকের কাজটা আলাদা করার উপায়। ⭐ ফলে ২৭,৬৩২টার মধ্যে বোতামটা চাপা
+ * পড়েছিল **মাত্র ১ বার**।
+ *
+ * ⚠️ এগুলো `status` নয়, **ধাপ** — `uploadedAt`/`liveAt` তারিখ, অবস্থা নয়
+ * (নইলে সারিটা `done` থেকে সরে গিয়ে সব গণনা নীরবে কমে যেত)।
+ */
+/** ⭐ চিপটা ধাপ না অবস্থা — এক জায়গায় ঠিক হয়, দুই জায়গায় নয় */
+const stageOf = (key: FilterKey): Stage | undefined =>
+  key === 'to_upload' || key === 'to_live' ? key : undefined;
+
+const FILTERS: { key: FilterKey; label: string; stage?: Stage }[] = [
+  { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
+  { key: 'to_live', label: 'To make live', stage: 'to_live' },
   { key: 'all', label: 'All' },
   { key: 'pool', label: 'Waiting' },
   { key: 'assigned', label: 'In hand' },
@@ -68,7 +91,7 @@ function dhakaToday(): string {
 }
 
 function TargetList() {
-  const [filter, setFilter] = useState<TargetStatus | 'all'>('all');
+  const [filter, setFilter] = useState<FilterKey>('all');
   const [q, setQ] = useState('');
   const [staffId, setStaffId] = useState('');
   const [from, setFrom] = useState('');
@@ -77,12 +100,33 @@ function TargetList() {
   const edit = useMutation();
 
   const designers = useApi(listTargetDesigners, []);
+  /** ⭐ চিপের পাশের সংখ্যাটা — ক্লিক করার **আগেই** জানা দরকার কাজ আছে কি না */
+  const stats = useApi(targetStats, []);
+
+  /**
+   * ⭐ শর্তটার **নাম আছে** — `role !== 'employee'` লেখা হয়নি।
+   *
+   * ⚠️ এই প্রকল্পে নাম না দেওয়া অধিকার-শর্ত বারবার বাগ তৈরি করেছে
+   * (G134: ম্যানেজার নেভে Settings দেখতেন, চাপলে "There's nothing at this
+   * address")। নাম থাকলে বদলানোর সময় সব জায়গা একসাথে বদলায়।
+   */
+  const { user } = useAuth();
+  const mayDelete = user?.role === 'owner' || user?.role === 'manager';
 
   const data = useApi(
     (signal) =>
       listTargets(
         {
-          ...(filter === 'all' ? {} : { status: filter }),
+          /**
+           * ⚠️ কিউ দুটো `status` নয় — তাই আলাদা করে পাঠাতে হয়। `stage`
+           *    থাকলে `status` পাঠানো হয় **না**, নইলে দুটো ছাঁকনি একসাথে
+           *    বসে কিউটা খালি দেখাত।
+           */
+          ...(stageOf(filter)
+            ? { stage: stageOf(filter) }
+            : filter === 'all'
+              ? {}
+              : { status: filter as TargetStatus }),
           ...(q.trim() ? { q: q.trim() } : {}),
           ...(staffId ? { staffId: Number(staffId) } : {}),
           ...(from ? { from } : {}),
@@ -113,6 +157,13 @@ function TargetList() {
             key={f.key}
             type="button"
             onClick={() => change(() => setFilter(f.key))}
+            title={
+              f.stage === 'to_upload'
+                ? 'Designs finished since 23 August that have not been sent to Amazon yet'
+                : f.stage === 'to_live'
+                  ? 'Sent to Amazon, not live yet'
+                  : undefined
+            }
             className={`rounded-full border px-3 py-1 text-[12.5px] transition ${
               filter === f.key
                 ? 'border-brand bg-brand-bg font-semibold text-brand-ink'
@@ -120,6 +171,16 @@ function TargetList() {
             }`}
           >
             {f.label}
+            {/*
+              ⭐ সংখ্যাটা চিপেই — ক্লিক করার **আগেই** জানা দরকার আজ কাজ
+                 আছে কি না। ⚠️ ০ হলেও দেখানো হয়, কারণ "০" মানে
+                 "শেষ করেছি", আর সেটাই একমাত্র পুরস্কার এখানে।
+            */}
+            {f.stage && stats.data ? (
+              <span className="num ml-1.5 text-ink-3">
+                {f.stage === 'to_upload' ? stats.data.toUpload : stats.data.toLive}
+              </span>
+            ) : null}
           </button>
         ))}
 
@@ -337,6 +398,7 @@ function TargetList() {
                         data.reload();
                       })
                     }
+                    mayDelete={mayDelete}
                     onDelete={() =>
                       edit.run(async () => {
                         await deleteTarget(r.id);
@@ -451,6 +513,7 @@ function RowActions({
   onUploaded,
   onLive,
   onDelete,
+  mayDelete,
 }: {
   row: TargetRow;
   busy: boolean;
@@ -458,6 +521,8 @@ function RowActions({
   onUploaded: () => void;
   onLive: () => void;
   onDelete: () => void;
+  /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
+  mayDelete: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -518,9 +583,20 @@ function RowActions({
           Skip
         </MiniButton>
       )}
-      <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
-        Delete
-      </MiniButton>
+      {/*
+        ⚠️⚠️ **Delete কেবল owner ও manager-এর** *(২৪ আগস্ট ২০২৬)*।
+        এতদিন পাতাটা `useAuth` ডাকতই না, তাই ছটা বোতামই শর্তহীন ছিল —
+        কেউ খুলত না বলে চোখে পড়েনি। ⭐ এখন গবেষককে রোজ এই পাতায় পাঠানো
+        হচ্ছে, তাই আগে বিপজ্জনক বোতামটা তুলে নেওয়া।
+
+        ⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়**, অর্থাৎ কাল কেউ
+        আবার জমা দিলে পুরোনো কাজ নতুন হয়ে ঢুকবে — ফেরানোর উপায় নেই।
+      */}
+      {mayDelete && (
+        <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
+          Delete
+        </MiniButton>
+      )}
     </span>
   );
 }

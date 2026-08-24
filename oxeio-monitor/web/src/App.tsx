@@ -112,6 +112,20 @@ function Router() {
    */
   const mayOpenWorklog = isOwner || user.role === 'manager';
 
+  /**
+   * ⭐⭐ **গবেষক লগইন করে নিজের কাজের তালিকায় নামেন** *(২৪ আগস্ট ২০২৬)*।
+   *
+   * ⚠️⚠️ আগে তিনিও `/me`-তে নামতেন — চারটে **ঘণ্টার** টাইল, একটাও তাঁর
+   * কাজের নয়। দিনের প্রথম পর্দাটাই বলত *"তোমাকে মাপা হচ্ছে"*, আর তাঁর
+   * উৎপাদনের কথা কিছুই বলত না। ⭐ মাঠের ফল: দুজন গবেষকের **শেষ লগইন
+   * ১৩ আগস্ট** — সিস্টেম চালুর দিন, তারপর আর ফেরেননি।
+   *
+   * ⭐ `canAddTargets` ঠিক এই শাখাতেই "ইনি গবেষক" মানেই বহন করে, কারণ
+   * রোল ইতিমধ্যেই `employee` — owner/manager এই ডালে আসেনই না। তাই
+   * সার্ভারে নতুন কোনো ফ্ল্যাগ বানাতে হয়নি।
+   */
+  const staffLanding = user.canAddTargets ? '/targets/all' : '/me';
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -123,7 +137,7 @@ function Router() {
               ছিল (তখন আর কিছু ছিল না), কিন্তু লগইনের পর প্রথম যা দেখা
               দরকার তা নিজের ছবির গ্রিড নয় — নিজের ঘণ্টা।
             */
-            isStaff ? <Navigate to="/me" replace /> : <LiveBoardPage />
+            isStaff ? <Navigate to={staffLanding} replace /> : <LiveBoardPage />
           }
         />
 

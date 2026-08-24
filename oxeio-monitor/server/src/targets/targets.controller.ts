@@ -79,6 +79,17 @@ class ListQueryDto {
     message: "to must be a date like 2026-08-23",
   })
   to?: string;
+
+  /**
+   * ⭐⭐ **কাজের ধাপ ধরে ছাঁকনি** *(২৪ আগস্ট ২০২৬)* — গবেষকের রোজকার
+   * কিউ দুটো।
+   *
+   * ⚠️ `status` দিয়ে এটা করা যায় না: `uploaded`/`live` কোনো **অবস্থা**
+   *    নয়, **তারিখ** — আর সেটা ইচ্ছাকৃত, নইলে সারিটা `done` থেকে সরে
+   *    গিয়ে সব "কতগুলো ডিজাইন হয়েছে" গণনা নীরবে কমে যেত।
+   */
+  @IsOptional() @IsIn(['to_upload', 'to_live'])
+  stage?: 'to_upload' | 'to_live';
 }
 
 class UpdateTargetDto {
