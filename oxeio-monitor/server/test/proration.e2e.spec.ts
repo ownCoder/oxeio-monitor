@@ -100,6 +100,34 @@ function seeDays(employeeId: number, days: number[]): Promise<unknown> {
   });
 }
 
+/**
+ * ⭐⭐ **এজেন্ট সত্যিই কিছু পাঠিয়েছে** — `work_sessions`-এর সারিই এখন
+ * "তাকে কবে থেকে দেখছি"-র একমাত্র প্রমাণ (G120, ২৪ আগস্ট ২০২৬)।
+ *
+ * ⚠️ আগে `seeDays()`-ই এই কাজ করত, কারণ ট্র্যাকিং-শুরু আসত `daily_summary`
+ * থেকে। কিন্তু ওই টেবিলে `refreshDate()` **সবার** সারি লেখে, ডেটা থাক বা
+ * না থাক — তাই ওটা "দেখেছি" নয়, "সার্ভার চলছে" মাপত।
+ */
+async function seeSessions(employeeId: number, days: number[]): Promise<void> {
+  const device = await h.prisma.device.create({
+    data: {
+      hostname: `PC-${employeeId}`,
+      windowsUsername: `user${employeeId}`,
+      employeeId,
+      machineGuid: randomUUID(),
+      tokenHash: randomUUID(),
+    },
+  });
+  await h.prisma.workSession.createMany({
+    data: days.map((d) => ({
+      employeeId,
+      deviceId: device.id,
+      workDate: utc(d),
+      startedAt: new Date(Date.UTC(2026, 7, d, 4, 0)),
+    })),
+  });
+}
+
 const monthRow = (employeeId: number) =>
   h.prisma.monthlySummary.findUniqueOrThrow({
     where: { employeeId_yearMonth: { employeeId, yearMonth: YEAR_MONTH } },
@@ -189,6 +217,8 @@ describe('rollup — monthly_summary-তে prorated টার্গেট', () 
   it('ট্র্যাকিং শুরুর পরের কর্মদিবস গোনা হয়, আজকের দিন বাদে', async () => {
     const id = await makeEmployee({ empCode: 'PR-SEEN', joinedOn: utc(17) });
     await seeDays(id, [17]);
+    // ⭐ G120 — ট্র্যাকিং-শুরু এখন সেশন থেকে, খালি দৈনিক সারি থেকে নয়
+    await seeSessions(id, [17]);
     await rollup();
 
     const row = await monthRow(id);
@@ -208,6 +238,7 @@ describe('rollup — monthly_summary-তে prorated টার্গেট', () 
   it('মাস ফুরিয়ে গেলে প্রত্যাশা = পুরো টার্গেট', async () => {
     const id = await makeEmployee({ empCode: 'PR-CLOSED', joinedOn: utc(17) });
     await seeDays(id, [17]);
+    await seeSessions(id, [17]);
 
     // "এখন" ১ সেপ্টেম্বর — আগস্টের শেষ দিনটাও এখন গতকালের আগে
     await rollup(new Date(Date.UTC(2026, 8, 1, 12)));
@@ -423,35 +454,16 @@ describe('G117 — রিপোর্টের টার্গেট অফি�
  * ডাটাবেসসহ পরীক্ষা করা যায়।
  */
 describe('G120 — ট্র্যাকিং-শুরু: খালি সারি নয়, আসল সেশন', () => {
-  /** ওই কর্মীর নামে একটা ডিভাইস — সেশনের জন্য লাগে */
-  const makeDevice = async (employeeId: number): Promise<number> => {
-    const d = await h.prisma.device.create({
-      data: {
-        hostname: `PC-${employeeId}`,
-        windowsUsername: `user${employeeId}`,
-        employeeId,
-        machineGuid: randomUUID(),
-        tokenHash: randomUUID(),
-      },
-    });
-    return d.id;
-  };
-
-  /** ⭐ এজেন্ট সত্যিই কিছু পাঠিয়েছে — এই সারিই "দেখছি"-র একমাত্র প্রমাণ */
-  const seeSessions = async (employeeId: number, days: number[]): Promise<void> => {
-    const deviceId = await makeDevice(employeeId);
-    await h.prisma.workSession.createMany({
-      data: days.map((d) => ({
-        employeeId,
-        deviceId,
-        workDate: utc(d),
-        startedAt: new Date(Date.UTC(2026, 7, d, 4, 0)),
-      })),
-    });
-  };
-
+  /**
+   * ⚠️⚠️ **`workdaysElapsed`, `expectedWorkdays` নয়** — দুটো আলাদা জিনিস,
+   * আর প্রথমবার আমি ভুলটাই পড়েছিলাম (CI ধরিয়ে দিয়েছে)।
+   *
+   * `expectedWorkdays` = `prorate()`-এর **d**, অর্থাৎ তার নিজের কর্মদিবস —
+   * ট্র্যাকিং-শুরুর সাথে এর কোনো সম্পর্ক নেই। জানালাটা যায়
+   * `workdaysElapsed`-এ, আর সেখান থেকেই `expectedSec`।
+   */
   const elapsed = async (employeeId: number): Promise<number> =>
-    (await monthRow(employeeId)).expectedWorkdays;
+    (await monthRow(employeeId)).workdaysElapsed;
 
   /**
    * ⭐⭐ **আসল পুনরুৎপাদন।** ১–১৬ আগস্টের খালি `daily_summary` সারি আছে
