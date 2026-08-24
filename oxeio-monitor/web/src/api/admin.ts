@@ -70,6 +70,14 @@ export interface EmployeeView {
    *    দুটো আলাদা অবস্থা, আর সেটাই এখানে `number | null` রাখার কারণ।
    */
   dailyDesignTarget: number | null;
+  /**
+   * ⭐ **বানান যাচাই করতে পারেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ owner ও manager এখানে `false` থাকতে পারেন, অথচ তাঁরা পারেন —
+   * এটা কেবল **কর্মীর** অধিকার। কে পারবেন সেটা বুঝতে সেশনের
+   * `canProofread` দেখুন, এই ঘরটা নয়।
+   */
+  canProofread: boolean;
   policyId: number | null;
   /** `YYYY-MM-DD` */
   joinedOn: string | null;
@@ -140,6 +148,8 @@ export interface CreateEmployeeBody {
   staffType?: StaffType;
   /** ⚠️ না পাঠালে বা `null` হলে পলিসির টার্গেট খাটবে; `0` = বন্ধ */
   dailyDesignTarget?: number | null;
+  /** ⭐ বানান যাচাই করতে পারবেন কি না */
+  canProofread?: boolean;
   policyId?: number;
   /**
    * ⭐⚠️ টাকা **স্ট্রিং** হিসেবে পাঠাতে হবে (`'13000'` বা `'13000.50'`)।
@@ -163,6 +173,7 @@ export type UpdateEmployeeBody = Partial<{
   staffType: StaffType | null;
   /** ⚠️ `null` = "নিজের সংখ্যা মুছে পলিসিতে ফেরাও"; `0` = টার্গেট বন্ধ */
   dailyDesignTarget: number | null;
+  canProofread: boolean;
   policyId: number | null;
   monthlySalary: string | null;
   joinedOn: string | null;

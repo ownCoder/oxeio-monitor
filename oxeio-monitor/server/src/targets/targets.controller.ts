@@ -237,7 +237,7 @@ export class TargetsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CheckedDto,
   ) {
-    await this.targets.assertCanUse(actor);
+    await this.targets.assertCanProofread(actor);
     return this.targets.markChecked(id, dto.ok, actor.userId, new Date());
   }
 
@@ -251,7 +251,7 @@ export class TargetsController {
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    await this.targets.assertCanUse(actor);
+    await this.targets.assertCanProofread(actor);
     return this.targets.markFixed(id, actor.userId, new Date());
   }
 

@@ -158,6 +158,33 @@ export class TargetsService {
   }
 
   /**
+   * ⭐⭐ **কে বানান যাচাই করতে পারেন** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️⚠️ `assertCanUse`-এর থেকে **আলাদা পাহারা**, আর সেটাই আসল কথা।
+   * ওটা গোটা টার্গেট-অংশের একটাই দরজা — টার্গেট জমা, তালিকা, Uploaded,
+   * Live সব। ওটা সংকুচিত করলে দ্বিতীয় গবেষক **সবকিছুই** হারাতেন, অথচ
+   * মালিক কেবল বানান-যাচাইটা সীমিত করতে চেয়েছেন।
+   *
+   * ⚠️ কারো নাম বা id এখানে নেই — `employees.can_proofread` ঘরটা মালিক
+   * নিজে Settings → Staff-এ টিক দিয়ে বদলান।
+   */
+  async assertCanProofread(actor: SessionUser): Promise<void> {
+    if (actor.role === UserRole.owner || actor.role === UserRole.manager) return;
+
+    if (actor.employeeId !== null) {
+      const me = await this.prisma.employee.findUnique({
+        where: { id: actor.employeeId },
+        select: { canProofread: true },
+      });
+      if (me?.canProofread === true) return;
+    }
+
+    throw new ForbiddenException(
+      'You are not set up to check spelling. Ask the owner to turn it on for you.',
+    );
+  }
+
+  /**
    * ⭐⭐ **একবারে ৫০০টা URL।**
    *
    * ⚠️⚠️ **ডুপ্লিকেট দুই স্তরে ছাঁকা হয়:** পেস্টের ভেতরে (`parseBulk`) আর

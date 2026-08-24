@@ -57,6 +57,13 @@ export interface MeResult {
    * `TargetsService.assertCanSubmit()`-এর হুবহু জোড়া।
    */
   canAddTargets: boolean;
+  /**
+   * ⭐ **বানান যাচাই করতে পারেন কি না** (ADR-038, ২৫ আগস্ট ২০২৬)।
+   *
+   * ⚠️ `canAddTargets`-এর থেকে **আলাদা** — সব গবেষক টার্গেট জমা দিতে
+   * পারেন, কিন্তু বানান দেখেন কেবল যাঁকে মালিক টিক দিয়েছেন।
+   */
+  canProofread: boolean;
 }
 
 @Injectable()
@@ -191,7 +198,7 @@ export class AuthService {
       where: { id: userId },
       // ⚠️ কাজের ধরন লাগে `canAddTargets`-এর জন্য — গবেষক ঢোকেন
       //    `employee` রোলে, তাই রোল দেখে বোঝার উপায় নেই
-      include: { employee: { select: { staffType: true } } },
+      include: { employee: { select: { staffType: true, canProofread: true } } },
     });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('This account is no longer active');
@@ -210,6 +217,10 @@ export class AuthService {
         user.role === UserRole.owner ||
         user.role === UserRole.manager ||
         user.employee?.staffType === 'researcher',
+      canProofread:
+        user.role === UserRole.owner ||
+        user.role === UserRole.manager ||
+        user.employee?.canProofread === true,
     };
   }
 

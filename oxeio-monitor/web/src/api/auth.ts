@@ -18,6 +18,13 @@ export interface Me {
    * আর কেউ মেনু দেখে ৪০৩ পেতেন।
    */
   canAddTargets: boolean;
+  /**
+   * ⭐ **বানান যাচাই করতে পারেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ `canAddTargets`-এর থেকে আলাদা — সব গবেষক টার্গেট জমা দিতে পারেন,
+   * কিন্তু বানান দেখেন কেবল যাঁকে মালিক টিক দিয়েছেন।
+   */
+  canProofread: boolean;
 }
 
 export function login(

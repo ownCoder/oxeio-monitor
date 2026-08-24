@@ -90,6 +90,14 @@ export class CreateEmployeeDto {
    */
   @IsOptional() @IsInt() @Min(0) @Max(500)
   dailyDesignTarget?: number | null;
+  /**
+   * ⭐ **বানান যাচাই করতে পারবেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ owner ও manager এই ঘরের বাইরে — তাঁরা রোল দিয়েই পান। এটা কেবল
+   * কর্মীদের জন্য, আর ডিফল্ট `false`: অধিকার চেয়ে নিতে হয়।
+   */
+  @IsOptional() @IsBoolean()
+  canProofread?: boolean;
 }
 
 /**
@@ -146,6 +154,14 @@ export class UpdateEmployeeDto {
    */
   @IsOptional() @IsInt() @Min(0) @Max(500)
   dailyDesignTarget?: number | null;
+  /**
+   * ⭐ **বানান যাচাই করতে পারবেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ owner ও manager এই ঘরের বাইরে — তাঁরা রোল দিয়েই পান। এটা কেবল
+   * কর্মীদের জন্য, আর ডিফল্ট `false`: অধিকার চেয়ে নিতে হয়।
+   */
+  @IsOptional() @IsBoolean()
+  canProofread?: boolean;
 }
 
 /**

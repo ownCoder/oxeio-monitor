@@ -342,6 +342,49 @@ export function TextField({
   );
 }
 
+/**
+ * ⭐ **হ্যাঁ/না-র ঘর** — অধিকার বা সুইচের জন্য।
+ *
+ * ⚠️ `FieldShell` ব্যবহার করা হয়নি, ইচ্ছাকৃতভাবে। টিক-ঘরের লেখাটা
+ * ঘরের **পাশে** বসে, উপরে নয় — উপরে বসালে লেখাটা কার, সেটা এক নজরে
+ * বোঝা যায় না যখন পাশাপাশি দুটো টিক থাকে।
+ */
+export function CheckboxField({
+  label,
+  checked,
+  onChange,
+  hint,
+  disabled,
+}: {
+  label: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  hint?: ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={`flex items-start gap-2.5 ${
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 accent-brand"
+      />
+      <span>
+        <span className="block text-[13px] font-medium text-ink">{label}</span>
+        {hint && (
+          <span className="mt-0.5 block text-[11.5px] text-ink-3">{hint}</span>
+        )}
+      </span>
+    </label>
+  );
+}
+
 export function TextAreaField({
   label,
   value,

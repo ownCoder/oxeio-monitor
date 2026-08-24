@@ -429,6 +429,7 @@ function TargetList() {
                       })
                     }
                     mayDelete={mayDelete}
+                    mayProofread={user?.canProofread === true}
                     onDelete={() =>
                       edit.run(async () => {
                         await deleteTarget(r.id);
@@ -546,6 +547,7 @@ function RowActions({
   onLive,
   onDelete,
   mayDelete,
+  mayProofread,
 }: {
   row: TargetRow;
   busy: boolean;
@@ -558,6 +560,13 @@ function RowActions({
   onDelete: () => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
+  /**
+   * ⭐ `false` হলে বানান-যাচাইয়ের তিনটে বোতাম বসে না *(২৫ আগস্ট)*।
+   *
+   * ⚠️ সারির অবস্থার সাথে **এবং** করে দেখা হয়, বদলে নয় — অধিকার
+   * থাকলেও ক্রম মানতে হয়: দেখা হয়ে গেলে "Spelling OK" আর ওঠে না।
+   */
+  mayProofread: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -611,7 +620,7 @@ function RowActions({
         যান্ত্রিকভাবে "হ্যাঁ" চাপতে শেখে, আর তখন পপ-আপটা কেবল একটা
         বাড়তি ক্লিক, কোনো পাহারা নয়।
       */}
-      {row.completedAt !== null && row.checkedAt === null && (
+      {mayProofread && row.completedAt !== null && row.checkedAt === null && (
         <>
           <MiniButton tone="good" disabled={busy} onClick={() => onChecked(true)}>
             Spelling OK
@@ -622,7 +631,7 @@ function RowActions({
         </>
       )}
       {/* ⭐ ভুল পাওয়া গেছে, ঠিক হয়নি — বেলালের বোতাম */}
-      {row.errorFoundAt !== null && row.fixedAt === null && (
+      {mayProofread && row.errorFoundAt !== null && row.fixedAt === null && (
         <MiniButton tone="good" disabled={busy} onClick={onFixed}>
           Fixed
         </MiniButton>

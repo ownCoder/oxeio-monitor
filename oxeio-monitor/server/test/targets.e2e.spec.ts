@@ -48,9 +48,10 @@ async function staff(
   empCode: string,
   staffType: 'designer' | 'researcher',
   email: string,
+  canProofread = false,
 ) {
   const employee = await h.prisma.employee.create({
-    data: { empCode, fullName: empCode, staffType, status: 'active' },
+    data: { empCode, fullName: empCode, staffType, status: 'active', canProofread },
   });
 
   await h.prisma.user.create({
@@ -638,7 +639,13 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
     return row.id;
   }
 
-  /** যিনি বোতাম চাপবেন — owner-ই যথেষ্ট, পাহারা `assertCanUse` */
+  /**
+   * যিনি বোতাম চাপবেন — owner-ই যথেষ্ট।
+   *
+   * ⚠️ এই describe-টা **সার্ভিস সরাসরি** ডাকে, তাই HTTP-র পাহারা
+   * (`assertCanProofread`) এখানে চলেই না — কে পারেন সেটা নিচের আলাদা
+   * describe-এ দেখা হয়েছে। এখানকার প্রশ্ন কেবল *নিয়ম* ঠিক আছে কি না।
+   */
   let actorId: number;
 
   beforeEach(async () => {
@@ -762,5 +769,112 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
     await svc().markChecked(id, true, actorId, new Date());
 
     await expect(svc().markFixed(id, actorId, new Date())).rejects.toThrow();
+  });
+});
+
+
+/**
+ * ⭐⭐ **কে বানান দেখতে পারেন** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট ২০২৬:
+ * "ami chai ei access ami manager and sumaiya pak")*।
+ *
+ * ⚠️⚠️ এখানকার আসল কথা: টার্গেট-অংশের বাকি সবকিছু (জমা, তালিকা,
+ * Uploaded, Live) খোলাই থাকে **দুজন গবেষকের জন্যই** — কেবল বানানের
+ * দুটো রুট আলাদা পাহারায়। একটাই পাহারা সংকুচিত করলে দ্বিতীয় গবেষক
+ * নিজের কাজটাও হারাতেন।
+ *
+ * ⚠️ কারো নাম বা id কোডে নেই — `employees.can_proofread` টিক-ঘর।
+ */
+describe('বানান-যাচাইয়ের অধিকার — HTTP পাহারা', () => {
+  const ASIN_OF = (n: number) => `B${String(n).padStart(9, '0')}`;
+
+  /** যাচাইয়ের জন্য তৈরি একটা সারি — শেষ হওয়া, না-দেখা */
+  async function ready(): Promise<number> {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: URL_OF(1),
+    }).expect(201);
+
+    const row = await h.prisma.designTarget.update({
+      where: { asin: ASIN_OF(1) },
+      data: { status: 'done', completedAt: new Date('2026-08-23T10:00:00+06:00') },
+    });
+    return row.id;
+  }
+
+  it('⭐⭐ টিক না থাকলে গবেষক পারেন না — যদিও টার্গেট জমা দিতে পারেন', async () => {
+    const id = await ready();
+    await staff('OX-R7', 'researcher', 'r7@test.local');
+    const session = await loginReady(h, 'r7@test.local', 'staff-password-123');
+
+    // ⭐ জমা দেওয়া **পারেন** — এটাই প্রমাণ যে পাহারা দুটো আলাদা
+    await post(session, '/api/v1/design-targets/bulk', {
+      text: URL_OF(50),
+    }).expect(201);
+
+    await post(session, `/api/v1/design-targets/${id}/checked`, {
+      ok: true,
+    }).expect(403);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.checkedAt).toBeNull();
+  });
+
+  it('টিক থাকলে গবেষক পারেন', async () => {
+    const id = await ready();
+    await staff('OX-R8', 'researcher', 'r8@test.local', true);
+    const session = await loginReady(h, 'r8@test.local', 'staff-password-123');
+
+    await post(session, `/api/v1/design-targets/${id}/checked`, {
+      ok: false,
+    }).expect(201);
+    await post(session, `/api/v1/design-targets/${id}/fixed`, {}).expect(201);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.errorFoundAt).not.toBeNull();
+    expect(row.fixedAt).not.toBeNull();
+  });
+
+  /** ⚠️ ম্যানেজারের কোনো `employees` সারিই নেই — রোল দিয়েই পান */
+  it('ম্যানেজার টিক ছাড়াই পারেন', async () => {
+    const id = await ready();
+    const session = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
+
+    await post(session, `/api/v1/design-targets/${id}/checked`, {
+      ok: true,
+    }).expect(201);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.checkedAt).not.toBeNull();
+  });
+
+  /** ⚠️ ডিজাইনার টার্গেট-অংশেই ঢুকতে পারেন না — টিকেও লাভ নেই */
+  it('ডিজাইনারকে টিক দিলেও তালিকাই দেখতে পান না', async () => {
+    const id = await ready();
+    await staff('OX-D7', 'designer', 'd7@test.local', true);
+    const session = await loginReady(h, 'd7@test.local', 'staff-password-123');
+
+    await session.http.get('/api/v1/design-targets').expect(403);
+
+    // ⭐ কিন্তু বানানের রুটে টিকটা কাজ করে — দুটো পাহারা সত্যিই আলাদা
+    await post(session, `/api/v1/design-targets/${id}/checked`, {
+      ok: true,
+    }).expect(201);
+  });
+
+  /** ⭐ সেশনেও পতাকাটা যায় — পর্দা বোতাম লুকোয় ওটা দেখে */
+  it('সেশনে canProofread ঠিক আসে', async () => {
+    await staff('OX-R9', 'researcher', 'r9@test.local');
+    await staff('OX-RA', 'researcher', 'ra@test.local', true);
+
+    const without = await loginReady(h, 'r9@test.local', 'staff-password-123');
+    const with_ = await loginReady(h, 'ra@test.local', 'staff-password-123');
+
+    const a = await without.http.get('/api/v1/auth/me').expect(200);
+    const b = await with_.http.get('/api/v1/auth/me').expect(200);
+
+    expect(a.body.canProofread).toBe(false);
+    // ⚠️ টার্গেট জমা দুজনেই পারেন — পতাকা দুটো এক নয়
+    expect(a.body.canAddTargets).toBe(true);
+    expect(b.body.canProofread).toBe(true);
   });
 });

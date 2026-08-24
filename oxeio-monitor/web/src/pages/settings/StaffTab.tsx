@@ -31,6 +31,7 @@ import {
   Chip,
   ConfirmDialog,
   FormGrid,
+  CheckboxField,
   FullWidth,
   Modal,
   MiniButton,
@@ -523,6 +524,8 @@ interface StaffForm {
   staffType: string;
   /** ⚠️ খালি স্ট্রিং = "বসানো নেই" → পলিসির ২৫ খাটবে; `'0'` = বন্ধ */
   dailyDesignTarget: string;
+  /** ⭐ বানান যাচাই করতে পারবেন কি না (ADR-038) */
+  canProofread: boolean;
   policyId: string;
   joinedOn: string;
   monthlySalary: string;
@@ -539,6 +542,7 @@ function formOf(employee: EmployeeView | null): StaffForm {
       employee?.dailyDesignTarget === undefined
         ? ''
         : String(employee.dailyDesignTarget),
+    canProofread: employee?.canProofread ?? false,
     policyId:
       employee?.policyId === null || employee?.policyId === undefined
         ? ''
@@ -580,6 +584,9 @@ function patchOf(
       after.dailyDesignTarget.trim() === ''
         ? null
         : Number(after.dailyDesignTarget);
+  }
+  if (after.canProofread !== before.canProofread) {
+    patch.canProofread = after.canProofread;
   }
   if (after.joinedOn !== before.joinedOn) {
     patch.joinedOn = orNull(after.joinedOn);
@@ -640,6 +647,15 @@ function EmployeeForm({
   const set = (key: keyof StaffForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  /**
+   * ⚠️ উপরের `set` কেবল **স্ট্রিং** নেয় — ফর্মের বাকি সব ঘর ইনপুট
+   * বাক্স, আর ব্রাউজার সেখান থেকে স্ট্রিংই দেয়। টিক-ঘর `boolean`
+   * দেয়, তাই আলাদা setter; `set`-কে দুই ধরনের মান নিতে দিলে
+   * `'25'`-এর জায়গায় `true` বসিয়ে দিলেও TypeScript ধরত না।
+   */
+  const setBool = (key: keyof StaffForm) => (value: boolean) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
   const submit = (): void => {
     run(async () => {
       if (employee) {
@@ -660,6 +676,7 @@ function EmployeeForm({
           ...(form.dailyDesignTarget.trim() === ''
             ? {}
             : { dailyDesignTarget: Number(form.dailyDesignTarget) }),
+          ...(form.canProofread ? { canProofread: true } : {}),
           ...(form.policyId ? { policyId: Number(form.policyId) } : {}),
           ...(form.joinedOn ? { joinedOn: form.joinedOn } : {}),
           ...(canSeeSalary && orUndefined(form.monthlySalary)
@@ -780,6 +797,24 @@ function EmployeeForm({
               hint="Leave empty to use the shared target from the work policy. 0 turns the target off — the count still shows, but nobody is marked behind."
             />
           )}
+          {/*
+            ⭐⭐ **বানান যাচাইয়ের অধিকার** *(২৫ আগস্ট, মালিকের সিদ্ধান্ত:
+               "ami chai ei access ami manager and sumaiya pak")*।
+
+            ⚠️⚠️ ঘরটা **সবার জন্য** ওঠে, শুধু গবেষকের জন্য নয় — ইচ্ছাকৃতভাবে।
+               আজ কাজটা একজন গবেষক করেন, কিন্তু নিয়মটা কাজের ধরনের সাথে
+               বাঁধা নয়; কাল বেলাল বা অন্য কেউ দেখলে মালিক যেন কোড না
+               বদলে শুধু টিক দিতে পারেন।
+
+            ⚠️ owner ও manager-কে টিক দেওয়ার দরকার নেই — তাঁরা রোল দিয়েই
+               পান (`assertCanProofread`)। এখানে টিক না থাকলেও পারবেন।
+          */}
+          <CheckboxField
+            label="Can check spelling"
+            checked={form.canProofread}
+            onChange={setBool('canProofread')}
+            hint="Shows the Spelling OK / Has error / Fixed buttons in the Design Pool. The owner and managers always have this."
+          />
           {/*
             ⚠️⚠️ **"Designation" ও "Department" ঘর দুটো তুলে দেওয়া হয়েছে**
                *(২২ আগস্ট, মালিকের সিদ্ধান্ত: "Designation and Department
