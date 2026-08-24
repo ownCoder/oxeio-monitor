@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DesignTargetStatus, UserRole } from '@prisma/client';
+import { DesignTargetStatus } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
