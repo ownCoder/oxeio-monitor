@@ -21,6 +21,7 @@ import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { countLeaveWorkdays, elapsedWindow } from '../summary/summary.math';
+import { trackedFromBy } from '../summary/tracking-start';
 import type { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
 import {
   MIME_OF,
@@ -886,13 +887,9 @@ export class ReportsService {
      *    `test/reports.target.spec.ts` পাহারা দেয়; হর মাসভেদে বদলালে এই
      *    সমতাটা ভাঙত, আর তখন গুণ করাটা ভুল হতো।
      */
-    const firstSeen = await this.prisma.dailySummary.groupBy({
-      by: ['employeeId'],
-      where: { employeeId: { in: employees.map((e) => e.id) } },
-      _min: { workDate: true },
-    });
-    const trackedFromBy = new Map(
-      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
+    const trackedFrom = await trackedFromBy(
+      this.prisma,
+      employees.map((e) => e.id),
     );
 
     // ⚠️ ঢাকার আজ — `parseReportRange()`-ও ঠিক এভাবেই ছাঁটাইয়ের সীমা বের করে
@@ -907,7 +904,8 @@ export class ReportsService {
           today,
           joinedOn: employee.joinedOn,
           leftOn: employee.leftOn,
-          trackingStartedOn: trackedFromBy.get(employee.id) ?? null,
+          // ⚠️⚠️ `?? today` — না-দেখা কর্মীর জানালা খালি, প্রত্যাশা ০ (G120)
+          trackingStartedOn: trackedFrom.get(employee.id) ?? today,
         }),
       ]),
     );

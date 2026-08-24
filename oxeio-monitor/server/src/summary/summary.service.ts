@@ -5,6 +5,7 @@ import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { TargetsService } from '../targets/targets.service';
 import { designIdsInDay, keepKnownLongIds, KNOWN_JOB_FROM } from './design.rules';
+import { trackedFromBy } from './tracking-start';
 import { prorate } from './proration';
 import {
   elapsedWorkdays,
@@ -422,11 +423,7 @@ export class SummaryService {
        *    মাসের ১ তারিখেই ট্র্যাকিং নতুন করে "শুরু" হতো, আর সেপ্টেম্বরের
        *    প্রত্যাশা আগস্টের মতোই ভুল কাটা পড়ত।
        */
-      this.prisma.dailySummary.groupBy({
-        by: ['employeeId'],
-        where: { employeeId: { in: ids } },
-        _min: { workDate: true },
-      }),
+      trackedFromBy(this.prisma, ids),
     ]);
 
     const holidays = new Set(holidayRows.map((h) => h.holidayDate.getTime()));
@@ -445,9 +442,7 @@ export class SummaryService {
      * তাই একেবারে প্রথম রানে এটা আজকের তারিখই হবে — আর তখন প্রত্যাশা ০,
      * যেটাই সৎ: শেষ হয়ে যাওয়া একটা দিনও এখনো দেখা হয়নি।
      */
-    const trackedFromBy = new Map(
-      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
-    );
+    // ⭐ হেল্পার Map-ই ফেরত দেয় — এখানে আর জোড়া লাগানোর কিছু নেই
 
     const today = workDateOf(now);
 
@@ -508,7 +503,13 @@ export class SummaryService {
           today,
           joinedOn: e.joinedOn,
           leftOn: e.leftOn,
-          trackingStartedOn: trackedFromBy.get(e.id) ?? null,
+          /**
+           * ⚠️⚠️ **`?? today`, `?? null` নয়** — এটাই G120-এর আসল লাইন।
+           * `null` মানে `maxDate()`-এ "সীমা নেই", তাই যার এজেন্ট কোনোদিন
+           * কিছু পাঠায়নি তার জানালা **পুরো মাস** জুড়ে খুলে যেত — অর্থাৎ
+           * আগের চেয়েও বেশি ঘাটতি। `today` দিলে জানালা খালি, প্রত্যাশা ০।
+           */
+          trackingStartedOn: firstSeen.get(e.id) ?? today,
           weeklyOffDay: e.weeklyOffDay,
           holidays,
         }, leaveDates),

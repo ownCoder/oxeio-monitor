@@ -26,6 +26,7 @@ import {
 import { isWorkday, monthBoundsOf } from '../reports/reports.range';
 import { prorate } from '../summary/proration';
 import { designTargetOf } from '../summary/design.rules';
+import { trackedFromBy } from '../summary/tracking-start';
 
 const HOUR = 3600;
 
@@ -718,11 +719,10 @@ export class DashboardService {
        *    কোয়েরির মতোই। ছাঁকলে প্রতি মাসের ১ তারিখে ট্র্যাকিং নতুন করে
        *    "শুরু" হতো।
        */
-      this.prisma.dailySummary.groupBy({
-        by: ['employeeId'],
-        where: { employeeId: { in: active.map((e) => e.id) } },
-        _min: { workDate: true },
-      }),
+      trackedFromBy(
+        this.prisma,
+        active.map((e) => e.id),
+      ),
       /**
        * ⚠️ ফিতের সাত দিনের সরকারি ছুটি। ছুটির দিনে কারো টার্গেট থাকে না,
        *    আর সেটা `daily_summary` সারি দেখে জানার উপায় নেই।
@@ -748,14 +748,14 @@ export class DashboardService {
      * ⚠️ সক্রিয় কর্মীদের মধ্যেই খোঁজা হয় — বোর্ডের বাকি সব সংখ্যাও তাই,
      *    আর ছেড়ে-যাওয়া কারো পুরোনো সারি ফিতেটাকে অকারণে পিছিয়ে দিত।
      */
-    const trackedFromBy = new Map(
-      firstSeen.map((f) => [f.employeeId, f._min.workDate]),
+    // ⭐ হেল্পার Map-ই ফেরত দেয় (G120) — জোড়া লাগানোর কিছু নেই
+    const trackedFromMs = [...firstSeen.values()].reduce<number | null>(
+      (min, d) => {
+        const ms = d.getTime();
+        return min === null || ms < min ? ms : min;
+      },
+      null,
     );
-    const trackedFromMs = firstSeen.reduce<number | null>((min, f) => {
-      const ms = f._min.workDate?.getTime();
-      if (ms === undefined) return min;
-      return min === null || ms < min ? ms : min;
-    }, null);
 
     /**
      * ⭐ কর্মীপ্রতি **এক কর্মদিবসের** টার্গেট = মাসিক ÷ তার কর্মদিবস।
@@ -785,7 +785,14 @@ export class DashboardService {
         weeklyOffDay: e.policy?.weeklyOffDay ?? null,
         joinedOn: e.joinedOn,
         leftOn: e.leftOn,
-        trackedFrom: trackedFromBy.get(e.id) ?? null,
+        /**
+         * ⚠️⚠️ এখানে `?? null`-ই থাকে — অন্য তিন কল-সাইটের উল্টো।
+         *
+         * এই ফিল্ডে `null`-এর অর্থ ইতিমধ্যেই **"কখনো দেখা হয়নি ⇒ প্রত্যাশা
+         * ০"**, অর্থাৎ যেটা আমরা চাই। `today` বসালে ওটা "আজ থেকে দেখছি"
+         * হয়ে যেত, আর অর্থটাই উল্টে যেত (G120)।
+         */
+        trackedFrom: firstSeen.get(e.id) ?? null,
         dailyTargetSec: dailyTargetOf.get(e.id) ?? 0,
       }));
 

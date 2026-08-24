@@ -7,6 +7,7 @@ import {
   elapsedWorkdays,
 } from '../summary/summary.math';
 import { PrismaService } from '../prisma/prisma.service';
+import { trackedFromBy } from '../summary/tracking-start';
 import { paceSecOf } from './progress.math';
 import { workDateOf } from './util/dhaka-time';
 
@@ -205,11 +206,7 @@ export class ProgressService {
          *    এখনো পুরো ঘাটতি। আগে এখানে উল্টোটা দাবি করা ছিল, আর ওই
          *    মিথ্যা মন্তব্যটা পড়ে কেউ ভাবতেন কেসটা ঢাকা পড়ে গেছে।
          */
-        this.prisma.dailySummary.findFirst({
-          where: { employeeId },
-          orderBy: { workDate: 'asc' },
-          select: { workDate: true },
-        }),
+        trackedFromBy(this.prisma, [employeeId]),
       ]);
 
     const monthActiveSec = monthRow._sum.durationSec ?? 0;
@@ -265,7 +262,8 @@ export class ProgressService {
       today,
       joinedOn: employee?.joinedOn ?? null,
       leftOn: employee?.leftOn ?? null,
-      trackingStartedOn: firstSeen?.workDate ?? null,
+      // ⚠️⚠️ `?? today` — না-দেখা কর্মীর প্রত্যাশা ০, পুরো মাস নয় (G120)
+      trackingStartedOn: firstSeen.get(employeeId) ?? today,
       weeklyOffDay: off,
       holidays,
     }, leaveDates);

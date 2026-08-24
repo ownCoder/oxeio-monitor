@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { ReportsService } from '../src/reports/reports.service';
@@ -405,5 +407,96 @@ describe('G117 — রিপোর্টের টার্গেট অফি�
     const r = await reports.attendance({ from: '2026-08-01', to: '2026-08-31' });
     expect(r.meta.targetHoursInRange[id]).toBeUndefined();
     expect(r.rows.some((row) => row.employeeId === id)).toBe(false);
+  });
+});
+
+/**
+ * ⭐⭐ **G120 — "কবে থেকে দেখছি" এখন `work_sessions` ধরে** *(২৪ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এটা ধরে:** `refreshDate()` প্রতিটি active কর্মীর
+ * `daily_summary` সারি লেখে, ডেটা থাক বা না থাক। তাই ১ তারিখে কর্মী তৈরি
+ * হলে ওই দিন থেকেই "দেখছি" ধরা হতো, আর এজেন্ট ১৭ তারিখে বসলেও মাঝের
+ * দিনগুলো **পুরো ঘাটতি** হয়ে থাকত।
+ *
+ * ⭐ ইউনিট টেস্ট এটা ধরতে পারে না — ওখানে `trackingStartedOn` হাতে বসানো
+ * হয়। ফাঁকটা ছিল **কোন টেবিল থেকে সংখ্যাটা আসে** তাতে, আর সেটা কেবল
+ * ডাটাবেসসহ পরীক্ষা করা যায়।
+ */
+describe('G120 — ট্র্যাকিং-শুরু: খালি সারি নয়, আসল সেশন', () => {
+  /** ওই কর্মীর নামে একটা ডিভাইস — সেশনের জন্য লাগে */
+  const makeDevice = async (employeeId: number): Promise<number> => {
+    const d = await h.prisma.device.create({
+      data: {
+        hostname: `PC-${employeeId}`,
+        windowsUsername: `user${employeeId}`,
+        employeeId,
+        machineGuid: randomUUID(),
+        tokenHash: randomUUID(),
+      },
+    });
+    return d.id;
+  };
+
+  /** ⭐ এজেন্ট সত্যিই কিছু পাঠিয়েছে — এই সারিই "দেখছি"-র একমাত্র প্রমাণ */
+  const seeSessions = async (employeeId: number, days: number[]): Promise<void> => {
+    const deviceId = await makeDevice(employeeId);
+    await h.prisma.workSession.createMany({
+      data: days.map((d) => ({
+        employeeId,
+        deviceId,
+        workDate: utc(d),
+        startedAt: new Date(Date.UTC(2026, 7, d, 4, 0)),
+      })),
+    });
+  };
+
+  const elapsed = async (employeeId: number): Promise<number> =>
+    (await monthRow(employeeId)).expectedWorkdays;
+
+  /**
+   * ⭐⭐ **আসল পুনরুৎপাদন।** ১–১৬ আগস্টের খালি `daily_summary` সারি আছে
+   * (ঠিক যা `refreshDate()` লেখে), কিন্তু এজেন্টের প্রথম সেশন ১৭ তারিখে।
+   *
+   * ⚠️ পুরোনো কোডে ট্র্যাকিং-শুরু হতো **১ আগস্ট**, তাই প্রত্যাশার জানালা
+   * পুরো মাস জুড়ে খুলত। এখন খোলে ১৭ তারিখ থেকে।
+   */
+  it('খালি সারি জমা থাকলেও এজেন্ট বসার আগের দিন গোনা হয় না', async () => {
+    const id = await makeEmployee({ empCode: 'G120-LATE' });
+    await seeDays(id, Array.from({ length: 16 }, (_, i) => i + 1));
+    await seeSessions(id, [17]);
+    await rollup();
+
+    // ১৭–৩০ আগস্ট (আজকের ৩১ বাদ), শুক্রবার ২১ ও ২৮ বাদে = ১২ দিন
+    expect(await elapsed(id)).toBe(12);
+  });
+
+  /**
+   * ⚠️⚠️ **উল্টো দিকের পাহারা।** কারো একটাও সেশন না থাকলে হেল্পার কিছুই
+   * ফেরত দেয় না, আর কলার তখন `today` পাঠায় — জানালা খালি, প্রত্যাশা ০।
+   *
+   * ⭐ কেউ ভুল করে `?? null` লিখলে এই টেস্টটাই ভাঙবে: `null` মানে
+   * "সীমা নেই", তাই প্রত্যাশা পুরো মাসের হয়ে যেত।
+   */
+  it('এজেন্ট কখনো কিছু পাঠায়নি — প্রত্যাশা ০, পুরো মাস নয়', async () => {
+    const id = await makeEmployee({ empCode: 'G120-NEVER' });
+    await seeDays(id, [1, 2, 3, 4, 5]);
+    await rollup();
+
+    expect(await elapsed(id)).toBe(0);
+
+    // ⚠️ টার্গেট অটুট — এই ফিক্স টাকার কোনো হিসাব ছোঁয় না
+    expect((await monthRow(id)).targetSec).toBe(216 * HOUR);
+  });
+
+  /** ⭐ সেশন থাকলে সংখ্যাটা স্থির — rollup দুবার চালালেও নড়ে না */
+  it('rollup দুবার চালালেও ট্র্যাকিং-শুরু নড়ে না', async () => {
+    const id = await makeEmployee({ empCode: 'G120-STABLE' });
+    await seeSessions(id, [17, 18, 19]);
+
+    await rollup();
+    const first = await elapsed(id);
+    await rollup();
+
+    expect(await elapsed(id)).toBe(first);
   });
 });
