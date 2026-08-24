@@ -14,6 +14,7 @@ import {
 import { DesignTargetStatus, UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -88,13 +89,24 @@ class ListQueryDto {
    *    নয়, **তারিখ** — আর সেটা ইচ্ছাকৃত, নইলে সারিটা `done` থেকে সরে
    *    গিয়ে সব "কতগুলো ডিজাইন হয়েছে" গণনা নীরবে কমে যেত।
    */
-  @IsOptional() @IsIn(['to_upload', 'to_live'])
-  stage?: 'to_upload' | 'to_live';
+  @IsOptional() @IsIn(['to_check', 'to_fix', 'to_upload', 'to_live'])
+  stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
 }
 
 class UpdateTargetDto {
   @IsIn(['pool', 'assigned', 'done', 'skipped'])
   status!: DesignTargetStatus;
+}
+
+class CheckedDto {
+  /**
+   * ⭐ `true` = বানান ঠিক আছে · `false` = ভুল পাওয়া গেছে।
+   *
+   * ⚠️ ঐচ্ছিক করা হয়নি ইচ্ছাকৃতভাবে — ডিফল্ট বসালে ভুল করে খালি পাঠালে
+   * সেটা নীরবে "ঠিক আছে" হয়ে যেত, আর ভুল ডিজাইন Amazon-এ চলে যেত।
+   */
+  @IsBoolean()
+  ok!: boolean;
 }
 
 class LiveDto {
@@ -210,6 +222,39 @@ export class TargetsController {
    * ⚠️ ডিজাইনার নন: ফাইল বানানো আর Amazon-এ পাঠানো দুটো আলাদা কাজ, আর
    *    দ্বিতীয়টা যিনি করেন তিনিই বলবেন।
    */
+  /**
+   * ⭐⭐ **"বানান দেখলাম"** *(ADR-038, ২৫ আগস্ট ২০২৬)* — সুমাইয়ার কাজ।
+   *
+   * ⚠️ পাহারা `assertCanUse` — owner · manager · **গবেষক**। সুমাইয়ার রোল
+   *    `employee`, তাই রোল দিয়ে এটা করা যেত না; ধরন দিয়েই হয়।
+   *    ⭐ ডিজাইনার নিজের কাজ নিজে পাশ করাতে পারেন না, আর সেটাই উদ্দেশ্য।
+   *
+   * ⚠️ `ok: false` মানে ভুল পাওয়া গেছে — সারিটা তখন "ঠিক করতে হবে" কিউতে।
+   */
+  @Post(':id/checked')
+  async checked(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CheckedDto,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.markChecked(id, dto.ok, actor.userId, new Date());
+  }
+
+  /**
+   * ⭐ **"ঠিক করেছি"** — বেলালের কাজ।
+   *
+   * ⚠️⚠️ ডিজাইনের মালিকানা **বদলায় না** — কে ঠিক করলেন সেটা আলাদা ঘরে।
+   */
+  @Post(':id/fixed')
+  async fixed(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.markFixed(id, actor.userId, new Date());
+  }
+
   @Post(':id/uploaded')
   async uploaded(
     @CurrentUser() actor: SessionUser,

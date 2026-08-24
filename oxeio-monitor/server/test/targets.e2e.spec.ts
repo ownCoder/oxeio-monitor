@@ -615,3 +615,152 @@ describe('গবেষকের কিউ — আপলোড ও লাইভ�
     expect((await targetsOf().list({ stage: 'to_live' })).total).toBe(1);
   });
 });
+
+/**
+ * ⭐⭐ **বানান-যাচাইয়ের শেকল** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
+ *
+ * ডিজাইনার "শেষ" বলার পর কাজ শেষ হয় না — কেউ বানান দেখেন, ভুল পেলে
+ * কেউ ঠিক করেন, তারপর ফাইলটা Amazon-এ যায়। মাঠে এটা হয়ই; সিস্টেম
+ * এতদিন জানত না, তাই *"কোনগুলো দেখা বাকি"* কেউ বলতে পারত না।
+ *
+ * ⚠️⚠️ যন্ত্র বানান **পড়ে না** — কেবল হিসাব রাখে।
+ */
+describe('বানান-যাচাই — দেখা, ভুল পাওয়া, ঠিক করা', () => {
+  const svc = () => h.app.get(TargetsService);
+  const ASIN_OF = (n: number) => `B${String(n).padStart(9, '0')}`;
+
+  /** ওই সারিতে `completedAt` বসানো — কাটা-তারিখের পরে */
+  async function finished(n: number): Promise<number> {
+    const row = await h.prisma.designTarget.update({
+      where: { asin: ASIN_OF(n) },
+      data: { status: 'done', completedAt: new Date('2026-08-23T10:00:00+06:00') },
+    });
+    return row.id;
+  }
+
+  /** যিনি বোতাম চাপবেন — owner-ই যথেষ্ট, পাহারা `assertCanUse` */
+  let actorId: number;
+
+  beforeEach(async () => {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: [URL_OF(1), URL_OF(2), URL_OF(3)].join('\n'),
+    }).expect(201);
+    const u = await h.prisma.user.findFirstOrThrow({
+      where: { role: 'owner' },
+    });
+    actorId = u.id;
+  });
+
+  it('শেষ হওয়া ডিজাইন যাচাইয়ের কিউতে বসে', async () => {
+    await finished(1);
+
+    const [stats, page] = await Promise.all([
+      svc().stats(),
+      svc().list({ stage: 'to_check' }),
+    ]);
+
+    expect(stats.toCheck).toBe(1);
+    expect(page.total).toBe(stats.toCheck);
+    expect(page.rows[0].asin).toBe(ASIN_OF(1));
+  });
+
+  it('বানান ঠিক থাকলে কিউ ছাড়ে, ঠিক-করার কিউতে যায় না', async () => {
+    const id = await finished(1);
+
+    await svc().markChecked(id, true, actorId, new Date());
+
+    const stats = await svc().stats();
+    expect(stats.toCheck).toBe(0);
+    expect(stats.toFix).toBe(0);
+    // ⭐ ঠিক ছিল, তাই আপলোডের কিউতে থাকে
+    expect(stats.toUpload).toBe(1);
+  });
+
+  /**
+   * ⭐⭐ **মালিকের সিদ্ধান্তের পাহারা** *(২৫ আগস্ট)* — ভুল পাওয়া অথচ
+   * ঠিক-না-হওয়া ডিজাইন **আপলোডের কিউ থেকে বাদ**। জানা-ভাঙা জিনিস
+   * Amazon-এ যাবে না।
+   */
+  it('⚠️⚠️ ভুল পাওয়া ডিজাইন আপলোডের কিউ থেকে বাদ থাকে', async () => {
+    const id = await finished(1);
+    await finished(2);
+
+    await svc().markChecked(id, false, actorId, new Date());
+
+    const [stats, toFix, toUpload] = await Promise.all([
+      svc().stats(),
+      svc().list({ stage: 'to_fix' }),
+      svc().list({ stage: 'to_upload' }),
+    ]);
+
+    expect(stats.toFix).toBe(1);
+    expect(toFix.rows[0].asin).toBe(ASIN_OF(1));
+
+    // ⭐ ২ নম্বরটা এখনো দেখাই হয়নি — তবু আপলোডের কিউতে আছে
+    expect(stats.toUpload).toBe(1);
+    expect(toUpload.rows[0].asin).toBe(ASIN_OF(2));
+  });
+
+  it('ঠিক করার পর আবার আপলোডের কিউতে ফেরে', async () => {
+    const id = await finished(1);
+    await svc().markChecked(id, false, actorId, new Date());
+    expect((await svc().stats()).toUpload).toBe(0);
+
+    await svc().markFixed(id, actorId, new Date());
+
+    const stats = await svc().stats();
+    expect(stats.toFix).toBe(0);
+    expect(stats.toUpload).toBe(1);
+  });
+
+  /**
+   * ⚠️⚠️ **ডিজাইনের মালিকানা কখনো বদলায় না** — এই টেস্টটাই সেই
+   * সিদ্ধান্তের পাহারা। বেলাল ঠিক করলে কাজটা তাঁর নামে চলে গেলে
+   * তাঁর সংখ্যা ফুলে যেত — ২৩ আগস্টের গোটা তদন্তটা শুরুই হয়েছিল
+   * ঠিক এমন একটা সংখ্যা দেখে।
+   */
+  it('⭐⭐ ঠিক করলেও ডিজাইন মূল ডিজাইনারেরই থাকে', async () => {
+    const designer = await staff('OX-D9', 'designer', 'd9@test.local');
+    const id = await finished(1);
+    await h.prisma.designTarget.update({
+      where: { id },
+      data: { assignedToId: designer.id },
+    });
+
+    await svc().markChecked(id, false, actorId, new Date());
+    await svc().markFixed(id, actorId, new Date());
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.assignedToId).toBe(designer.id);
+    expect(row.fixedById).toBe(actorId);
+  });
+
+  /** ⚠️ দুবার চাপলে তারিখ সরে না — নইলে "কবে দেখা হয়েছিল" লাফ দিত */
+  it('আবার চাপলে তারিখ বদলায় না', async () => {
+    const id = await finished(1);
+    await svc().markChecked(id, true, actorId, new Date('2026-08-24T10:00:00+06:00'));
+    await svc().markChecked(id, false, actorId, new Date('2026-08-25T10:00:00+06:00'));
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.checkedAt?.toISOString()).toBe(new Date('2026-08-24T10:00:00+06:00').toISOString());
+    // ⭐ দ্বিতীয় চাপে "ভুল" বসেনি — প্রথম রায়ই থাকে
+    expect(row.errorFoundAt).toBeNull();
+  });
+
+  it('শেষ না হওয়া ডিজাইন যাচাই করা যায় না', async () => {
+    const row = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { asin: ASIN_OF(1) },
+    });
+    await expect(
+      svc().markChecked(row.id, true, actorId, new Date()),
+    ).rejects.toThrow();
+  });
+
+  it('ভুল না থাকলে "ঠিক করেছি" বলা যায় না', async () => {
+    const id = await finished(1);
+    await svc().markChecked(id, true, actorId, new Date());
+
+    await expect(svc().markFixed(id, actorId, new Date())).rejects.toThrow();
+  });
+});

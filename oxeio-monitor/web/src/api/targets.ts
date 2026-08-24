@@ -57,6 +57,14 @@ export interface TargetStats {
   toUpload: number;
   /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
   toLive: number;
+  /**
+   * ⭐⭐ **বানান দেখা বাকি** *(ADR-038)* — সুমাইয়ার কিউ।
+   *
+   * ⚠️ যন্ত্র বানান পড়ে না; এটা কেবল *"কোনগুলো দেখা হয়নি"*-র হিসাব।
+   */
+  toCheck: number;
+  /** ⭐ ভুল পাওয়া গেছে, ঠিক হয়নি — বেলালের কিউ */
+  toFix: number;
 }
 
 export interface MyTarget {
@@ -129,6 +137,12 @@ export interface TargetRow {
    * শেষ বলা মানুষ এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)।
    */
   completedBy: { fullName: string; role: string } | null;
+  /** ⭐ বানান দেখা হয়েছে — `null` = এখনো দেখা হয়নি (ADR-038) */
+  checkedAt: string | null;
+  /** ⭐ ভুল পাওয়া গেছে — `null` আর `checkedAt` বসানো = ঠিক ছিল */
+  errorFoundAt: string | null;
+  /** ⭐ ভুলটা ঠিক করা হয়েছে */
+  fixedAt: string | null;
   uploadedAt: string | null;
   liveAt: string | null;
   /** ⚠️ **আমাদের নিজের** পণ্যের ASIN — উপরের `asin` নমুনার */
@@ -162,7 +176,7 @@ export function listTargets(
     from?: string;
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    stage?: 'to_upload' | 'to_live';
+    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
   },
   signal?: AbortSignal,
 ): Promise<TargetPage> {
@@ -206,6 +220,24 @@ export function markUploaded(id: number): Promise<{ ok: boolean }> {
 }
 
 /** ⭐ "Amazon-এ লাইভ" — নতুন পণ্যের ASIN ঐচ্ছিক */
+/**
+ * ⭐⭐ **"বানান দেখলাম"** — `ok: false` হলে সারিটা ঠিক-করার কিউতে যায়।
+ *
+ * ⚠️ ডিজাইনের মালিকানা বদলায় না — কে দেখলেন, কে ঠিক করলেন, দুটোই
+ * আলাদা ঘরে বসে।
+ */
+export function markChecked(id: number, ok: boolean): Promise<{ ok: true }> {
+  return api<{ ok: true }>(`/design-targets/${id}/checked`, {
+    method: 'POST',
+    body: { ok },
+  });
+}
+
+/** ⭐ **"ঠিক করেছি"** — ভুল পাওয়া ডিজাইন সারিয়ে দেওয়া হয়েছে */
+export function markFixed(id: number): Promise<{ ok: true }> {
+  return api<{ ok: true }>(`/design-targets/${id}/fixed`, { method: 'POST' });
+}
+
 export function markLive(id: number, liveAsin?: string): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/design-targets/${id}/live`, {
     method: 'POST',

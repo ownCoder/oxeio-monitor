@@ -270,6 +270,10 @@ model User {
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
   /// ⭐ যেসব ডিজাইন-টার্গেট ইনি "শেষ" বলেছেন
   completedTargets DesignTarget[] @relation("designTargetCompletedBy")
+  /// ⭐ বানান যাচাই করেছেন (ADR-038) — সাধারণত গবেষক
+  checkedTargets   DesignTarget[] @relation("designTargetCheckedBy")
+  /// ⭐ ভুল ঠিক করেছেন — সাধারণত ম্যানেজার
+  fixedTargets     DesignTarget[] @relation("designTargetFixedBy")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   employee           Employee?        @relation(fields: [employeeId], references: [id])
@@ -704,6 +708,30 @@ model DesignTarget {
    */
   completedById Int?    @map("completed_by_id")
   completedBy   User?   @relation("designTargetCompletedBy", fields: [completedById], references: [id])
+
+  /// ⭐⭐ **বানান দেখা হয়েছে** (ADR-038, ২৫ আগস্ট ২০২৬)।
+  ///
+  /// ⚠️⚠️ **অবস্থা নয়, তারিখ** — `uploaded_at`/`live_at`-এর মতোই। নতুন
+  /// অবস্থা বানালে সারিটা `done` থেকে সরে যেত, আর গোটা সিস্টেমে
+  /// "কতগুলো ডিজাইন হয়েছে" সব গণনা নীরবে কমে যেত।
+  ///
+  /// ⚠️ `null` = **এখনো দেখা হয়নি**, "ভুল নেই" নয় — দুটো আলাদা।
+  checkedAt    DateTime? @map("checked_at") @db.Timestamptz(3)
+  checkedById  Int?      @map("checked_by_id")
+  checkedBy    User?     @relation("designTargetCheckedBy", fields: [checkedById], references: [id])
+
+  /// ⭐ **ভুল পাওয়া গেছে** — `null` মানে দেখা হয়েছে আর ঠিক ছিল
+  /// (যদি `checked_at` বসানো থাকে), বা এখনো দেখাই হয়নি।
+  errorFoundAt DateTime? @map("error_found_at") @db.Timestamptz(3)
+
+  /// ⭐ **ভুলটা ঠিক করা হয়েছে**।
+  ///
+  /// ⚠️⚠️ `assigned_to_id` **কখনো বদলায় না** — ডিজাইনটা মূল ডিজাইনারেরই
+  /// থাকে। নইলে যিনি ঠিক করলেন তাঁর নামে কাজটা চলে যেত, আর ২৩ আগস্টের
+  /// গোটা তদন্তটা শুরুই হয়েছিল ঠিক এমন একটা ফুলে যাওয়া সংখ্যা দেখে।
+  fixedAt      DateTime? @map("fixed_at") @db.Timestamptz(3)
+  fixedById    Int?      @map("fixed_by_id")
+  fixedBy      User?     @relation("designTargetFixedBy", fields: [fixedById], references: [id])
   /**
    * ⭐⭐ **আপলোড হয়েছে** *(২৩ আগস্ট ২০২৬, মালিকের চাওয়া)*।
    *

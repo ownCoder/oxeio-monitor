@@ -78,6 +78,23 @@ export interface TargetRow {
   completedVia: string | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — "Hafiz-24-05-2026" */
   sourceNote: string | null;
+
+  /**
+   * ⚠️⚠️ নিচের ঘরগুলো `list()` **আগে থেকেই ফেরত দিত**, কিন্তু এই টাইপে
+   * লেখা ছিল না — অর্থাৎ চুক্তিটা বাস্তবের চেয়ে ছোট ছিল, আর TypeScript
+   * সেটা ধরত না (`.map()`-এর ফল কাঠামোগতভাবে assignable)। ⭐ ২৫ আগস্ট
+   * বানান-যাচাইয়ের ঘর যোগ করতে গিয়ে ধরা পড়ল; একসাথে সবগুলো লেখা হলো।
+   */
+  completedBy: { fullName: string; role: string } | null;
+  /** ⭐ বানান দেখা হয়েছে — `null` = এখনো দেখা হয়নি (ADR-038) */
+  checkedAt: string | null;
+  /** ⭐ ভুল পাওয়া গেছে — `null` **আর** `checkedAt` বসানো = ঠিক ছিল */
+  errorFoundAt: string | null;
+  /** ⭐ ভুলটা ঠিক করা হয়েছে */
+  fixedAt: string | null;
+  uploadedAt: string | null;
+  liveAt: string | null;
+  liveAsin: string | null;
 }
 
 export interface MyTarget {
@@ -545,7 +562,7 @@ export class TargetsService {
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    stage?: 'to_upload' | 'to_live';
+    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
   }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
     const page = Math.max(1, query.page ?? 1);
 
@@ -590,14 +607,30 @@ export class TargetsService {
      *    `to_live`-এ ওই সমস্যা নেই, কারণ Uploaded চাপা সারিই মাত্র একটা।
      */
     const stage =
-      query.stage === 'to_upload'
+      query.stage === 'to_check'
         ? {
             completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
-            uploadedAt: null,
+            checkedAt: null,
           }
-        : query.stage === 'to_live'
-          ? { uploadedAt: { not: null }, liveAt: null }
-          : {};
+        : query.stage === 'to_fix'
+          ? { errorFoundAt: { not: null }, fixedAt: null }
+          : query.stage === 'to_upload'
+            ? {
+                completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
+                uploadedAt: null,
+                /**
+                 * ⚠️⚠️ **যেগুলোয় ভুল পাওয়া গেছে অথচ ঠিক হয়নি — বাদ**
+                 * *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট)*। জানা-ভাঙা ডিজাইন
+                 * Amazon-এ যাবে না।
+                 *
+                 * ⭐ কিন্তু **এখনো দেখা হয়নি** এমন সারি আটকায় না — আটকালে
+                 * আজকের ১৩২টা কিউ রাতারাতি ০ হয়ে যেত, আর কেউ শুরুই করত না।
+                 */
+                NOT: { errorFoundAt: { not: null }, fixedAt: null },
+              }
+            : query.stage === 'to_live'
+              ? { uploadedAt: { not: null }, liveAt: null }
+              : {};
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
@@ -620,6 +653,9 @@ export class TargetsService {
           startedAt: true,
           completedAt: true,
           completedVia: true,
+          checkedAt: true,
+          errorFoundAt: true,
+          fixedAt: true,
           uploadedAt: true,
           liveAt: true,
           liveAsin: true,
@@ -659,6 +695,9 @@ export class TargetsService {
         completedAt: r.completedAt?.toISOString() ?? null,
         completedVia: r.completedVia,
         completedBy: r.completedBy,
+        checkedAt: r.checkedAt?.toISOString() ?? null,
+        errorFoundAt: r.errorFoundAt?.toISOString() ?? null,
+        fixedAt: r.fixedAt?.toISOString() ?? null,
         uploadedAt: r.uploadedAt?.toISOString() ?? null,
         liveAt: r.liveAt?.toISOString() ?? null,
         liveAsin: r.liveAsin,
@@ -757,6 +796,10 @@ export class TargetsService {
       perDesigner: number;
       uploaded: number;
       live: number;
+      /** ⭐ বানান দেখা বাকি (ADR-038) */
+      toCheck: number;
+      /** ⭐ ভুল পাওয়া গেছে, ঠিক করা হয়নি */
+      toFix: number;
       /** ⭐ গবেষকের কিউ — শেষ হয়েছে অথচ আপলোড হয়নি (কাটা-তারিখের পরের) */
       toUpload: number;
       /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
@@ -770,7 +813,7 @@ export class TargetsService {
      * schema-র নোট দেখুন)। একটা কাজ একই সাথে `done` **আর** আপলোড **আর**
      * লাইভ হতে পারে, আর সেটাই ঠিক।
      */
-    const [rows, uploaded, live, toUpload, toLive] = await Promise.all([
+    const [rows, uploaded, live, toCheck, toFix, toUpload, toLive] = await Promise.all([
       this.prisma.designTarget.groupBy({
         by: ['status'],
         _count: { _all: true },
@@ -785,7 +828,18 @@ export class TargetsService {
       this.prisma.designTarget.count({
         where: {
           completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
+          checkedAt: null,
+        },
+      }),
+      this.prisma.designTarget.count({
+        where: { errorFoundAt: { not: null }, fixedAt: null },
+      }),
+      this.prisma.designTarget.count({
+        where: {
+          completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
           uploadedAt: null,
+          // ⚠️ ভুল পাওয়া অথচ ঠিক-না-হওয়া সারি বাদ — `list()`-এর যমজ
+          NOT: { errorFoundAt: { not: null }, fixedAt: null },
         },
       }),
       this.prisma.designTarget.count({
@@ -801,6 +855,8 @@ export class TargetsService {
       perDesigner: POOL_PER_DESIGNER,
       uploaded,
       live,
+      toCheck,
+      toFix,
       toUpload,
       toLive,
     };
@@ -815,6 +871,78 @@ export class TargetsService {
    * ⚠️ শেষ হওয়ার আগে আপলোড হতে পারে না, তাই `completedAt` না থাকলে
    *    আটকানো হয় — নইলে পাইপলাইনের ক্রমটাই অর্থহীন হতো।
    */
+  /**
+   * ⭐⭐ **"বানান দেখলাম"** *(ADR-038, ২৫ আগস্ট ২০২৬)* — সুমাইয়ার দুটো
+   * বোতামের পেছনের একটাই মেথড।
+   *
+   * ⚠️⚠️ **যন্ত্র বানান পড়ে না** — লেখাটা `.ai`/`.psd`-র ভেতরে, আর
+   * নীতিমালায় প্রতিশ্রুতি দেওয়া আছে ফাইল খোলা হয় না। ⭐ যন্ত্র শুধু
+   * **হিসাব রাখে**: কোনগুলো দেখা বাকি, কে দেখলেন, কী পেলেন। মাঠে আসল
+   * সমস্যাটাও এটাই — ভুল খোঁজা নয়, *কোনগুলো দেখতে হবে* সেটা জানা।
+   *
+   * ⚠️ `ok: false` মানে ভুল পাওয়া গেছে — তখন `errorFoundAt`ও বসে, আর
+   *    সারিটা "ঠিক করতে হবে" কিউতে চলে যায়।
+   *
+   * ⚠️ **idempotent** — আবার চাপলে তারিখ সরে না। নইলে একই সারিতে দুবার
+   *    চাপলে "কবে দেখা হয়েছিল" আজকের তারিখে লাফ দিত।
+   */
+  async markChecked(
+    id: number,
+    ok: boolean,
+    userId: number,
+    now: Date,
+  ): Promise<{ ok: true }> {
+    const target = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: { completedAt: true, checkedAt: true },
+    });
+    if (!target) throw new NotFoundException('No design target with this id');
+    if (target.completedAt === null) {
+      throw new BadRequestException(
+        'This design is not finished yet, so there is nothing to check.',
+      );
+    }
+    if (target.checkedAt !== null) return { ok: true };
+
+    await this.prisma.designTarget.update({
+      where: { id },
+      data: {
+        checkedAt: now,
+        checkedById: userId,
+        errorFoundAt: ok ? null : now,
+      },
+    });
+    return { ok: true };
+  }
+
+  /**
+   * ⭐⭐ **"ঠিক করেছি"** — বেলালের বোতাম।
+   *
+   * ⚠️⚠️ `assignedToId` **ছোঁয়া হয় না**। ডিজাইনটা মূল ডিজাইনারেরই থাকে,
+   * আর সেটা এই মেথডের সবচেয়ে জরুরি লাইন — নইলে যিনি ঠিক করলেন তাঁর নামে
+   * কাজটা চলে যেত, আর ২৩ আগস্টের গোটা তদন্তটা শুরুই হয়েছিল ঠিক এমন
+   * একটা ফুলে যাওয়া সংখ্যা দেখে ("বেলাল ১৬টা ডিজাইন করেছে?")।
+   */
+  async markFixed(id: number, userId: number, now: Date): Promise<{ ok: true }> {
+    const target = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: { errorFoundAt: true, fixedAt: true },
+    });
+    if (!target) throw new NotFoundException('No design target with this id');
+    if (target.errorFoundAt === null) {
+      throw new BadRequestException(
+        'No spelling error was recorded for this design, so there is nothing to fix.',
+      );
+    }
+    if (target.fixedAt !== null) return { ok: true };
+
+    await this.prisma.designTarget.update({
+      where: { id },
+      data: { fixedAt: now, fixedById: userId },
+    });
+    return { ok: true };
+  }
+
   async markUploaded(id: number, now: Date): Promise<{ ok: true }> {
     const target = await this.prisma.designTarget.findUnique({
       where: { id },

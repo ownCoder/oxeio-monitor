@@ -5,6 +5,8 @@ import {
   listTargetDesigners,
   listTargets,
   markLive,
+  markChecked,
+  markFixed,
   markUploaded,
   targetStats,
   type TargetRow,
@@ -45,7 +47,7 @@ export function AllTargetsPage() {
   );
 }
 
-type Stage = 'to_upload' | 'to_live';
+type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
 type FilterKey = TargetStatus | 'all' | Stage;
 
 /**
@@ -62,9 +64,13 @@ type FilterKey = TargetStatus | 'all' | Stage;
  */
 /** ⭐ চিপটা ধাপ না অবস্থা — এক জায়গায় ঠিক হয়, দুই জায়গায় নয় */
 const stageOf = (key: FilterKey): Stage | undefined =>
-  key === 'to_upload' || key === 'to_live' ? key : undefined;
+  key === 'to_check' || key === 'to_fix' || key === 'to_upload' || key === 'to_live'
+    ? key
+    : undefined;
 
 const FILTERS: { key: FilterKey; label: string; stage?: Stage }[] = [
+  { key: 'to_check', label: 'To check', stage: 'to_check' },
+  { key: 'to_fix', label: 'To fix', stage: 'to_fix' },
   { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
   { key: 'to_live', label: 'To make live', stage: 'to_live' },
   { key: 'all', label: 'All' },
@@ -158,11 +164,15 @@ function TargetList() {
             type="button"
             onClick={() => change(() => setFilter(f.key))}
             title={
-              f.stage === 'to_upload'
-                ? 'Designs finished since 23 August that have not been sent to Amazon yet'
-                : f.stage === 'to_live'
-                  ? 'Sent to Amazon, not live yet'
-                  : undefined
+              f.stage === 'to_check'
+                ? 'Finished designs whose spelling has not been checked yet'
+                : f.stage === 'to_fix'
+                  ? 'A spelling error was found — waiting to be fixed'
+                  : f.stage === 'to_upload'
+                    ? 'Checked or not yet checked, and not sent to Amazon. Designs with an unfixed error are held back.'
+                    : f.stage === 'to_live'
+                      ? 'Sent to Amazon, not live yet'
+                      : undefined
             }
             className={`rounded-full border px-3 py-1 text-[12.5px] transition ${
               filter === f.key
@@ -178,7 +188,13 @@ function TargetList() {
             */}
             {f.stage && stats.data ? (
               <span className="num ml-1.5 text-ink-3">
-                {f.stage === 'to_upload' ? stats.data.toUpload : stats.data.toLive}
+                {f.stage === 'to_check'
+                  ? stats.data.toCheck
+                  : f.stage === 'to_fix'
+                    ? stats.data.toFix
+                    : f.stage === 'to_upload'
+                      ? stats.data.toUpload
+                      : stats.data.toLive}
               </span>
             ) : null}
           </button>
@@ -386,6 +402,20 @@ function TargetList() {
                         data.reload();
                       })
                     }
+                    onChecked={(ok) =>
+                      edit.run(async () => {
+                        await markChecked(r.id, ok);
+                        data.reload();
+                        stats.reload();
+                      })
+                    }
+                    onFixed={() =>
+                      edit.run(async () => {
+                        await markFixed(r.id);
+                        data.reload();
+                        stats.reload();
+                      })
+                    }
                     onUploaded={() =>
                       edit.run(async () => {
                         await markUploaded(r.id);
@@ -511,6 +541,8 @@ function RowActions({
   busy,
   onChange,
   onUploaded,
+  onChecked,
+  onFixed,
   onLive,
   onDelete,
   mayDelete,
@@ -519,6 +551,9 @@ function RowActions({
   busy: boolean;
   onChange: (status: TargetStatus) => void;
   onUploaded: () => void;
+  /** ⭐ `true` = বানান ঠিক · `false` = ভুল পাওয়া গেছে */
+  onChecked: (ok: boolean) => void;
+  onFixed: () => void;
   onLive: () => void;
   onDelete: () => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
@@ -568,11 +603,43 @@ function RowActions({
         ক্রমে চাপতে পারতেন, আর তখন পাইপলাইনের সংখ্যাগুলোই অর্থ হারাত।
         সার্ভারও একই পাহারা দেয় — পর্দা একমাত্র রক্ষী নয়।
       */}
-      {row.completedAt !== null && row.uploadedAt === null && (
-        <MiniButton disabled={busy} onClick={onUploaded}>
-          Uploaded
+      {/*
+        ⭐⭐ **বানান-যাচাইয়ের দুটো বোতাম** *(ADR-038, ২৫ আগস্ট ২০২৬)* —
+        সুমাইয়ার কাজ। শেষ হওয়া অথচ না-দেখা সারিতেই কেবল ওঠে।
+
+        ⚠️⚠️ কোনো নিশ্চিতকরণ পপ-আপ নেই — ইচ্ছাকৃত। মানুষ দুদিনেই
+        যান্ত্রিকভাবে "হ্যাঁ" চাপতে শেখে, আর তখন পপ-আপটা কেবল একটা
+        বাড়তি ক্লিক, কোনো পাহারা নয়।
+      */}
+      {row.completedAt !== null && row.checkedAt === null && (
+        <>
+          <MiniButton tone="good" disabled={busy} onClick={() => onChecked(true)}>
+            Spelling OK
+          </MiniButton>
+          <MiniButton tone="danger" disabled={busy} onClick={() => onChecked(false)}>
+            Has error
+          </MiniButton>
+        </>
+      )}
+      {/* ⭐ ভুল পাওয়া গেছে, ঠিক হয়নি — বেলালের বোতাম */}
+      {row.errorFoundAt !== null && row.fixedAt === null && (
+        <MiniButton tone="good" disabled={busy} onClick={onFixed}>
+          Fixed
         </MiniButton>
       )}
+      {/*
+        ⚠️⚠️ **ভুল পাওয়া অথচ ঠিক-না-হওয়া ডিজাইনে "Uploaded" বোতামই ওঠে না**
+        *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট)* — জানা-ভাঙা জিনিস Amazon-এ যাবে না।
+        ⭐ কিন্তু **এখনো দেখা হয়নি** এমন সারি আটকায় না; আটকালে কিউটা
+        রাতারাতি ০ হয়ে যেত আর কেউ শুরুই করত না।
+      */}
+      {row.completedAt !== null &&
+        row.uploadedAt === null &&
+        !(row.errorFoundAt !== null && row.fixedAt === null) && (
+          <MiniButton disabled={busy} onClick={onUploaded}>
+            Uploaded
+          </MiniButton>
+        )}
       {row.uploadedAt !== null && row.liveAt === null && (
         <MiniButton tone="good" disabled={busy} onClick={onLive}>
           Live
