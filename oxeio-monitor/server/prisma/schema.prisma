@@ -29,9 +29,25 @@ enum SegmentState {
   locked
 }
 
+/// ⭐⭐ **পোর্টালের ভূমিকা** — কে কোন পর্দায় ঢুকতে পারেন।
+///
+/// ⚠️⚠️ `staffType`-এর সাথে গুলিয়ে ফেলবেন না: ওটা **কী কাজ করেন**
+/// (designer · researcher · manager), এটা **কী দেখতে পান**।
+///
+/// ⭐ `researcher` যোগ হয়েছে ২৫ আগস্ট ২০২৬ — মালিকের যুক্তি:
+/// *"researcher and designer same kaj kore na, tai eder access o same
+/// hobe na"*। এতদিন দুজনেরই রোল ছিল `employee`, আর পার্থক্যটা লুকিয়ে
+/// ছিল অন্য টেবিলে — সাইডবারে তাই `when: canAddTargets` হ্যাক বসাতে
+/// হয়েছিল।
+///
+/// ⚠️⚠️ **নতুন মান যোগ করা fail-closed নয় সব জায়গায়।** `@Roles()` ও
+/// সাইডবারের `roles[]` allowlist ধরে চলে — সেখানে নিরাপদ। কিন্তু
+/// হাতে-লেখা `role !== employee` শর্ত **উল্টো দিকে খোলে**; ওগুলো
+/// এখন `owner || manager` ধরে লেখা (09 § ৩ঞ১০)।
 enum UserRole {
   owner
   manager
+  researcher
   employee
 }
 
@@ -205,15 +221,6 @@ model Employee {
    * এক হয়ে যেত, ঠিক যেমন `depositStartYearMonth`-এ।
    */
   dailyDesignTarget Int?         @map("daily_design_target")
-
-  /// ⭐⭐ **বানান যাচাই করতে পারেন কি না** (২৫ আগস্ট ২০২৬)।
-  ///
-  /// ⚠️⚠️ কারো নাম কোডে লেখা হয়নি — মালিক Settings → Staff-এ টিক দিয়ে
-  /// ঠিক করেন। হার্ডকোড করলে কেউ কাজ ছাড়লে বা অন্য কাউকে দিতে চাইলে
-  /// প্রতিবার কোড বদলাতে হতো, আর নিয়মটা কোথাও দেখাই যেত না।
-  ///
-  /// ⚠️ `false` ডিফল্ট — owner ও manager এই ঘরের বাইরে, তাঁরা রোল দিয়েই পান।
-  canProofread   Boolean      @default(false) @map("can_proofread")
   policyId       Int?           @map("policy_id")
   /// ⭐ মাসিক বেতন — **শুধু owner দেখতে পায়** ([ADR-023](../../docs/05-Options-Decisions.md))।
   /// ঘাটতির টাকা বের করতে লাগে: (বেতন ÷ মাসিক টার্গেট ঘণ্টা) × ঘাটতি-ঘণ্টা।

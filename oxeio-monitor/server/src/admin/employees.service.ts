@@ -75,8 +75,6 @@ const EMPLOYEE_SELECT = {
   staffType: true,
   /** ⭐ তার নিজের ডিজাইন-টার্গেট — `null` মানে পলিসিরটা খাটবে (২৩ আগস্ট) */
   dailyDesignTarget: true,
-  /** ⭐ বানান যাচাই করতে পারেন কি না (ADR-038, ২৫ আগস্ট) */
-  canProofread: true,
   policyId: true,
   monthlySalary: true,
   joinedOn: true,
@@ -273,9 +271,6 @@ export class EmployeesService {
     // ⚠️ `null`-ও বৈধ মান — "নিজের সংখ্যা মুছে পলিসিতে ফেরাও"
     if (dto.dailyDesignTarget !== undefined) {
       data.dailyDesignTarget = dto.dailyDesignTarget;
-    }
-    if (dto.canProofread !== undefined) {
-      data.canProofread = dto.canProofread;
     }
     if (dto.joinedOn !== undefined) {
       data.joinedOn =
@@ -788,7 +783,6 @@ export class EmployeesService {
       staffType: dto.staffType ?? null,
       // ⚠️ null = "নিজের সংখ্যা নেই" → পলিসির টার্গেট খাটবে, শূন্য নয়
       dailyDesignTarget: dto.dailyDesignTarget ?? null,
-      canProofread: dto.canProofread ?? false,
       policyId: dto.policyId ?? null,
       // ⭐ স্ট্রিং সরাসরি Decimal-এ — মাঝপথে কোনো float নেই
       monthlySalary: dto.monthlySalary ?? null,

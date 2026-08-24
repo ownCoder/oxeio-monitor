@@ -15,6 +15,7 @@ import { PayrollTab } from './reports/PayrollTab';
 import { ProductivityTab } from './reports/ProductivityTab';
 import { SummaryTab } from './reports/SummaryTab';
 import { MAX_REPORT_DAYS, rangeDays } from './reports/shared';
+import { seesEveryone } from '../api/auth';
 
 /**
  * F01 · F02 · F03 · F04 · F05 · F08 — রিপোর্ট।
@@ -59,7 +60,7 @@ export function ReportsPage() {
    *   কাঠামোটা দেখত — শুধু ভেতরের সংখ্যাগুলো ছাড়া। `MonthlyPage` ও
    *   `SettingsPage` এই একই ছাঁচেই থামায়।
    */
-  if (user?.role === 'employee') {
+  if (!seesEveryone(user?.role)) {
     return (
       <Page title="Reports">
         <Empty

@@ -20,6 +20,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SecurityPage } from './pages/security/SecurityPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { homePathFor, seesEveryone } from './api/auth';
 
 /**
  * তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ — তাই "লগইন করেনি অথচ ভেতরের পেজ দেখছে"
@@ -101,7 +102,14 @@ function Router() {
    *    `activity`, `reports` — সবগুলোয় ক্লাস-লেভেল `@Roles(owner, manager)`)।
    *    তাই লগইনের পর তাকে লাইভ বোর্ডে নামালে প্রথম যা দেখত তা একটা ৪০৩ বাক্স।
    */
-  const isStaff = user.role === 'employee';
+  /**
+   * ⚠️⚠️ নামটা `isStaff` **থাকল**, সূত্রটা উল্টে গেছে *(২৫ আগস্ট)*।
+   * আগে লেখা ছিল `role === 'employee'`, তাই `researcher` রোল আসার পর
+   * গবেষক আর "স্টাফ" থাকতেন না — তিনি লাইভ বোর্ডে নামতেন, আর সেখানে
+   * তাঁর জন্য একটা ৪০৩ বাক্স ছাড়া কিছুই নেই।
+   * ⭐ প্রশ্নটা আসলে *"ইনি কি গোটা দল দেখেন না?"* — সেটাই এখন লেখা।
+   */
+  const isStaff = !seesEveryone(user.role);
 
   /**
    * ⭐ Worklog — Live Board-এর মতোই owner ও manager।
@@ -120,11 +128,12 @@ function Router() {
    * উৎপাদনের কথা কিছুই বলত না। ⭐ মাঠের ফল: দুজন গবেষকের **শেষ লগইন
    * ১৩ আগস্ট** — সিস্টেম চালুর দিন, তারপর আর ফেরেননি।
    *
-   * ⭐ `canAddTargets` ঠিক এই শাখাতেই "ইনি গবেষক" মানেই বহন করে, কারণ
-   * রোল ইতিমধ্যেই `employee` — owner/manager এই ডালে আসেনই না। তাই
-   * সার্ভারে নতুন কোনো ফ্ল্যাগ বানাতে হয়নি।
+   * ⚠️ এখানে আগে লেখা ছিল `user.canAddTargets ? ... : '/me'` — তখন
+   * "ইনি গবেষক" কথাটা ওই পতাকাটাই বহন করত, কারণ রোল ছিল `employee`।
+   * ⭐ ২৫ আগস্ট রোলটা আলাদা হলো, তাই প্রশ্নটা এখন সরাসরি — আর সূত্রটা
+   * `homePathFor`-এ **এক জায়গায়**, "পাওয়া যায়নি" পাতাটাও সেটাই পড়ে।
    */
-  const staffLanding = user.canAddTargets ? '/targets/all' : '/me';
+  const staffLanding = homePathFor(user.role);
 
   return (
     <Routes>

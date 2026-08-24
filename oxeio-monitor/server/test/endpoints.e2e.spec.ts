@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createEmployeeWithCode,
   createHarness,
+  hashPassword,
   enrollDevice,
   loginReady,
   MANAGER_EMAIL,
@@ -119,6 +120,88 @@ describe('সব endpoint সত্যিই সাড়া দেয়', () =
       const res = await s.http.get(url);
       expect(res.status, `${url} → ম্যানেজারের ঢোকার কথা নয়`).toBe(403);
     }
+  });
+
+  /**
+   * ⭐⭐⭐ **গবেষক গোটা দলের ডেটার ধারেকাছেও যান না** *(২৫ আগস্ট ২০২৬)*।
+   *
+   * ### ⚠️⚠️ এই তালিকাটা কেন গোটা ফাইলের সবচেয়ে জরুরি জাল
+   *
+   * `UserRole`-এ একটা নতুন মান বসানো দেখতে নিরীহ — কিন্তু কোডবেসের
+   * অনেক শর্ত লেখা ছিল **না-তালিকা** ধাঁচে (`role !== 'employee'`),
+   * অর্থাৎ *"স্টাফ না হলে সব দেখতে দাও"*। ⭐ নতুন ভূমিকা তখন নীরবে
+   * **ভেতরের দিকে** পড়ে, বাইরে নয়। মাপা গেছে দুটো জায়গায়:
+   *
+   *   · `screenshots.service` → `resolveEmployeeScope` `null` ফেরত দিত,
+   *     আর `null` মানে *ফিল্টার নেই* — সবার ছবি, সব দিনের
+   *   · `adjustments.service` → `assertCanSee` পুরো এড়িয়ে যেত
+   *
+   * ⚠️⚠️ কম্পাইলার কিছুই বলত না — গোটা কোডবেসে নতুন মানটা **মাত্র দুটো**
+   * জায়গায় কম্পাইল-এরর দিয়েছিল, আর দুটোই নিছক টাইপ-চওড়া করার ব্যাপার।
+   *
+   * ⭐ তাই পাহারাটা তালিকা ধরে: owner ও manager-এর জন্য খোলা **প্রতিটা**
+   * রুটে গবেষককে ৪০৩ পেতেই হবে। ভবিষ্যতে কেউ নতুন রুট যোগ করলে সেটা
+   * এমনিতেই এই তালিকায় চলে আসে।
+   */
+  it('⭐⭐ গবেষক owner/manager-এর কোনো রুটেই ঢোকেন না', async () => {
+    const them = await h.prisma.employee.create({
+      data: { empCode: 'OX-79', fullName: 'Researcher', staffType: 'researcher' },
+    });
+    await h.prisma.user.create({
+      data: {
+        email: 'r-ep@test.local',
+        fullName: 'Researcher',
+        passwordHash: await hashPassword('staff-password-123'),
+        role: 'researcher',
+        employeeId: them.id,
+        mustChangePw: false,
+      },
+    });
+
+    const s = await loginReady(h, 'r-ep@test.local', 'staff-password-123');
+
+    for (const url of [...SHARED_READS(employeeId), ...OWNER_ONLY_READS]) {
+      const res = await s.http.get(url);
+      expect(res.status, `${url} → গবেষকের ঢোকার কথা নয়`).toBe(403);
+    }
+  });
+
+  /**
+   * ⚠️⚠️ **আর এটাই ওই ফাঁদের সরাসরি পাহারা।** `employeeId` **ছাড়া**
+   * `/screenshots` ডাকলে পুরোনো কোড *"ফিল্টার নেই"* ধরে **সবার** ছবি
+   * ফেরত দিত। গবেষকেরও নিজের এজেন্ট আছে (মাঠে যাচাই করা), তাই তিনি
+   * এই রুটটা রোজই ছোঁন — ⭐ প্রশ্নটা "ঢুকতে পারেন কি না" নয়, **"কতটা
+   * দেখতে পান"**।
+   */
+  it('⭐⭐ গবেষক নিজের ছবিই দেখেন — সবার নয়', async () => {
+    const them = await h.prisma.employee.create({
+      data: { empCode: 'OX-80', fullName: 'Researcher', staffType: 'researcher' },
+    });
+    await h.prisma.user.create({
+      data: {
+        email: 'r-shot@test.local',
+        fullName: 'Researcher',
+        passwordHash: await hashPassword('staff-password-123'),
+        role: 'researcher',
+        employeeId: them.id,
+        mustChangePw: false,
+      },
+    });
+
+    const s = await loginReady(h, 'r-shot@test.local', 'staff-password-123');
+
+    // ⭐ নিজের — খোলা
+    const mine = await s.http.get(`/api/v1/screenshots?date=${TODAY}`);
+    expect(mine.status).toBeLessThan(400);
+    for (const row of mine.body.rows ?? []) {
+      expect(row.employeeId, 'নিজের ছবি ছাড়া কিছু আসার কথা নয়').toBe(them.id);
+    }
+
+    // ⚠️ অন্যেরটা চেয়ে দেখা — চুপচাপ নিজেরটা দেওয়া হয় না, ৪০৩
+    const theirs = await s.http.get(
+      `/api/v1/screenshots?employeeId=${employeeId}&date=${TODAY}`,
+    );
+    expect(theirs.status, 'অন্যের ছবি চাইলে ৪০৩').toBe(403);
   });
 
   it('লগইন ছাড়া সব বন্ধ', async () => {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { UserRole } from '@prisma/client';
+
 import {
   allocationSizes,
   amazonUrl,
   asinOf,
+  canUseTargets,
   JOB_NUMBER_START,
   parseBulk,
 } from '../src/targets/targets.rules';
@@ -216,5 +219,57 @@ describe('allocationSizes — কাকে কতগুলো', () => {
   /** ⭐ ডিজাইনার না থাকলেও ক্র্যাশ নয় */
   it('কেউ না থাকলে খালি', () => {
     expect(allocationSizes([], 500).size).toBe(0);
+  });
+});
+
+
+/**
+ * ⭐⭐ **কারা টার্গেট-অংশটা ব্যবহার করতে পারেন** *(২৫ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ এই describe-টার আসল কাজ **হ্যাঁ-তালিকা পাহারা দেওয়া**। সূত্রটা
+ * যদি কোনোদিন `role !== employee` ধাঁচে ফিরে যায়, তাহলে `UserRole`-এ
+ * বসা **পরের** নতুন মানটা নীরবে ঢুকে পড়বে — ঠিক যেমনটা ২৫ আগস্ট
+ * `researcher` বসানোর সময় স্ক্রিনশট ও বেতন-সমন্বয়ে ধরা পড়েছিল।
+ * ⭐ তাই নিচে "কে পারেন" নয়, **"কে পারেন না"** সেটাও লেখা আছে।
+ */
+describe('canUseTargets — কে টার্গেট-অংশ ছুঁতে পারেন', () => {
+  it('মালিক পারেন', () => {
+    expect(canUseTargets(UserRole.owner)).toBe(true);
+  });
+
+  it('ম্যানেজার পারেন', () => {
+    expect(canUseTargets(UserRole.manager)).toBe(true);
+  });
+
+  it('⭐ গবেষক পারেন — এটাই ২৫ আগস্টের গোটা বদল', () => {
+    expect(canUseTargets(UserRole.researcher)).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **সবচেয়ে জরুরি দাবি।** ডিজাইনার গোটা দলের পুল দেখেন না — তিনি
+   * নিজের ৩০টা দেখেন `/me/targets`-এ। এটা ভাঙলে ন-জন ডিজাইনার হঠাৎ
+   * একে অপরের কাজ দেখতে ও বদলাতে পারতেন।
+   */
+  it('⚠️ ডিজাইনার (employee) পারেন না', () => {
+    expect(canUseTargets(UserRole.employee)).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ **সূত্রটা সত্যিই হ্যাঁ-তালিকা কি না, সেটাই এখানে মাপা হচ্ছে।**
+   * `UserRole`-এর প্রতিটা মান ধরে ধরে দেখা হয়, আর যেগুলোর নাম তালিকায়
+   * নেই সেগুলো **অবশ্যই** `false` হতে হবে। কেউ যদি একদিন সূত্রটা
+   * `!== employee` করে দেন, এই টেস্টটা তখনই লাল হবে — enum-এ নতুন মান
+   * বসার দিন নয়, তারও আগে।
+   */
+  it('⭐⭐ তালিকার বাইরের প্রতিটা ভূমিকা "না"', () => {
+    const allowed = new Set<string>([
+      UserRole.owner,
+      UserRole.manager,
+      UserRole.researcher,
+    ]);
+
+    for (const role of Object.values(UserRole)) {
+      expect(canUseTargets(role)).toBe(allowed.has(role));
+    }
   });
 });

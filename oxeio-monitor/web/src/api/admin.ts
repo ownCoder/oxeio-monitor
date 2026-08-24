@@ -27,7 +27,17 @@ export const STAFF_TYPE_LABEL: Record<StaffType, string> = {
   researcher: 'Researcher',
   manager: 'Manager',
 };
-export type Role = 'owner' | 'manager' | 'employee';
+/**
+ * ⭐⭐ **পোর্টালের ভূমিকা** — কে কোন পর্দায় ঢোকেন।
+ *
+ * ⚠️⚠️ `StaffType`-এর সাথে গুলিয়ে ফেলবেন না: ওটা **কী কাজ করেন**, এটা
+ * **কী দেখতে পান**। নামগুলো মিলে যায় বলেই ভুলটা সহজ।
+ *
+ * ⭐ `researcher` যোগ হয়েছে ২৫ আগস্ট ২০২৬ *(মালিক: "researcher and
+ * designer same kaj kore na, tai eder access o same hobe na")*। এতদিন
+ * দুজনেরই রোল ছিল `employee`, আর পার্থক্যটা লুকিয়ে ছিল অন্য টেবিলে।
+ */
+export type Role = 'owner' | 'manager' | 'researcher' | 'employee';
 
 /**
  * ⭐ ড্রপডাউন থেকে **যে ভূমিকাগুলো বসানো যায়** — `owner` ইচ্ছাকৃতভাবে বাইরে।
@@ -70,14 +80,6 @@ export interface EmployeeView {
    *    দুটো আলাদা অবস্থা, আর সেটাই এখানে `number | null` রাখার কারণ।
    */
   dailyDesignTarget: number | null;
-  /**
-   * ⭐ **বানান যাচাই করতে পারেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
-   *
-   * ⚠️ owner ও manager এখানে `false` থাকতে পারেন, অথচ তাঁরা পারেন —
-   * এটা কেবল **কর্মীর** অধিকার। কে পারবেন সেটা বুঝতে সেশনের
-   * `canProofread` দেখুন, এই ঘরটা নয়।
-   */
-  canProofread: boolean;
   policyId: number | null;
   /** `YYYY-MM-DD` */
   joinedOn: string | null;
@@ -93,7 +95,13 @@ export interface EmployeeView {
    * দেখালে কেউ শুধু ইমেইল বদলাতে গিয়ে সেভ চাপলে একজন ম্যানেজার নীরবে
    * স্টাফ হয়ে যেতেন।
    */
-  portalRole: 'owner' | 'manager' | 'employee' | null;
+  /**
+   * ⚠️⚠️ টাইপটা `Role` **ধার করা**, হাতে লেখা তালিকা নয়। আগে এখানে
+   * `'owner' | 'manager' | 'employee'` লেখা ছিল, আর ২৫ আগস্ট
+   * `researcher` যোগ করার সময় সেটা নীরবে পিছিয়ে পড়ত — একটা গবেষকের
+   * ভূমিকা মিলিয়ে দেখতে গেলে TypeScript বলত "এদের কোনো মিলই নেই"।
+   */
+  portalRole: Role | null;
 
   /**
    * ⭐ এজেন্ট বসানো ছিল, কিন্তু এখন বন্ধ — সারিতে "Turn agent on" দেখানোর ভিত্তি।
@@ -148,8 +156,6 @@ export interface CreateEmployeeBody {
   staffType?: StaffType;
   /** ⚠️ না পাঠালে বা `null` হলে পলিসির টার্গেট খাটবে; `0` = বন্ধ */
   dailyDesignTarget?: number | null;
-  /** ⭐ বানান যাচাই করতে পারবেন কি না */
-  canProofread?: boolean;
   policyId?: number;
   /**
    * ⭐⚠️ টাকা **স্ট্রিং** হিসেবে পাঠাতে হবে (`'13000'` বা `'13000.50'`)।
@@ -173,7 +179,6 @@ export type UpdateEmployeeBody = Partial<{
   staffType: StaffType | null;
   /** ⚠️ `null` = "নিজের সংখ্যা মুছে পলিসিতে ফেরাও"; `0` = টার্গেট বন্ধ */
   dailyDesignTarget: number | null;
-  canProofread: boolean;
   policyId: number | null;
   monthlySalary: string | null;
   joinedOn: string | null;
@@ -544,9 +549,13 @@ export function setDepositStart(
   );
 }
 
+/**
+ * ⚠️ টাইপটা `AssignableRole` — `Role` নয়। `owner` এখান দিয়ে বসানো
+ * যায় না, আর সেটা **কম্পাইলারই** আটকায় (ADR-011d)।
+ */
 export function changeUserRole(
   userId: number,
-  role: 'employee' | 'manager',
+  role: AssignableRole,
 ): Promise<{ id: number; email: string; role: string }> {
   return api<{ id: number; email: string; role: string }>(
     `/users/${userId}/role`,

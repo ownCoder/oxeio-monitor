@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Page } from '../components/Page';
 import { Empty } from '../components/States';
+import { homePathFor } from '../api/auth';
 
 /**
  * ৪০৪ — ঠিকানাটা নেই।
@@ -16,9 +17,25 @@ import { Empty } from '../components/States';
  *    তার জন্য ৪০৩। তাকে সেদিকে ঠেলে দেওয়ার মানে হয় না, তাই তার লেখাটাও
  *    আলাদা: "My screenshots"।
  */
+/**
+ * ⚠️ ফেরার পথের **নাম** — পথটা যেখানে নামায় সেটাই লিখতে হয়। আগে
+ * শর্তটা দুবার লেখা ছিল (একবার পথের জন্য, একবার লেখার জন্য), আর
+ * নতুন রোল এলে দুটো আলাদা দিকে গড়াত।
+ */
+const HOME_WORD: Record<string, string> = {
+  '/': 'Back to Live Board',
+  '/targets/all': 'Back to the Design Pool',
+  '/me': 'My data',
+};
+
 export function NotFoundPage() {
   const { user } = useAuth();
-  const home = user?.role === 'employee' ? '/screenshots' : '/';
+  /**
+   * ⚠️ আগে লেখা ছিল `role === 'employee' ? '/screenshots' : '/'` — গবেষক
+   *    রোল এলে তিনি `/` (Live Board) পেতেন, আর সেটা তাঁর কাছে ৪০৩।
+   * ⭐ এখন সূত্রটা এক জায়গায়, App.tsx-এর অবতরণের সাথে মিলিয়ে।
+   */
+  const home = homePathFor(user?.role);
 
   return (
     <Page title="Not found">
@@ -30,7 +47,7 @@ export function NotFoundPage() {
             to={home}
             className="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-brand hover:text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
           >
-            {user?.role === 'employee' ? 'My screenshots' : 'Back to Live Board'}
+            {HOME_WORD[home] ?? 'Back'}
           </Link>
         }
       />

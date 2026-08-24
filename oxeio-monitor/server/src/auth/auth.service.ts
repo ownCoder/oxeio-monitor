@@ -18,6 +18,11 @@ import {
   type TotpEnvelope,
 } from './totp';
 import type { SessionUser } from './types';
+/**
+ * ⚠️ পাহারার সূত্রটা **নিয়মের ফাইল থেকে ধার করা**, এখানে আবার লেখা নয় —
+ * সার্ভারের গার্ড আর সেশনের পতাকা একই লাইনে বাঁধা থাকে।
+ */
+import { canUseTargets } from '../targets/targets.rules';
 
 /**
  * ⭐ লগইনের ফল তিন রকম হতে পারে, তাই discriminated union — একটা optional
@@ -198,7 +203,12 @@ export class AuthService {
       where: { id: userId },
       // ⚠️ কাজের ধরন লাগে `canAddTargets`-এর জন্য — গবেষক ঢোকেন
       //    `employee` রোলে, তাই রোল দেখে বোঝার উপায় নেই
-      include: { employee: { select: { staffType: true, canProofread: true } } },
+      /**
+       * ⚠️ আগে এখানে `include: { employee: ... }` ছিল — `canAddTargets`
+       * ও `canProofread` **অন্য টেবিল** থেকে পড়তে হতো। ২৫ আগস্ট
+       * `researcher` রোল আসার পর দুটোই ভূমিকা থেকেই বেরোয়, তাই
+       * জয়েনটা ⭐ **প্রতিটা `/auth/me` কল থেকে উধাও**।
+       */
     });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('This account is no longer active');
@@ -213,14 +223,15 @@ export class AuthService {
       mustChangePassword: user.mustChangePw,
       lastLoginAt: user.lastLoginAt,
       twoFactorEnabled: decodeEnvelope(user.totpSecret)?.enabled === true,
-      canAddTargets:
-        user.role === UserRole.owner ||
-        user.role === UserRole.manager ||
-        user.employee?.staffType === 'researcher',
-      canProofread:
-        user.role === UserRole.owner ||
-        user.role === UserRole.manager ||
-        user.employee?.canProofread === true,
+      /**
+       * ⚠️⚠️ দুটোর সূত্র **আজ এক**, তবু নাম দুটো — ইচ্ছাকৃত। পর্দায়
+       * এগুলো দুটো আলাদা জিনিস ঢাকে (মেনুর আইটেম বনাম সারির বোতাম),
+       * আর শর্তের নাম থাকলে ভবিষ্যতে একটা বদলাতে গিয়ে অন্যটা খুঁজে
+       * বেড়াতে হয় না। ⭐ সূত্রটা `canUseTargets`-এ **এক জায়গায়** লেখা,
+       * তাই নাম আলাদা হলেও দুটো কখনো নিঃশব্দে আলাদা হয়ে যাবে না।
+       */
+      canAddTargets: canUseTargets(user.role),
+      canProofread: canUseTargets(user.role),
     };
   }
 
@@ -347,7 +358,12 @@ export class AuthService {
   async changeRole(
     actorId: number,
     targetUserId: number,
-    role: 'employee' | 'manager',
+    /**
+     * ⚠️ `owner` তালিকার বাইরে — উপরের টীকা দেখুন। বাকিগুলো হাতে লেখা,
+     * `UserRole` ধার করা নয়: enum-এ কাল নতুন কিছু বসলে সেটা এখানে
+     * **নিজে থেকে ঢুকে পড়া উচিত নয়** (কন্ট্রোলারের `@IsIn`-এও একই তালিকা)।
+     */
+    role: 'employee' | 'researcher' | 'manager',
     ip: string,
   ): Promise<{ id: number; email: string; role: UserRole }> {
     const target = await this.prisma.user.findUnique({

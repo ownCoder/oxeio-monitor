@@ -316,7 +316,23 @@ export class ScreenshotsService {
     actor: SessionUser,
     requested?: number,
   ): number | null {
-    if (actor.role !== UserRole.employee) {
+    /**
+     * ⚠️⚠️ শর্তটা **"owner বা manager কি না"**, "employee নয় কি না" নয় —
+     * আর পার্থক্যটা এক অক্ষরের নয়, নিরাপত্তার।
+     *
+     * ২৫ আগস্ট `UserRole`-এ `researcher` বসানোর সময় ধরা পড়ল: আগের লেখা
+     * `role !== employee` শর্তে নতুন যেকোনো রোল **এই ডালেই পড়ত**, আর
+     * `null` মানে *ফিল্টার নেই* — অর্থাৎ গবেষকরা **সবার স্ক্রিনশট, সব
+     * দিনের** দেখতে পেতেন। ⭐ কোনো কম্পাইল-এরর হতো না, কোনো টেস্ট লাল
+     * হতো না, কেউ কিছু বলত না।
+     *
+     * ⚠️ এই কন্ট্রোলারে ক্লাস-লেভেল `@Roles` **ইচ্ছাকৃতভাবে নেই** (ওখানকার
+     * কমেন্ট দেখুন), তাই এই লাইনটাই একমাত্র পাহারা — উপরে কিছু আটকাত না।
+     *
+     * ⭐ নিয়ম: অনুমতি **হ্যাঁ-তালিকা** ধরে লিখুন, না-তালিকা ধরে নয়। তাহলে
+     * নতুন রোল ডিফল্টে **বাইরে** থাকে, ভেতরে নয়।
+     */
+    if (actor.role === UserRole.owner || actor.role === UserRole.manager) {
       return requested ?? null;
     }
 
@@ -375,8 +391,16 @@ export class ScreenshotsService {
         // ⚠️ BigInt সরাসরi JSON-এ দিলে Prisma ছুঁড়ে দেয় — string করতেই হবে
         screenshotIds: rows.map((r) => r.id.toString()),
         employeeIds: subjects,
-        /** নিজের ছবি নিজে দেখলে (J05) — E11-এ এগুলো আলাদা করা যায় */
-        self: actor.role === UserRole.employee,
+        /**
+         * নিজের ছবি নিজে দেখলে (J05) — E11-এ এগুলো আলাদা করা যায়।
+         *
+         * ⚠️ আগে লেখা ছিল `role === employee` — রোল ধরে অনুমান। ২৫
+         * আগস্ট `researcher` রোল আসার পর সেটা মিথ্যা হয়ে যেত: গবেষকও
+         * মাপা হন, নিজের ছবি দেখেন, অথচ audit log-এ সেটা **অন্যের ছবি
+         * দেখা** বলে লেখা থাকত। ⭐ এখন প্রশ্নটা সরাসরি — সারিগুলো কি
+         * তাঁর নিজেরই? রোল যা-ই হোক, উত্তরটা বদলায় না।
+         */
+        self: actor.employeeId !== null && employeeId === actor.employeeId,
       },
     });
   }

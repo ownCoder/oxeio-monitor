@@ -1,0 +1,26 @@
+-- ⭐⭐ **গবেষক এখন সত্যিকারের একটা রোল** (২৫ আগস্ট ২০২৬, মালিকের সিদ্ধান্ত)
+--
+--    মালিকের কথা: "sumaiya je je access pacche sob researcher ra sei access
+--    gula pabe. er jonno alada role baniye nao" — আর তার যুক্তি:
+--    "researcher and designer same kaj kore na, tai eder access o same hobe na"।
+--
+-- ⚠️⚠️ **এতদিন রোলটা ছিলই, শুধু ছদ্মবেশে।** গবেষক ও ডিজাইনার দুজনেরই
+--    পোর্টাল রোল `employee`, আর পার্থক্যটা লুকিয়ে ছিল অন্য টেবিলের
+--    `employees.staff_type`-এ। সাইডবারে তাই হ্যাক বসাতে হয়েছিল —
+--    `roles: ['owner','manager','employee']` তার সাথে `when: canAddTargets`,
+--    কমেন্টে স্বীকারোক্তিসহ: *"employee আছে কেবল গবেষকের জন্য"*।
+--
+-- ⭐ অনুমতি দুই টেবিলে ভাগ হয়ে থাকাটাই ২৪ আগস্টের গণ্ডগোলটা সম্ভব
+--    করেছিল (ADR-038 দ্রষ্টব্য)। এখন এক জায়গায়।
+--
+-- ⚠️⚠️ **ALTER TYPE ... ADD VALUE একা এই ফাইলে, ইচ্ছাকৃতভাবে।** Postgres
+--    ১২+ লেনদেনের ভেতরে মানটা *যোগ* করতে দেয়, কিন্তু **একই লেনদেনে
+--    ব্যবহার** করতে দেয় না — আর Prisma প্রতিটা মাইগ্রেশন লেনদেনে চালায়।
+--    এখানে একটা `UPDATE users SET role='researcher'` জুড়ে দিলে মাইগ্রেশনই
+--    ভেঙে পড়ত ("unsafe use of new value of enum type")।
+--    ⭐ তাই কে কোন রোল পাবেন সেটা মাইগ্রেশনের কাজ নয় — মালিক Settings →
+--    Staff-এ বসান, আর চালুর দিনের দুজনকে হাতে সরানো হয়েছে।
+--
+-- ⚠️ **ফেরার পথ নেই** — Postgres enum থেকে মান মোছা যায় না। ফিরতে হলে
+--    টাইপটা নতুন করে বানিয়ে কলাম ঘোরাতে হবে। তাই নামটা এখনই ঠিক।
+ALTER TYPE "UserRole" ADD VALUE 'researcher';

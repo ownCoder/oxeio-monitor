@@ -14,6 +14,7 @@ import {
   allocationSizes,
   amazonUrl,
   asinOf,
+  canUseTargets,
   parseBulk,
   POOL_PER_DESIGNER,
   UPLOAD_QUEUE_FROM,
@@ -124,33 +125,36 @@ export class TargetsService {
 
   /**
    * ⭐⭐ **কে টার্গেট দেখতে ও জমা দিতে পারবেন** — মালিক · ম্যানেজার ·
-   * **গবেষক** *(২৩ আগস্ট)*।
+   * **গবেষক** *(২৩ আগস্ট; রোল-ভিত্তিক হলো ২৫ আগস্ট)*।
    *
    * ⚠️ পড়া ও লেখার পাহারা **একটাই**, আর সেটা ইচ্ছাকৃত: পুরো তালিকায়
    * দেখা যায় গোটা দলের কাজ কোথায় দাঁড়িয়ে — সেটা ডিজাইনারের দেখার
    * জিনিস নয়। ⭐ তিনি নিজের ৩০টা দেখেন `/me/targets`-এ।
    *
-   * ⚠️⚠️ **গবেষককে `@Roles()` দিয়ে আটকানো যায় না, আর সেটাই এখানকার
-   * আসল কথা।** পোর্টালের রোল তিনটে (owner · manager · employee), আর
-   * গবেষক ঢোকেন `employee` হিসেবে — অর্থাৎ রোল দেখে সিদ্ধান্ত নিলে হয়
-   * সব কর্মী ঢুকে পড়তেন, নয় গবেষকই বাদ পড়তেন। ⭐ তাই অনুমতিটা **কাজের
-   * ধরন** ধরে (`staff_type = 'researcher'`), আর সেটা ডাটাবেসে দেখে
-   * নিতে হয় — টোকেনে ওটা নেই।
+   * ### ⚠️⚠️ এখানে আগে যা লেখা ছিল, আর কেন সেটা আর সত্যি নয়
    *
-   * ⚠️ টোকেনে ধরনটা বসানোও যেত (এক কল বাঁচত), কিন্তু তাহলে মালিক কারো
-   * ধরন বদলানোর পরেও তাঁর পুরোনো টোকেন **মেয়াদ শেষ না হওয়া পর্যন্ত**
-   * পুরোনো অনুমতি নিয়ে ঘুরত।
+   * পুরোনো টীকা বলত: *"গবেষককে `@Roles()` দিয়ে আটকানো যায় না — পোর্টালের
+   * রোল তিনটে (owner · manager · employee), আর গবেষক ঢোকেন `employee`
+   * হিসেবে"*। তাই অনুমতিটা **অন্য টেবিলের** `staff_type` ধরে নিতে হতো,
+   * প্রতি রিকোয়েস্টে একটা করে ডাটাবেস কল খরচ করে।
+   *
+   * ⭐⭐ ২৫ আগস্ট মালিক ওই ভিতটাই সরিয়ে দিলেন — *"researcher and designer
+   * same kaj kore na, tai eder access o same hobe na"*। `UserRole`-এ এখন
+   * `researcher` আছে, তাই প্রশ্নটা আর দুই টেবিলে ভাগ নয়।
+   *
+   * ফল তিনটে, আর তিনটেই লাভ:
+   *   · ডাটাবেস কল **উধাও** — ফাংশনটা এখন সমার্থক (sync)
+   *   · সাইডবারের `roles: [...] + when: canAddTargets` হ্যাকটা **মুছে গেল**
+   *   · অনুমতি **এক জায়গায়** — আর দুই টেবিলে ভাগ থাকাটাই ২৪ আগস্টের
+   *     গণ্ডগোলটা সম্ভব করেছিল (ADR-038)
+   *
+   * ⚠️ পুরোনো টীকার আরেকটা আশঙ্কা ছিল — *"টোকেনে ধরনটা বসালে মালিক ধরন
+   * বদলানোর পরেও পুরোনো টোকেন পুরোনো অনুমতি নিয়ে ঘুরত"*। সেটাও আর খাটে
+   * না: `JwtAuthGuard` প্রতি ৫ মিনিটে ভূমিকাটা **ডাটাবেস থেকে নতুন করে
+   * পড়ে** (সেখানকার টীকা দেখুন)। রোল বদলালে কাউকে লগআউট করতে হয় না।
    */
-  async assertCanUse(actor: SessionUser): Promise<void> {
-    if (actor.role === UserRole.owner || actor.role === UserRole.manager) return;
-
-    if (actor.employeeId !== null) {
-      const me = await this.prisma.employee.findUnique({
-        where: { id: actor.employeeId },
-        select: { staffType: true },
-      });
-      if (me?.staffType === 'researcher') return;
-    }
+  assertCanUse(actor: SessionUser): void {
+    if (canUseTargets(actor.role)) return;
 
     throw new ForbiddenException(
       'Only researchers, managers and the owner can add design targets.',
@@ -158,29 +162,30 @@ export class TargetsService {
   }
 
   /**
-   * ⭐⭐ **কে বানান যাচাই করতে পারেন** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট ২০২৬)*।
+   * ⭐⭐ **কে বানান যাচাই করতে পারেন** — মালিক · ম্যানেজার · গবেষক।
    *
-   * ⚠️⚠️ `assertCanUse`-এর থেকে **আলাদা পাহারা**, আর সেটাই আসল কথা।
-   * ওটা গোটা টার্গেট-অংশের একটাই দরজা — টার্গেট জমা, তালিকা, Uploaded,
-   * Live সব। ওটা সংকুচিত করলে দ্বিতীয় গবেষক **সবকিছুই** হারাতেন, অথচ
-   * মালিক কেবল বানান-যাচাইটা সীমিত করতে চেয়েছেন।
+   * ### ⚠️⚠️ এই ফাংশনটা এক দিনে দুবার বদলেছে, আর ইতিহাসটা কাজে লাগে
    *
-   * ⚠️ কারো নাম বা id এখানে নেই — `employees.can_proofread` ঘরটা মালিক
-   * নিজে Settings → Staff-এ টিক দিয়ে বদলান।
+   * **২৫ আগস্ট, সকাল** — মালিক: *"ami chai ei access ami manager and
+   * sumaiya pak"*। তখন এটা ছিল `employees.can_proofread` টিক-ঘর ধরে,
+   * অর্থাৎ **ব্যক্তি ধরে**।
+   *
+   * **২৫ আগস্ট, পরে** — মালিক: *"sob researcher ra sei access gula pabe...
+   * researcher and designer same kaj kore na, tai eder access o same hobe
+   * na"*। অর্থাৎ প্রশ্নটা কখনোই *"কোন মানুষ"* ছিল না, ছিল *"কোন কাজ"*।
+   * ⭐ তাই টিক-ঘরটা তুলে দেওয়া হয়েছে আর রোলই অধিকারটা বহন করে।
+   *
+   * ⚠️⚠️ **সূত্রটা আজ `assertCanUse`-এর হুবহু সমান, তবু ফাংশন দুটো আলাদা**
+   * — আর এটা ইচ্ছাকৃত, এই কোডবেসের নিয়ম মেনেই (`App.tsx`-এ
+   * `mayOpenSettings` কেন `isOwner || isManager` নয়, সেই একই কারণ)।
+   * শর্তের **নাম** থাকলে ভবিষ্যতে একটা বদলাতে গিয়ে অন্যটা খুঁজে বেড়াতে
+   * হয় না। মিলে যাওয়া সমান হওয়া নয়।
    */
-  async assertCanProofread(actor: SessionUser): Promise<void> {
-    if (actor.role === UserRole.owner || actor.role === UserRole.manager) return;
-
-    if (actor.employeeId !== null) {
-      const me = await this.prisma.employee.findUnique({
-        where: { id: actor.employeeId },
-        select: { canProofread: true },
-      });
-      if (me?.canProofread === true) return;
-    }
+  assertCanProofread(actor: SessionUser): void {
+    if (canUseTargets(actor.role)) return;
 
     throw new ForbiddenException(
-      'You are not set up to check spelling. Ask the owner to turn it on for you.',
+      'Only researchers, managers and the owner can check spelling.',
     );
   }
 

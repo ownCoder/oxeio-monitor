@@ -44,14 +44,22 @@ beforeEach(async () => {
 });
 
 /** কর্মী + পোর্টাল অ্যাকাউন্ট — ধরনসহ */
+/**
+ * কর্মী + পোর্টাল অ্যাকাউন্ট।
+ *
+ * ⚠️⚠️ `staffType` আর `role` **দুটোই** নেওয়া হয়, আর সেটাই এই
+ * হেল্পারের গোটা কথা: ওরা আলাদা জিনিস। `staffType` বলে **কী কাজ
+ * করেন**, `role` বলে **কী দেখতে পান**। নিচের টেস্টগুলো ইচ্ছাকৃতভাবে
+ * দুটোকে মিলিয়ে-অমিলিয়ে দেখে।
+ */
 async function staff(
   empCode: string,
   staffType: 'designer' | 'researcher',
   email: string,
-  canProofread = false,
+  role: 'employee' | 'researcher' = 'employee',
 ) {
   const employee = await h.prisma.employee.create({
-    data: { empCode, fullName: empCode, staffType, status: 'active', canProofread },
+    data: { empCode, fullName: empCode, staffType, status: 'active' },
   });
 
   await h.prisma.user.create({
@@ -59,7 +67,7 @@ async function staff(
       email,
       fullName: empCode,
       passwordHash: await hashPassword('staff-password-123'),
-      role: 'employee',
+      role,
       employeeId: employee.id,
       // ⚠️ `false` না দিলে লগইনের পর "পাসওয়ার্ড বদলান" দেয়ালে আটকে যেত
       mustChangePw: false,
@@ -76,12 +84,18 @@ const post = (session: Session, path: string, body: object) =>
 
 describe('POST /design-targets/bulk — কে জমা দিতে পারেন', () => {
   /**
-   * ⭐⭐ **গোটা ফিচারের সবচেয়ে সূক্ষ্ম পাহারা।** গবেষক ও ডিজাইনার
-   * দুজনেরই পোর্টাল রোল `employee` — তাই `@Roles()` দিয়ে একজনকে ঢোকানো
-   * আর অন্যজনকে আটকানো **সম্ভবই নয়**। অনুমতিটা কাজের ধরন ধরে।
+   * ⭐⭐ **এই describe-টা ২৫ আগস্ট উল্টে গেছে, আর ইতিহাসটা কাজে লাগে।**
+   *
+   * আগে এখানে লেখা ছিল: *"গবেষক ও ডিজাইনার দুজনেরই পোর্টাল রোল
+   * `employee` — তাই `@Roles()` দিয়ে একজনকে ঢোকানো আর অন্যজনকে আটকানো
+   * **সম্ভবই নয়**। অনুমতিটা কাজের ধরন ধরে।"*
+   *
+   * ⭐ মালিক সেই ভিতটাই সরিয়ে দিলেন — *"researcher and designer same kaj
+   * kore na, tai eder access o same hobe na"*। এখন গবেষক একটা **ভূমিকা**,
+   * আর অনুমতিটা ভূমিকা ধরেই।
    */
-  it('গবেষক পারেন', async () => {
-    await staff('OX-R1', 'researcher', 'r1@test.local');
+  it('গবেষক (রোল) পারেন', async () => {
+    await staff('OX-R1', 'researcher', 'r1@test.local', 'researcher');
     const session = await loginReady(h, 'r1@test.local', 'staff-password-123');
 
     const res = await post(session, '/api/v1/design-targets/bulk', {
@@ -92,14 +106,43 @@ describe('POST /design-targets/bulk — কে জমা দিতে পার�
     expect(res.body.poolSize).toBe(2);
   });
 
-  /** ⚠️⚠️ একই রোল, আলাদা ধরন — আর ফলটাও আলাদা হতে হবে */
-  it('ডিজাইনার পারেন না, যদিও রোল একই', async () => {
+  it('ডিজাইনার পারেন না', async () => {
     await staff('OX-D1', 'designer', 'd1@test.local');
     const session = await loginReady(h, 'd1@test.local', 'staff-password-123');
 
     await post(session, '/api/v1/design-targets/bulk', {
       text: URL_OF(1),
     }).expect(403);
+  });
+
+  /**
+   * ⚠️⚠️ **কাজের ধরন আর অধিকার এক জিনিস নয় — এই টেস্টটাই সেই সীমানা।**
+   *
+   * কারো `staff_type` "গবেষক" অথচ পোর্টালের ভূমিকা এখনো `employee` হলে
+   * তিনি ঢুকতে পারবেন **না**। ⭐ শোনায় কড়া, কিন্তু উল্টোটা আরও খারাপ:
+   * তাহলে অধিকার দুই টেবিলে ভাগ হয়ে থাকত, আর ঠিক সেটাই ২৪ আগস্টের
+   * গণ্ডগোলটা সম্ভব করেছিল (ADR-038)।
+   *
+   * ⚠️ মালিক যাতে অন্ধকারে না থাকেন, Settings → Staff-এ দুটো না মিললে
+   * একটা বার্তা ওঠে — পর্দা চুপ করে থাকে না।
+   */
+  it('⭐⭐ ধরন গবেষক অথচ ভূমিকা staff — পারেন না', async () => {
+    await staff('OX-R2', 'researcher', 'r2@test.local', 'employee');
+    const session = await loginReady(h, 'r2@test.local', 'staff-password-123');
+
+    await post(session, '/api/v1/design-targets/bulk', {
+      text: URL_OF(1),
+    }).expect(403);
+  });
+
+  /** ⭐ উল্টোটাও সত্যি — ভূমিকাই শেষ কথা, ধরন নয় */
+  it('ভূমিকা গবেষক অথচ ধরন ডিজাইনার — পারেন', async () => {
+    await staff('OX-D2', 'designer', 'd2b@test.local', 'researcher');
+    const session = await loginReady(h, 'd2b@test.local', 'staff-password-123');
+
+    await post(session, '/api/v1/design-targets/bulk', {
+      text: URL_OF(1),
+    }).expect(201);
   });
 
   it('মালিক ও ম্যানেজার পারেন', async () => {
@@ -774,15 +817,18 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
 
 
 /**
- * ⭐⭐ **কে বানান দেখতে পারেন** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট ২০২৬:
- * "ami chai ei access ami manager and sumaiya pak")*।
+ * ⭐⭐ **কে বানান দেখতে পারেন** *(২৫ আগস্ট ২০২৬)*।
  *
- * ⚠️⚠️ এখানকার আসল কথা: টার্গেট-অংশের বাকি সবকিছু (জমা, তালিকা,
- * Uploaded, Live) খোলাই থাকে **দুজন গবেষকের জন্যই** — কেবল বানানের
- * দুটো রুট আলাদা পাহারায়। একটাই পাহারা সংকুচিত করলে দ্বিতীয় গবেষক
- * নিজের কাজটাও হারাতেন।
+ * ### ⚠️⚠️ এই describe-টা এক দিনে দুবার লেখা হয়েছে
  *
- * ⚠️ কারো নাম বা id কোডে নেই — `employees.can_proofread` টিক-ঘর।
+ * **সকালে** মালিক বললেন *"ami chai ei access ami manager and sumaiya
+ * pak"* — তাই পাহারাটা ছিল `employees.can_proofread` টিক-ঘর ধরে, অর্থাৎ
+ * **ব্যক্তি ধরে**, আর তখন এখানকার টেস্টগুলো ঠিক সেটাই মাপত।
+ *
+ * **পরে** বললেন *"sob researcher ra sei access gula pabe... researcher
+ * and designer same kaj kore na, tai eder access o same hobe na"*।
+ * ⭐ অর্থাৎ প্রশ্নটা কখনোই *"কোন মানুষ"* ছিল না, ছিল *"কোন কাজ"* —
+ * আর সেটা ভূমিকার প্রশ্ন। টিক-ঘরটা এক দিন বেঁচে মুছে গেছে।
  */
 describe('বানান-যাচাইয়ের অধিকার — HTTP পাহারা', () => {
   const ASIN_OF = (n: number) => `B${String(n).padStart(9, '0')}`;
@@ -801,27 +847,9 @@ describe('বানান-যাচাইয়ের অধিকার — HTT
     return row.id;
   }
 
-  it('⭐⭐ টিক না থাকলে গবেষক পারেন না — যদিও টার্গেট জমা দিতে পারেন', async () => {
+  it('⭐ গবেষক দেখতে ও ঠিক করতে পারেন', async () => {
     const id = await ready();
-    await staff('OX-R7', 'researcher', 'r7@test.local');
-    const session = await loginReady(h, 'r7@test.local', 'staff-password-123');
-
-    // ⭐ জমা দেওয়া **পারেন** — এটাই প্রমাণ যে পাহারা দুটো আলাদা
-    await post(session, '/api/v1/design-targets/bulk', {
-      text: URL_OF(50),
-    }).expect(201);
-
-    await post(session, `/api/v1/design-targets/${id}/checked`, {
-      ok: true,
-    }).expect(403);
-
-    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
-    expect(row.checkedAt).toBeNull();
-  });
-
-  it('টিক থাকলে গবেষক পারেন', async () => {
-    const id = await ready();
-    await staff('OX-R8', 'researcher', 'r8@test.local', true);
+    await staff('OX-R8', 'researcher', 'r8@test.local', 'researcher');
     const session = await loginReady(h, 'r8@test.local', 'staff-password-123');
 
     await post(session, `/api/v1/design-targets/${id}/checked`, {
@@ -834,8 +862,26 @@ describe('বানান-যাচাইয়ের অধিকার — HTT
     expect(row.fixedAt).not.toBeNull();
   });
 
+  /**
+   * ⚠️⚠️ **দ্বিতীয় গবেষকও পারেন — এটাই ২৫ আগস্টের বদলটা।**
+   *
+   * সকালে ঠিক এই টেস্টটার উল্টোটা লেখা ছিল (`.expect(403)`), কারণ তখন
+   * অধিকার ছিল টিক-ঘরে আর টিক ছিল একজনের। মালিক নিয়মটা বদলেছেন, তাই
+   * টেস্টটাও উল্টেছে — ⭐ কোডের সাথে টেস্ট মেলানো হয়নি, **সিদ্ধান্তের**
+   * সাথে মেলানো হয়েছে।
+   */
+  it('⭐⭐ দ্বিতীয় গবেষকও পারেন — কারো টিকের অপেক্ষা নেই', async () => {
+    const id = await ready();
+    await staff('OX-R9', 'researcher', 'r9@test.local', 'researcher');
+    const session = await loginReady(h, 'r9@test.local', 'staff-password-123');
+
+    await post(session, `/api/v1/design-targets/${id}/checked`, {
+      ok: true,
+    }).expect(201);
+  });
+
   /** ⚠️ ম্যানেজারের কোনো `employees` সারিই নেই — রোল দিয়েই পান */
-  it('ম্যানেজার টিক ছাড়াই পারেন', async () => {
+  it('ম্যানেজার পারেন', async () => {
     const id = await ready();
     const session = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
 
@@ -847,34 +893,36 @@ describe('বানান-যাচাইয়ের অধিকার — HTT
     expect(row.checkedAt).not.toBeNull();
   });
 
-  /** ⚠️ ডিজাইনার টার্গেট-অংশেই ঢুকতে পারেন না — টিকেও লাভ নেই */
-  it('ডিজাইনারকে টিক দিলেও তালিকাই দেখতে পান না', async () => {
+  it('⚠️ ডিজাইনার পারেন না', async () => {
     const id = await ready();
-    await staff('OX-D7', 'designer', 'd7@test.local', true);
+    await staff('OX-D7', 'designer', 'd7@test.local');
     const session = await loginReady(h, 'd7@test.local', 'staff-password-123');
 
     await session.http.get('/api/v1/design-targets').expect(403);
-
-    // ⭐ কিন্তু বানানের রুটে টিকটা কাজ করে — দুটো পাহারা সত্যিই আলাদা
     await post(session, `/api/v1/design-targets/${id}/checked`, {
       ok: true,
-    }).expect(201);
+    }).expect(403);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.checkedAt).toBeNull();
   });
 
-  /** ⭐ সেশনেও পতাকাটা যায় — পর্দা বোতাম লুকোয় ওটা দেখে */
-  it('সেশনে canProofread ঠিক আসে', async () => {
-    await staff('OX-R9', 'researcher', 'r9@test.local');
-    await staff('OX-RA', 'researcher', 'ra@test.local', true);
+  /** ⭐ সেশনেও পতাকা দুটো যায় — পর্দা বোতাম লুকোয় ওগুলো দেখে */
+  it('সেশনে canAddTargets ও canProofread ঠিক আসে', async () => {
+    await staff('OX-RA', 'researcher', 'ra@test.local', 'researcher');
+    await staff('OX-D8', 'designer', 'd8@test.local');
 
-    const without = await loginReady(h, 'r9@test.local', 'staff-password-123');
-    const with_ = await loginReady(h, 'ra@test.local', 'staff-password-123');
+    const researcher = await loginReady(h, 'ra@test.local', 'staff-password-123');
+    const designer = await loginReady(h, 'd8@test.local', 'staff-password-123');
 
-    const a = await without.http.get('/api/v1/auth/me').expect(200);
-    const b = await with_.http.get('/api/v1/auth/me').expect(200);
+    const a = await researcher.http.get('/api/v1/auth/me').expect(200);
+    const b = await designer.http.get('/api/v1/auth/me').expect(200);
 
-    expect(a.body.canProofread).toBe(false);
-    // ⚠️ টার্গেট জমা দুজনেই পারেন — পতাকা দুটো এক নয়
+    expect(a.body.role).toBe('researcher');
     expect(a.body.canAddTargets).toBe(true);
-    expect(b.body.canProofread).toBe(true);
+    expect(a.body.canProofread).toBe(true);
+
+    expect(b.body.canAddTargets).toBe(false);
+    expect(b.body.canProofread).toBe(false);
   });
 });

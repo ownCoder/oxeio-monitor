@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import {
   createEmployeeWithCode,
   createHarness,
+  hashPassword,
   enrollDevice,
   loginReady,
   MANAGER_EMAIL,
@@ -290,6 +291,59 @@ describe('কে দেখতে পায় (J08)', () => {
       .set('X-CSRF-Token', m.csrf)
       .send(body());
     expect(write.status).toBe(403);
+  });
+
+  /**
+   * ⭐⭐⭐ **গবেষক অন্যের বেতনের সমন্বয় দেখতে পান না** *(২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️⚠️ এই টেস্টটাই আজকের সবচেয়ে দামি, আর কারণটা ভয় জাগানো।
+   * `assertCanSee`-তে লেখা ছিল `if (role !== employee) return;` — অর্থাৎ
+   * *"স্টাফ না হলে সব দেখতে দাও"*। `UserRole`-এ `researcher` বসানোর
+   * মুহূর্তে নতুন ভূমিকাটা **ওই ডালেই** পড়ত, পাহারাটা পুরো এড়িয়ে যেত,
+   * আর যে কারো বোনাস-কাটতির হিসাব খুলে যেত।
+   *
+   * ⚠️ কোনো কম্পাইল-এরর হতো না। কোনো টেস্ট লাল হতো না। এই কন্ট্রোলারে
+   * ক্লাস-লেভেল `@Roles` **ইচ্ছাকৃতভাবে নেই** (স্কোপিংটা সার্ভিসের কাজ),
+   * তাই উপরেও কিছু আটকাত না।
+   *
+   * ⭐ শর্তটা এখন হ্যাঁ-তালিকা (`owner || manager`), আর এই টেস্টটা তার
+   * পাহারা: enum-এ **পরের** নতুন মানটাও যেন নিজে থেকে ঢুকে না পড়ে।
+   */
+  it('⭐⭐ গবেষক অন্যের সমন্বয় দেখতে পান না', async () => {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await owner.http
+      .post(`/api/v1/employees/${employeeId}/time-adjustments`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send(body())
+      .expect(201);
+
+    // গবেষক — নিজের আলাদা কর্মী-সারি, আর ভূমিকা `researcher`
+    const them = await h.prisma.employee.create({
+      data: { empCode: 'OX-78', fullName: 'Researcher', staffType: 'researcher' },
+    });
+    await h.prisma.user.create({
+      data: {
+        email: 'r-adj@test.local',
+        fullName: 'Researcher',
+        passwordHash: await hashPassword('staff-password-123'),
+        role: 'researcher',
+        employeeId: them.id,
+        mustChangePw: false,
+      },
+    });
+
+    const session = await loginReady(h, 'r-adj@test.local', 'staff-password-123');
+
+    const read = await session.http.get(
+      `/api/v1/employees/${employeeId}/time-adjustments`,
+    );
+    expect(read.status).toBe(403);
+
+    // ⭐ নিজেরটা দেখতে পান — পাহারাটা "সব বন্ধ" নয়, "নিজেরটুকু"
+    const mine = await session.http.get(
+      `/api/v1/employees/${them.id}/time-adjustments`,
+    );
+    expect(mine.status).toBe(200);
   });
 
   it('লগইন ছাড়া বন্ধ', async () => {

@@ -15,6 +15,7 @@ import {
   turnAgentOn,
   updateEmployee,
   type AssignableRole,
+  type Role,
   type CreateEmployeeBody,
   type EmployeeStatus,
   type EmployeeView,
@@ -31,7 +32,6 @@ import {
   Chip,
   ConfirmDialog,
   FormGrid,
-  CheckboxField,
   FullWidth,
   Modal,
   MiniButton,
@@ -524,8 +524,6 @@ interface StaffForm {
   staffType: string;
   /** ⚠️ খালি স্ট্রিং = "বসানো নেই" → পলিসির ২৫ খাটবে; `'0'` = বন্ধ */
   dailyDesignTarget: string;
-  /** ⭐ বানান যাচাই করতে পারবেন কি না (ADR-038) */
-  canProofread: boolean;
   policyId: string;
   joinedOn: string;
   monthlySalary: string;
@@ -542,7 +540,6 @@ function formOf(employee: EmployeeView | null): StaffForm {
       employee?.dailyDesignTarget === undefined
         ? ''
         : String(employee.dailyDesignTarget),
-    canProofread: employee?.canProofread ?? false,
     policyId:
       employee?.policyId === null || employee?.policyId === undefined
         ? ''
@@ -584,9 +581,6 @@ function patchOf(
       after.dailyDesignTarget.trim() === ''
         ? null
         : Number(after.dailyDesignTarget);
-  }
-  if (after.canProofread !== before.canProofread) {
-    patch.canProofread = after.canProofread;
   }
   if (after.joinedOn !== before.joinedOn) {
     patch.joinedOn = orNull(after.joinedOn);
@@ -647,14 +641,6 @@ function EmployeeForm({
   const set = (key: keyof StaffForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  /**
-   * ⚠️ উপরের `set` কেবল **স্ট্রিং** নেয় — ফর্মের বাকি সব ঘর ইনপুট
-   * বাক্স, আর ব্রাউজার সেখান থেকে স্ট্রিংই দেয়। টিক-ঘর `boolean`
-   * দেয়, তাই আলাদা setter; `set`-কে দুই ধরনের মান নিতে দিলে
-   * `'25'`-এর জায়গায় `true` বসিয়ে দিলেও TypeScript ধরত না।
-   */
-  const setBool = (key: keyof StaffForm) => (value: boolean) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
 
   const submit = (): void => {
     run(async () => {
@@ -676,7 +662,6 @@ function EmployeeForm({
           ...(form.dailyDesignTarget.trim() === ''
             ? {}
             : { dailyDesignTarget: Number(form.dailyDesignTarget) }),
-          ...(form.canProofread ? { canProofread: true } : {}),
           ...(form.policyId ? { policyId: Number(form.policyId) } : {}),
           ...(form.joinedOn ? { joinedOn: form.joinedOn } : {}),
           ...(canSeeSalary && orUndefined(form.monthlySalary)
@@ -798,23 +783,47 @@ function EmployeeForm({
             />
           )}
           {/*
-            ⭐⭐ **বানান যাচাইয়ের অধিকার** *(২৫ আগস্ট, মালিকের সিদ্ধান্ত:
-               "ami chai ei access ami manager and sumaiya pak")*।
+            ⭐⭐ **দুই ঘরে এক নাম — আর সেটাই এখানকার একমাত্র ফাঁদ**
+               *(২৫ আগস্ট ২০২৬)*।
 
-            ⚠️⚠️ ঘরটা **সবার জন্য** ওঠে, শুধু গবেষকের জন্য নয় — ইচ্ছাকৃতভাবে।
-               আজ কাজটা একজন গবেষক করেন, কিন্তু নিয়মটা কাজের ধরনের সাথে
-               বাঁধা নয়; কাল বেলাল বা অন্য কেউ দেখলে মালিক যেন কোড না
-               বদলে শুধু টিক দিতে পারেন।
+            মালিকের সিদ্ধান্ত: *"researcher and designer same kaj kore na,
+            tai eder access o same hobe na"* — তাই গবেষক এখন পোর্টালের
+            একটা **ভূমিকা** (`UserRole.researcher`), আর অধিকারটা ওখান
+            থেকেই আসে।
 
-            ⚠️ owner ও manager-কে টিক দেওয়ার দরকার নেই — তাঁরা রোল দিয়েই
-               পান (`assertCanProofread`)। এখানে টিক না থাকলেও পারবেন।
+            ⚠️⚠️ কিন্তু এই ঘরটা (**Staff type**) অধিকার দেয় **না** — এটা
+               কাজের নাম, আর ডিজাইনারের টার্গেটের ঘরটা এটাই খোলে। ভূমিকা
+               বসে আলাদা জানালায় (সারির "Login" বোতাম)।
+
+            ⭐ তাই দুটো এক না হলে নিচের বার্তাটা ওঠে। চুপচাপ ভূমিকা বসিয়ে
+               দেওয়াও যেত, কিন্তু তখন মালিক জানতেনই না কী ঘটল — আর এই
+               প্রকল্পে **অদৃশ্য জাদুই** বারবার ভুল সংখ্যার জন্ম দিয়েছে।
+               দেখা যায় এমন সতর্কতা, লুকোনো সংশোধন নয়।
           */}
-          <CheckboxField
-            label="Can check spelling"
-            checked={form.canProofread}
-            onChange={setBool('canProofread')}
-            hint="Shows the Spelling OK / Has error / Fixed buttons in the Design Pool. The owner and managers always have this."
-          />
+          {employee &&
+            form.staffType === 'researcher' &&
+            employee.portalRole !== null &&
+            employee.portalRole !== 'researcher' && (
+              <FullWidth>
+                <Notice tone="attention">
+                  Their work type is Researcher, but their portal role is{' '}
+                  <b>{ROLE_WORD[employee.portalRole]}</b> — so they will not see
+                  the Design Pool or the spelling queue. Open <b>Login</b> on
+                  their row and set the role to <b>Researcher</b>.
+                </Notice>
+              </FullWidth>
+            )}
+          {employee &&
+            form.staffType !== 'researcher' &&
+            employee.portalRole === 'researcher' && (
+              <FullWidth>
+                <Notice tone="attention">
+                  Their portal role is Researcher, so they can still open the
+                  Design Pool — even though their work type is not Researcher.
+                  Change the role on their <b>Login</b> if that is not intended.
+                </Notice>
+              </FullWidth>
+            )}
           {/*
             ⚠️⚠️ **"Designation" ও "Department" ঘর দুটো তুলে দেওয়া হয়েছে**
                *(২২ আগস্ট, মালিকের সিদ্ধান্ত: "Designation and Department
@@ -955,8 +964,50 @@ function ReactivateDialog({
  * `{ value: 'owner' }` যোগ করতে গেলে **কম্পাইলারই থামাবে**। ADR-011d-র
  * নিয়মটা তখন আর কেবল সার্ভারের DTO-তে নয়, পর্দার কোডেও বাঁধা।
  */
+/**
+ * ⚠️ ভূমিকার **মানুষের পড়ার নাম** — সার্ভারের মান নয়। বার্তায়
+ * `employee` লিখলে মালিক ভাবতেন সেটা কোনো কারিগরি সংকেত।
+ *
+ * ⚠️⚠️ `Record<Role, string>` — **সম্পূর্ণ** মানচিত্র, ইচ্ছাকৃতভাবে।
+ * `UserRole`-এ কাল নতুন কিছু বসলে এখানেই কম্পাইল-এরর হবে, আর
+ * পর্দায় ফাঁকা ঘর দেখা যাবে না। ২৫ আগস্ট `researcher` যোগ করার
+ * সময় গোটা কোডবেসে **মাত্র দুটো** জায়গা এভাবে ধরা পড়েছিল।
+ */
+const ROLE_WORD: Record<Role, string> = {
+  owner: 'Owner',
+  manager: 'Manager',
+  researcher: 'Researcher',
+  employee: 'Staff',
+};
+
+/**
+ * ⭐⭐ **কোন ভূমিকা ড্রপডাউনে কোনটা দেখাবে** — সম্পূর্ণ মানচিত্র।
+ *
+ * ⚠️ `owner` → `'employee'` নয়, ওটা এখানে **পৌঁছায়ই না**: owner-এর
+ * ড্রপডাউনটাই দেখানো হয় না (`ownerAccount`)। তবু ঘরটা রাখা হয়েছে,
+ * কারণ `Record<Role, ...>` সম্পূর্ণ না হলে কম্পাইলার এটাকে পাহারা দিত না।
+ */
+const ASSIGNABLE_OF: Record<Role, AssignableRole> = {
+  owner: 'employee',
+  manager: 'manager',
+  researcher: 'researcher',
+  employee: 'employee',
+};
+
 const PORTAL_ROLES: { value: AssignableRole; label: string }[] = [
   { value: 'employee', label: 'Staff — their own hours only' },
+  /**
+   * ⭐⭐ *(২৫ আগস্ট — মালিক: "researcher and designer same kaj kore na,
+   * tai eder access o same hobe na")*
+   *
+   * ⚠️ লেখাটায় **কী পাবেন** বলা আছে, "Researcher" শব্দটা একা নয়। পাশের
+   * ঘরে (Staff type) ঠিক একই শব্দ আছে অথচ সেটা অধিকার দেয় না — দুটো
+   * আলাদা করে চেনা না গেলে মালিক ভুল ঘরে খুঁজতেন।
+   */
+  {
+    value: 'researcher',
+    label: 'Researcher — Design Pool and the spelling queue',
+  },
   { value: 'manager', label: "Manager — everyone's Live Board and reports" },
 ];
 
@@ -1004,8 +1055,22 @@ function PortalAccountForm({
    * `changeUserRole` সেটা নেয় না — **ওয়েব বিল্ড তাতেই ভেঙেছিল** (TS2345)।
    * সরু টাইপটা এখন নিয়মটাই পাহারা দেয়, রানটাইমের কোনো গার্ড ছাড়াই।
    */
+  /**
+   * ⚠️⚠️ **এই এক লাইনেই বাগটা তৃতীয়বার ফিরে এসেছিল** *(২৫ আগস্ট)*।
+   *
+   * আগে লেখা ছিল `portalRole === 'manager' ? 'manager' : 'employee'` —
+   * অর্থাৎ *"ম্যানেজার না হলে স্টাফ"*। `researcher` রোল আসার পর সেটা
+   * সুমাইয়াকে ড্রপডাউনে **"Staff" দেখাত**, আর মালিক কেবল ইমেইলের বানান
+   * ঠিক করতে জানালাটা খুলে সেভ চাপলেই তিনি ⭐ **নীরবে গবেষক থেকে
+   * সাধারণ স্টাফ হয়ে যেতেন** — Design Pool, বানান-কিউ সব হারিয়ে।
+   *
+   * ⚠️ ঠিক এই বাগটার কথাই উপরের টীকায় লেখা আছে, ম্যানেজারের বেলায়।
+   * তখন `? :` দিয়ে সারানো হয়েছিল — আর সেই সারাইটাই নতুন রোলের জন্য
+   * আবার ফাঁদ হলো। ⭐ তাই এখন **সম্পূর্ণ মানচিত্র**: `Record<Role, ...>`
+   * enum বাড়লে কম্পাইলারই থামাবে, অনুমান করবে না।
+   */
   const [role, setRole] = useState<AssignableRole>(
-    employee.portalRole === 'manager' ? 'manager' : 'employee',
+    () => ASSIGNABLE_OF[employee.portalRole ?? 'employee'],
   );
 
   /**

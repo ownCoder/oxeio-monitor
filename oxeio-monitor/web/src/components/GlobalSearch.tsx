@@ -11,6 +11,7 @@ import {
   todayInDhaka,
   weekdayOf,
 } from '../lib/format';
+import { seesEveryone } from '../api/auth';
 
 /**
  * E14 — হেডারের গ্লোবাল সার্চ। `/` চাপলে ফোকাস।
@@ -31,7 +32,9 @@ import {
  */
 export function GlobalSearch() {
   const { user } = useAuth();
-  if (user === null || user.role === 'employee') return null;
+  // ⚠️ শর্তটা হ্যাঁ-তালিকা — `!== 'employee'` লিখলে গবেষকও গোটা দলের
+  //    নামের উপর খোঁজার বাক্স পেতেন (২৫ আগস্ট)।
+  if (!seesEveryone(user?.role)) return null;
   return <SearchBox />;
 }
 

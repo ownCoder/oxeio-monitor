@@ -107,8 +107,19 @@ const NAV: NavItem[] = [
    * আসতে হয়, আর Settings একবার বসিয়ে ভুলে যাওয়ার জায়গা। Deposits-ও
    * ঠিক এই কারণেই সাইডবারে (09 § ৩ঃ)।
    *
-   * ⚠️ `roles`-এ `employee` আছে **কেবল গবেষকের জন্য**, আর আসল ছাঁকনিটা
-   * `when` — নইলে ন-জন ডিজাইনারও মেনুতে এটা দেখতেন।
+   * ### ⭐⭐ এখানে যে হ্যাকটা ছিল, আর কেন সেটা মুছে গেল
+   *
+   * আগে লেখা ছিল `roles: ['owner','manager','employee']` তার সাথে
+   * `when: (user) => user.canAddTargets`, আর টীকায় স্বীকারোক্তি:
+   * *"`employee` আছে **কেবল গবেষকের জন্য**, আসল ছাঁকনিটা `when`"*।
+   *
+   * ⚠️⚠️ কারণটা ছিল বাধ্যবাধকতা, পছন্দ নয়: পোর্টালের রোল ছিল তিনটে,
+   * আর গবেষক ঢুকতেন `employee` হিসেবে। তালিকায় `employee` না লিখলে
+   * তিনি বাদ পড়তেন, লিখলে **ন-জন ডিজাইনারও** মেনুতে এটা দেখতেন।
+   *
+   * ⭐ ২৫ আগস্ট মালিক রোলটাই আলাদা করে দিলেন *("researcher and designer
+   * same kaj kore na")*, তাই তালিকাটা এখন সত্যি কথাই বলে — আর দুটো
+   * জায়গার বদলে **একটা** জায়গা পাহারা দেয়।
    */
   /**
    * ⭐ দুটো পাতা **একটা ভাগের নিচে** *(২৩ আগস্ট, মালিকের সিদ্ধান্ত)* —
@@ -123,16 +134,14 @@ const NAV: NavItem[] = [
   {
     to: '/targets',
     label: 'Add target design',
-    roles: ['owner', 'manager', 'employee'],
-    when: (user) => user.canAddTargets,
+    roles: ['owner', 'manager', 'researcher'],
     section: 'Targets',
     child: true,
   },
   {
     to: '/targets/all',
     label: 'Design Pool',
-    roles: ['owner', 'manager', 'employee'],
-    when: (user) => user.canAddTargets,
+    roles: ['owner', 'manager', 'researcher'],
     child: true,
   },
   /**
@@ -151,7 +160,17 @@ const NAV: NavItem[] = [
    * কোনো শিরোনাম না থাকলে My data · Staff · Screenshots — সবই ওই
    * ভাগের ভেতরে বলে মনে হতো *(২৩ আগস্ট)*।
    */
-  { to: '/me', label: 'My data', roles: ['employee'], section: 'Team' },
+  /**
+   * ⚠️⚠️ `researcher`-ও এখানে — গবেষকদেরও এজেন্ট আছে, তাঁরাও মাপা হন
+   * (২৫ আগস্ট যাচাই করা: OX-04 ও OX-05 দুজনেরই সক্রিয় ডিভাইস)। ব্যক্তিগত
+   * পাতা কাজের ধরনের সাথে বাঁধা নয়।
+   */
+  {
+    to: '/me',
+    label: 'My data',
+    roles: ['researcher', 'employee'],
+    section: 'Team',
+  },
   /**
    * ⭐ মকআপ ক-এর সাইডবারে Live Board-এর ঠিক পরেই।
    *
@@ -166,10 +185,11 @@ const NAV: NavItem[] = [
    * ⭐ দুটোর একটাই দেখা যায়, তাই শিরোনাম দুবার বসে না।
    */
   { to: '/staff', label: 'Staff', roles: ['owner', 'manager'], section: 'Team' },
+  /** ⚠️ গবেষক ও ডিজাইনার এখানে **নিজেরটাই** দেখেন — সার্ভার স্কোপ করে দেয় */
   {
     to: '/screenshots',
     label: 'Screenshots',
-    roles: ['owner', 'manager', 'employee'],
+    roles: ['owner', 'manager', 'researcher', 'employee'],
   },
   /**
    * ⚠️ শুধু "Monthly" — "Monthly progress" নয়। নেভের সব ট্যাব এক-দুই শব্দে,
@@ -205,7 +225,11 @@ const NAV: NavItem[] = [
    * ⚠️ ইচ্ছাকৃতভাবে **সবার শেষে**, সেটিংসের পরেও: এটা রোজকার কাজের পর্দা
    *    নয়, বছরে দু-একবার খোলার জায়গা।
    */
-  { to: '/security', label: 'Security', roles: ['owner', 'manager', 'employee'] },
+  {
+    to: '/security',
+    label: 'Security',
+    roles: ['owner', 'manager', 'researcher', 'employee'],
+  },
   { to: '/settings', label: 'Settings', roles: ['owner', 'manager'] },
 ];
 
@@ -229,9 +253,17 @@ function dhakaStamp(): string {
   return `${Number(day)} ${MONTHS[Number(m) - 1]} ${y} · ${iso.slice(11, 16)}`;
 }
 
-const ROLE_LABEL: Record<string, string> = {
+/**
+ * ⚠️⚠️ `Record<Role, ...>` — `Record<string, ...>` **নয়**, আর এই বদলটাই
+ * এখানে আসল কাজ। আগে `string` লেখা ছিল, তাই ২৫ আগস্ট `researcher` রোল
+ * যোগ করার সময় কম্পাইলার কিছুই বলেনি — পর্দার কোণে নামটা নীরবে
+ * `researcher` (ছোট হাতের, কাঁচা মান) হয়ে ফুটত।
+ * ⭐ এখন enum বাড়লে এখানেই এরর হবে।
+ */
+const ROLE_LABEL: Record<Role, string> = {
   owner: 'Owner',
   manager: 'Manager',
+  researcher: 'Researcher',
   employee: 'Staff',
 };
 

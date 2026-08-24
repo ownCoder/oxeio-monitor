@@ -238,7 +238,14 @@ export class AdjustmentsService {
    * নিয়ে নিজের ডেটা দেখাত।
    */
   private assertCanSee(actor: SessionUser, employeeId: number): void {
-    if (actor.role !== UserRole.employee) return;
+    /**
+     * ⚠️⚠️ `screenshots.service`-এর `resolveEmployeeScope`-এর মতোই — শর্তটা
+     * **হ্যাঁ-তালিকা**। আগে লেখা ছিল `role !== employee`, আর ২৫ আগস্ট
+     * `researcher` রোল বসানোর সময় ধরা পড়ল যে নতুন যেকোনো রোল তখন এই
+     * পাহারাটা **পুরো এড়িয়ে যেত** — যে কারো বেতনের সমন্বয় খুলে যেত।
+     * ⚠️ এখানেও কন্ট্রোলারে `@Roles` নেই (ইচ্ছাকৃত), তাই এটাই একমাত্র পাহারা।
+     */
+    if (actor.role === UserRole.owner || actor.role === UserRole.manager) return;
 
     if (actor.employeeId === null) {
       throw new ForbiddenException(

@@ -89,16 +89,7 @@ export class CreateEmployeeDto {
    * ⚠️ ছাদ ৫০০ — টাইপো ধরার জন্য, নীতির জন্য নয় (পলিসির ঘরের মতোই)।
    */
   @IsOptional() @IsInt() @Min(0) @Max(500)
-  dailyDesignTarget?: number | null;
-  /**
-   * ⭐ **বানান যাচাই করতে পারবেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
-   *
-   * ⚠️ owner ও manager এই ঘরের বাইরে — তাঁরা রোল দিয়েই পান। এটা কেবল
-   * কর্মীদের জন্য, আর ডিফল্ট `false`: অধিকার চেয়ে নিতে হয়।
-   */
-  @IsOptional() @IsBoolean()
-  canProofread?: boolean;
-}
+  dailyDesignTarget?: number | null;}
 
 /**
  * ⚠️ প্রতিটা ফিল্ড optional, আর `null`-ও গ্রহণযোগ্য — `@IsOptional()`
@@ -153,16 +144,7 @@ export class UpdateEmployeeDto {
    * ⚠️ ছাদ ৫০০ — টাইপো ধরার জন্য, নীতির জন্য নয় (পলিসির ঘরের মতোই)।
    */
   @IsOptional() @IsInt() @Min(0) @Max(500)
-  dailyDesignTarget?: number | null;
-  /**
-   * ⭐ **বানান যাচাই করতে পারবেন কি না** *(ADR-038, ২৫ আগস্ট ২০২৬)*।
-   *
-   * ⚠️ owner ও manager এই ঘরের বাইরে — তাঁরা রোল দিয়েই পান। এটা কেবল
-   * কর্মীদের জন্য, আর ডিফল্ট `false`: অধিকার চেয়ে নিতে হয়।
-   */
-  @IsOptional() @IsBoolean()
-  canProofread?: boolean;
-}
+  dailyDesignTarget?: number | null;}
 
 /**
  * `POST /employees/:id/policy-signed` — সই করা মনিটরিং পলিসির তারিখ।

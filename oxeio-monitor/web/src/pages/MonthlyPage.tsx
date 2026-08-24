@@ -17,6 +17,7 @@ import {
   monthKeyOf,
   todayInDhaka,
 } from '../lib/format';
+import { seesEveryone } from '../api/auth';
 import { HeatGrid } from './monthly/HeatGrid';
 import { buildMonthGrid, type GridSort } from './monthly/heatmap';
 
@@ -43,7 +44,7 @@ export function MonthlyPage() {
 
   // ⭐ স্টাফের জন্য এই পর্দাটা সহকর্মীদের তালিকা — ৪০৩ ধরার আগেই থামানো
   //   ভালো, নইলে প্রতিবার ঢুকলে সার্ভারে একটা অর্থহীন কল যেত।
-  if (user?.role === 'employee') {
+  if (!seesEveryone(user?.role)) {
     return (
       <Page title="Monthly">
         <Empty

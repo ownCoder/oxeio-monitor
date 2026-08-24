@@ -12,6 +12,7 @@ import { formatCount, formatDate, todayInDhaka } from '../lib/format';
 import { Lightbox } from './gallery/Lightbox';
 import { ShotGrid } from './gallery/ShotGrid';
 import { useFreshUrls } from './gallery/useFreshUrls';
+import { seesEveryone } from '../api/auth';
 
 /**
  * E06 · I07 · I08 · J05 — স্ক্রিনশট গ্যালারি (`/screenshots`)।
@@ -29,7 +30,13 @@ import { useFreshUrls } from './gallery/useFreshUrls';
 export function GalleryPage() {
   const { user } = useAuth();
   // J05 — স্টাফ শুধু নিজেরটা পায়, বাছাবাছির কিছু নেই
-  const isEmployee = user?.role === 'employee';
+  /**
+   * ⚠️ নামটা `isEmployee` **থাকল**, কিন্তু সূত্রটা উল্টে গেছে: এখন প্রশ্ন
+   * *"ইনি কি গোটা দল দেখেন না?"*। ২৫ আগস্টের আগে লেখা ছিল
+   * `role === 'employee'`, তাই গবেষক রোল এলে তিনি **সবার ছবি** আর
+   * বাছাবাছির ঘরটাও পেতেন — সার্ভার আটকাত, পর্দা নয়।
+   */
+  const isEmployee = !seesEveryone(user?.role);
 
   const [date, setDate] = useState(() => todayInDhaka());
   const [employeeId, setEmployeeId] = useState<number | null>(null);

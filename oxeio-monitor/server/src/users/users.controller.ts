@@ -23,8 +23,15 @@ import type { SessionUser } from '../auth/types';
  * অনুরোধটা কোনো ব্যবসায়িক কোড ছোঁয়ারই সুযোগ পায় না।
  */
 class ChangeRoleDto {
-  @IsIn(['employee', 'manager'])
-  role!: 'employee' | 'manager';
+  /**
+   * ⭐ `researcher` যোগ হয়েছে ২৫ আগস্ট — `owner` এখনো বাইরে (ADR-011d)।
+   *
+   * ⚠️ তালিকাটা হাতে লেখা, `UserRole` ধার করা নয়, **ইচ্ছাকৃতভাবে**:
+   * enum-এ কাল নতুন কিছু বসলে সেটা এখানে **নিজে থেকে ঢুকে পড়া উচিত নয়**।
+   * রোল হাতবদলের তালিকা বাড়ানো একটা সিদ্ধান্ত, দুর্ঘটনা নয়।
+   */
+  @IsIn(['employee', 'researcher', 'manager'])
+  role!: 'employee' | 'researcher' | 'manager';
 }
 
 class ChangeEmailDto {
