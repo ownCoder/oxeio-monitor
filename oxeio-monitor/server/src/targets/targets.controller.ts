@@ -65,6 +65,16 @@ class ListQueryDto {
   staffId?: number;
 
   /**
+   * ⭐ কে এনেছেন — `users.id` *(২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ উপরেরটার সাথে **আলাদা id-র জগৎ** — ওটা `employees`, এটা `users`।
+   * নাম দুটো পাশাপাশি রাখা হয়েছে ঠিক এই কারণেই: এক নজরে যেন দেখা যায়
+   * ওরা এক জিনিস নয়।
+   */
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  addedById?: number;
+
+  /**
    * ⭐ তারিখের সীমা — **শেষ যা ঘটেছে** তার দিন ধরে।
    *
    * ⚠️ `YYYY-MM-DD` ছাড়া কিছু নেওয়া হয় না: আলগা পার্সিং মানে
@@ -168,6 +178,18 @@ export class TargetsController {
    * সংখ্যা পড়তে পারতেন। বড় ফাঁস নয়, কিন্তু একই পর্দার দুটো রুটে দুই
    * নিয়ম থাকলে একদিন ভুলটা বড় জায়গায় হতো।
    */
+  /**
+   * ⭐⭐ **কে কতগুলো এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট)*।
+   *
+   * ⚠️ `designers`-এর মতো এটাও কেবল ড্রপডাউন ভরার জন্য, কিন্তু সংখ্যাটা
+   * সঙ্গে যায় — মালিক একটাও ক্লিক না করেই উত্তরটা পেয়ে যান।
+   */
+  @Get('adders')
+  async adders(@CurrentUser() actor: SessionUser) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.adders();
+  }
+
   /** ⭐ ছাঁকনির ড্রপডাউনের জন্য — owner · manager · গবেষক *(২৩ আগস্ট)* */
   @Get('designers')
   async designers(@CurrentUser() actor: SessionUser) {

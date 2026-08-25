@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import {
   deleteTarget,
+  listTargetAdders,
   listTargetDesigners,
   listTargets,
   markLive,
@@ -100,12 +101,21 @@ function TargetList() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [q, setQ] = useState('');
   const [staffId, setStaffId] = useState('');
+  /** ⭐ কে এনেছেন — `users.id`, `staffId`-র (`employees.id`) থেকে আলাদা */
+  const [addedById, setAddedById] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
   const edit = useMutation();
 
   const designers = useApi(listTargetDesigners, []);
+  /**
+   * ⭐⭐ **কে কতগুলো এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট)*।
+   *
+   * ⚠️ সংখ্যাটা ড্রপডাউনের ভেতরেই লেখা থাকে, তাই মালিক **কিছু না চেপেই**
+   * উত্তরটা পান — ছাঁকাটা তার পরের ধাপ, বাধ্যতামূলক নয়।
+   */
+  const adders = useApi(listTargetAdders, []);
   /** ⭐ চিপের পাশের সংখ্যাটা — ক্লিক করার **আগেই** জানা দরকার কাজ আছে কি না */
   const stats = useApi(targetStats, []);
 
@@ -135,13 +145,14 @@ function TargetList() {
               : { status: filter as TargetStatus }),
           ...(q.trim() ? { q: q.trim() } : {}),
           ...(staffId ? { staffId: Number(staffId) } : {}),
+          ...(addedById ? { addedById: Number(addedById) } : {}),
           ...(from ? { from } : {}),
           ...(to ? { to } : {}),
           page,
         },
         signal,
       ),
-    [filter, q, staffId, from, to, page],
+    [filter, q, staffId, addedById, from, to, page],
   );
 
   /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
@@ -249,6 +260,31 @@ function TargetList() {
           ))}
         </select>
 
+        {/*
+          ⭐⭐ **কে এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট: "Design Pool e ke
+             target list add koreche seta ami dekhote cai")*।
+
+          ⚠️⚠️ পাশের ডিজাইনার-ছাঁকনির সাথে দেখতে এক, অথচ **ভিন্ন টেবিলের
+             id** — ওটা `employees`, এটা `users`। তাই লেখাটাও আলাদা
+             ("Anyone" বনাম "Everyone" নয়, বরং স্পষ্ট "Added by anyone"),
+             নইলে দুটো ড্রপডাউন দেখতে যমজ হয়ে যেত।
+
+          ⭐ প্রতিটা নামের পাশে সংখ্যা — মালিক ছাঁকার **আগেই** দেখেন কে
+             কতটা এনেছেন। এটাই আসল প্রশ্নের উত্তর; ছাঁকনিটা বোনাস।
+        */}
+        <select
+          value={addedById}
+          onChange={(e) => change(() => setAddedById(e.target.value))}
+          className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+        >
+          <option value="">Added by anyone</option>
+          {(adders.data ?? []).map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.fullName} · {a.count.toLocaleString()}
+            </option>
+          ))}
+        </select>
+
         <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
           From
           <input
@@ -274,12 +310,13 @@ function TargetList() {
           এসে খালি তালিকা দেখে ভাবত ডেটা হারিয়ে গেছে, অথচ গতকালের
           তারিখটাই বসে ছিল।
         */}
-        {(staffId || from || to) && (
+        {(staffId || addedById || from || to) && (
           <button
             type="button"
             onClick={() =>
               change(() => {
                 setStaffId('');
+                setAddedById('');
                 setFrom('');
                 setTo('');
               })
@@ -341,6 +378,28 @@ function TargetList() {
                 render: (r) => (
                   <span className="num text-ink-3">{r.jobNumber ?? '—'}</span>
                 ),
+              },
+              {
+                key: 'from',
+                header: 'Added by',
+                /*
+                  ⭐⭐ **কে লিঙ্কটা এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট:
+                     "Design Pool e ke target list add koreche seta ami
+                     dekhote cai")*।
+
+                  ⚠️⚠️ পাশের "Designer" কলামের সাথে গুলিয়ে ফেলার ঝুঁকিটাই
+                     এখানকার আসল নকশার প্রশ্ন — দুটোই মানুষের নাম, অথচ
+                     একেবারে আলাদা জিনিস: একজন কাজটা **এনেছেন**, আরেকজন
+                     **করবেন**। ⭐ তাই কলাম দুটো পাশাপাশি রাখা হয়নি, আর
+                     এখানে ভূমিকাটাও লেখা থাকে।
+
+                  ⚠️ ভূমিকা দেখানো হয় **কেবল যখন সেটা খবর** — গবেষক
+                     এনেছেন মানে পাইপলাইনটা নিজে থেকে চলছে; মালিক বা
+                     ম্যানেজার এনেছেন মানে কেউ হাতে ভরেছেন। ৪৬ হাজার
+                     সারির প্রতিটায় "owner" লিখলে শব্দটা অর্থ হারাত।
+                */
+                className: 'hidden sm:table-cell',
+                render: (r) => <AddedByCell row={r} />,
               },
               {
                 key: 'when',
@@ -507,6 +566,34 @@ function StatusChip({ row }: { row: TargetRow }) {
  * ⚠️ শুধু একটা তারিখ বসালে পুলে পড়ে থাকা সারিতেও কিছু একটা দেখাত, আর
  * পাঠক ধরে নিতেন ওটা "কবে হয়েছে"।
  */
+/**
+ * ⭐ **কে এনেছেন** — নাম, আর তার নিচে কবে।
+ *
+ * ⚠️ তারিখটা `addedAt`, `assignedAt` নয়। একই ব্যাচের সারিগুলোয় এটা
+ * **হুবহু এক** থাকে (সেকেন্ড পর্যন্ত), তাই মালিক এক নজরে দেখতে পান
+ * কোনগুলো একসাথে এসেছে — আর সেটাই "কে কোন তালিকা এনেছে"-র উত্তর।
+ */
+function AddedByCell({ row }: { row: TargetRow }) {
+  const badge =
+    row.addedBy.role === 'researcher'
+      ? 'researcher'
+      : row.addedBy.role === 'manager'
+        ? 'manager'
+        : null;
+
+  return (
+    <span className="block whitespace-nowrap">
+      <span className="text-ink">{row.addedBy.fullName}</span>
+      {badge && (
+        <span className="ml-1.5 text-[11px] text-ink-3">{badge}</span>
+      )}
+      <span className="num block text-[11.5px] text-ink-3">
+        {formatDateTime(row.addedAt)}
+      </span>
+    </span>
+  );
+}
+
 function WhenCell({ row }: { row: TargetRow }) {
   const when =
     row.completedAt ?? row.startedAt ?? row.assignedAt ?? null;

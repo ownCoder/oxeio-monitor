@@ -926,3 +926,78 @@ describe('বানান-যাচাইয়ের অধিকার — HTT
     expect(b.body.canProofread).toBe(false);
   });
 });
+
+
+/**
+ * ⭐⭐ **কে টার্গেটটা এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট ২০২৬:
+ * "Design Pool e ke target list add koreche seta ami dekhote cai")*।
+ *
+ * ⚠️⚠️ এখানকার সবচেয়ে সূক্ষ্ম দাবিটা **দুটো আলাদা id-র জগৎ** নিয়ে:
+ * `assignedToId → employees`, `addedById → users`। সংখ্যাগুলো ছোট আর
+ * পাশাপাশি, তাই একটার জায়গায় অন্যটা বসানো সহজ — আর তখন কোনো এরর হয়
+ * না, কেবল **ভুল মানুষের সারি** আসে।
+ */
+describe('কে এনেছেন — তালিকা, ছাঁকনি ও গণনা', () => {
+  const svc = () => h.app.get(TargetsService);
+
+  it('সারিতে কে এনেছেন সেটা থাকে, ভূমিকাসহ', async () => {
+    await staff('OX-RB', 'researcher', 'rb@test.local', 'researcher');
+    const session = await loginReady(h, 'rb@test.local', 'staff-password-123');
+
+    await post(session, '/api/v1/design-targets/bulk', {
+      text: URL_OF(1),
+    }).expect(201);
+
+    const page = await svc().list({});
+    expect(page.rows[0].addedBy.fullName).toBe('OX-RB');
+    expect(page.rows[0].addedBy.role).toBe('researcher');
+    expect(page.rows[0].addedAt).not.toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ **এই টেস্টটাই দুই id-র জগতের পাহারা।** গবেষকের `users.id` আর
+   * ডিজাইনারের `employees.id` আলাদা সংখ্যা; ছাঁকনিতে ভুলটা বসালে
+   * এখানেই ধরা পড়বে।
+   */
+  it('⭐⭐ কে এনেছেন ধরে ছাঁকা যায়', async () => {
+    await staff('OX-RC', 'researcher', 'rc@test.local', 'researcher');
+    const them = await loginReady(h, 'rc@test.local', 'staff-password-123');
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+
+    await post(them, '/api/v1/design-targets/bulk', {
+      text: [URL_OF(1), URL_OF(2)].join('\n'),
+    }).expect(201);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: URL_OF(3),
+    }).expect(201);
+
+    const adders = await svc().adders();
+    expect(adders).toHaveLength(2);
+
+    const researcher = adders.find((a) => a.role === 'researcher');
+    expect(researcher?.count).toBe(2);
+    expect(adders.find((a) => a.role === 'owner')?.count).toBe(1);
+
+    // ⭐ সবচেয়ে বেশি যিনি এনেছেন তিনি আগে
+    expect(adders[0].count).toBe(2);
+
+    const only = await svc().list({ addedById: researcher!.id });
+    expect(only.total).toBe(2);
+    for (const row of only.rows) {
+      expect(row.addedBy.role).toBe('researcher');
+    }
+  });
+
+  /** ⚠️ কেউ কিছু না আনলে তালিকাটা খালি — ড্রপডাউন খালিই থাকে, ভাঙে না */
+  it('কিছু না থাকলে খালি তালিকা', async () => {
+    expect(await svc().adders()).toEqual([]);
+  });
+
+  /** ⭐ ডিজাইনার এই রুটটাও ছুঁতে পারেন না — `assertCanUse`-এর নিচেই */
+  it('ডিজাইনার adders দেখতে পান না', async () => {
+    await staff('OX-D9B', 'designer', 'd9b@test.local');
+    const session = await loginReady(h, 'd9b@test.local', 'staff-password-123');
+
+    await session.http.get('/api/v1/design-targets/adders').expect(403);
+  });
+});

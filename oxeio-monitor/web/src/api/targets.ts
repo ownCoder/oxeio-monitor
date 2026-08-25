@@ -137,6 +137,19 @@ export interface TargetRow {
    * শেষ বলা মানুষ এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)।
    */
   completedBy: { fullName: string; role: string } | null;
+
+  /**
+   * ⭐⭐ **কে টার্গেটটা এনেছেন** *(২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ `assignedTo`-র সাথে গুলিয়ে ফেলবেন না — ওটা **কর্মী** (যিনি
+   * ডিজাইন করবেন), এটা **ব্যবহারকারী** (যিনি লিঙ্কটা এনেছেন)।
+   *
+   * ⚠️ `| null` **নেই** — কলামটা `NOT NULL`, প্রতিটা সারির একজন উৎস
+   * আছে। মিথ্যা ঐচ্ছিকতা রাখলে পর্দায় অকারণ `?? '—'` বসাতে হতো।
+   */
+  addedBy: { fullName: string; role: string };
+  /** ⭐ কবে এসেছে — একই ব্যাচের সারিগুলো এক মুহূর্তে বসে */
+  addedAt: string;
   /** ⭐ বানান দেখা হয়েছে — `null` = এখনো দেখা হয়নি (ADR-038) */
   checkedAt: string | null;
   /** ⭐ ভুল পাওয়া গেছে — `null` আর `checkedAt` বসানো = ঠিক ছিল */
@@ -170,8 +183,13 @@ export function listTargets(
     status?: TargetStatus;
     q?: string;
     page?: number;
-    /** ⭐ কোন ডিজাইনারের *(২৩ আগস্ট)* */
+    /** ⭐ কোন ডিজাইনারের — `employees.id` *(২৩ আগস্ট)* */
     staffId?: number;
+    /**
+     * ⭐ কে এনেছেন — `users.id` *(২৫ আগস্ট)*।
+     * ⚠️ উপরেরটার সাথে **আলাদা id-র জগৎ** — `employees` বনাম `users`।
+     */
+    addedById?: number;
     /** ⭐ `YYYY-MM-DD` — শেষ কাজের তারিখ এই সীমার ভেতরে */
     from?: string;
     to?: string;
@@ -184,6 +202,7 @@ export function listTargets(
   if (params.status) qs.set('status', params.status);
   if (params.q) qs.set('q', params.q);
   if (params.staffId) qs.set('staffId', String(params.staffId));
+  if (params.addedById) qs.set('addedById', String(params.addedById));
   if (params.from) qs.set('from', params.from);
   if (params.to) qs.set('to', params.to);
   if (params.stage) qs.set('stage', params.stage);
@@ -254,4 +273,23 @@ export interface TargetDesigner {
 
 export function listTargetDesigners(signal?: AbortSignal): Promise<TargetDesigner[]> {
   return api<TargetDesigner[]>('/design-targets/designers', { signal });
+}
+
+/**
+ * ⭐⭐ **কে কতগুলো টার্গেট এনেছেন** *(২৫ আগস্ট ২০২৬)*।
+ *
+ * ⚠️ `TargetDesigner`-এর সাথে গুলিয়ে ফেলবেন না — ওখানে `id` মানে
+ * `employees.id`, এখানে `users.id`। নামও আলাদা রাখা হয়েছে সেজন্যই।
+ *
+ * ⭐ `count` সঙ্গে আসে, তাই ড্রপডাউনেই উত্তরটা দেখা যায় — ছাঁকতে হয় না।
+ */
+export interface TargetAdder {
+  id: number;
+  fullName: string;
+  role: 'owner' | 'manager' | 'researcher' | 'employee';
+  count: number;
+}
+
+export function listTargetAdders(signal?: AbortSignal): Promise<TargetAdder[]> {
+  return api<TargetAdder[]>('/design-targets/adders', { signal });
 }

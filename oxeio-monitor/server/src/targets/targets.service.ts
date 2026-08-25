@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DesignTargetStatus } from '@prisma/client';
+import { DesignTargetStatus, UserRole } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
@@ -87,6 +87,22 @@ export interface TargetRow {
    * বানান-যাচাইয়ের ঘর যোগ করতে গিয়ে ধরা পড়ল; একসাথে সবগুলো লেখা হলো।
    */
   completedBy: { fullName: string; role: string } | null;
+
+  /**
+   * ⭐⭐ **কে টার্গেটটা এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট ২০২৬:
+   * "Design Pool e ke target list add koreche seta ami dekhote cai")*।
+   *
+   * ⚠️ `assignedTo`-র সাথে গুলিয়ে ফেলবেন না — ওটা **কর্মী** (যিনি ডিজাইন
+   * করবেন), এটা **ব্যবহারকারী** (যিনি লিঙ্কটা এনেছেন)। দুটো আলাদা id-র
+   * জগৎ: `assigned_to_id → employees`, `added_by_id → users`।
+   *
+   * ⚠️ `null` হয় না — কলামটা `NOT NULL`, প্রতিটা সারির একজন উৎস আছে।
+   * তবু টাইপে `| null` রাখা হয়েছে **নয়**, কারণ মিথ্যা ঐচ্ছিকতা পর্দায়
+   * অকারণ `?? '—'` ডেকে আনত।
+   */
+  addedBy: { fullName: string; role: string };
+  /** ⭐ কবে এসেছে — একই ব্যাচের সারিগুলো এক মুহূর্তে বসে */
+  addedAt: string;
   /** ⭐ বানান দেখা হয়েছে — `null` = এখনো দেখা হয়নি (ADR-038) */
   checkedAt: string | null;
   /** ⭐ ভুল পাওয়া গেছে — `null` **আর** `checkedAt` বসানো = ঠিক ছিল */
@@ -589,6 +605,14 @@ export class TargetsService {
     page?: number;
     /** ⭐ কোন ডিজাইনারের — `employees.id` */
     staffId?: number;
+    /**
+     * ⭐ কে এনেছেন — `users.id` *(২৫ আগস্ট)*।
+     *
+     * ⚠️⚠️ `staffId`-র সাথে **আলাদা id-র জগৎ**: ওটা `employees`, এটা
+     * `users`। একটার সংখ্যা অন্যটায় বসালে চুপচাপ ভুল মানুষের সারি
+     * আসত — কোনো এরর নয়, কেবল ভুল উত্তর।
+     */
+    addedById?: number;
     /** ⭐ 'YYYY-MM-DD' — শেষ কাজের তারিখ এই দিন থেকে */
     from?: string;
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
@@ -668,6 +692,7 @@ export class TargetsService {
       ...(query.status ? { status: query.status } : {}),
       ...(asin ? { asin: { contains: asin } } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
+      ...(query.addedById ? { addedById: query.addedById } : {}),
       ...(activity ? { lastActivityAt: activity } : {}),
       ...stage,
     };
@@ -696,6 +721,15 @@ export class TargetsService {
           // ⭐ কে "শেষ" বলেছেন — বরাদ্দ পাওয়া মানুষ আর শেষ করা মানুষ
           //    এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)
           completedBy: { select: { fullName: true, role: true } },
+          /**
+           * ⭐ কে এনেছেন *(২৫ আগস্ট)* — ভূমিকাসহ, কারণ পর্দায় "গবেষক
+           * এনেছেন" আর "মালিক এনেছেন" দুটো আলাদা খবর।
+           *
+           * ⚠️ relation-টা স্কিমায় **আগে থেকেই ছিল** (`addedTargets`),
+           * শুধু কখনো তোলা হয়নি — তাই কোনো মাইগ্রেশন লাগেনি।
+           */
+          addedBy: { select: { fullName: true, role: true } },
+          addedAt: true,
         },
         /**
          * ⭐⭐ **শেষ যা ঘটেছে, সেটাই আগে** *(২৩ আগস্ট ২০২৬)*।
@@ -727,6 +761,8 @@ export class TargetsService {
         completedAt: r.completedAt?.toISOString() ?? null,
         completedVia: r.completedVia,
         completedBy: r.completedBy,
+        addedBy: r.addedBy,
+        addedAt: r.addedAt.toISOString(),
         checkedAt: r.checkedAt?.toISOString() ?? null,
         errorFoundAt: r.errorFoundAt?.toISOString() ?? null,
         fixedAt: r.fixedAt?.toISOString() ?? null,
@@ -821,6 +857,39 @@ export class TargetsService {
       select: { id: true, empCode: true, fullName: true },
       orderBy: { empCode: 'asc' },
     });
+  }
+
+  /**
+   * ⭐⭐ **কে কতগুলো টার্গেট এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট:
+   * "Design Pool e ke target list add koreche seta ami dekhote cai")*।
+   *
+   * ⚠️ সংখ্যাটা ড্রপডাউনেই দেখানো হয়, আর সেটাই আসল উত্তর: মালিক একটাও
+   * ক্লিক না করে দেখেন কে কতটা এনেছেন। ছাঁকনিটা তার পরের ধাপ।
+   *
+   * ⚠️⚠️ `designers()`-এর মতো `employees` নয়, **`users`** — টার্গেট আনেন
+   * ব্যবহারকারী (মালিক · ম্যানেজার · গবেষক), আর মালিকের কোনো
+   * `employees` সারিই নেই। ওই টেবিল ধরে খুঁজলে ৩৯ হাজার সারির উৎসটাই
+   * তালিকা থেকে উধাও হয়ে যেত।
+   */
+  async adders(): Promise<
+    { id: number; fullName: string; role: UserRole; count: number }[]
+  > {
+    const grouped = await this.prisma.designTarget.groupBy({
+      by: ['addedById'],
+      _count: { _all: true },
+    });
+    if (grouped.length === 0) return [];
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: grouped.map((g) => g.addedById) } },
+      select: { id: true, fullName: true, role: true },
+    });
+    const countOf = new Map(grouped.map((g) => [g.addedById, g._count._all]));
+
+    return users
+      .map((u) => ({ ...u, count: countOf.get(u.id) ?? 0 }))
+      // ⭐ যিনি সবচেয়ে বেশি এনেছেন তিনি আগে — তালিকাটা ছোট (আজ ৩ জন)
+      .sort((a, b) => b.count - a.count);
   }
 
   async stats(): Promise<
