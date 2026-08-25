@@ -1015,9 +1015,18 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
   const svc = () => h.app.get(TargetsService);
   const ASIN_OF = (n: number) => `B${String(n).padStart(9, '0')}`;
 
-  /** একজন ডিজাইনার, তাঁর হাতে একটা টার্গেট */
-  async function assigned(n: number) {
-    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+  /**
+   * একজন ডিজাইনার, তাঁর হাতে একটা টার্গেট।
+   *
+   * ⚠️⚠️ **মালিকের সেশনটা ফেরত দেওয়া হয়, আর সেটাই এখানকার আসল ফাঁদ।**
+   * harness-এ owner-এর `mustChangePw: true`, তাই `loginReady` প্রথম
+   * লগইনেই পাসওয়ার্ড বদলে `…-changed` করে দেয়। ⭐ এক টেস্টে দ্বিতীয়বার
+   * `loginReady(OWNER_PASSWORD)` ডাকলে তাই **৪০১** — আর বার্তাটা
+   * ("expected 200, got 401") টেস্টের আসল দাবির সাথে কোনো সম্পর্কই
+   * রাখে না, তাই কারণ খুঁজতে সময় যায়।
+   */
+  async function assigned(n: number, reuse?: Session) {
+    const owner = reuse ?? (await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD));
     await post(owner, '/api/v1/design-targets/bulk', {
       text: URL_OF(n),
     }).expect(201);
@@ -1033,7 +1042,7 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
     });
 
     const session = await loginReady(h, `u${n}@test.local`, 'staff-password-123');
-    return { id: row.id, designer, session };
+    return { id: row.id, designer, session, owner };
   }
 
   it('⭐ শেষ করার পরেও সারিটা নিজের তালিকায় থাকে', async () => {
@@ -1086,10 +1095,9 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
    * মিথ্যে হয়ে যেত।
    */
   it('⭐⭐ বানান দেখা হয়ে গেলে আর ফেরানো যায় না', async () => {
-    const { id, session } = await assigned(1);
+    const { id, session, owner } = await assigned(1);
     await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
 
-    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     await post(owner, `/api/v1/design-targets/${id}/checked`, { ok: true }).expect(201);
 
     await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(409);
@@ -1112,14 +1120,13 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
 
   /** ⭐ কিন্তু মালিক পারেন — পুরোনো ভুল শোধরানোই ওই রুটটার কাজ */
   it('⭐ মালিক পুরোনো Complete-ও ফেরাতে পারেন', async () => {
-    const { id, designer, session } = await assigned(1);
+    const { id, designer, session, owner } = await assigned(1);
     await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
     await h.prisma.designTarget.update({
       where: { id },
       data: { completedAt: new Date(Date.now() - 3 * 86_400_000) },
     });
 
-    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     await post(owner, `/api/v1/design-targets/${id}/undone`, {}).expect(201);
 
     const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
@@ -1130,8 +1137,10 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
 
   /** ⚠️⚠️ অন্যের সারি ছোঁয়া যায় না — id অনুমান করেও নয় */
   it('অন্যের টার্গেট ফেরানো যায় না', async () => {
-    const { id } = await assigned(1);
-    const mine = await assigned(2);
+    const first = await assigned(1);
+    // ⚠️ মালিকের সেশনটা পুনর্ব্যবহার — উপরের টীকা দেখুন
+    const mine = await assigned(2, first.owner);
+    const id = first.id;
     await post(mine.session, `/api/v1/me/targets/${mine.id}/done`, {}).expect(201);
 
     await post(mine.session, `/api/v1/me/targets/${id}/undone`, {}).expect(403);
