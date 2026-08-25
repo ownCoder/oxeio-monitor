@@ -404,7 +404,12 @@ export interface AuditLogRow {
     id: number;
     email: string;
     fullName: string;
-    role: string;
+    /**
+     * ⚠️ টাইপটা `Role`, `string` নয় — নইলে ভূমিকার মানচিত্রগুলো
+     * (`Record<Role, …>`) এই সারিটার উপর পাহারা দিতে পারত না, আর
+     * enum বাড়লে পর্দায় নীরবে কাঁচা মান ফুটত।
+     */
+    role: Role;
   } | null;
 }
 

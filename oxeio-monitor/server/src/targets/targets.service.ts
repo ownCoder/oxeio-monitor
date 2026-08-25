@@ -548,7 +548,28 @@ export class TargetsService {
    */
   private async clearCompletion(
     where: Prisma.DesignTargetWhereInput,
+    by: { userId: number; ip: string | null },
   ): Promise<number> {
+    /**
+     * ⚠️⚠️ **মোছার আগে পড়ে নেওয়া হয়, আর সেটাই এখানকার আসল কথা।**
+     * `completed_at` · `completed_via` · `completed_by_id` — তিনটেই
+     * `null` হয়ে যাচ্ছে, অর্থাৎ কাজটা কখনো শেষ হয়েছিল সেই প্রমাণটাই
+     * সারি থেকে উধাও। ⭐ পরে পড়লে আর কিছুই পাওয়া যেত না।
+     */
+    const before = await this.prisma.designTarget.findFirst({
+      where,
+      select: {
+        id: true,
+        asin: true,
+        jobNumber: true,
+        assignedToId: true,
+        completedAt: true,
+        completedVia: true,
+        completedById: true,
+      },
+    });
+    if (before === null) return 0;
+
     const { count } = await this.prisma.designTarget.updateMany({
       where,
       data: {
@@ -558,6 +579,34 @@ export class TargetsService {
         completedById: null,
       },
     });
+    if (count === 0) return 0;
+
+    /**
+     * ⭐⭐ **এটাই একমাত্র মুছে-ফেলা কাজ যার নিজের চিহ্ন থাকে না** — তাই
+     * লগটাই একমাত্র জায়গা *(মালিকের প্রশ্নে যোগ হয়েছে, ২৫ আগস্ট:
+     * "ei access ta ki designer der pawa uchit?")*।
+     *
+     * ⚠️ প্রশ্নটার আসল সমস্যা ছিল অধিকার নয়, **যাচাই করার উপায় না
+     * থাকা**। লগ থাকলে প্রশ্নটা "বিশ্বাস করব কি না" থেকে "দরকার হলে
+     * দেখে নেব"-তে নেমে আসে।
+     */
+    await this.audit.record({
+      userId: by.userId,
+      action: 'design_undone',
+      targetType: 'design_target',
+      targetId: before.id,
+      ipAddress: by.ip ?? undefined,
+      meta: {
+        asin: before.asin,
+        jobNumber: before.jobNumber,
+        assignedToId: before.assignedToId,
+        // ⚠️ যা মুছে গেল — সারিতে এগুলো আর নেই
+        completedAt: before.completedAt?.toISOString() ?? null,
+        completedVia: before.completedVia,
+        completedById: before.completedById,
+      },
+    });
+
     return count;
   }
 
@@ -572,18 +621,22 @@ export class TargetsService {
     employeeId: number,
     id: number,
     now: Date,
+    by: { userId: number; ip: string | null },
   ): Promise<{ ok: boolean }> {
-    const count = await this.clearCompletion({
-      id,
-      assignedToId: employeeId,
-      status: DesignTargetStatus.done,
-      completedAt: { gte: dhakaStart(workDateStr(now)) },
-      // ⚠️ শেকলে এগিয়ে যাওয়া সারি ফেরানো যায় না — কেউ বানান দেখে
-      //    ফেলেছেন বা Amazon-এ পাঠিয়ে দিয়েছেন, সেটা আর "ভুলে চাপা" নয়
-      checkedAt: null,
-      uploadedAt: null,
-      liveAt: null,
-    });
+    const count = await this.clearCompletion(
+      {
+        id,
+        assignedToId: employeeId,
+        status: DesignTargetStatus.done,
+        completedAt: { gte: dhakaStart(workDateStr(now)) },
+        // ⚠️ শেকলে এগিয়ে যাওয়া সারি ফেরানো যায় না — কেউ বানান দেখে
+        //    ফেলেছেন বা Amazon-এ পাঠিয়ে দিয়েছেন, সেটা আর "ভুলে চাপা" নয়
+        checkedAt: null,
+        uploadedAt: null,
+        liveAt: null,
+      },
+      by,
+    );
     if (count > 0) return { ok: true };
 
     const row = await this.prisma.designTarget.findUnique({
@@ -622,14 +675,20 @@ export class TargetsService {
    * শেকলে এগিয়ে যাওয়া সারি এখানেও ফেরানো যায় না — ওটা ফেরালে বানান-কিউ
    * আর আপলোডের সংখ্যাগুলো একসাথে মিথ্যে হয়ে যেত।
    */
-  async undoComplete(id: number): Promise<{ ok: boolean }> {
-    const count = await this.clearCompletion({
-      id,
-      status: DesignTargetStatus.done,
-      checkedAt: null,
-      uploadedAt: null,
-      liveAt: null,
-    });
+  async undoComplete(
+    id: number,
+    by: { userId: number; ip: string | null },
+  ): Promise<{ ok: boolean }> {
+    const count = await this.clearCompletion(
+      {
+        id,
+        status: DesignTargetStatus.done,
+        checkedAt: null,
+        uploadedAt: null,
+        liveAt: null,
+      },
+      by,
+    );
     if (count > 0) return { ok: true };
 
     const row = await this.prisma.designTarget.findUnique({

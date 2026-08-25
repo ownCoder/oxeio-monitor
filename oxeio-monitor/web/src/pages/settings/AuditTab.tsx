@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { listAuditLog, type AuditLogRow } from '../../api/admin';
+import { listAuditLog, type AuditLogRow, type Role } from '../../api/admin';
 import { useApi } from '../../api/useApi';
 import { Card } from '../../components/Card';
 import { DateRange } from '../../components/DatePicker';
@@ -35,6 +35,14 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: 'view_screenshot', label: 'Screenshot viewed' },
   { value: 'payroll_view', label: 'Salary viewed' },
   { value: 'change_setting', label: 'Setting changed' },
+  /**
+   * ⭐⭐ **শেষ হওয়া ডিজাইন "শেষ নয়" করা** *(২৫ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ তালিকায় উপরের দিকে রাখা হয়েছে ইচ্ছাকৃতভাবে — এটাই একমাত্র কাজ
+   * যা নিজের চিহ্ন **মুছে দেয়** (`completed_at` ও `completed_by_id`
+   * দুটোই `null` হয়ে যায়), তাই লগ ছাড়া অন্য কোথাও দেখার উপায় নেই।
+   */
+  { value: 'design_undone', label: 'Design un-completed' },
   { value: 'revoke_device', label: 'Device revoked' },
   { value: 'create_enrollment_code', label: 'Enrolment code' },
   { value: 'export_report', label: 'Report exported' },
@@ -49,9 +57,19 @@ const ACTION_LABEL: Record<string, string> = Object.fromEntries(
   ACTIONS.filter((a) => a.value !== '').map((a) => [a.value, a.label]),
 );
 
-const ROLE_LABEL: Record<string, string> = {
+/**
+ * ⚠️⚠️ `Record<Role, ...>` — `Record<string, ...>` **নয়**।
+ *
+ * ২৫ আগস্ট `UserRole`-এ `researcher` যোগ করার সময় `Layout.tsx`-এর
+ * মানচিত্রটা ঠিক করা হয়েছিল, কিন্তু **এটা চোখ এড়িয়ে গিয়েছিল** —
+ * কারণ `string` লেখা থাকায় কম্পাইলার কিছুই বলেনি। ⭐ ফল: audit log-এ
+ * গবেষকের সারিতে কাঁচা `researcher` লেখা ফুটত।
+ * এখন enum বাড়লে এখানেই এরর হবে।
+ */
+const ROLE_LABEL: Record<Role, string> = {
   owner: 'Owner',
   manager: 'Manager',
+  researcher: 'Researcher',
   employee: 'Staff',
 };
 

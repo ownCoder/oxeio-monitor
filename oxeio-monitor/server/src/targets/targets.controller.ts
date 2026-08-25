@@ -313,9 +313,10 @@ export class TargetsController {
   async undone(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.undoComplete(id);
+    return this.targets.undoComplete(id, { userId: actor.userId, ip });
   }
 
   @Roles(UserRole.owner, UserRole.manager)
@@ -383,8 +384,12 @@ export class MyTargetsController {
   undone(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
+    @Ip() ip: string,
   ) {
-    return this.targets.undoMine(employeeIdOf(actor), id, new Date());
+    return this.targets.undoMine(employeeIdOf(actor), id, new Date(), {
+      userId: actor.userId,
+      ip,
+    });
   }
 }
 

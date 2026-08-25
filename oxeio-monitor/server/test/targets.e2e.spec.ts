@@ -1146,6 +1146,58 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
     await post(mine.session, `/api/v1/me/targets/${id}/undone`, {}).expect(403);
   });
 
+  /**
+   * ⭐⭐⭐ **Undo audit log-এ বসে** *(মালিকের প্রশ্নে যোগ হয়েছে, ২৫ আগস্ট:
+   * "ei access ta ki designer der pawa uchit?")*।
+   *
+   * ⚠️⚠️ এটাই একমাত্র কাজ যা **নিজের চিহ্ন মুছে দেয়** — `completedAt`,
+   * `completedVia`, `completedById` তিনটেই `null` হয়ে যায়, অর্থাৎ কাজটা
+   * কখনো শেষ হয়েছিল সেই প্রমাণটাই সারি থেকে উধাও। ⭐ লগ না থাকলে কেউ
+   * রোজ Complete → Undo → Complete করলেও কেউ দেখতে পেত না।
+   *
+   * ⚠️ meta-তে **মুছে ফেলা মানগুলোই** থাকতে হয়, নইলে লগটা শুধু বলত
+   * "কিছু একটা ফেরানো হয়েছে" — কী, সেটা নয়।
+   */
+  it('⭐⭐ Undo audit log-এ বসে, মুছে ফেলা মানসহ', async () => {
+    const { id, session, designer } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+
+    const doneRow = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id },
+    });
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+
+    const entry = await h.prisma.auditLog.findFirstOrThrow({
+      where: { action: 'design_undone' },
+      orderBy: { id: 'desc' },
+    });
+
+    expect(entry.targetType).toBe('design_target');
+    expect(entry.targetId).toBe(String(id));
+
+    const meta = entry.meta as Record<string, unknown>;
+    expect(meta.asin).toBe(ASIN_OF(1));
+    expect(meta.assignedToId).toBe(designer.id);
+    // ⭐ যা মুছে গেছে — সারিতে এগুলো আর নেই, লগই একমাত্র জায়গা
+    expect(meta.completedVia).toBe('manual');
+    expect(meta.completedById).toBe(doneRow.completedById);
+    expect(meta.completedAt).toBe(doneRow.completedAt?.toISOString());
+  });
+
+  /** ⚠️ ব্যর্থ Undo লগে বসে না — নইলে লগটা চেষ্টায় ভরে যেত */
+  it('আটকে যাওয়া Undo লগে বসে না', async () => {
+    const { id, session, owner } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+    await post(owner, `/api/v1/design-targets/${id}/checked`, { ok: true }).expect(201);
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(409);
+
+    expect(
+      await h.prisma.auditLog.count({ where: { action: 'design_undone' } }),
+    ).toBe(0);
+  });
+
   /** ⭐ দুবার চাপলে ভাঙে না — দ্বিতীয়বারেও "ঠিক আছে" */
   it('দুবার Undo চাপলে ভাঙে না', async () => {
     const { id, session } = await assigned(1);
