@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
@@ -69,16 +69,42 @@ const stageOf = (key: FilterKey): Stage | undefined =>
     ? key
     : undefined;
 
-const FILTERS: { key: FilterKey; label: string; stage?: Stage }[] = [
+/**
+ * ⭐⭐ **চিপে কেবল কাজের কিউ** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট:
+ * "khubi gatharing lagoche dekhote")*।
+ *
+ * ⚠️⚠️ আগে এখানে নয়টা চিপ ছিল — চারটে কিউ আর পাঁচটা **অবস্থা**
+ * (All · Waiting · In hand · Done · Skipped)। কিন্তু অবস্থাগুলো
+ * পরস্পরের **বিকল্প**: একসাথে কখনো দুটো বাছা যায় না। ⭐ যা থেকে
+ * একটাই বাছা যায়, সেটা চিপের সারি নয়, ড্রপডাউন
+ * (`STATUS_OPTIONS`) — আর তাতে পাঁচটা কন্ট্রোল একটায় নামে।
+ *
+ * ⚠️ কিউ চারটে চিপই থাকল, কারণ **ওগুলোয় সংখ্যা আছে** — আর সংখ্যাটাই
+ * ক্লিক করার আগে বলে দেয় আজ কাজ আছে কি না। ড্রপডাউনে ঢুকিয়ে দিলে
+ * সংখ্যাটা দেখতে হলে খুলতে হতো, আর তখন কেউ খুলতই না।
+ */
+const FILTERS: { key: FilterKey; label: string; stage: Stage }[] = [
   { key: 'to_check', label: 'To check', stage: 'to_check' },
   { key: 'to_fix', label: 'To fix', stage: 'to_fix' },
   { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
   { key: 'to_live', label: 'To make live', stage: 'to_live' },
-  { key: 'all', label: 'All' },
-  { key: 'pool', label: 'Waiting' },
-  { key: 'assigned', label: 'In hand' },
-  { key: 'done', label: 'Done' },
-  { key: 'skipped', label: 'Skipped' },
+];
+
+/**
+ * ⭐ অবস্থার ড্রপডাউন — চিপ থেকে নামিয়ে আনা পাঁচটা।
+ *
+ * ⚠️ `done_today` আসল কোনো অবস্থা **নয়** — এটা একটা শর্টকাট যা
+ * `filter='done'` + আজকের দুটো তারিখ একসাথে বসায়। আগে এটা একটা আলাদা
+ * বোতাম ছিল ("Completed today"), আর সেটা ভুল করে Complete চাপা কাজ
+ * খুঁজে বের করার সবচেয়ে ছোট পথ — তাই তুলে দেওয়া হয়নি, সরানো হয়েছে।
+ */
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'All targets' },
+  { value: 'pool', label: 'Waiting' },
+  { value: 'assigned', label: 'In hand' },
+  { value: 'done', label: 'Done' },
+  { value: 'done_today', label: 'Done · today' },
+  { value: 'skipped', label: 'Skipped' },
 ];
 
 /**
@@ -106,6 +132,8 @@ function TargetList() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
+  /** ⭐ বাকি ছাঁকনিগুলো খোলা আছে কি না *(২৫ আগস্ট)* — ডিফল্টে বন্ধ */
+  const [showFilters, setShowFilters] = useState(false);
   const edit = useMutation();
 
   const designers = useApi(listTargetDesigners, []);
@@ -155,6 +183,34 @@ function TargetList() {
     [filter, q, staffId, addedById, from, to, page],
   );
 
+  /**
+   * ⭐⭐ **গোটানো ছাঁকনির গায়ের সংখ্যাটা** *(২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ লুকোনো ছাঁকনি নিজেই একটা ফাঁদ: কেউ কাল এসে খালি তালিকা দেখে
+   * ভাবত ডেটা হারিয়ে গেছে, অথচ গতকালের তারিখটাই বসে ছিল। এই সংখ্যাটাই
+   * সেই ফাঁদটা বন্ধ করে — বোতামে সংখ্যা থাকলে সেটা লালও হয়ে থাকে।
+   */
+  const activeFilters =
+    (staffId ? 1 : 0) + (addedById ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0);
+
+  /**
+   * ⭐ ড্রপডাউনে কী দেখাবে — কিউ-চিপ বাছা থাকলে `all`।
+   *
+   * ⚠️ চিপ আর ড্রপডাউন **একই চলক** (`filter`) ধরে চলে, তাই একটা বাছলে
+   * অন্যটা নিজে থেকেই ছেড়ে দেয়। দুটো আলাদা চলক রাখলে একদিন দুটোই
+   * বসে যেত, আর তালিকা খালি দেখাত।
+   *
+   * ⚠️⚠️ `done_today` আসল অবস্থা নয় — তাই মিলিয়ে দেখা হয়, মনে রাখা হয়
+   * না। মনে রাখলে মালিক হাতে তারিখ বদলানোর পরেও ড্রপডাউন "আজ" বলত।
+   */
+  const today = dhakaToday();
+  const statusValue =
+    stageOf(filter) !== undefined
+      ? 'all'
+      : filter === 'done' && from === today && to === today
+        ? 'done_today'
+        : filter;
+
   /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
    *  থেকে "কিছু নেই" দেখা যেত, অথচ ফল আছে */
   const change = (next: () => void) => {
@@ -165,7 +221,16 @@ function TargetList() {
   return (
     <Card
       title="Every Target"
-      hint={data.data ? `${data.data.total} in total` : 'Loading…'}
+      /*
+        ⚠️ "Newest activity first" আগে ছাঁকনির সারিতে একটা আলাদা লেখা
+           ছিল — একটা গোটা কন্ট্রোলের জায়গা নিত, অথচ কিছুই করত না।
+        ⭐ কথাটা সত্যি আর দরকারি, তাই মোছা হয়নি — সংখ্যাটার পাশে এসেছে।
+      */
+      hint={
+        data.data
+          ? `${data.data.total} in total · newest activity first`
+          : 'Loading…'
+      }
       padded={false}
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
@@ -197,7 +262,7 @@ function TargetList() {
                  আছে কি না। ⚠️ ০ হলেও দেখানো হয়, কারণ "০" মানে
                  "শেষ করেছি", আর সেটাই একমাত্র পুরস্কার এখানে।
             */}
-            {f.stage && stats.data ? (
+            {stats.data ? (
               <span className="num ml-1.5 text-ink-3">
                 {f.stage === 'to_check'
                   ? stats.data.toCheck
@@ -212,25 +277,70 @@ function TargetList() {
         ))}
 
         {/*
-          ⭐⭐ **"আজ শেষ হয়েছে"** *(২৩ আগস্ট, মালিকের চাওয়া)* — ভুল করে
-          Complete চাপা কাজ খুঁজে বের করার সবচেয়ে ছোট পথ।
+          ⭐⭐ **পাঁচটা অবস্থা-চিপের বদলে একটা ড্রপডাউন** *(২৫ আগস্ট)*।
 
-          ⚠️ হাতে তিনটে ঘর সাজানোর বদলে এক ক্লিক, কারণ এটাই সবচেয়ে
-          বেশি দরকার হবে — আর দরকারের মুহূর্তে মানুষ ফর্ম ভরতে চায় না।
+          ⚠️ `done_today` বেছে নিলে তারিখ দুটোও বসে যায়, তাই মানটা
+             ফিরে আসে `done` হিসেবে — নিচের `statusValue` সেটা মিলিয়ে
+             দেখে আবার `done_today` দেখায়। ⭐ ছাঁকনি যা করেছে, ড্রপডাউন
+             ঠিক তা-ই বলে; দুটো আলাদা হলে কেউ বিশ্বাস করত না।
+        */}
+        <select
+          value={statusValue}
+          onChange={(e) =>
+            change(() => {
+              const v = e.target.value;
+              if (v === 'done_today') {
+                setFilter('done');
+                setFrom(dhakaToday());
+                setTo(dhakaToday());
+                return;
+              }
+              setFilter(v as FilterKey);
+              // ⚠️ "আজ" থেকে বেরোলে তারিখ দুটোও ছাড়তে হয়, নইলে কেউ
+              //    "Done" বেছে খালি তালিকা দেখে ভাবত ডেটা হারিয়ে গেছে
+              if (statusValue === 'done_today') {
+                setFrom('');
+                setTo('');
+              }
+            })
+          }
+          className={`rounded-md border px-2 py-1 text-[12.5px] transition ${
+            statusValue === 'all'
+              ? 'border-line bg-paper text-ink'
+              : 'border-brand bg-brand-bg font-semibold text-brand-ink'
+          }`}
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+
+        {/*
+          ⭐⭐ **বাকি ছাঁকনিগুলো গোটানো** *(২৫ আগস্ট)*।
+
+          ⚠️⚠️ চারটে ঘরই (ডিজাইনার · কে এনেছেন · দুটো তারিখ) বেশিরভাগ
+             সময় **খালি পড়ে থাকে**, অথচ রোজ পর্দার একটা গোটা সারি নেয়।
+
+          ⚠️ কিন্তু লুকোনো ছাঁকনি নিজেই একটা ফাঁদ — কেউ কাল এসে খালি
+             তালিকা দেখে ভাবত ডেটা হারিয়ে গেছে। ⭐ তাই বোতামের গায়ে
+             **সংখ্যা** বসে, আর সংখ্যা থাকলে বোতামটা লাল হয়ে থাকে।
+             লুকোনো, কিন্তু নীরব নয়।
         */}
         <button
           type="button"
-          onClick={() =>
-            change(() => {
-              setFilter('done');
-              setStaffId('');
-              setFrom(dhakaToday());
-              setTo(dhakaToday());
-            })
-          }
-          className="rounded-full border border-line px-3 py-1 text-[12.5px] text-ink-2 transition hover:border-brand"
+          onClick={() => setShowFilters((v) => !v)}
+          aria-expanded={showFilters}
+          className={`rounded-md border px-2.5 py-1 text-[12.5px] transition ${
+            activeFilters > 0
+              ? 'border-brand bg-brand-bg font-semibold text-brand-ink'
+              : 'border-line text-ink-2 hover:border-brand'
+          }`}
         >
-          Completed today
+          Filters
+          {activeFilters > 0 && <span className="num ml-1.5">{activeFilters}</span>}
+          <span className="ml-1 text-ink-3">{showFilters ? '▴' : '▾'}</span>
         </button>
 
         <input
@@ -241,96 +351,79 @@ function TargetList() {
         />
       </div>
 
-      {/*
-        ⭐ দ্বিতীয় সারি — কর্মী ও তারিখ। ⚠️ প্রথম সারিতে ঢোকানো হয়নি:
-        অবস্থার চিপগুলো রোজ ব্যবহার হয়, আর এই দুটো মাঝেমধ্যে; এক সারিতে
-        রাখলে চিপগুলো ছোট পর্দায় নিচে নেমে যেত।
-      */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
-        <select
-          value={staffId}
-          onChange={(e) => change(() => setStaffId(e.target.value))}
-          className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
-        >
-          <option value="">Everyone</option>
-          {(designers.data ?? []).map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.empCode} · {d.fullName}
-            </option>
-          ))}
-        </select>
-
-        {/*
-          ⭐⭐ **কে এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট: "Design Pool e ke
-             target list add koreche seta ami dekhote cai")*।
-
-          ⚠️⚠️ পাশের ডিজাইনার-ছাঁকনির সাথে দেখতে এক, অথচ **ভিন্ন টেবিলের
-             id** — ওটা `employees`, এটা `users`। তাই লেখাটাও আলাদা
-             ("Anyone" বনাম "Everyone" নয়, বরং স্পষ্ট "Added by anyone"),
-             নইলে দুটো ড্রপডাউন দেখতে যমজ হয়ে যেত।
-
-          ⭐ প্রতিটা নামের পাশে সংখ্যা — মালিক ছাঁকার **আগেই** দেখেন কে
-             কতটা এনেছেন। এটাই আসল প্রশ্নের উত্তর; ছাঁকনিটা বোনাস।
-        */}
-        <select
-          value={addedById}
-          onChange={(e) => change(() => setAddedById(e.target.value))}
-          className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
-        >
-          <option value="">Added by anyone</option>
-          {(adders.data ?? []).map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.fullName} · {a.count.toLocaleString()}
-            </option>
-          ))}
-        </select>
-
-        <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
-          From
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => change(() => setFrom(e.target.value))}
-            className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
-          />
-        </label>
-
-        <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
-          to
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => change(() => setTo(e.target.value))}
-            className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
-          />
-        </label>
-
-        {/*
-          ⚠️ ছাঁকনি বসানো থাকলে সেটা **দেখা যেতে হবে** — নইলে কেউ কাল
-          এসে খালি তালিকা দেখে ভাবত ডেটা হারিয়ে গেছে, অথচ গতকালের
-          তারিখটাই বসে ছিল।
-        */}
-        {(staffId || addedById || from || to) && (
-          <button
-            type="button"
-            onClick={() =>
-              change(() => {
-                setStaffId('');
-                setAddedById('');
-                setFrom('');
-                setTo('');
-              })
-            }
-            className="text-[12px] text-data hover:underline"
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+          <select
+            value={staffId}
+            onChange={(e) => change(() => setStaffId(e.target.value))}
+            className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
           >
-            Clear filters
-          </button>
-        )}
+            <option value="">Any designer</option>
+            {(designers.data ?? []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.empCode} · {d.fullName}
+              </option>
+            ))}
+          </select>
 
-        <span className="ml-auto text-[11.5px] text-ink-3">
-          Newest activity first
-        </span>
-      </div>
+          {/*
+            ⚠️⚠️ পাশের ড্রপডাউনের সাথে দেখতে এক, অথচ **ভিন্ন টেবিলের id**
+               — ওটা `employees`, এটা `users`। লেখাদুটো তাই আলাদা রাখা,
+               নইলে ওরা যমজ দেখাত।
+            ⭐ প্রতিটা নামের পাশে সংখ্যা — মালিক ছাঁকার **আগেই** দেখেন কে
+               কতটা এনেছেন।
+          */}
+          <select
+            value={addedById}
+            onChange={(e) => change(() => setAddedById(e.target.value))}
+            className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+          >
+            <option value="">Added by anyone</option>
+            {(adders.data ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.fullName} · {a.count.toLocaleString()}
+              </option>
+            ))}
+          </select>
+
+          <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
+            From
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => change(() => setFrom(e.target.value))}
+              className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+            />
+          </label>
+
+          <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
+            to
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => change(() => setTo(e.target.value))}
+              className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
+            />
+          </label>
+
+          {activeFilters > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                change(() => {
+                  setStaffId('');
+                  setAddedById('');
+                  setFrom('');
+                  setTo('');
+                })
+              }
+              className="text-[12px] text-data hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="px-4">
         <ServerError error={edit.error} />
@@ -351,102 +444,68 @@ function TargetList() {
             rows={data.data.rows}
             rowKey={(r) => String(r.id)}
             columns={[
-              {
-                key: 'asin',
-                header: 'ASIN',
-                render: (r) => (
-                  <a
-                    href={r.url}
-                    target="_blank"
-                    // ⚠️ tabnabbing ঠেকাতে — নতুন ট্যাব যেন এই পাতা সরাতে না পারে
-                    rel="noreferrer noopener"
-                    className="num text-data hover:underline"
-                  >
-                    {r.asin}
-                  </a>
-                ),
-              },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (r) => <StatusChip row={r} />,
-              },
-              {
-                key: 'no',
-                header: 'Job no.',
-                align: 'right',
-                render: (r) => (
-                  <span className="num text-ink-3">{r.jobNumber ?? '—'}</span>
-                ),
-              },
-              {
-                key: 'from',
-                header: 'Added by',
-                /*
-                  ⭐⭐ **কে লিঙ্কটা এনেছেন** *(মালিকের চাওয়া, ২৫ আগস্ট:
-                     "Design Pool e ke target list add koreche seta ami
-                     dekhote cai")*।
+              /*
+                ⭐⭐ **সাতটা কলাম থেকে চারটে** *(মালিকের সিদ্ধান্ত, ২৫
+                   আগস্ট: "khubi gatharing lagoche dekhote")*।
 
-                  ⚠️⚠️ পাশের "Designer" কলামের সাথে গুলিয়ে ফেলার ঝুঁকিটাই
-                     এখানকার আসল নকশার প্রশ্ন — দুটোই মানুষের নাম, অথচ
-                     একেবারে আলাদা জিনিস: একজন কাজটা **এনেছেন**, আরেকজন
-                     **করবেন**। ⭐ তাই কলাম দুটো পাশাপাশি রাখা হয়নি, আর
-                     এখানে ভূমিকাটাও লেখা থাকে।
-
-                  ⚠️ ভূমিকা দেখানো হয় **কেবল যখন সেটা খবর** — গবেষক
-                     এনেছেন মানে পাইপলাইনটা নিজে থেকে চলছে; মালিক বা
-                     ম্যানেজার এনেছেন মানে কেউ হাতে ভরেছেন। ৪৬ হাজার
-                     সারির প্রতিটায় "owner" লিখলে শব্দটা অর্থ হারাত।
-                */
-                className: 'hidden sm:table-cell',
-                render: (r) => <AddedByCell row={r} />,
-              },
+                ⚠️⚠️ কোনো তথ্য মোছা হয়নি — **জোড়া লাগানো হয়েছে**, আর
+                   জোড়াগুলো ইচ্ছেমতো নয়:
+                     · Job no. → ASIN-এর নিচে  (দুটোই *পরিচয়*)
+                     · তারিখ  → Stage-এর নিচে  (একই কথা: কোন ধাপে, কবে)
+                     · কে এনেছেন → কে করছেন    (একটা *বাক্য*, দুটো ঘর নয়)
+              */
               {
-                key: 'when',
-                header: 'When',
-                /*
-                  ⭐ **কোন তারিখটা দেখানো হচ্ছে সেটাও বলা হয়** — শেষ
-                     হওয়ার, শুরুর, নাকি বরাদ্দের। শুধু একটা তারিখ বসালে
-                     পাঠক ধরে নিতেন ওটা "কবে হয়েছে", আর পুলে পড়ে থাকা
-                     সারিতেও একটা তারিখ দেখে বিভ্রান্ত হতেন।
-                */
-                render: (r) => <WhenCell row={r} />,
-              },
-              {
-                key: 'who',
-                header: 'Designer',
-                /*
-                  ⚠️ ইমপোর্ট করা পুরোনো সারিতে `assignedTo` **নেই** — নামটা
-                     কাঁচা লেখায় (`Hafiz-24-05-2026`), কারণ ওই কর্মীদের
-                     অনেকেই আর সিস্টেমে নেই। তাই দুটোই দেখানো হয়।
-                */
+                key: 'design',
+                header: 'Design',
                 render: (r) => (
                   <span className="block">
-                    {r.assignedTo ? (
-                      <span className="text-ink">{r.assignedTo.fullName}</span>
-                    ) : r.sourceNote ? (
-                      <span className="num text-[12px] text-ink-3">{r.sourceNote}</span>
-                    ) : (
-                      <span className="text-ink-3">—</span>
-                    )}
-
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      // ⚠️ tabnabbing ঠেকাতে — নতুন ট্যাব যেন এই পাতা সরাতে না পারে
+                      rel="noreferrer noopener"
+                      className="num text-data hover:underline"
+                    >
+                      {r.asin}
+                    </a>
                     {/*
-                      ⭐⭐ **কে "শেষ" বলেছেন** *(২৩ আগস্ট, মালিকের রিপোর্ট)*।
-                      আগে কেবল বরাদ্দ পাওয়া মানুষের নাম দেখাত, তাই মালিক
-                      নিজে Complete চাপলেও ডিজাইনারের নামই উঠত — সরাসরি
-                      ভুল তথ্য।
-
-                      ⚠️ নামটা তখনই আসে যখন কেউ সত্যিই চেপেছেন। পুরোনো
-                      সারিগুলোয় (Excel থেকে আনা, বা সংশোধনের আগের) ঘরটা
-                      খালি থাকে — অনুমান করে কিছু বসানো হয় না।
+                      ⚠️ কাজের নম্বর **না থাকলে লাইনটাই বসে না** — একটা
+                         "—" দেখানোর চেয়ে ফাঁকা জায়গাই শান্ত, আর পুলে
+                         পড়ে থাকা সারির নম্বর থাকেই না।
                     */}
-                    {r.completedBy && (
-                      <span className="block text-[11.5px] text-ink-3">
-                        ✓ marked by {r.completedBy.fullName}
+                    {r.jobNumber !== null && (
+                      <span className="num block text-[11.5px] text-ink-3">
+                        Job {r.jobNumber}
                       </span>
                     )}
                   </span>
                 ),
+              },
+              {
+                key: 'stage',
+                header: 'Stage',
+                render: (r) => (
+                  <span className="block">
+                    <StatusChip row={r} />
+                    <WhenCell row={r} />
+                  </span>
+                ),
+              },
+              {
+                key: 'people',
+                header: 'People',
+                /*
+                  ⭐⭐ **"কে এনেছেন → কে করছেন"** — একটা সারির গোটা গল্প।
+
+                  ⚠️⚠️ দুটো আলাদা id-র জগৎ এক ঘরে বসছে (`users` →
+                     `employees`), আর তীরচিহ্নটা সেটাই বোঝায়: বাঁয়ে যিনি
+                     কাজটা **এনেছেন**, ডানে যিনি **করছেন**।
+
+                  ⚠️ আনার নামটা **ধূসর**, করার নামটা গাঢ় — রোজকার কাজে
+                     ডিজাইনারের নামটাই বেশি দরকার হয়, তাই ওজনটা সেদিকে।
+                */
+                className: 'hidden sm:table-cell',
+                render: (r) => <PeopleCell row={r} />,
               },
               {
                 key: 'edit',
@@ -567,48 +626,78 @@ function StatusChip({ row }: { row: TargetRow }) {
  * পাঠক ধরে নিতেন ওটা "কবে হয়েছে"।
  */
 /**
- * ⭐ **কে এনেছেন** — নাম, আর তার নিচে কবে।
+ * ⭐ Stage-এর নিচের ছোট তারিখটা *(২৫ আগস্ট থেকে আলাদা কলাম নয়)*।
  *
- * ⚠️ তারিখটা `addedAt`, `assignedAt` নয়। একই ব্যাচের সারিগুলোয় এটা
- * **হুবহু এক** থাকে (সেকেন্ড পর্যন্ত), তাই মালিক এক নজরে দেখতে পান
- * কোনগুলো একসাথে এসেছে — আর সেটাই "কে কোন তালিকা এনেছে"-র উত্তর।
+ * ⚠️⚠️ **কোন তারিখটা দেখানো হচ্ছে সেটাও বলা হয়** — শেষ হওয়ার, শুরুর,
+ * নাকি বরাদ্দের। শুধু একটা তারিখ বসালে পাঠক ধরে নিতেন ওটা "কবে
+ * হয়েছে"। উপরের চিপটা অবস্থা বলে, কিন্তু `In hand` সারিতে তারিখটা
+ * শুরুরও হতে পারে, বরাদ্দেরও — চিপ ওই দুটো আলাদা করে না।
+ *
+ * ⭐ পুলে পড়ে থাকা সারির কোনো কাজের তারিখ নেই, তাই আগে এখানে `—` বসত।
+ * এখন **কবে এসেছে** সেটা বসে — ওটাই ওই সারির একমাত্র খবর, আর ঘরটা
+ * খালি রাখার চেয়ে সত্যি কথা বলা ভালো।
  */
-function AddedByCell({ row }: { row: TargetRow }) {
-  const badge =
-    row.addedBy.role === 'researcher'
-      ? 'researcher'
-      : row.addedBy.role === 'manager'
-        ? 'manager'
-        : null;
-
-  return (
-    <span className="block whitespace-nowrap">
-      <span className="text-ink">{row.addedBy.fullName}</span>
-      {badge && (
-        <span className="ml-1.5 text-[11px] text-ink-3">{badge}</span>
-      )}
-      <span className="num block text-[11.5px] text-ink-3">
-        {formatDateTime(row.addedAt)}
-      </span>
-    </span>
-  );
-}
-
 function WhenCell({ row }: { row: TargetRow }) {
   const when =
-    row.completedAt ?? row.startedAt ?? row.assignedAt ?? null;
-  if (when === null) return <span className="text-ink-3">—</span>;
+    row.completedAt ?? row.startedAt ?? row.assignedAt ?? row.addedAt;
 
   const what = row.completedAt
     ? 'done'
     : row.startedAt
       ? 'started'
-      : 'given';
+      : row.assignedAt
+        ? 'given'
+        : 'added';
 
   return (
-    <span className="num whitespace-nowrap text-[12px] text-ink-2">
-      {formatDateTime(when)}
-      <span className="text-ink-3"> · {what}</span>
+    <span className="num mt-0.5 block whitespace-nowrap text-[11.5px] text-ink-3">
+      {formatDateTime(when)} · {what}
+    </span>
+  );
+}
+
+/**
+ * ⭐⭐ **কে এনেছেন → কে করছেন** *(২৫ আগস্ট)*।
+ *
+ * ⚠️ আগে এটা দুটো আলাদা কলাম ছিল ("Added by" আর "Designer"), আর দুটোই
+ * মানুষের নাম — পাশাপাশি বসে সেটা গাদাগাদি লাগত। ⭐ এক ঘরে তীরচিহ্ন
+ * দিয়ে লিখলে ওটা একটা **বাক্য** হয়ে যায়: কাজটা কোথা থেকে এসে কার
+ * কাছে গেছে।
+ */
+function PeopleCell({ row }: { row: TargetRow }) {
+  return (
+    <span className="block">
+      <span className="whitespace-nowrap">
+        {/* ⚠️ আনার নামটা ধূসর — রোজকার কাজে ডিজাইনারের নামটাই বেশি দরকার */}
+        <span className="text-ink-3">{row.addedBy.fullName}</span>
+        <span className="px-1 text-ink-3">→</span>
+        {row.assignedTo ? (
+          <span className="text-ink">{row.assignedTo.fullName}</span>
+        ) : row.sourceNote ? (
+          /*
+            ⚠️ ইমপোর্ট করা পুরোনো সারিতে `assignedTo` **নেই** — নামটা
+               কাঁচা লেখায় (`Hafiz-24-05-2026`), কারণ ওই কর্মীদের অনেকেই
+               আর সিস্টেমে নেই।
+          */
+          <span className="num text-[12px] text-ink-3">{row.sourceNote}</span>
+        ) : (
+          <span className="text-ink-3">nobody yet</span>
+        )}
+      </span>
+
+      {/*
+        ⭐⭐ **কে "শেষ" বলেছেন** *(২৩ আগস্ট, মালিকের রিপোর্ট)*। আগে কেবল
+        বরাদ্দ পাওয়া মানুষের নাম দেখাত, তাই মালিক নিজে Complete চাপলেও
+        ডিজাইনারের নামই উঠত — সরাসরি ভুল তথ্য।
+
+        ⚠️ নামটা তখনই আসে যখন কেউ সত্যিই চেপেছেন। পুরোনো সারিগুলোয় ঘরটা
+        খালি থাকে — অনুমান করে কিছু বসানো হয় না।
+      */}
+      {row.completedBy && (
+        <span className="block text-[11.5px] text-ink-3">
+          ✓ marked by {row.completedBy.fullName}
+        </span>
+      )}
     </span>
   );
 }
@@ -656,6 +745,19 @@ function RowActions({
   mayProofread: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
+  /**
+   * ⭐⭐ **বাকি বোতামগুলো খোলা আছে কি না** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট:
+   * "khubi gatharing lagoche dekhote")*।
+   *
+   * ⚠️⚠️ একটা সারি **একটাই** ধাপে থাকে, তবু আগে পাইপলাইনের সব বোতাম
+   * একসাথে বসত — একটা শেষ-হওয়া সারিতে ছটা পর্যন্ত। ⭐ এখন এই সারির
+   * *পরের ধাপটা* সামনে, বাকিগুলো `⋯`-এ।
+   *
+   * ⚠️ **কোনো বোতাম মুছে যায়নি** — সবই এক ক্লিক দূরে। পপ-আপ মেনু না
+   * করে সারির ভেতরেই খোলা হয়: মেনু বসাতে হলে জায়গা মাপা, বাইরে ক্লিক
+   * ধরা, কি-বোর্ড সামলানো — তিনটে নতুন ফাঁদ, একটাও দরকার নেই।
+   */
+  const [open, setOpen] = useState(false);
 
   if (confirming) {
     return (
@@ -670,43 +772,85 @@ function RowActions({
     );
   }
 
+  /**
+   * ⭐⭐ **এই সারির পরের ধাপ** — শেকলের ক্রম মেনে, উপর থেকে নিচে।
+   *
+   * ⚠️⚠️ ক্রমটাই এখানকার আসল সিদ্ধান্ত: একটা শেষ-হওয়া সারিতে "বানান
+   * দেখা" আর "আপলোড" **দুটোই** সম্ভব, কিন্তু আগে বানান। উল্টো করলে
+   * না-দেখা ডিজাইন Amazon-এ চলে যেত, আর কিউটা কখনো খালি হতো না।
+   *
+   * ⚠️ যাচাইয়ের ধাপে **দুটো** বোতাম, কারণ ওটা একটা কাজ নয় — একটা
+   * সিদ্ধান্ত (ঠিক আছে, নাকি ভুল আছে)। একটায় নামানো যেত না।
+   */
+  const broken = row.errorFoundAt !== null && row.fixedAt === null;
+
+  const next: ReactNode =
+    mayProofread && broken ? (
+      <MiniButton tone="good" disabled={busy} onClick={onFixed}>
+        Fixed
+      </MiniButton>
+    ) : mayProofread && row.completedAt !== null && row.checkedAt === null ? (
+      <>
+        <MiniButton tone="good" disabled={busy} onClick={() => onChecked(true)}>
+          Spelling OK
+        </MiniButton>
+        <MiniButton tone="danger" disabled={busy} onClick={() => onChecked(false)}>
+          Has error
+        </MiniButton>
+      </>
+    ) : row.completedAt !== null && row.uploadedAt === null && !broken ? (
+      <MiniButton disabled={busy} onClick={onUploaded}>
+        Uploaded
+      </MiniButton>
+    ) : row.uploadedAt !== null && row.liveAt === null ? (
+      <MiniButton tone="good" disabled={busy} onClick={onLive}>
+        Live
+      </MiniButton>
+    ) : row.status !== 'done' ? (
+      /*
+        ⚠️ নামটা **"Complete"**, "Done" নয় — ডিজাইনারের পাতায় ঠিক এই
+           বোতামটাই ওই নামে আছে, আর দুটো আলাদা শব্দ মানে মালিক ভাবতেন
+           দুটো আলাদা কাজ (মালিকের প্রশ্ন, ২৩ আগস্ট)।
+        ⭐ নিয়মটা: **বোতামে ক্রিয়া** (Complete · Skip), **চিহ্নে অবস্থা**
+           (Done · Skipped)।
+      */
+      <MiniButton tone="good" disabled={busy} onClick={() => onChange('done')}>
+        Complete
+      </MiniButton>
+    ) : null;
+
+  if (!open) {
+    return (
+      <span className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+        {next}
+        <MiniButton disabled={busy} onClick={() => setOpen(true)}>
+          {'⋯'}
+        </MiniButton>
+      </span>
+    );
+  }
+
+  /**
+   * খোলা অবস্থা — সব কিছু, ক্রম মেনে।
+   *
+   * ⚠️⚠️ বোতামগুলো **ক্রম মেনেই দেখা যায়**: শেষ না হলে "Uploaded" নেই,
+   * আপলোড না হলে "Live" নেই। সবগুলো একসাথে দেখালে যে-কেউ যেকোনো ক্রমে
+   * চাপতে পারতেন, আর তখন পাইপলাইনের সংখ্যাগুলোই অর্থ হারাত। সার্ভারও
+   * একই পাহারা দেয় — পর্দা একমাত্র রক্ষী নয়।
+   */
   return (
-    <span className="flex justify-end gap-1.5 whitespace-nowrap">
+    <span className="flex flex-wrap items-center justify-end gap-1.5">
       {/* ⭐ কারো হাত থেকে তুলে নেওয়া — মালিকানাও ছেড়ে যায় */}
       {row.status !== 'pool' && (
         <MiniButton disabled={busy} onClick={() => onChange('pool')}>
           To pool
         </MiniButton>
       )}
-      {/*
-        ⚠️ নামটা **"Complete"**, "Done" নয় — ডিজাইনারের পাতায় ঠিক এই
-           বোতামটাই ওই নামে আছে, আর দুটো আলাদা শব্দ মানে মালিক ভাবতেন
-           দুটো আলাদা কাজ (মালিকের প্রশ্ন, ২৩ আগস্ট)।
-        ⭐ নিয়মটা: **বোতামে ক্রিয়া** (Complete · Skip), **চিহ্নে অবস্থা**
-           (Done · Skipped)।
-      */}
       {row.status !== 'done' && (
         <MiniButton tone="good" disabled={busy} onClick={() => onChange('done')}>
           Complete
         </MiniButton>
       )}
-      {/*
-        ⭐⭐ **পরের দুটো ধাপ** *(২৩ আগস্ট ২০২৬)* — শেষ হওয়ার পরে আপলোড,
-        আপলোডের পরে লাইভ।
-
-        ⚠️⚠️ বোতামটা **ক্রম মেনে দেখা যায়**: শেষ না হলে "Uploaded" নেই,
-        আপলোড না হলে "Live" নেই। সবগুলো একসাথে দেখালে যে-কেউ যেকোনো
-        ক্রমে চাপতে পারতেন, আর তখন পাইপলাইনের সংখ্যাগুলোই অর্থ হারাত।
-        সার্ভারও একই পাহারা দেয় — পর্দা একমাত্র রক্ষী নয়।
-      */}
-      {/*
-        ⭐⭐ **বানান-যাচাইয়ের দুটো বোতাম** *(ADR-038, ২৫ আগস্ট ২০২৬)* —
-        সুমাইয়ার কাজ। শেষ হওয়া অথচ না-দেখা সারিতেই কেবল ওঠে।
-
-        ⚠️⚠️ কোনো নিশ্চিতকরণ পপ-আপ নেই — ইচ্ছাকৃত। মানুষ দুদিনেই
-        যান্ত্রিকভাবে "হ্যাঁ" চাপতে শেখে, আর তখন পপ-আপটা কেবল একটা
-        বাড়তি ক্লিক, কোনো পাহারা নয়।
-      */}
       {mayProofread && row.completedAt !== null && row.checkedAt === null && (
         <>
           <MiniButton tone="good" disabled={busy} onClick={() => onChecked(true)}>
@@ -717,8 +861,7 @@ function RowActions({
           </MiniButton>
         </>
       )}
-      {/* ⭐ ভুল পাওয়া গেছে, ঠিক হয়নি — বেলালের বোতাম */}
-      {mayProofread && row.errorFoundAt !== null && row.fixedAt === null && (
+      {mayProofread && broken && (
         <MiniButton tone="good" disabled={busy} onClick={onFixed}>
           Fixed
         </MiniButton>
@@ -729,13 +872,11 @@ function RowActions({
         ⭐ কিন্তু **এখনো দেখা হয়নি** এমন সারি আটকায় না; আটকালে কিউটা
         রাতারাতি ০ হয়ে যেত আর কেউ শুরুই করত না।
       */}
-      {row.completedAt !== null &&
-        row.uploadedAt === null &&
-        !(row.errorFoundAt !== null && row.fixedAt === null) && (
-          <MiniButton disabled={busy} onClick={onUploaded}>
-            Uploaded
-          </MiniButton>
-        )}
+      {row.completedAt !== null && row.uploadedAt === null && !broken && (
+        <MiniButton disabled={busy} onClick={onUploaded}>
+          Uploaded
+        </MiniButton>
+      )}
       {row.uploadedAt !== null && row.liveAt === null && (
         <MiniButton tone="good" disabled={busy} onClick={onLive}>
           Live
@@ -747,19 +888,17 @@ function RowActions({
         </MiniButton>
       )}
       {/*
-        ⚠️⚠️ **Delete কেবল owner ও manager-এর** *(২৪ আগস্ট ২০২৬)*।
-        এতদিন পাতাটা `useAuth` ডাকতই না, তাই ছটা বোতামই শর্তহীন ছিল —
-        কেউ খুলত না বলে চোখে পড়েনি। ⭐ এখন গবেষককে রোজ এই পাতায় পাঠানো
-        হচ্ছে, তাই আগে বিপজ্জনক বোতামটা তুলে নেওয়া।
-
-        ⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়**, অর্থাৎ কাল কেউ
-        আবার জমা দিলে পুরোনো কাজ নতুন হয়ে ঢুকবে — ফেরানোর উপায় নেই।
+        ⚠️ গবেষকের হাতে Delete থাকবে না — ৪৬ হাজার সারির মধ্যে একটা
+           ভুল ডিলিট কেউ খুঁজেই পেত না।
       */}
       {mayDelete && (
         <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
           Delete
         </MiniButton>
       )}
+      <MiniButton disabled={busy} onClick={() => setOpen(false)}>
+        {'×'}
+      </MiniButton>
     </span>
   );
 }
