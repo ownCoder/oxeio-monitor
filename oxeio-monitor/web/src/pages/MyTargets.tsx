@@ -2,13 +2,14 @@ import {
   completeTarget,
   myTargets,
   skipTarget,
+  undoTarget,
   type MyTarget,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { ErrorBox, Loading } from '../components/States';
 import { formatAgo } from '../lib/format';
-import { Chip, MiniButton, Notice, useMutation } from './settings/ui';
+import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/ui';
 
 /**
  * **ডিজাইনারের নিজের টার্গেট** *(২২ আগস্ট ২০২৬)* — `/me` পাতায়।
@@ -36,10 +37,23 @@ export function MyTargets() {
   if (error && !data) return <ErrorBox error={error} retry={reload} />;
   if (!data || data.length === 0) return null;
 
+  /**
+   * ⭐⭐ **দুই ভাগ** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ আগে Complete চাপার সাথে সাথে সারিটা **পর্দা থেকেই উধাও** হতো,
+   * কারণ সার্ভার কেবল `assigned` পাঠাত। ⭐ ভুলে চেপে ফেললে ফেরানোর
+   * বোতাম দূরে থাক, জিনিসটাই আর দেখা যেত না।
+   *
+   * ⚠️ সার্ভার **আজকের** শেষ করাগুলোই পাঠায়, তাই এখানে দিন গোনার
+   * দরকার নেই — `completedAt` থাকা মানেই "আজ, আর এখনো ফেরানো যায়"।
+   */
+  const inHand = data.filter((t) => t.completedAt === null);
+  const finished = data.filter((t) => t.completedAt !== null);
+
   return (
     <Card
       title="Your Design Targets"
-      hint={`${data.length} in hand — oldest first`}
+      hint={`${inHand.length} in hand — oldest first`}
     >
       <div className="space-y-3 p-4">
         {/*
@@ -53,7 +67,14 @@ export function MyTargets() {
           <b>Complete</b> when the design is finished.
         </Notice>
 
-        {data.map((t) => (
+        {/*
+          ⚠️ বার্তাটা এখানেই দেখাতে হয় — Undo আটকে গেলে (কেউ বানান দেখে
+             ফেলেছেন, বা কাজটা গতকালের) সার্ভার **কেন** আটকাল সেটা বলে,
+             আর সেটা না দেখালে ডিজাইনার ভাবতেন বোতামটা ভাঙা।
+        */}
+        <ServerError error={skip.error} />
+
+        {inHand.map((t) => (
           <TargetRow
             key={t.id}
             target={t}
@@ -67,6 +88,38 @@ export function MyTargets() {
             onSkip={() => skip.run(async () => { await skipTarget(t.id); reload(); })}
           />
         ))}
+
+        {/*
+          ⭐⭐ **আজ যা শেষ করেছেন** — ভুল শোধরানোর একমাত্র জানালা।
+
+          ⚠️ ভাগটা **ইচ্ছাকৃতভাবে শান্ত**: হালকা লেখা, কম রঙ। এটা কাজের
+             তালিকা নয়, একটা রসিদ — চোখ এখানে আটকানোর কথা নয়।
+
+          ⚠️⚠️ Undo বোতামটা **সব সারিতেই** বসে, কারণ সার্ভার এখানে যা
+             পাঠায় তার সবই ফেরানোযোগ্য। কেউ মাঝপথে বানান দেখে ফেললে
+             পরের রিফ্রেশে সারিটা এমনিতেই চলে যাবে, আর ততক্ষণে চাপলে
+             সার্ভার কারণ লিখে আটকাবে।
+        */}
+        {finished.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <div className="text-[11.5px] font-semibold tracking-wide text-ink-3 uppercase">
+              Finished today · {finished.length}
+            </div>
+            {finished.map((t) => (
+              <FinishedRow
+                key={t.id}
+                target={t}
+                busy={skip.busy}
+                onUndo={() =>
+                  skip.run(async () => {
+                    await undoTarget(t.id);
+                    reload();
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -144,6 +197,46 @@ function TargetRow({
 
       <MiniButton tone="danger" disabled={busy} onClick={onSkip}>
         Skip
+      </MiniButton>
+    </div>
+  );
+}
+
+/**
+ * ⭐⭐ **আজ শেষ করা একটা সারি** *(২৫ আগস্ট)* — আর তার পাশে Undo।
+ *
+ * ⚠️ উপরের `TargetRow`-এর সাথে জুড়ে দেওয়া যেত (একটা `done` prop দিয়ে),
+ * কিন্তু তখন একটাই কম্পোনেন্টে দুটো আলাদা কাজের বোতাম-সেট থাকত, আর
+ * প্রতিটা শর্ত দুবার করে লিখতে হতো। ⭐ আলাদা রাখলে দুটোই ছোট থাকে।
+ */
+function FinishedRow({
+  target,
+  busy,
+  onUndo,
+}: {
+  target: MyTarget;
+  busy: boolean;
+  onUndo: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line px-3 py-2">
+      <span className="num min-w-[104px] text-[15px] font-semibold text-ink-2">
+        {target.jobNumber ?? '—'}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="num block text-[12.5px] text-ink-2">{target.asin}</span>
+        <span className="block text-[11.5px] text-ink-3">
+          {target.completedAt ? `Done ${formatAgo(target.completedAt)}` : 'Done'}
+        </span>
+      </span>
+
+      {/*
+        ⚠️ নামটা **"Undo"**, "Not done" নয় — ডিজাইনার যা চাপতে চান সেটা
+           একটা ভুল **ফেরানো**, কোনো নতুন ঘোষণা নয়। শব্দটা কাজটাই বলে।
+      */}
+      <MiniButton disabled={busy} onClick={onUndo}>
+        Undo
       </MiniButton>
     </div>
   );

@@ -81,6 +81,16 @@ export interface MyTarget {
    * শেষ হওয়া বলেন ডিজাইনার নিজে, Complete বোতামে।
    */
   startedAt: string | null;
+  /**
+   * ⭐⭐ **আজ শেষ করা হয়েছে** *(২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ `null` = এখনো হাতে আছে। এই একটা ঘরই ঠিক করে সারিটা কার্ডের
+   * কোন ভাগে বসবে — "হাতে আছে" নাকি "আজ শেষ করেছি"।
+   *
+   * ⚠️ **আজকের** বাইরের কিছু সার্ভার পাঠায়ই না, তাই মান থাকা মানেই
+   * "এখনো ফেরানো যায়"।
+   */
+  completedAt: string | null;
 }
 
 export function addTargets(text: string): Promise<BulkResult> {
@@ -107,6 +117,16 @@ export function myTargets(signal?: AbortSignal): Promise<MyTarget[]> {
  */
 export function completeTarget(id: number): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/me/targets/${id}/done`, { method: 'POST' });
+}
+
+/**
+ * ⭐⭐ **"ভুল করে Complete চেপে ফেলেছি"** *(২৫ আগস্ট)*।
+ *
+ * ⚠️ সার্ভার তিনটে শর্ত দেখে — আজকের, নিজের, আর শেকলে এগোয়নি। শর্ত না
+ * মিললে **কেন** মিলল না সেটা বার্তায় বলে দেয়, চুপ করে থাকে না।
+ */
+export function undoTarget(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/me/targets/${id}/undone`, { method: 'POST' });
 }
 
 export function skipTarget(id: number, reason?: string): Promise<{ ok: boolean }> {
@@ -288,6 +308,16 @@ export interface TargetAdder {
   fullName: string;
   role: 'owner' | 'manager' | 'researcher' | 'employee';
   count: number;
+}
+
+/**
+ * ⭐ মালিক/ম্যানেজারের "শেষ ফিরিয়ে নাও" — **যেকোনো দিনের** *(২৫ আগস্ট)*।
+ *
+ * ⚠️ `updateTarget(id, 'assigned')` দিয়ে এটা করা যায় না: ওই পথ কেবল
+ * `status` বদলায়, `completedAt` মোছে না — আর কিউগুলো ওটা ধরেই চলে।
+ */
+export function undoComplete(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}/undone`, { method: 'POST' });
 }
 
 export function listTargetAdders(signal?: AbortSignal): Promise<TargetAdder[]> {

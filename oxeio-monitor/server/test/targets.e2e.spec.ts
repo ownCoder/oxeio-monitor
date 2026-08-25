@@ -1001,3 +1001,148 @@ describe('কে এনেছেন — তালিকা, ছাঁকনি �
     await session.http.get('/api/v1/design-targets/adders').expect(403);
   });
 });
+
+
+/**
+ * ⭐⭐ **"ভুল করে Complete চেপে ফেলেছি"** *(মালিকের রিপোর্ট, ২৫ আগস্ট:
+ * "onek somoy vule kew colplete press kore felole byak anote paren na")*।
+ *
+ * ⚠️⚠️ মূল কারণটা ছিল **দেখতেই না পাওয়া**: `mine()` কেবল `assigned`
+ * সারি পাঠাত, তাই Complete চাপার সাথে সাথে জিনিসটা পর্দা থেকে উধাও।
+ * ফেরানোর বোতাম দূরে থাক — সারিটাই আর খুঁজে পাওয়া যেত না।
+ */
+describe('Complete ফিরিয়ে নেওয়া', () => {
+  const svc = () => h.app.get(TargetsService);
+  const ASIN_OF = (n: number) => `B${String(n).padStart(9, '0')}`;
+
+  /** একজন ডিজাইনার, তাঁর হাতে একটা টার্গেট */
+  async function assigned(n: number) {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: URL_OF(n),
+    }).expect(201);
+
+    const designer = await staff(`OX-U${n}`, 'designer', `u${n}@test.local`);
+    const row = await h.prisma.designTarget.update({
+      where: { asin: ASIN_OF(n) },
+      data: {
+        status: 'assigned',
+        assignedToId: designer.id,
+        assignedAt: new Date(),
+      },
+    });
+
+    const session = await loginReady(h, `u${n}@test.local`, 'staff-password-123');
+    return { id: row.id, designer, session };
+  }
+
+  it('⭐ শেষ করার পরেও সারিটা নিজের তালিকায় থাকে', async () => {
+    const { id, designer, session } = await assigned(1);
+
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+
+    const mine = await svc().mine(designer.id);
+    expect(mine).toHaveLength(1);
+    // ⭐ কিন্তু এখন "হাতে আছে" নয় — শেষ করা
+    expect(mine[0].completedAt).not.toBeNull();
+  });
+
+  it('⭐⭐ Undo চাপলে আবার হাতে ফেরে', async () => {
+    const { id, designer, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.status).toBe('assigned');
+    /**
+     * ⚠️⚠️ **তিনটেই মুছতে হয়।** কিউগুলো `status` ধরে নয়, `completedAt`
+     * ধরে চলে — শুধু অবস্থা ফেরালে সারিটা "হাতে আছে" দেখাত অথচ
+     * আপলোডের কিউতে বসেই থাকত।
+     */
+    expect(row.completedAt).toBeNull();
+    expect(row.completedVia).toBeNull();
+    expect(row.completedById).toBeNull();
+
+    // ⭐ কাজটা তাঁরই থাকে — পুলে ফিরে যায় না
+    expect(row.assignedToId).toBe(designer.id);
+  });
+
+  it('⚠️ কিউ থেকেও বেরিয়ে যায়', async () => {
+    const { id, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+    expect((await svc().stats()).toUpload).toBe(1);
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+
+    const stats = await svc().stats();
+    expect(stats.toUpload).toBe(0);
+    expect(stats.toCheck).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ **এই টেস্টটাই সবচেয়ে জরুরি।** বানান দেখা হয়ে গেলে ওটা আর
+   * "ভুলে চাপা" নয় — ফেরালে বানান-কিউ আর আপলোডের সংখ্যা একসাথে
+   * মিথ্যে হয়ে যেত।
+   */
+  it('⭐⭐ বানান দেখা হয়ে গেলে আর ফেরানো যায় না', async () => {
+    const { id, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, `/api/v1/design-targets/${id}/checked`, { ok: true }).expect(201);
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(409);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.status).toBe('done');
+  });
+
+  /** ⚠️ গতকালেরটা ফেরালে গতকালের সংখ্যাও বদলে যেত */
+  it('গতকালের কাজ ডিজাইনার ফেরাতে পারেন না', async () => {
+    const { id, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+    await h.prisma.designTarget.update({
+      where: { id },
+      data: { completedAt: new Date(Date.now() - 3 * 86_400_000) },
+    });
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(409);
+  });
+
+  /** ⭐ কিন্তু মালিক পারেন — পুরোনো ভুল শোধরানোই ওই রুটটার কাজ */
+  it('⭐ মালিক পুরোনো Complete-ও ফেরাতে পারেন', async () => {
+    const { id, designer, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+    await h.prisma.designTarget.update({
+      where: { id },
+      data: { completedAt: new Date(Date.now() - 3 * 86_400_000) },
+    });
+
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, `/api/v1/design-targets/${id}/undone`, {}).expect(201);
+
+    const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
+    expect(row.status).toBe('assigned');
+    expect(row.completedAt).toBeNull();
+    expect(row.assignedToId).toBe(designer.id);
+  });
+
+  /** ⚠️⚠️ অন্যের সারি ছোঁয়া যায় না — id অনুমান করেও নয় */
+  it('অন্যের টার্গেট ফেরানো যায় না', async () => {
+    const { id } = await assigned(1);
+    const mine = await assigned(2);
+    await post(mine.session, `/api/v1/me/targets/${mine.id}/done`, {}).expect(201);
+
+    await post(mine.session, `/api/v1/me/targets/${id}/undone`, {}).expect(403);
+  });
+
+  /** ⭐ দুবার চাপলে ভাঙে না — দ্বিতীয়বারেও "ঠিক আছে" */
+  it('দুবার Undo চাপলে ভাঙে না', async () => {
+    const { id, session } = await assigned(1);
+    await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
+
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+    await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+  });
+});

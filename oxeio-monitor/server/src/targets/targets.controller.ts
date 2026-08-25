@@ -297,6 +297,27 @@ export class TargetsController {
     return this.targets.markLive(id, dto.liveAsin ?? null, new Date());
   }
 
+  /**
+   * ⭐⭐ **"শেষ" ফিরিয়ে নেওয়া** *(মালিকের রিপোর্ট, ২৫ আগস্ট:
+   * "vule kew colplete press kore felole byak anote paren na")*।
+   *
+   * ⚠️⚠️ `PATCH :id { status: 'assigned' }` দিয়ে এটা করা **যায় না** —
+   * ওই পথ কেবল `status` বদলায়, `completedAt` মোছে না। আর কিউগুলো
+   * `completedAt` ধরে চলে, তাই সারিটা "হাতে আছে" দেখাত অথচ আপলোডের
+   * কিউতে বসেই থাকত।
+   *
+   * ⚠️ ডিজাইনারের নিজের Undo আলাদা রুটে (`/me/targets/:id/undone`) —
+   * ওখানে আজকের দিনের সীমা আছে, এখানে নেই।
+   */
+  @Post(':id/undone')
+  async undone(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.targets.assertCanUse(actor);
+    return this.targets.undoComplete(id);
+  }
+
   @Roles(UserRole.owner, UserRole.manager)
   @Post('distribute')
   distribute() {
@@ -348,6 +369,22 @@ export class MyTargetsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.targets.markDone(employeeIdOf(actor), id, actor.userId);
+  }
+
+  /**
+   * ⭐⭐ **"ভুল করে চেপে ফেলেছি"** *(মালিকের রিপোর্ট, ২৫ আগস্ট:
+   * "onek somoy vule kew colplete press kore felole byak anote paren na")*।
+   *
+   * ⚠️ **আজকের** কাজ, **নিজের** সারি, আর শেকলে এগোয়নি — তিনটে শর্তই
+   * সার্ভিসে। পুরোনো ভুল মালিক ফেরাবেন, ডিজাইনার নন: গতকালেরটা ফেরালে
+   * গতকালের সংখ্যাও বদলে যেত।
+   */
+  @Post(':id/undone')
+  undone(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.targets.undoMine(employeeIdOf(actor), id, new Date());
   }
 }
 

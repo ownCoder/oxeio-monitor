@@ -1,11 +1,12 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { DesignTargetStatus, UserRole } from '@prisma/client';
+import { DesignTargetStatus, Prisma, UserRole } from '@prisma/client';
 
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
@@ -32,6 +33,16 @@ import {
 const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
 const nextDay = (day: string): Date =>
   new Date(dhakaStart(day).getTime() + 86_400_000);
+
+/**
+ * ⭐ ওই মুহূর্তটা **ঢাকার কোন দিনে** পড়ে — `'YYYY-MM-DD'`।
+ *
+ * ⚠️ `toISOString().slice(0,10)` লিখলে UTC-র দিন আসত, আর ঢাকায় ভোর ৬টার
+ * আগে সেটা **গতকাল** দেখাত। রাত ১১টায় Complete চেপে ভুল ধরলে Undo-টা
+ * তখন "গতকালের কাজ" বলে আটকে যেত।
+ */
+const workDateStr = (at: Date): string =>
+  new Date(at.getTime() + 6 * 3_600_000).toISOString().slice(0, 10);
 
 /**
  * ⚠️⚠️ পর্দায় সর্বোচ্চ কতগুলো বাদ-পড়া লাইন দেখানো হবে *(২৩ আগস্ট ২০২৬)*।
@@ -122,6 +133,16 @@ export interface MyTarget {
   assignedAt: string | null;
   /** ⭐ ফাইলটা খোলা হয়েছে — পর্দায় "কাজ চলছে" */
   startedAt: string | null;
+  /**
+   * ⭐⭐ **আজ শেষ করা হয়েছে** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ `null` = এখনো হাতে আছে। এই ঘরটাই ঠিক করে সারিটা পর্দার কোন
+   * ভাগে বসবে আর Undo বোতামটা ওঠে কি না।
+   *
+   * ⚠️ **আজকের** বাইরের কিছু এখানে আসেই না (`mine()` দেখুন), তাই
+   * মান থাকা মানেই "আজ শেষ করা, এখনো ফেরানো যায়"।
+   */
+  completedAt: string | null;
 }
 
 /**
@@ -460,16 +481,41 @@ export class TargetsService {
     }
   }
 
-  /** ⭐ ডিজাইনারের নিজের তালিকা — যেগুলো এখনো হাতে আছে */
+  /**
+   * ⭐ ডিজাইনারের নিজের তালিকা — হাতে থাকা, **আর আজ শেষ করা**।
+   *
+   * ### ⚠️⚠️ কেন আজকেরগুলোও আসে *(মালিকের রিপোর্ট, ২৫ আগস্ট)*
+   *
+   * মালিক: *"onek somoy vule kew colplete press kore felole byak anote
+   * paren na"*। কারণটা এখানেই ছিল — শর্তটা ছিল কেবল `assigned`, তাই
+   * Complete চাপার সাথে সাথে সারিটা **পর্দা থেকেই উধাও** হতো।
+   * ⭐ ফেরানোর বোতাম দূরে থাক, জিনিসটাই আর দেখা যেত না।
+   *
+   * ⚠️ আজকের বাইরে যাওয়া হয়নি: গতকালের Complete ফেরালে **গতকালের
+   * সংখ্যাও** বদলে যেত, আর তখন কেউ চাইলে খারাপ দিনের কাজ ভালো দিনে
+   * সরিয়ে নিতে পারতেন। পুরোনোগুলো মালিক ফেরাতে পারেন।
+   *
+   * ⚠️ "আজ" মানে **ঢাকার দিন** — রিপোর্ট যেভাবে গোনে, হুবহু সেভাবেই।
+   */
   async mine(employeeId: number): Promise<MyTarget[]> {
     const rows = await this.prisma.designTarget.findMany({
-      where: { assignedToId: employeeId, status: DesignTargetStatus.assigned },
+      where: {
+        assignedToId: employeeId,
+        OR: [
+          { status: DesignTargetStatus.assigned },
+          {
+            status: DesignTargetStatus.done,
+            completedAt: { gte: dhakaStart(workDateStr(new Date())) },
+          },
+        ],
+      },
       select: {
         id: true,
         asin: true,
         jobNumber: true,
         assignedAt: true,
         startedAt: true,
+        completedAt: true,
       },
       // ⚠️ যেটা আগে এসেছে সেটা আগে — নইলে পুরোনো টার্গেট চিরকাল তলায়
       //    পড়ে থাকত আর কেউ ধরত না
@@ -483,7 +529,119 @@ export class TargetsService {
       jobNumber: r.jobNumber,
       assignedAt: r.assignedAt?.toISOString() ?? null,
       startedAt: r.startedAt?.toISOString() ?? null,
+      completedAt: r.completedAt?.toISOString() ?? null,
     }));
+  }
+
+  /**
+   * ⭐⭐ **"শেষ" ফিরিয়ে নেওয়া** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
+   *
+   * ⚠️⚠️ `completedAt` · `completedVia` · `completedById` — **তিনটেই**
+   * মুছতে হয়, কেবল `status` ফেরালে হয় না। কারণ কিউগুলো `status` ধরে
+   * নয়, **`completedAt` ধরে** চলে (`to_check`, `to_upload`) — শুধু
+   * অবস্থা ফেরালে সারিটা "হাতে আছে" দেখাত অথচ আপলোডের কিউতে বসে
+   * থাকত। ⭐ পুলে-ফেরত পাঠানোর ডালটাও ঠিক এই তিনটেই মোছে।
+   *
+   * ⚠️ কিন্তু `assignedToId`/`assignedAt`/`startedAt` **ছোঁয়া হয় না** —
+   * কাজটা যাঁর ছিল তাঁরই থাকে। ওগুলো মুছলে সারিটা পুলে ফিরে যেত, আর
+   * ডিজাইনার নিজের ভুল শুধরাতে গিয়ে কাজটাই হারাতেন।
+   */
+  private async clearCompletion(
+    where: Prisma.DesignTargetWhereInput,
+  ): Promise<number> {
+    const { count } = await this.prisma.designTarget.updateMany({
+      where,
+      data: {
+        status: DesignTargetStatus.assigned,
+        completedAt: null,
+        completedVia: null,
+        completedById: null,
+      },
+    });
+    return count;
+  }
+
+  /**
+   * ⭐ ডিজাইনারের নিজের Undo — **আজকের**, **নিজের**, আর **এখনো এগোয়নি**।
+   *
+   * ⚠️⚠️ `count === 0` হলে চুপ করে থাকা যায় না। "Undo চাপলাম, কিছুই হলো
+   * না" — এটাই সেই নীরব ব্যর্থতা যা মানুষকে সিস্টেমের উপর আস্থা হারায়।
+   * ⭐ তাই কেন হলো না, সেটা খুঁজে বলা হয়।
+   */
+  async undoMine(
+    employeeId: number,
+    id: number,
+    now: Date,
+  ): Promise<{ ok: boolean }> {
+    const count = await this.clearCompletion({
+      id,
+      assignedToId: employeeId,
+      status: DesignTargetStatus.done,
+      completedAt: { gte: dhakaStart(workDateStr(now)) },
+      // ⚠️ শেকলে এগিয়ে যাওয়া সারি ফেরানো যায় না — কেউ বানান দেখে
+      //    ফেলেছেন বা Amazon-এ পাঠিয়ে দিয়েছেন, সেটা আর "ভুলে চাপা" নয়
+      checkedAt: null,
+      uploadedAt: null,
+      liveAt: null,
+    });
+    if (count > 0) return { ok: true };
+
+    const row = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: {
+        assignedToId: true,
+        status: true,
+        completedAt: true,
+        checkedAt: true,
+        uploadedAt: true,
+        liveAt: true,
+      },
+    });
+
+    if (!row || row.assignedToId !== employeeId) {
+      throw new ForbiddenException('That design is not on your list.');
+    }
+    if (row.status !== DesignTargetStatus.done || row.completedAt === null) {
+      // ⭐ দুবার চাপলে এখানেই এসে পড়ে — আর সেটা ব্যর্থতা নয়
+      return { ok: true };
+    }
+    if (row.checkedAt !== null || row.uploadedAt !== null || row.liveAt !== null) {
+      throw new ConflictException(
+        'This design has already moved on — someone has checked it or sent it to Amazon. Ask the owner to undo it.',
+      );
+    }
+    throw new ConflictException(
+      "You can only undo today's work. Ask the owner to undo an older one.",
+    );
+  }
+
+  /**
+   * ⭐ মালিক ও ম্যানেজারের Undo — **যেকোনো দিনের, যে কারো**।
+   *
+   * ⚠️ দিনের সীমা নেই, কারণ পুরোনো ভুল শোধরানোই এর একমাত্র কাজ। কিন্তু
+   * শেকলে এগিয়ে যাওয়া সারি এখানেও ফেরানো যায় না — ওটা ফেরালে বানান-কিউ
+   * আর আপলোডের সংখ্যাগুলো একসাথে মিথ্যে হয়ে যেত।
+   */
+  async undoComplete(id: number): Promise<{ ok: boolean }> {
+    const count = await this.clearCompletion({
+      id,
+      status: DesignTargetStatus.done,
+      checkedAt: null,
+      uploadedAt: null,
+      liveAt: null,
+    });
+    if (count > 0) return { ok: true };
+
+    const row = await this.prisma.designTarget.findUnique({
+      where: { id },
+      select: { status: true, checkedAt: true, uploadedAt: true, liveAt: true },
+    });
+    if (!row) throw new NotFoundException('Design target not found');
+    if (row.status !== DesignTargetStatus.done) return { ok: true };
+
+    throw new ConflictException(
+      'This design has already been checked or sent to Amazon — undo those steps first.',
+    );
   }
 
   /**

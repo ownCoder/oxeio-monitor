@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import {
   deleteTarget,
   listTargetAdders,
+  undoComplete,
   listTargetDesigners,
   listTargets,
   markLive,
@@ -546,6 +547,12 @@ function TargetList() {
                         data.reload();
                       })
                     }
+                    onUndo={() =>
+                      edit.run(async () => {
+                        await undoComplete(r.id);
+                        data.reload();
+                      })
+                    }
                     mayDelete={mayDelete}
                     mayProofread={user?.canProofread === true}
                     onDelete={() =>
@@ -721,6 +728,7 @@ function RowActions({
   onChecked,
   onFixed,
   onLive,
+  onUndo,
   onDelete,
   mayDelete,
   mayProofread,
@@ -733,6 +741,8 @@ function RowActions({
   onChecked: (ok: boolean) => void;
   onFixed: () => void;
   onLive: () => void;
+  /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
+  onUndo: () => void;
   onDelete: () => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
@@ -882,6 +892,25 @@ function RowActions({
           Live
         </MiniButton>
       )}
+      {/*
+        ⭐⭐ **"ভুল করে Complete চেপে ফেলেছে"** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
+
+        ⚠️⚠️ পাশের "To pool" দিয়ে এটা করা **যায় না** — ওটা মালিকানাও
+           ছেড়ে দেয়, তাই কাজটা ডিজাইনারের হাত থেকে বেরিয়ে যেত। এটা
+           কেবল "শেষ" চিহ্নটা তোলে, সারিটা তাঁর হাতেই থাকে।
+
+        ⚠️ শেকলে এগিয়ে যাওয়া সারিতে বোতামটাই ওঠে না — বানান দেখা হয়ে
+           গেলে বা Amazon-এ চলে গেলে ওটা আর "ভুলে চাপা" নয়, আর ফেরালে
+           কিউয়ের সংখ্যাগুলো একসাথে মিথ্যে হয়ে যেত।
+      */}
+      {row.status === 'done' &&
+        row.checkedAt === null &&
+        row.uploadedAt === null &&
+        row.liveAt === null && (
+          <MiniButton disabled={busy} onClick={onUndo}>
+            Undo complete
+          </MiniButton>
+        )}
       {row.status !== 'skipped' && (
         <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
           Skip
