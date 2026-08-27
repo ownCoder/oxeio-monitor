@@ -16,6 +16,7 @@ import {
   amazonUrl,
   asinOf,
   canUseTargets,
+  DESIGN_WORK_STAFF_TYPES,
   parseBulk,
   POOL_PER_DESIGNER,
   UPLOAD_QUEUE_FROM,
@@ -317,7 +318,12 @@ export class TargetsService {
 
     try {
       const designers = await this.prisma.employee.findMany({
-        where: { status: 'active', staffType: 'designer' },
+        // ⭐ কারা পান সেটা এক জায়গায় লেখা — `DESIGN_WORK_STAFF_TYPES`-এর
+        //    টীকায় কারণসহ (২৬ আগস্ট: ম্যানেজারও ডিজাইন করেন)
+        where: {
+          status: 'active',
+          staffType: { in: [...DESIGN_WORK_STAFF_TYPES] },
+        },
         select: { id: true, empCode: true },
         // ⚠️ কর্মী-কোড ধরে — পুলে ঘাটতি থাকলে কে আগে পাবে সেটা **অনুমেয়**
         //    থাকা দরকার; র‍্যান্ডম হলে রোজ আলাদা লোক বঞ্চিত হতেন আর কেউ

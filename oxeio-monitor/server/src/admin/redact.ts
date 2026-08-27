@@ -33,6 +33,19 @@ export interface EmployeeRow {
   department: string | null;
   /** ⭐ কাজের ধরন — ম্যানেজারও দেখেন; এটা গোপন কিছু নয়, বেতনের মতো নয় */
   staffType: 'designer' | 'researcher' | 'manager' | null;
+  /**
+   * ⭐⭐ **ডিজাইনারের নিজের দৈনিক টার্গেট।**
+   *
+   * ⚠️⚠️ ঘরটা এখানে **ছিল না**, অথচ পর্দার টাইপ (`EmployeeView`)
+   * বরাবর দাবি করত এটা আসে। ফল নীরব: মালিক টার্গেট বসিয়ে সেভ
+   * করতেন, ফর্ম আবার খুললে ঘরটা **খালি** — যেন কিছুই বসেনি। আর
+   * খালি মানে "পলিসির ২৫ খাটবে", তাই কেউ আবার ২৫ টাইপ করে
+   * দিতে পারতেন — অথচ বসানো ছিল ০ (টার্গেট বন্ধ)।
+   *
+   * ⭐ whitelist ধাঁচের ফাংশনে ভুলে যাওয়ার দাম এটাই: ফাঁস নয়,
+   * **অনুপস্থিতি** — আর সেটা ধরা পড়ে অনেক দেরিতে।
+   */
+  dailyDesignTarget: number | null;
   policyId: number | null;
   monthlySalary: Decimalish | null;
   joinedOn: Date | null;
@@ -56,6 +69,19 @@ export interface EmployeeBaseView {
   department: string | null;
   /** ⭐ কাজের ধরন — ম্যানেজারও দেখেন; এটা গোপন কিছু নয়, বেতনের মতো নয় */
   staffType: 'designer' | 'researcher' | 'manager' | null;
+  /**
+   * ⭐⭐ **ডিজাইনারের নিজের দৈনিক টার্গেট।**
+   *
+   * ⚠️⚠️ ঘরটা এখানে **ছিল না**, অথচ পর্দার টাইপ (`EmployeeView`)
+   * বরাবর দাবি করত এটা আসে। ফল নীরব: মালিক টার্গেট বসিয়ে সেভ
+   * করতেন, ফর্ম আবার খুললে ঘরটা **খালি** — যেন কিছুই বসেনি। আর
+   * খালি মানে "পলিসির ২৫ খাটবে", তাই কেউ আবার ২৫ টাইপ করে
+   * দিতে পারতেন — অথচ বসানো ছিল ০ (টার্গেট বন্ধ)।
+   *
+   * ⭐ whitelist ধাঁচের ফাংশনে ভুলে যাওয়ার দাম এটাই: ফাঁস নয়,
+   * **অনুপস্থিতি** — আর সেটা ধরা পড়ে অনেক দেরিতে।
+   */
+  dailyDesignTarget: number | null;
   policyId: number | null;
   /** 'YYYY-MM-DD' */
   joinedOn: string | null;
@@ -131,6 +157,7 @@ export function toEmployeeView(row: EmployeeRow, role: UserRole): EmployeeView {
     designation: row.designation,
     department: row.department,
     staffType: row.staffType,
+    dailyDesignTarget: row.dailyDesignTarget,
     policyId: row.policyId,
     joinedOn: toDateOnly(row.joinedOn),
     leftOn: toDateOnly(row.leftOn),

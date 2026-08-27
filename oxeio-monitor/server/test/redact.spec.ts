@@ -24,6 +24,8 @@ function row(overrides: Partial<EmployeeRow> = {}): EmployeeRow {
     department: 'Creative',
     // ⭐ কাজের ধরন (২১ আগস্ট) — designation-এর পাশে, বিকল্প নয়
     staffType: 'designer',
+    /** ⭐ নিজের দৈনিক টার্গেট — `null` = পলিসিরটা খাটবে */
+    dailyDesignTarget: null,
     policyId: 1,
     monthlySalary: 13000,
     joinedOn: new Date('2025-03-01T00:00:00.000Z'),

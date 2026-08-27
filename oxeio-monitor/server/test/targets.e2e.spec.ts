@@ -54,7 +54,7 @@ beforeEach(async () => {
  */
 async function staff(
   empCode: string,
-  staffType: 'designer' | 'researcher',
+  staffType: 'designer' | 'researcher' | 'manager',
   email: string,
   role: 'employee' | 'researcher' = 'employee',
 ) {
@@ -1205,5 +1205,102 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
 
     await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
     await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(201);
+  });
+});
+
+
+/**
+ * ⭐⭐ **ম্যানেজারও রোজ ৩০টা পান** *(মালিকের নির্দেশ, ২৬ আগস্ট:
+ * "belal er jonoo daily 30 ta design distribute korba")*।
+ *
+ * ⚠️⚠️ এখানকার আসল দাবি দুটো, আর দুটো **আলাদা** প্রশ্ন:
+ *   ১· কাজ **পান** কি না      → হ্যাঁ, ডিজাইনারদের মতোই ৩০টা
+ *   ২· কাজের **মাপকাঠিতে** বাঁধা কি না → না, তাঁর দৈনিক টার্গেট নেই
+ *
+ * ⭐ তিনি সপ্তাহে ১-২ দিন ডিজাইন করেন, তাই বাকি দিনগুলোয় "পিছিয়ে"
+ * দেখানো মিথ্যা হতো। দুটো এক করে ফেলাই এখানকার সবচেয়ে সহজ ভুল।
+ */
+describe('বণ্টন — ম্যানেজারও পান', () => {
+  const svc = () => h.app.get(TargetsService);
+
+  /** ⚠️ উপরের describe-এর `seedPool` এখানে পৌঁছায় না — ওটা ওর ভেতরে */
+  async function fillPool(count: number) {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join('\n'),
+    }).expect(201);
+  }
+
+  it('⭐⭐ ম্যানেজার ডিজাইনারদের সমান ৩০টা পান', async () => {
+    await staff('OX-D1', 'designer', 'd1@test.local');
+    await staff('OX-M1', 'manager', 'm1@test.local');
+    await fillPool(100);
+
+    await svc().distribute();
+
+    const rows = await h.prisma.designTarget.findMany({
+      where: { status: 'assigned' },
+      select: { assignedToId: true },
+    });
+    expect(rows).toHaveLength(60);
+
+    const per = new Map<number | null, number>();
+    for (const r of rows) per.set(r.assignedToId, (per.get(r.assignedToId) ?? 0) + 1);
+    expect([...per.values()]).toEqual([30, 30]);
+  });
+
+  /** ⚠️ গবেষক পান না — তিনি টার্গেট **আনেন**, করেন না */
+  it('গবেষক বণ্টনে নেই', async () => {
+    await staff('OX-R1', 'researcher', 'r1@test.local');
+    await fillPool(100);
+
+    expect((await svc().distribute()).assigned).toBe(0);
+  });
+
+  /**
+   * ⭐⭐ **রোজ কাজ না করলেও স্তূপ জমে না** — এটাই মালিকের দ্বিতীয়
+   * বাক্যটার ("weekly 1-2 din design kore") উত্তর।
+   *
+   * ⚠️ শর্তটা **খোলা হয়েছে কি না**, "শেষ হয়েছে কি না" নয় — যে ফাইলটা
+   * তিনি আজ ধরেছেন অথচ শেষ করতে পারেননি, সেটা তাঁর হাতেই থাকে।
+   */
+  it('⭐⭐ না-ছোঁয়া ডিজাইন রাতে পুলে ফেরে', async () => {
+    const manager = await staff('OX-M2', 'manager', 'm2@test.local');
+    await fillPool(100);
+    await svc().distribute();
+    expect(
+      await h.prisma.designTarget.count({ where: { assignedToId: manager.id } }),
+    ).toBe(30);
+
+    await svc().returnUnworked(workDateOf(new Date()));
+
+    expect(
+      await h.prisma.designTarget.count({ where: { assignedToId: manager.id } }),
+    ).toBe(0);
+    expect(
+      await h.prisma.designTarget.count({ where: { status: 'pool' } }),
+    ).toBe(100);
+  });
+
+  /** ⭐ কিন্তু যেটা তিনি খুলেছেন সেটা তাঁর হাতেই থাকে */
+  it('খোলা ডিজাইন ফেরত যায় না', async () => {
+    const manager = await staff('OX-M3', 'manager', 'm3@test.local');
+    await fillPool(100);
+    await svc().distribute();
+
+    const one = await h.prisma.designTarget.findFirstOrThrow({
+      where: { assignedToId: manager.id },
+    });
+    await h.prisma.designTarget.update({
+      where: { id: one.id },
+      data: { startedAt: new Date() },
+    });
+
+    await svc().returnUnworked(workDateOf(new Date()));
+
+    const still = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: one.id },
+    });
+    expect(still.assignedToId).toBe(manager.id);
   });
 });
