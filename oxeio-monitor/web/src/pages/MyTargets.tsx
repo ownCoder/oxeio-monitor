@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import {
   completeTarget,
   myTargets,
@@ -9,6 +11,7 @@ import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { ErrorBox, Loading } from '../components/States';
 import { formatAgo } from '../lib/format';
+import { blockedNotice, openInTabs } from '../lib/popups';
 import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/ui';
 
 /**
@@ -33,6 +36,13 @@ export function MyTargets() {
   const { data, loading, error, reload } = useApi(myTargets, []);
   const skip = useMutation();
 
+  /**
+   * ⚠️ পপ-আপ আটকানোর বার্তা `skip.error`-এর সাথে মেশানো হয়নি — ওটা
+   *    সার্ভারের না-বলা, আর এটা ব্রাউজারের। দুটো এক ঘরে বসালে একটা
+   *    আরেকটাকে মুছে দিত, অথচ কারণ দুটো আলাদা।
+   */
+  const [tabsNotice, setTabsNotice] = useState<string | null>(null);
+
   if (loading && !data) return <Loading />;
   if (error && !data) return <ErrorBox error={error} retry={reload} />;
   if (!data || data.length === 0) return null;
@@ -50,10 +60,46 @@ export function MyTargets() {
   const inHand = data.filter((t) => t.completedAt === null);
   const finished = data.filter((t) => t.completedAt !== null);
 
+  /**
+   * ⭐⭐ **এক চাপে হাতের সব কটা Amazon পাতা** *(মালিকের চাওয়া, ২৯ আগস্ট
+   * ২০২৬: "30 design gula ek sathe open korar ekta button")*।
+   *
+   * ⚠️ **হাতেরগুলোই খোলে, আজ শেষ করাগুলো নয়** — নিচের "Finished today"
+   * ভাগটা একটা রসিদ, করণীয় নয়। ওগুলোও খুললে রোজ ৩০টার বদলে ৬০টা ট্যাব
+   * খুলত, আর অর্ধেকের কোনো কাজই বাকি নেই।
+   *
+   * ⚠️⚠️ ব্রাউজার বেশিরভাগটাই আটকাবে **প্রথমবার** — সেটা ভাঙা নয়, নিয়ম
+   * ([popups.ts](../lib/popups.ts))। তাই কী ঘটল সেটা গুনে বার্তায় বসে,
+   * আর অনুমতি একবার দিলে পরের দিন থেকে ৩০টাই খোলে।
+   */
+  function openAll() {
+    const { blocked } = openInTabs(
+      inHand.map((t) => t.url),
+      (url) => window.open(url, '_blank'),
+    );
+    setTabsNotice(blockedNotice(inHand.length, blocked));
+  }
+
   return (
     <Card
       title="Your Design Targets"
       hint={`${inHand.length} in hand — oldest first`}
+      /*
+        ⭐ বোতামটা কার্ডের মাথায়, প্রতিটা সারিতে নয় — কাজটা গোটা তালিকার,
+           একটা টার্গেটের নয়। ⚠️ সংখ্যাটা লেখাতেই বসে ("Open all 30"),
+           কারণ ৩০টা ট্যাব খোলা ফেরানো কঠিন; চাপার আগেই জানা দরকার কত
+           আসছে।
+      */
+      actions={
+        inHand.length > 0 ? (
+          <MiniButton
+            title="Opens every target in hand in its own tab"
+            onClick={openAll}
+          >
+            Open all {inHand.length} ↗
+          </MiniButton>
+        ) : null
+      }
     >
       <div className="space-y-3 p-4">
         {/*
@@ -73,6 +119,12 @@ export function MyTargets() {
              আর সেটা না দেখালে ডিজাইনার ভাবতেন বোতামটা ভাঙা।
         */}
         <ServerError error={skip.error} />
+
+        {/*
+          ⚠️ ব্রাউজার ট্যাব আটকালে **এখানেই** বলা হয় — ঠিকানা-বারের ছোট
+             আইকনটা মানুষ খেয়ালই করে না, আর তখন বোতামটাকে ভাঙা মনে হয়।
+        */}
+        {tabsNotice && <Notice tone="attention">{tabsNotice}</Notice>}
 
         {inHand.map((t) => (
           <TargetRow
