@@ -1304,3 +1304,175 @@ describe('বণ্টন — ম্যানেজারও পান', () => {
     expect(still.assignedToId).toBe(manager.id);
   });
 });
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * **মরা ASIN মুছে ফেলা** *(২৯ আগস্ট ২০২৬, মালিকের রিপোর্ট: "pool er kiso
+ * asin amazon e page nei… sei page gula sorry not found on amazon")*।
+ *
+ * ⚠️⚠️ **এই describe-এর আসল দাবি একটাই: মোছা মানে ভুলে যাওয়া নয়।**
+ * আগে Delete ছিল সত্যিকারের `DELETE`, আর তাতে সারির সাথে `asin` UNIQUE
+ * প্রহরীটাও চলে যেত — কাল কেউ ওই মরা ASIN আবার পেস্ট করলে সেটা নতুন কাজ
+ * হিসেবে ঢুকত, বণ্টনে যেত, আর ডিজাইনার আবার গিয়ে দেখতেন "Sorry, not
+ * found"। ⭐ নিচের দ্বিতীয় টেস্টটাই সেই চক্রের পাহারা।
+ */
+describe('মরা ASIN মুছে ফেলা', () => {
+  /**
+   * ⚠️⚠️ **সেশনটা ফেরত দেওয়া হয়, আর সেটা ইচ্ছাকৃত** — একই টেস্টে
+   * দ্বিতীয়বার `loginReady()` ডাকলে ৪০১ আসে (২৫ আগস্টের শিক্ষা,
+   * `0a96d75`)। ⭐ তাই পুল ভরার সময় যে সেশনটা তৈরি হলো, টেস্ট সেটাই
+   * ব্যবহার করে।
+   */
+  async function seedPool(count: number): Promise<Session> {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join('\n'),
+    }).expect(201);
+    return owner;
+  }
+
+  const ids = async (): Promise<number[]> =>
+    (
+      await h.prisma.designTarget.findMany({
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    ).map((r) => r.id);
+
+  it('সারিটা থেকে যায়, কিন্তু আর বণ্টনে যায় না', async () => {
+    await staff('OX-D1', 'designer', 'd1@test.local');
+    const owner = await seedPool(5);
+
+    const res = await post(owner, '/api/v1/design-targets/delete', {
+      ids: (await ids()).slice(0, 2),
+    }).expect(201);
+
+    expect(res.body).toEqual({ deleted: 2, keptDone: 0 });
+
+    // ⭐ পাঁচটাই টেবিলে — মোছা হয়নি, দাগানো হয়েছে
+    expect(await h.prisma.designTarget.count()).toBe(5);
+    expect(
+      await h.prisma.designTarget.count({ where: { status: 'deleted' } }),
+    ).toBe(2);
+
+    await h.app.get(TargetsService).distribute();
+
+    expect(
+      await h.prisma.designTarget.count({ where: { status: 'assigned' } }),
+    ).toBe(3);
+  });
+
+  /**
+   * ⚠️⚠️ **গোটা বদলের কারণ এই একটা টেস্ট।** সারিটা না থাকলে
+   * `ON CONFLICT (asin) DO NOTHING` কিছুই ঠেকাত না।
+   */
+  it('মোছা ASIN আবার পেস্ট করলে পুলে ফেরে না', async () => {
+    const owner = await seedPool(1);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: await ids(),
+    }).expect(201);
+
+    const again = await post(owner, '/api/v1/design-targets/bulk', {
+      text: URL_OF(1),
+    }).expect(201);
+
+    expect(again.body.added).toBe(0);
+    expect(again.body.alreadyKnown).toBe(1);
+    expect(
+      await h.prisma.designTarget.count({ where: { status: 'pool' } }),
+    ).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ শেষ হয়ে যাওয়া কাজ মুছলে ডিজাইনারের দিনের গোনা কমে যেত, আর
+   * আপলোডের কিউ থেকেও জিনিসটা নীরবে হারাত।
+   */
+  it('শেষ হয়ে যাওয়া সারি ছোঁয়া হয় না, আর সেটা গুনে বলা হয়', async () => {
+    const owner = await seedPool(2);
+    const [first, second] = await ids();
+
+    await h.prisma.designTarget.update({
+      where: { id: first },
+      data: { status: 'done', completedAt: new Date(), completedVia: 'manual' },
+    });
+
+    const res = await post(owner, '/api/v1/design-targets/delete', {
+      ids: [first, second],
+    }).expect(201);
+
+    expect(res.body).toEqual({ deleted: 1, keptDone: 1 });
+    expect(
+      (await h.prisma.designTarget.findUniqueOrThrow({ where: { id: first } }))
+        .status,
+    ).toBe('done');
+  });
+
+  /**
+   * ⭐⭐ **সবচেয়ে দরকারি ক্ষেত্র** — ডিজাইনার লিঙ্কটা খুলে তবেই বোঝেন
+   * পাতাটা নেই, অর্থাৎ সারিটা তখন তাঁর **হাতে**।
+   */
+  it('হাতে থাকা সারি মুছলে তালিকা থেকে সরে, আর পরের বণ্টনে বদলি আসে', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    const owner = await seedPool(31);
+    const targets = h.app.get(TargetsService);
+    await targets.distribute();
+
+    const mine = await targets.mine(designer.id);
+    expect(mine).toHaveLength(30);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [mine[0].id],
+    }).expect(201);
+
+    expect(await targets.mine(designer.id)).toHaveLength(29);
+
+    // ⭐ হাতের গোনা ২৯, পুলে পড়ে আছে ১ — তাই বদলিটা এমনিতেই আসে
+    await targets.distribute();
+    expect(await targets.mine(designer.id)).toHaveLength(30);
+  });
+
+  /** ⚠️ একই id দুবার এলে সংখ্যাটা বাড়িয়ে দেখাত */
+  it('একই id দুবার দিলে একবারই গোনা হয়', async () => {
+    const owner = await seedPool(1);
+    const [only] = await ids();
+
+    const res = await post(owner, '/api/v1/design-targets/delete', {
+      ids: [only, only],
+    }).expect(201);
+
+    expect(res.body.deleted).toBe(1);
+  });
+
+  /** ⚠️ দ্বিতীয়বার মুছলে audit-এ দ্বিতীয় সারি বসত, অথচ কিছুই ঘটেনি */
+  it('আগে মোছা সারি আবার মুছলে কিছুই ঘটে না', async () => {
+    const owner = await seedPool(1);
+    const only = await ids();
+
+    await post(owner, '/api/v1/design-targets/delete', { ids: only }).expect(201);
+    const twice = await post(owner, '/api/v1/design-targets/delete', {
+      ids: only,
+    }).expect(201);
+
+    expect(twice.body).toEqual({ deleted: 0, keptDone: 0 });
+    expect(
+      await h.prisma.auditLog.count({ where: { action: 'design_deleted' } }),
+    ).toBe(1);
+  });
+
+  /** ⭐ একক পথটাও একই কাজ করে — দুটো আলাদা আচরণ থাকলে একদিন একটা ভুল হতো */
+  it('একক DELETE-ও সারি মোছে না, দাগায়', async () => {
+    const owner = await seedPool(1);
+    const [only] = await ids();
+
+    await owner.http
+      .delete(`/api/v1/design-targets/${only}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .expect(200);
+
+    expect(
+      (await h.prisma.designTarget.findUniqueOrThrow({ where: { id: only } }))
+        .status,
+    ).toBe('deleted');
+  });
+});

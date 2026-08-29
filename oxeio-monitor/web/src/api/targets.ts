@@ -43,6 +43,8 @@ export interface TargetStats {
   assigned: number;
   done: number;
   skipped: number;
+  /** ⭐ Amazon-এ পাতাটাই নেই — হাতে মুছে ফেলা *(২৯ আগস্ট)* */
+  deleted: number;
   perDesigner: number;
   /** ⭐ Amazon-এ পাঠানো হয়েছে — `done`-এর উপরে, বদলে নয় */
   uploaded: number;
@@ -136,7 +138,13 @@ export function skipTarget(id: number, reason?: string): Promise<{ ok: boolean }
   });
 }
 
-export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped';
+export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
+
+/** ⭐ মোছার ফল — কতগুলো গেল, আর শেষ হয়ে যাওয়া কতগুলো থেকে গেল */
+export interface DeleteResult {
+  deleted: number;
+  keptDone: number;
+}
 
 export interface TargetRow {
   id: number;
@@ -246,11 +254,25 @@ export function updateTarget(id: number, status: TargetStatus): Promise<{ ok: bo
 }
 
 /**
- * ⚠️⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়** — কাল কেউ আবার জমা
- * দিলে নতুন কাজ হিসেবে ঢুকবে। সাধারণত "Skipped" বেশি নিরাপদ।
+ * ⭐⭐ **মুছে ফেলা — সারিটা থাকে, "Deleted" হয়ে** *(২৯ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ আগে এটা সত্যিকারের `DELETE` ছিল, আর তাতে `asin` UNIQUE প্রহরীও
+ * উধাও হতো — মরা ASIN কাল আবার পুলে ঢুকে বণ্টনে চলে যেত।
  */
-export function deleteTarget(id: number): Promise<{ ok: boolean }> {
-  return api<{ ok: boolean }>(`/design-targets/${id}`, { method: 'DELETE' });
+export function deleteTarget(id: number): Promise<DeleteResult> {
+  return api<DeleteResult>(`/design-targets/${id}`, { method: 'DELETE' });
+}
+
+/**
+ * ⭐⭐ **বেছে নেওয়া কয়েকটা একসাথে** *(মালিকের চাওয়া, ২৯ আগস্ট)*।
+ *
+ * ⚠️ `POST`, `DELETE` নয় — বডিসহ `DELETE` অনেক প্রক্সি নীরবে ফেলে দেয়।
+ */
+export function deleteTargets(ids: number[]): Promise<DeleteResult> {
+  return api<DeleteResult>('/design-targets/delete', {
+    method: 'POST',
+    body: { ids },
+  });
 }
 
 /** ⭐ "আপলোড হয়েছে" — owner · manager · গবেষক */

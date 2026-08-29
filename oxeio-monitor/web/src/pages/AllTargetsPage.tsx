@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
+  deleteTargets,
   listTargetAdders,
   undoComplete,
   listTargetDesigners,
@@ -20,9 +21,16 @@ import { useAuth } from '../auth/AuthContext';
 import { Card } from '../components/Card';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
-import { Table } from '../components/Table';
+import { Table, type Column } from '../components/Table';
 import { formatDateTime } from '../lib/format';
-import { Chip, MiniButton, ServerError, useMutation } from './settings/ui';
+import {
+  Chip,
+  ConfirmDialog,
+  MiniButton,
+  Notice,
+  ServerError,
+  useMutation,
+} from './settings/ui';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -106,6 +114,15 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'done', label: 'Done' },
   { value: 'done_today', label: 'Done · today' },
   { value: 'skipped', label: 'Skipped' },
+  /**
+   * ⭐⭐ **মরা লিঙ্কগুলো** *(২৯ আগস্ট ২০২৬)* — Amazon-এ পাতাই নেই।
+   *
+   * ⚠️⚠️ এটা না থাকলে মোছা সারিগুলো **কোথাও দেখা যেত না**, অথচ ওরা
+   * টেবিলে বসে আছে। ⭐ আর তখন "কতগুলো লিঙ্ক মরে গেছে" প্রশ্নটার উত্তর
+   * দেওয়ার পথই থাকত না — অথচ ওই সংখ্যাটাই বলে দেয় গবেষকের তালিকাটা
+   * কতটা বাসি।
+   */
+  { value: 'deleted', label: 'Deleted' },
 ];
 
 /**
@@ -136,6 +153,19 @@ function TargetList() {
   /** ⭐ বাকি ছাঁকনিগুলো খোলা আছে কি না *(২৫ আগস্ট)* — ডিফল্টে বন্ধ */
   const [showFilters, setShowFilters] = useState(false);
   const edit = useMutation();
+
+  /**
+   * ⭐⭐ **বেছে নেওয়া সারিগুলো** *(মালিকের চাওয়া, ২৯ আগস্ট ২০২৬:
+   * "not found asin gula delete korar time e select kora zabe")*।
+   *
+   * ⚠️ `Set`, `TargetRow[]` নয় — দরকার শুধু "এটা বাছা হয়েছে কি না",
+   * আর সারির বাকি তথ্য তালিকাতেই আছে। সারি জমিয়ে রাখলে রিফ্রেশের পর
+   * পুরোনো কপি হাতে থেকে যেত।
+   */
+  const [picked, setPicked] = useState<ReadonlySet<number>>(new Set());
+  const [confirmingBulk, setConfirmingBulk] = useState(false);
+  /** ⚠️ শেষ-হওয়া কতগুলো বাদ পড়ল — মোছার পর একবার বলা হয়, তারপর চুপ */
+  const [kept, setKept] = useState(0);
 
   const designers = useApi(listTargetDesigners, []);
   /**
@@ -185,6 +215,16 @@ function TargetList() {
   );
 
   /**
+   * ⚠️⚠️ **ছাঁকনি বা পাতা বদলালে বাছাই মুছে যায়, আর এটা নিরাপত্তার শর্ত।**
+   * নইলে ২ নম্বর পাতায় ৫০টা বেছে, তারপর ছাঁকনি বদলে Delete চাপলে
+   * **চোখের সামনে নেই এমন** সারি মুছে যেত — আর কেউ বুঝতই না কী গেল।
+   */
+  useEffect(() => {
+    setPicked(new Set());
+    setKept(0);
+  }, [filter, q, staffId, addedById, from, to, page]);
+
+  /**
    * ⭐⭐ **গোটানো ছাঁকনির গায়ের সংখ্যাটা** *(২৫ আগস্ট)*।
    *
    * ⚠️⚠️ লুকোনো ছাঁকনি নিজেই একটা ফাঁদ: কেউ কাল এসে খালি তালিকা দেখে
@@ -211,6 +251,52 @@ function TargetList() {
       : filter === 'done' && from === today && to === today
         ? 'done_today'
         : filter;
+
+  const rows = data.data?.rows ?? [];
+  /** ⚠️ খালি পাতায় `every()` সত্যি বলে — তাই সংখ্যাটাও দেখা হয় */
+  const allPicked = rows.length > 0 && rows.every((r) => picked.has(r.id));
+
+  const toggleAll = () =>
+    setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.id)));
+
+  const toggleOne = (id: number) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      // ⚠️ `delete()` false ফেরালে তবেই যোগ — দুই লাইনের if/else নয়
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  /**
+   * ⭐ চেকবক্সের কলামটা কেবল যাঁর মোছার অধিকার আছে তাঁর কাছে — গবেষকের
+   * পর্দায় বসালে বেছে নেওয়া যেত, অথচ কিছুই করা যেত না।
+   */
+  const pickColumn: Column<TargetRow>[] = mayDelete
+    ? [
+        {
+          key: 'pick',
+          className: 'w-8',
+          header: (
+            <input
+              type="checkbox"
+              className="tap"
+              aria-label="Select every row on this page"
+              checked={allPicked}
+              onChange={toggleAll}
+            />
+          ),
+          render: (r) => (
+            <input
+              type="checkbox"
+              className="tap"
+              aria-label={'Select ' + r.asin}
+              checked={picked.has(r.id)}
+              onChange={() => toggleOne(r.id)}
+            />
+          ),
+        },
+      ]
+    : [];
 
   /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
    *  থেকে "কিছু নেই" দেখা যেত, অথচ ফল আছে */
@@ -441,10 +527,87 @@ function TargetList() {
 
       {data.data && data.data.rows.length > 0 && (
         <>
+          {/*
+            ⭐⭐ **কতগুলো বাছা হয়েছে, আর তা নিয়ে কী করা যায়** — বারটা বসে
+               তখনই, যখন অন্তত একটা বাছা। ⚠️ সবসময় বসিয়ে রাখলে পাতার
+               মাথায় একটা খালি ফালি থাকত, আর ২৫ আগস্টের ছাঁটাইয়ের গোটা
+               কথাই ছিল এই পাতায় কম জিনিস রাখা।
+          */}
+          {mayDelete && picked.size > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-paper px-4 py-2.5">
+              <span className="text-[12.5px] text-ink-2">
+                <span className="num font-semibold">{picked.size}</span> selected
+              </span>
+              <span className="flex gap-2">
+                <MiniButton
+                  disabled={edit.busy}
+                  onClick={() => setPicked(new Set())}
+                >
+                  Clear
+                </MiniButton>
+                <MiniButton
+                  tone="danger"
+                  disabled={edit.busy}
+                  onClick={() => setConfirmingBulk(true)}
+                >
+                  Delete
+                </MiniButton>
+              </span>
+            </div>
+          )}
+
+          {/*
+            ⚠️⚠️ **যেগুলো মোছা হয়নি সেগুলোর কথাও বলা হয়।** ৫০টা বেছে ৪৮টা
+               মুছলে বাকি দুটোর কী হলো সেটা না বললে মানুষ ধরেই নিতেন সব
+               মুছে গেছে — আর শেষ-হওয়া কাজ চুপচাপ তালিকায় থেকে যেত।
+          */}
+          {kept > 0 && (
+            <div className="px-4 pt-3">
+              <Notice tone="attention">
+                <span className="num font-semibold">{kept}</span> finished{' '}
+                {kept === 1 ? 'design was' : 'designs were'} left alone — deleting
+                those would take away work that was really done. Undo them first
+                if they must go.
+              </Notice>
+            </div>
+          )}
+
+          {confirmingBulk && (
+            <ConfirmDialog
+              title={
+                picked.size === 1
+                  ? 'Delete 1 target?'
+                  : 'Delete ' + picked.size + ' targets?'
+              }
+              intro="Use this for links whose Amazon page is gone."
+              /*
+                ⚠️⚠️ পরিণামটা **দুই দিক থেকেই** লেখা: আর কারো কাছে যাবে না,
+                   আর ওই ASIN কোনোদিন পুলে ফিরতেও পারবে না। দ্বিতীয় কথাটাই
+                   এই বদলের গোটা কারণ, তাই লুকোনো চলে না।
+              */
+              warning="They stay in the list as Deleted, never go to anyone again, and the same ASIN can never be added back to the pool. Finished designs in the selection are left alone."
+              confirmLabel="Delete"
+              busy={edit.busy}
+              error={edit.error}
+              onConfirm={() =>
+                edit.run(async () => {
+                  const res = await deleteTargets([...picked]);
+                  setKept(res.keptDone);
+                  setPicked(new Set());
+                  setConfirmingBulk(false);
+                  data.reload();
+                  stats.reload();
+                })
+              }
+              onClose={() => setConfirmingBulk(false)}
+            />
+          )}
+
           <Table
             rows={data.data.rows}
             rowKey={(r) => String(r.id)}
             columns={[
+              ...pickColumn,
               /*
                 ⭐⭐ **সাতটা কলাম থেকে চারটে** *(মালিকের সিদ্ধান্ত, ২৫
                    আগস্ট: "khubi gatharing lagoche dekhote")*।
@@ -557,8 +720,12 @@ function TargetList() {
                     mayProofread={user?.canProofread === true}
                     onDelete={() =>
                       edit.run(async () => {
-                        await deleteTarget(r.id);
+                        // ⚠️ একক পথেও `keptDone` আসে — শেষ-হওয়া সারিতে
+                        //    Delete চাপলে কিছুই ঘটে না, আর সেটা বলা দরকার
+                        const res = await deleteTarget(r.id);
+                        setKept(res.keptDone);
                         data.reload();
+                        stats.reload();
                       })
                     }
                   />
@@ -622,6 +789,12 @@ function StatusChip({ row }: { row: TargetRow }) {
     );
   }
   if (row.status === 'skipped') return <Chip tone="attention">Skipped</Chip>;
+  /**
+   * ⚠️ ধূসর, লাল নয় — মোছা সারি কোনো **সমস্যা** নয়, একটা মীমাংসিত ঘটনা।
+   * লাল রাখলে তালিকা ভর্তি লাল চিপ হতো, আর তখন সত্যিকারের লাল
+   * (`Skipped`) আর চোখে পড়ত না (`Notice`-এর একই নিয়ম)।
+   */
+  if (row.status === 'deleted') return <Chip tone="muted">Deleted</Chip>;
 
   return <Chip>Waiting</Chip>;
 }
@@ -716,9 +889,10 @@ function PeopleCell({ row }: { row: TargetRow }) {
  * ডুপ্লিকেট-প্রহরীর গোটা ভিত্তিটাই নড়ে যেত, আর ইতিহাসে "এই পণ্যটা
  * হয়েছিল" কথাটা মিথ্যা হয়ে যেত।
  *
- * ⚠️ **Delete-এর একটা নীরব দাম আছে**, তাই আলাদা করে জিজ্ঞেস করা হয়:
- * শেষ হওয়া একটা সারি মুছলে প্রহরী ওই ASIN **ভুলে যায়**, আর কাল কেউ
- * আবার জমা দিলে সেটা নতুন কাজ হিসেবে ঢুকবে।
+ * ⚠️ **Delete এখন আর সারি মোছে না** *(২৯ আগস্ট ২০২৬)* — অবস্থা হয়
+ * `deleted`, সারিটা তালিকায় থাকে। ⭐ তবু জিজ্ঞেস করা হয়: ফেরার পথ
+ * আছে (অবস্থা বদলে `pool`), কিন্তু ভুল সারি মুছলে কেউ টেরই পাবেন না —
+ * চিপটা ধূসর, আর ধূসর জিনিস চোখে পড়ে না।
  */
 function RowActions({
   row,

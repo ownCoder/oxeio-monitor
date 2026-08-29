@@ -14,6 +14,9 @@ import {
 import { DesignTargetStatus, UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -26,7 +29,13 @@ import {
 
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
-import { TargetsService, type BulkResult, type MyTarget } from './targets.service';
+import {
+  DELETE_MAX,
+  TargetsService,
+  type BulkResult,
+  type DeleteResult,
+  type MyTarget,
+} from './targets.service';
 
 class BulkDto {
   /**
@@ -48,8 +57,25 @@ class BulkDto {
   text!: string;
 }
 
+/**
+ * ⭐⭐ **একসাথে অনেকগুলো মোছা** *(২৯ আগস্ট ২০২৬)*।
+ *
+ * ⚠️ `@Type(() => Number)` ছাড়া JSON-এর `["12"]` স্ট্রিং হয়েই থাকত আর
+ *    `IsInt` ফেল করত — অথচ ভুলটা পর্দার নয়, রূপান্তরের।
+ */
+class DeleteManyDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(DELETE_MAX)
+  @Type(() => Number)
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  ids!: number[];
+}
+
 class ListQueryDto {
-  @IsOptional() @IsIn(['pool', 'assigned', 'done', 'skipped'])
+  /** ⚠️ `deleted`-ও আছে — নইলে মালিক মরা ASIN-গুলো খুঁজেই পেতেন না */
+  @IsOptional() @IsIn(['pool', 'assigned', 'done', 'skipped', 'deleted'])
   status?: DesignTargetStatus;
 
   /** ⭐ URL বা ASIN — দুটোই চলে */
@@ -220,16 +246,44 @@ export class TargetsController {
   }
 
   /**
-   * ⚠️⚠️ মুছলে ডুপ্লিকেট-প্রহরী ওই ASIN **ভুলে যায়** — কাল কেউ আবার
-   * জমা দিলে নতুন কাজ হিসেবে ঢুকবে। পর্দায় কথাটা লেখা আছে।
+   * ⭐⭐ **বেছে বেছে মুছে ফেলা** *(মালিকের চাওয়া, ২৯ আগস্ট ২০২৬:
+   * "not found asin gula delete korar time e select kora zabe")*।
+   *
+   * ⚠️⚠️ **`POST`, `DELETE` নয়** — বডিসহ `DELETE` অনেক প্রক্সি ও
+   * ক্লায়েন্ট নীরবে ফেলে দেয়, আর তখন "কিছুই মুছল না" বলে বাগ খুঁজতে
+   * হতো। ⭐ এই কন্ট্রোলারের বাকি কাজগুলোও (`:id/checked`, `distribute`)
+   * POST — নিয়মটা এক জায়গায় এক।
+   *
+   * ⚠️ পাহারা `assertCanUse` (owner · manager · গবেষক), নিচের একক
+   * `@Delete(':id')`-এর মতোই — দুটো পথ একই কাজ করে, তাই দুই রকম
+   * পাহারা বসালে একদিন একটা দিয়ে অন্যটা ফাঁকি দেওয়া যেত। ⭐ পর্দায়
+   * বোতামটা কেবল owner/manager দেখেন (`mayDelete`)।
+   */
+  @Post('delete')
+  async deleteMany(
+    @CurrentUser() actor: SessionUser,
+    @Body() dto: DeleteManyDto,
+    @Ip() ip: string,
+  ): Promise<DeleteResult> {
+    await this.targets.assertCanUse(actor);
+    return this.targets.softDelete(dto.ids, actor.userId, ip);
+  }
+
+  /**
+   * ⭐ একটা সারি — উপরের বাল্ক পথেরই এক-সদস্যের রূপ।
+   *
+   * ⚠️⚠️ **এটা আর সত্যিকারের `DELETE` নয়** *(২৯ আগস্ট)*। সারিটা থেকে
+   * যায়, অবস্থা হয় `deleted` — নইলে `asin` UNIQUE প্রহরীটাও মুছে যেত
+   * আর মরা ASIN কাল আবার পুলে ঢুকত।
    */
   @Delete(':id')
   async remove(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
-  ) {
+    @Ip() ip: string,
+  ): Promise<DeleteResult> {
     await this.targets.assertCanUse(actor);
-    return this.targets.remove(id);
+    return this.targets.softDelete([id], actor.userId, ip);
   }
 
   /**

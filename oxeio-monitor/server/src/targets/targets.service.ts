@@ -76,6 +76,24 @@ export interface BulkResult {
  */
 export const TARGET_PAGE_SIZE = 50;
 
+/**
+ * ⚠️ এক ডাকে সর্বোচ্চ কতগুলো মোছা যাবে। পর্দায় এক পাতায় ৫০টা, তাই
+ * বাস্তবে কেউ এর কাছেও পৌঁছাবেন না — ছাদটা মানুষকে নয়, দুর্ঘটনা ও
+ * বেঢপ কোয়েরি আটকাতে (`BulkDto`-র ছাদের একই যুক্তি)।
+ */
+export const DELETE_MAX = 500;
+
+export interface DeleteResult {
+  /** কতগুলো সত্যিই `deleted` হলো */
+  deleted: number;
+  /**
+   * ⚠️⚠️ **শেষ হয়ে যাওয়া বলে যেগুলো ছোঁয়া হয়নি।** সংখ্যাটা ফেরত যায়
+   * বলেই পর্দা সত্যি কথাটা বলতে পারে — নইলে ৫০টা বেছে ৪৮টা মুছত আর
+   * কেউ জানত না বাকি দুটোর কী হলো।
+   */
+  keptDone: number;
+}
+
 export interface TargetRow {
   id: number;
   asin: string;
@@ -1050,17 +1068,77 @@ export class TargetsService {
   }
 
   /**
-   * ⚠️⚠️ **মুছে ফেলা — আর এর একটা নীরব দাম আছে।**
+   * ⭐⭐ **মুছে ফেলা — সারিটা থাকে, কেবল মরা বলে দাগানো হয়**
+   * *(মালিকের রিপোর্ট, ২৯ আগস্ট ২০২৬: "pool er kiso asin amazon e page
+   * nei… delete korle delete hisabe pool e thakobe but karo kase
+   * distribute hobena")*।
    *
-   * শেষ হয়ে যাওয়া একটা সারি মুছলে **ডুপ্লিকেট-প্রহরী ওটা ভুলে যায়**,
-   * আর কাল কেউ ওই ASIN আবার জমা দিলে সেটা নতুন কাজ হিসেবে ঢুকে পড়বে।
-   * ⭐ তাই পর্দায় কথাটা লেখা আছে; সাধারণত "বাদ দেওয়া" (skipped) বেশি
-   * নিরাপদ — ওটা তালিকায় থাকে, কিন্তু কারো কাজ নয়।
+   * ⚠️⚠️ **আগে এটা সত্যিকারের `DELETE` ছিল, আর তাতেই বাগটা।** সারি
+   * উধাও হলে `asin` UNIQUE প্রহরীও উধাও — কাল কেউ ওই মরা ASIN আবার
+   * পেস্ট করলে নতুন কাজ হিসেবে ঢুকত, বণ্টনে যেত, আর ডিজাইনার আবার গিয়ে
+   * দেখতেন "Sorry, not found"। ⭐ পুরোনো টীকায় দামটা লেখাই ছিল, শুধু
+   * বিকল্পটা ছিল না; এখন `deleted` অবস্থাটাই সেই বিকল্প।
+   *
+   * ⚠️⚠️ **শেষ হয়ে যাওয়া সারি ছোঁয়া হয় না।** `done` মানে কেউ সত্যিই
+   * ডিজাইনটা বানিয়েছেন — ওটা মুছলে তাঁর দিনের গোনা কমে যেত, আর
+   * আপলোডের কিউ থেকেও জিনিসটা নীরবে হারাত। ⭐ ভুল করে বেছে ফেললে কী
+   * হলো সেটা `keptDone` ধরে পর্দায় বলা হয়, চুপ করে বাদ দেওয়া হয় না।
+   *
+   * ⭐ **হাতে থাকা (`assigned`) সারি মোছা যায়, আর সেটাই সবচেয়ে দরকারি
+   * ক্ষেত্র** — ডিজাইনার লিঙ্কটা খুলে তবেই বুঝতে পারেন পাতাটা নেই।
+   * ⚠️ `assignedToId` মোছা হয় না (কার হাতে ছিল সেটা ইতিহাস), কিন্তু
+   * অবস্থা বদলে যাওয়ায় সারিটা তাঁর তালিকা থেকে সরে যায় আর তাঁর
+   * "হাতে ৩০টা"-র গোনাতেও পড়ে না — অর্থাৎ পরের বণ্টনে বদলিটা এমনিতেই
+   * এসে যায়।
    */
-  async remove(id: number): Promise<{ ok: boolean }> {
-    const { count } = await this.prisma.designTarget.deleteMany({ where: { id } });
+  async softDelete(
+    ids: readonly number[],
+    userId: number,
+    ip: string,
+  ): Promise<DeleteResult> {
+    // ⚠️ একই id দুবার এলে দুবার গোনা হতো — পর্দায় সংখ্যাটা তখন বাড়িয়ে দেখাত
+    const wanted = [...new Set(ids)];
+    if (wanted.length === 0) return { deleted: 0, keptDone: 0 };
 
-    return { ok: count > 0 };
+    const rows = await this.prisma.designTarget.findMany({
+      where: { id: { in: wanted } },
+      select: { id: true, status: true },
+    });
+
+    const keptDone = rows.filter(
+      (r) => r.status === DesignTargetStatus.done,
+    ).length;
+
+    // ⚠️ আগেই মোছা সারি বাদ — নইলে দুবার চাপলে audit-এ দুটো এন্ট্রি বসত
+    const doable = rows
+      .filter(
+        (r) =>
+          r.status !== DesignTargetStatus.done &&
+          r.status !== DesignTargetStatus.deleted,
+      )
+      .map((r) => r.id);
+
+    const { count } =
+      doable.length === 0
+        ? { count: 0 }
+        : await this.prisma.designTarget.updateMany({
+            where: { id: { in: doable } },
+            data: { status: DesignTargetStatus.deleted },
+          });
+
+    if (count > 0) {
+      await this.audit.record({
+        userId,
+        action: 'design_deleted',
+        targetType: 'design_targets',
+        targetId: doable.length === 1 ? String(doable[0]) : 'bulk',
+        ipAddress: ip,
+        // ⚠️ ASIN-গুলো নয়, সংখ্যাগুলো — তালিকাটা টেবিলেই আছে (`bulkAdd`-এর একই নিয়ম)
+        meta: { deleted: count, keptDone, asked: wanted.length },
+      });
+    }
+
+    return { deleted: count, keptDone };
   }
 
   /** পুলের অবস্থা — ইনবক্সের পর্দায় */
@@ -1176,6 +1254,15 @@ export class TargetsService {
       assigned: 0,
       done: 0,
       skipped: 0,
+      /**
+       * ⭐ মরা ASIN — Amazon-এ পাতাটাই নেই *(২৯ আগস্ট)*।
+       *
+       * ⚠️⚠️ শূন্যগুলো এখানে **হাতে লেখা, আর সেটাই ইচ্ছাকৃত**: টাইপটা
+       * `Record<DesignTargetStatus, number>`, তাই enum-এ নতুন মান বসলে
+       * টাইপচেক এখানে থামে। ⭐ ২৯ আগস্ট ঠিক তা-ই হয়েছে — নইলে নতুন
+       * অবস্থাটা গোনার বাইরে থেকে যেত আর পর্দায় কেউ টেরও পেত না।
+       */
+      deleted: 0,
       perDesigner: POOL_PER_DESIGNER,
       uploaded,
       live,

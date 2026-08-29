@@ -77,9 +77,19 @@ export function TargetsPage() {
                      বোঝা যায় সংগ্রহের মান পড়ছে, আর সেটা জানা দরকার।
                   ⭐ তবে পাইপলাইনের বাইরে, কারণ এটা ধাপ নয় — বেরিয়ে যাওয়া।
                 */}
+                {/*
+                  ⭐⭐ **দুটো সংখ্যা, আর ওদের মানে এক নয়** *(২৯ আগস্ট ২০২৬)*।
+                     `skipped` = ডিজাইনার করতে চাননি (মানুষের সিদ্ধান্ত),
+                     `deleted` = Amazon-এ পাতাটাই নেই (জগতের ঘটনা)।
+                  ⚠️⚠️ এক করে দেখালে সংখ্যাটা বাড়তে দেখে কেউ বুঝত না দোষটা
+                     কার — সংগ্রহের, নাকি ডিজাইনারের। ⭐ আর দ্বিতীয়টাই
+                     গবেষকের তালিকা কতটা বাসি তার একমাত্র মাপ।
+                */}
                 <div className="mt-3 text-[12px] text-ink-3">
                   Dropped along the way:{' '}
-                  <span className="num font-medium">{s.skipped}</span>
+                  <span className="num font-medium">{s.skipped}</span> skipped ·{' '}
+                  <span className="num font-medium">{s.deleted}</span> gone from
+                  Amazon
                 </div>
               </>
             )}
