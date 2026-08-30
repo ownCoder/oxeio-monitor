@@ -288,6 +288,71 @@ export function MonthCard({ month }: { month: TeamTrend['month'] }) {
  * ⚠️ বার সবুজ নয়, নিরপেক্ষ `ink` — এটা টার্গেট ছোঁয়ার হিসাব নয়, নিছক
  *    তুলনা। সবুজ রাখলে "লক্ষ্য পূরণ" বলে ভুল হতো (ProgressBar-এর নিয়ম)।
  */
+/**
+ * ⭐⭐ **সবচেয়ে কম ঘণ্টা যাঁদের** *(মালিকের চাওয়া, ৩০ আগস্ট ২০২৬:
+ * "sob theke kom kaj kora staff er name dekhaO last kiso din er upore
+ * base kore")*।
+ *
+ * ⚠️⚠️ **প্রতিটা নামের নিচে "কত দিনে" লেখা থাকে, আর ওই লাইনটাই এই
+ * কার্ডটাকে সৎ রাখে।** শুধু "৪ ঘণ্টা" দেখালে পাঠক ধরে নিতেন লোকটা কাজ
+ * করেননি — অথচ তিনি হয়তো ছুটিতে ছিলেন, অসুস্থ ছিলেন, বা গত বুধবার যোগ
+ * দিয়েছেন। ⭐ এই প্রকল্পের নিয়মটাই তাই: **যে সংখ্যা দুভাবে পড়া যায়, তার
+ * পাশে ভুল পড়া ঠেকানোর কথাটা বসে** (`Stat`-এর `sub`)।
+ *
+ * ⚠️⚠️ **এখানে কোনো বার নেই, আর সেটা ইচ্ছাকৃত।** `TopPerformers`-এ বার
+ * মানে "শীর্ষজনের তুলনায় কতটা" — নিরীহ। কিন্তু কম-ঘণ্টার তালিকায় লম্বা
+ * বার পড়া হতো "কত খারাপ" হিসেবে, আর সেটা একটা রায়। ⭐ কার্ডটার কাজ
+ * প্রশ্ন তোলা ("এই পাঁচজনকে দেখুন"), রায় দেওয়া নয় — কারণটা তো পর্দায়
+ * নেই, সেটা মানুষটার কাছে।
+ *
+ * ⚠️ রঙও নিরপেক্ষ — লাল নয়। কম ঘণ্টা কোনো **অ্যালার্ট** নয়; ছুটি,
+ * অসুস্থতা, নতুন যোগদান — সবই এখানে এসে পড়ে।
+ */
+export function FewestHours({
+  people,
+  days,
+}: {
+  people: TeamTrend['laggards'];
+  days: number;
+}) {
+  if (people.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-sm text-ink-3">
+        No one to show yet — the list fills in as days are counted.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-line">
+      {people.map((p, i) => (
+        <li
+          key={p.employeeId}
+          className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5"
+        >
+          <span className="num text-[11px] text-ink-3">{i + 1}</span>
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-medium">{p.fullName}</div>
+            {/*
+              ⚠️⚠️ শূন্য দিনের কথাটা আলাদা করে লেখা — "0 of 7 days counted"
+                 পড়তে গিয়ে চোখ শূন্যটা এড়িয়ে যায়, আর তখন লোকটাকে
+                 "কাজ করেননি" মনে হয়, "ছিলেনই না" নয়।
+            */}
+            <div className="mt-0.5 text-[11.5px] text-ink-3">
+              {p.daysCounted === 0
+                ? `Nothing counted in ${days} days`
+                : `${p.daysCounted} of ${days} days counted`}
+            </div>
+          </div>
+          <span className="num text-[13px] font-semibold">
+            {formatDuration(p.creditedSec)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function TopPerformers({ leaders }: { leaders: TeamTrend['leaders'] }) {
   if (leaders.length === 0) {
     return (

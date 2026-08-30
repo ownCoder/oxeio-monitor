@@ -10,6 +10,7 @@ import {
   OFFLINE_AFTER_SEC,
   parseWorkDate,
   previousWorkDate,
+  rankLaggards,
   spreadIntoHourBuckets,
   type DeviceReport,
   type LiveStatus,
@@ -544,5 +545,94 @@ describe('বাতিল ডিভাইস হিসাবের বাইর�
     expect(
       statusOf([device({ status: 'revoked', lastSeenAt: secondsAgo(99_999) }), device()]),
     ).toBe('active');
+  });
+});
+/**
+ * **সবচেয়ে কম ঘণ্টা যাঁদের** *(৩০ আগস্ট ২০২৬)* — বোর্ডের ডান কলামের কার্ড।
+ *
+ * ⚠️⚠️ এই describe-এর সবচেয়ে জরুরি দাবি প্রথম টেস্টটাই: **যিনি একদিনও
+ * আসেননি তিনি তালিকা থেকে হারিয়ে যান না**। যোগফলের সারি ধরে সাজালে
+ * ঠিক তাঁরই কোনো সারি থাকত না — অথচ প্রশ্নটা তাঁকে নিয়েই।
+ */
+describe('rankLaggards — সবচেয়ে কম ঘণ্টা', () => {
+  const names = new Map([
+    [1, 'Ayesha'],
+    [2, 'Belal'],
+    [3, 'Chowdhury'],
+  ]);
+
+  it('⚠️⚠️ একদিনও কাজ না করা কর্মীও তালিকায় থাকেন, আর সবার উপরে', () => {
+    const worked = new Map([
+      [1, { creditedSec: 3600, daysCounted: 1 }],
+      [2, { creditedSec: 7200, daysCounted: 2 }],
+      // ⚠️ ৩ নম্বরের কোনো সারিই নেই — সাত দিনে একদিনও কিছু গোনা হয়নি
+    ]);
+
+    const out = rankLaggards(names, worked);
+
+    expect(out.map((r) => r.fullName)).toEqual(['Chowdhury', 'Ayesha', 'Belal']);
+    expect(out[0]).toMatchObject({ creditedSec: 0, daysCounted: 0 });
+  });
+
+  it('কম ঘণ্টা আগে, বেশি পরে', () => {
+    const worked = new Map([
+      [1, { creditedSec: 9000, daysCounted: 3 }],
+      [2, { creditedSec: 1800, daysCounted: 1 }],
+      [3, { creditedSec: 5400, daysCounted: 2 }],
+    ]);
+
+    expect(rankLaggards(names, worked).map((r) => r.fullName)).toEqual([
+      'Belal',
+      'Chowdhury',
+      'Ayesha',
+    ]);
+  });
+
+  /**
+   * ⚠️ নইলে শূন্যওয়ালা কয়েকজনের ক্রম প্রতি রিফ্রেশে বদলাত, আর পর্দাটা
+   * অস্থির দেখাত — অথচ কিছুই বদলায়নি।
+   */
+  it('সমান ঘণ্টায় ক্রম নাম ধরে, আর তাই স্থির', () => {
+    const worked = new Map<number, { creditedSec: number; daysCounted: number }>();
+
+    expect(rankLaggards(names, worked).map((r) => r.fullName)).toEqual([
+      'Ayesha',
+      'Belal',
+      'Chowdhury',
+    ]);
+  });
+
+  /**
+   * ⭐⭐ **গড় নয়, মোট** — আর সিদ্ধান্তটা এখানেই বাঁধা।
+   *
+   * ⚠️ গড় ধরে সাজালে এক দিনে ৭ ঘণ্টা করা কেউ সাত দিনে ৮ ঘণ্টা করা কারো
+   * **উপরে** থাকতেন, অথচ সপ্তাহে তাঁর ঘণ্টাই কম। প্রশ্নটা ছিল "কম কাজ",
+   * "কম গড়" নয়।
+   */
+  it('ক্রম মোট ঘণ্টা ধরে, দিনের গড় ধরে নয়', () => {
+    const worked = new Map([
+      [1, { creditedSec: 7 * 3600, daysCounted: 1 }],
+      [2, { creditedSec: 8 * 3600, daysCounted: 7 }],
+      [3, { creditedSec: 9 * 3600, daysCounted: 4 }],
+    ]);
+
+    expect(rankLaggards(names, worked).map((r) => r.fullName)).toEqual([
+      'Ayesha',
+      'Belal',
+      'Chowdhury',
+    ]);
+  });
+
+  it('কতজন দেখানো হবে তার সীমা মানে', () => {
+    const many = new Map(
+      Array.from({ length: 9 }, (_, i) => [i + 1, `Staff ${i + 1}`] as const),
+    );
+
+    expect(rankLaggards(many, new Map())).toHaveLength(5);
+    expect(rankLaggards(many, new Map(), 3)).toHaveLength(3);
+  });
+
+  it('কেউ না থাকলে খালি তালিকা', () => {
+    expect(rankLaggards(new Map(), new Map())).toEqual([]);
   });
 });
