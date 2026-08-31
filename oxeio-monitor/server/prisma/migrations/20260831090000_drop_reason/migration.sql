@@ -1,0 +1,19 @@
+-- ⭐⭐ **কেন সারিটা চলে গেল** (৩১ আগস্ট ২০২৬, মালিকের চাওয়া)
+--
+--    মালিক: "ami design pool theke B0CQTWMT2F delete korlam kintu eta keno
+--    delete korlam seta select kora option pelam na… 'Not Found, Copyright,
+--    Events' eigula add kore dao. kono designer skip press korleO tar kache
+--    same 3 ta option dibe."
+--
+-- ⚠️⚠️ **নতুন কলাম নয়, নাম বদল — আর সেটাই এখানকার সিদ্ধান্ত।**
+--    `skipped_reason` ঘরটা আগে থেকেই ছিল, কিন্তু ব্যবহারই হতো না: মাঠে
+--    ৯৩টা skipped সারির **একটাতেও** কিছু লেখা ছিল না, কারণ পর্দা কোনোদিন
+--    কারণ পাঠাত না। ⭐ এখন একই ঘর দুটো পথেই কাজে লাগবে — Skip আর Delete।
+--
+-- ⚠️ পাশে `deleted_reason` নামে দ্বিতীয় একটা কলাম বসানো যেত, কিন্তু তখন
+--    "এই সারিটা কেন চলে গেল" — একটাই প্রশ্নের উত্তর **দুই ঘরে** থাকত, আর
+--    প্রতিটা পড়ার জায়গায় `COALESCE` লিখতে হতো। কোন পথে গেছে সেটা `status`
+--    ইতিমধ্যেই বলে; কারণটা একটাই ঘরে থাকাই যথেষ্ট।
+--
+-- ⭐ ডেটা হারায় না: RENAME পুরোনো মান রেখে দেয় (এখানে সবই NULL)।
+ALTER TABLE "design_targets" RENAME COLUMN "skipped_reason" TO "drop_reason";

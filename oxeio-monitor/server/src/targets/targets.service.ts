@@ -17,6 +17,7 @@ import {
   asinOf,
   canUseTargets,
   DESIGN_WORK_STAFF_TYPES,
+  type DropReason,
   parseBulk,
   POOL_PER_DESIGNER,
   UPLOAD_QUEUE_FROM,
@@ -109,6 +110,16 @@ export interface TargetRow {
   completedVia: string | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — "Hafiz-24-05-2026" */
   sourceNote: string | null;
+
+  /**
+   * ⭐⭐ **কেন সারিটা কাজের বাইরে গেল** *(৩১ আগস্ট ২০২৬)* — `not_found` ·
+   * `copyright` · `events`।
+   *
+   * ⚠️ `skipped` ও `deleted` **দুটোতেই** থাকে; বাকি অবস্থায় `null`।
+   * পর্দায় লেখাটা `DROP_REASON_LABELS` থেকে আসে, এই মান থেকে নয় —
+   * তাই লেখাটা বদলালেও জমা ডেটা অক্ষত থাকে।
+   */
+  dropReason: string | null;
 
   /**
    * ⚠️⚠️ নিচের ঘরগুলো `list()` **আগে থেকেই ফেরত দিত**, কিন্তু এই টাইপে
@@ -736,11 +747,14 @@ export class TargetsService {
   async skip(
     employeeId: number,
     id: number,
-    reason: string | null,
+    reason: DropReason,
   ): Promise<{ ok: boolean }> {
     const { count } = await this.prisma.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
-      data: { status: DesignTargetStatus.skipped, skippedReason: reason },
+      // ⚠️⚠️ কারণটা এখন **বাধ্যতামূলক** *(৩১ আগস্ট)* — ঐচ্ছিক থাকায়
+      //    পর্দা কোনোদিন কিছু পাঠায়ইনি, আর ৯৩টা skipped সারির একটাতেও
+      //    কারণ লেখা ছিল না। ⭐ ঘরটা `dropReason`, কারণ Delete-ও এখানেই লেখে।
+      data: { status: DesignTargetStatus.skipped, dropReason: reason },
     });
 
     return { ok: count > 0 };
@@ -958,6 +972,7 @@ export class TargetsService {
           liveAt: true,
           liveAsin: true,
           sourceNote: true,
+          dropReason: true,
           assignedTo: { select: { empCode: true, fullName: true } },
           // ⭐ কে "শেষ" বলেছেন — বরাদ্দ পাওয়া মানুষ আর শেষ করা মানুষ
           //    এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)
@@ -1011,6 +1026,7 @@ export class TargetsService {
         liveAt: r.liveAt?.toISOString() ?? null,
         liveAsin: r.liveAsin,
         sourceNote: r.sourceNote,
+        dropReason: r.dropReason,
       })),
       total,
       page,
@@ -1095,6 +1111,7 @@ export class TargetsService {
     ids: readonly number[],
     userId: number,
     ip: string,
+    reason: DropReason,
   ): Promise<DeleteResult> {
     // ⚠️ একই id দুবার এলে দুবার গোনা হতো — পর্দায় সংখ্যাটা তখন বাড়িয়ে দেখাত
     const wanted = [...new Set(ids)];
@@ -1123,7 +1140,9 @@ export class TargetsService {
         ? { count: 0 }
         : await this.prisma.designTarget.updateMany({
             where: { id: { in: doable } },
-            data: { status: DesignTargetStatus.deleted },
+            // ⭐ ডিজাইনারের Skip-এর সাথে **একই ঘর** — "কেন বাদ গেল"
+            //    প্রশ্নটা এক, তাই উত্তরও এক জায়গায় (৩১ আগস্ট)
+            data: { status: DesignTargetStatus.deleted, dropReason: reason },
           });
 
     if (count > 0) {
@@ -1134,7 +1153,7 @@ export class TargetsService {
         targetId: doable.length === 1 ? String(doable[0]) : 'bulk',
         ipAddress: ip,
         // ⚠️ ASIN-গুলো নয়, সংখ্যাগুলো — তালিকাটা টেবিলেই আছে (`bulkAdd`-এর একই নিয়ম)
-        meta: { deleted: count, keptDone, asked: wanted.length },
+        meta: { deleted: count, keptDone, asked: wanted.length, reason },
       });
     }
 

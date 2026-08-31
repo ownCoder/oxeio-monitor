@@ -12,6 +12,7 @@ import {
   markFixed,
   markUploaded,
   targetStats,
+  type DropReason,
   type TargetRow,
   type TargetStatus,
   updateTarget,
@@ -25,12 +26,13 @@ import { Table, type Column } from '../components/Table';
 import { formatDateTime } from '../lib/format';
 import {
   Chip,
-  ConfirmDialog,
   MiniButton,
+  Modal,
   Notice,
   ServerError,
   useMutation,
 } from './settings/ui';
+import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -572,35 +574,56 @@ function TargetList() {
             </div>
           )}
 
+          {/*
+            ⚠️⚠️ **`ConfirmDialog` নয়, খোলা `Modal` — আর কারণটা গঠনগত**
+               *(৩১ আগস্ট)*। ওই ডায়ালগের নিজের একটা "Delete" বোতাম আছে, আর
+               কারণ বাছাই তার সাথে বাঁধা যেত না: হয় কারণ ছাড়াই মোছা যেত,
+               নয় একটা ডিফল্ট বসাতে হতো — আর ডিফল্ট মানে কেউ কোনোদিন
+               ভেবে বাছত না। ⭐ এখানে **তিনটে কারণই নিচের বোতাম**, অর্থাৎ
+               কারণ না বেছে মোছার কোনো পথ নেই।
+          */}
           {confirmingBulk && (
-            <ConfirmDialog
+            <Modal
               title={
                 picked.size === 1
                   ? 'Delete 1 target?'
                   : 'Delete ' + picked.size + ' targets?'
               }
-              intro="Use this for links whose Amazon page is gone."
-              /*
-                ⚠️⚠️ পরিণামটা **দুই দিক থেকেই** লেখা: আর কারো কাছে যাবে না,
-                   আর ওই ASIN কোনোদিন পুলে ফিরতেও পারবে না। দ্বিতীয় কথাটাই
-                   এই বদলের গোটা কারণ, তাই লুকোনো চলে না।
-              */
-              warning="They stay in the list as Deleted, never go to anyone again, and the same ASIN can never be added back to the pool. Finished designs in the selection are left alone."
-              confirmLabel="Delete"
-              busy={edit.busy}
-              error={edit.error}
-              onConfirm={() =>
-                edit.run(async () => {
-                  const res = await deleteTargets([...picked]);
-                  setKept(res.keptDone);
-                  setPicked(new Set());
-                  setConfirmingBulk(false);
-                  data.reload();
-                  stats.reload();
-                })
-              }
               onClose={() => setConfirmingBulk(false)}
-            />
+              footer={
+                <DropReasonPicker
+                  busy={edit.busy}
+                  onPick={(reason) =>
+                    edit.run(async () => {
+                      const res = await deleteTargets([...picked], reason);
+                      setKept(res.keptDone);
+                      setPicked(new Set());
+                      setConfirmingBulk(false);
+                      data.reload();
+                      stats.reload();
+                    })
+                  }
+                  onCancel={() => setConfirmingBulk(false)}
+                />
+              }
+            >
+              <div className="space-y-3">
+                <p className="text-[13px] text-ink-2">
+                  Use this for links whose Amazon page is gone.
+                </p>
+                {/*
+                  ⚠️⚠️ পরিণামটা **দুই দিক থেকেই** লেখা: আর কারো কাছে যাবে না,
+                     আর ওই ASIN কোনোদিন পুলে ফিরতেও পারবে না। দ্বিতীয় কথাটাই
+                     এই বদলের গোটা কারণ, তাই লুকোনো চলে না।
+                */}
+                <Notice tone="attention">
+                  They stay in the list as Deleted, never go to anyone again, and
+                  the same ASIN can never be added back to the pool. Finished
+                  designs in the selection are left alone.
+                </Notice>
+                <ServerError error={edit.error} />
+              </div>
+            </Modal>
           )}
 
           <Table
@@ -650,7 +673,15 @@ function TargetList() {
                 header: 'Stage',
                 render: (r) => (
                   <span className="block">
-                    <StatusChip row={r} />
+                    {/*
+                      ⭐ কারণটা চিপের **পাশে**, নিচে নয় *(৩১ আগস্ট)* — নিচের
+                         লাইনটা তারিখের, আর দুটো আলাদা জিনিস এক লাইনে বসলে
+                         কোনটা কী বোঝা যেত না।
+                    */}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <StatusChip row={r} />
+                      <DropReasonTag reason={r.dropReason} />
+                    </span>
                     <WhenCell row={r} />
                   </span>
                 ),
@@ -718,11 +749,11 @@ function TargetList() {
                     }
                     mayDelete={mayDelete}
                     mayProofread={user?.canProofread === true}
-                    onDelete={() =>
+                    onDelete={(reason) =>
                       edit.run(async () => {
                         // ⚠️ একক পথেও `keptDone` আসে — শেষ-হওয়া সারিতে
                         //    Delete চাপলে কিছুই ঘটে না, আর সেটা বলা দরকার
-                        const res = await deleteTarget(r.id);
+                        const res = await deleteTarget(r.id, reason);
                         setKept(res.keptDone);
                         data.reload();
                         stats.reload();
@@ -917,7 +948,7 @@ function RowActions({
   onLive: () => void;
   /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
   onUndo: () => void;
-  onDelete: () => void;
+  onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
   /**
@@ -943,16 +974,23 @@ function RowActions({
    */
   const [open, setOpen] = useState(false);
 
+  /**
+   * ⭐⭐ **"Really delete" উঠে গেছে, তার জায়গায় তিনটে কারণ** *(৩১ আগস্ট)*।
+   *
+   * ⚠️ পুরোনো বোতামটা একটা প্রশ্ন করত যার উত্তরে **কোনো তথ্য ছিল না** —
+   * "হ্যাঁ" ছাড়া কিছু জানা যেত না। এখন একই চাপে নিশ্চিতকরণ **আর** কারণ,
+   * দুটোই আসে।
+   */
   if (confirming) {
     return (
-      <span className="flex justify-end gap-1.5 whitespace-nowrap">
-        <MiniButton tone="danger" disabled={busy} onClick={onDelete}>
-          Really delete
-        </MiniButton>
-        <MiniButton disabled={busy} onClick={() => setConfirming(false)}>
-          Cancel
-        </MiniButton>
-      </span>
+      <DropReasonPicker
+        busy={busy}
+        onPick={(reason) => {
+          setConfirming(false);
+          onDelete(reason);
+        }}
+        onCancel={() => setConfirming(false)}
+      />
     );
   }
 

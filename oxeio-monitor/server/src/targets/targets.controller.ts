@@ -29,6 +29,7 @@ import {
 
 import { CurrentUser, Roles } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
+import { DROP_REASONS, type DropReason } from './targets.rules';
 import {
   DELETE_MAX,
   TargetsService,
@@ -71,6 +72,10 @@ class DeleteManyDto {
   @IsInt({ each: true })
   @Min(1, { each: true })
   ids!: number[];
+
+  /** ⭐ Skip-এর সাথে একই তিনটে — `targets.rules.ts`-এর `DROP_REASONS` */
+  @IsIn([...DROP_REASONS])
+  reason!: DropReason;
 }
 
 class ListQueryDto {
@@ -160,9 +165,20 @@ class LiveDto {
   liveAsin?: string;
 }
 
-class SkipDto {
-  @IsOptional() @IsString() @MaxLength(200)
-  reason?: string;
+/**
+ * ⭐⭐ **"কেন বাদ দিলেন"** *(মালিকের চাওয়া, ৩১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ আগে ছিল `@IsOptional()` মুক্ত-লেখা, আর ফল: মাঠে ৯৩টা skipped
+ * সারির **একটাতেও** কারণ লেখা ছিল না — পর্দা কোনোদিন কিছু পাঠায়ইনি।
+ * ⭐ এখন তিনটে বাছাইয়ের একটা, আর **বাধ্যতামূলক**: পর্দায় বোতামটাই কারণ,
+ * তাই না-পাঠানোর কোনো পথ নেই।
+ *
+ * ⚠️ তালিকাটা `targets.rules.ts`-এ এক জায়গায় — Skip ও Delete দুই পথেই
+ * একই তিনটে, নইলে একদিন একটায় নতুন কারণ যোগ হতো আর অন্যটায় নয়।
+ */
+class DropReasonDto {
+  @IsIn([...DROP_REASONS])
+  reason!: DropReason;
 }
 
 /**
@@ -266,7 +282,7 @@ export class TargetsController {
     @Ip() ip: string,
   ): Promise<DeleteResult> {
     await this.targets.assertCanUse(actor);
-    return this.targets.softDelete(dto.ids, actor.userId, ip);
+    return this.targets.softDelete(dto.ids, actor.userId, ip, dto.reason);
   }
 
   /**
@@ -276,14 +292,19 @@ export class TargetsController {
    * যায়, অবস্থা হয় `deleted` — নইলে `asin` UNIQUE প্রহরীটাও মুছে যেত
    * আর মরা ASIN কাল আবার পুলে ঢুকত।
    */
+/**
+   * ⚠️ বডিসহ `DELETE` অনেক প্রক্সি ফেলে দেয়, তাই কারণটা **query-তে**
+   * (`?reason=not_found`) — একটা ছোট, চেনা মান, আর ওতে ব্যক্তিগত কিছু নেই।
+   */
   @Delete(':id')
   async remove(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
+    @Query() query: DropReasonDto,
     @Ip() ip: string,
   ): Promise<DeleteResult> {
     await this.targets.assertCanUse(actor);
-    return this.targets.softDelete([id], actor.userId, ip);
+    return this.targets.softDelete([id], actor.userId, ip, query.reason);
   }
 
   /**
@@ -407,9 +428,9 @@ export class MyTargetsController {
   skip(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SkipDto,
+    @Body() dto: DropReasonDto,
   ) {
-    return this.targets.skip(employeeIdOf(actor), id, dto.reason ?? null);
+    return this.targets.skip(employeeIdOf(actor), id, dto.reason);
   }
 
   /**

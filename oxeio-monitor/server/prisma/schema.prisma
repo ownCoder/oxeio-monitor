@@ -805,7 +805,20 @@ model DesignTarget {
   /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
   completedVia String? @map("completed_via") @db.VarChar(16)
 
-  skippedReason String? @map("skipped_reason")
+  /**
+   * ⭐⭐ **কেন সারিটা চলে গেল** *(৩১ আগস্ট ২০২৬)* — `not_found` ·
+   * `copyright` · `events`।
+   *
+   * ⚠️⚠️ **এক ঘর, দুই পথ:** ডিজাইনারের Skip আর মালিকের Delete — দুটোই
+   * এখানেই লেখে। কোন পথে গেছে সেটা `status` বলে, তাই কারণটা দুবার রাখার
+   * দরকার নেই। ⭐ আগে নাম ছিল `skipped_reason`, কিন্তু ৯৩টা skipped
+   * সারির একটাতেও কিছু লেখা ছিল না — পর্দা কোনোদিন কারণ পাঠাত না।
+   *
+   * ⚠️ **যন্ত্রের মান জমা হয়, পর্দার লেখা নয়** (`not_found`, "Not Found"
+   * নয়) — নইলে একদিন লেখাটা বদলালে পুরোনো সব সারি অন্য জিনিস বোঝাত।
+   * তালিকাটা এক জায়গায়: `targets.rules.ts`-এর `DROP_REASONS`।
+   */
+  dropReason String? @map("drop_reason") @db.VarChar(16)
 
   /**
    * ⭐⭐ **oXeio-র আগে এই সারিটা কোথায় ছিল** *(২২ আগস্ট, ইমপোর্ট)*।

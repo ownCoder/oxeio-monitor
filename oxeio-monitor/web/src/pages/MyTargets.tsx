@@ -5,6 +5,7 @@ import {
   myTargets,
   skipTarget,
   undoTarget,
+  type DropReason,
   type MyTarget,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
@@ -12,6 +13,7 @@ import { Card } from '../components/Card';
 import { ErrorBox, Loading } from '../components/States';
 import { formatAgo } from '../lib/format';
 import { blockedNotice, openInTabs } from '../lib/popups';
+import { DropReasonPicker } from './targets/DropReason';
 import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/ui';
 
 /**
@@ -137,7 +139,12 @@ export function MyTargets() {
                 reload();
               })
             }
-            onSkip={() => skip.run(async () => { await skipTarget(t.id); reload(); })}
+            onSkip={(reason) =>
+              skip.run(async () => {
+                await skipTarget(t.id, reason);
+                reload();
+              })
+            }
           />
         ))}
 
@@ -186,8 +193,16 @@ function TargetRow({
   target: MyTarget;
   busy: boolean;
   onDone: () => void;
-  onSkip: () => void;
+  onSkip: (reason: DropReason) => void;
 }) {
+  /**
+   * ⭐⭐ **Skip চাপলে সাথে সাথে বাদ যায় না — আগে "কেন" জিজ্ঞেস করা হয়**
+   * *(মালিকের চাওয়া, ৩১ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ তিনটে কারণের বোতামই একসাথে **নিশ্চিতকরণ** — আলাদা "Really skip"
+   * নেই। এক চাপ, অথচ আগের চেয়ে বেশি তথ্য।
+   */
+  const [asking, setAsking] = useState(false);
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-paper px-3 py-2.5">
       {/*
@@ -242,14 +257,30 @@ function TargetRow({
         ⭐⭐ **Complete** — শেষ হওয়া বলার একমাত্র পথ। ⚠️ `tone` নেই বলে
            এটা Skip-এর মতোই দেখতে; আলাদা করে বড় করা হয়নি, কারণ দিনে
            ২৫ বার চাপতে হবে — চোখে লাগলে ক্লান্তিকর হতো।
-      */}
-      <MiniButton tone="good" disabled={busy} onClick={onDone}>
-        Complete
-      </MiniButton>
 
-      <MiniButton tone="danger" disabled={busy} onClick={onSkip}>
-        Skip
-      </MiniButton>
+        ⚠️ কারণ জিজ্ঞেস করার সময় Complete-ও সরে যায় — একটা প্রশ্নের
+           উত্তর দেওয়ার মাঝখানে অন্য কাজের বোতাম থাকলে ভুল চাপ পড়ত।
+      */}
+      {asking ? (
+        <DropReasonPicker
+          busy={busy}
+          onPick={(reason) => {
+            setAsking(false);
+            onSkip(reason);
+          }}
+          onCancel={() => setAsking(false)}
+        />
+      ) : (
+        <>
+          <MiniButton tone="good" disabled={busy} onClick={onDone}>
+            Complete
+          </MiniButton>
+
+          <MiniButton tone="danger" disabled={busy} onClick={() => setAsking(true)}>
+            Skip
+          </MiniButton>
+        </>
+      )}
     </div>
   );
 }
