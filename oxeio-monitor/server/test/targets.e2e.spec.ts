@@ -1595,6 +1595,35 @@ describe('বাদ দেওয়ার কারণ', () => {
     ).toBe('assigned');
   });
 
+  /**
+   * ⭐⭐ **Undelete — সারিটা পুলে ফেরে, আর কারণটাও মুছে যায়** *(মালিকের
+   * নির্দেশ, ৩১ আগস্ট: "delete kora design e only un delete show korbe")*।
+   *
+   * ⚠️⚠️ কারণ না মুছলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত,
+   * আর পরের বণ্টনে যিনি পেতেন তিনি একটা মীমাংসিত সতর্কবার্তা দেখতেন।
+   */
+  it('পুলে ফেরালে কারণটাও মুছে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await owner.http
+      .patch(`/api/v1/design-targets/${row.id}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ status: 'pool' })
+      .expect(200);
+
+    const back = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(back.status).toBe('pool');
+    expect(back.dropReason).toBeNull();
+  });
+
   /** ⭐ কারণটা তালিকাতেও যায় — নইলে পর্দায় দেখানোর উপায় থাকত না */
   it('তালিকার সারিতে কারণটা ফেরত আসে', async () => {
     const owner = await seedPool(1);

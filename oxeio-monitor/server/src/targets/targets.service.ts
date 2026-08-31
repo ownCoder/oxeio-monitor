@@ -1070,6 +1070,14 @@ export class TargetsService {
             // ⚠️ এটাও মুছতে হয় — নইলে পুলে ফেরত যাওয়া সারিতে "কে শেষ
             //    করেছিল" লেখা থেকে যেত, অথচ কাজটা আর শেষ নয়
             completedById: null,
+            /**
+             * ⚠️⚠️ **কারণটাও মুছে যায়** *(৩১ আগস্ট ২০২৬)*। সারিটা আবার
+             * পুলে ফিরছে মানে "Not Found" কথাটা আর সত্যি নয় — কেউ দেখে
+             * নিয়েছেন যে পাতাটা আছে, বা ভুল করে মোছা হয়েছিল। ⭐ কারণ
+             * রেখে দিলে পরের বার কেউ বণ্টন পেয়ে দেখতেন সারিটা
+             * "Copyright" বলে দাগানো, অথচ সেটা মীমাংসিত।
+             */
+            dropReason: null,
           }
         : status === DesignTargetStatus.done
           ? { status, completedAt: now, completedVia: 'manual', completedById: userId }
