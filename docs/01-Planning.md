@@ -67,7 +67,7 @@ lunch/break:    ❌ ট্র্যাক হয় না — যা active ন
 late/early:     ❌ ধারণাটাই নেই — নির্দিষ্ট আসার সময় নেই
 screenshot:     প্রতি ৫ মিনিট স্লটে ১টা, র‍্যান্ডম সেকেন্ডে, ফুল স্ক্রিন
 screenshot_win: 07:00 – 23:00   # ✅ অনুমোদিত — সময় গণনা কিন্তু ২৪ ঘণ্টাই চলে
-idle:           ৬০ সেকেন্ড → hold; input পেলেই resume
+idle:           ১৮০ সেকেন্ড → hold; input পেলেই resume  # ৩০ আগস্ট; আগে ৬০
 retention:      স্ক্রিনশট ৯০ দিন · অ্যাপ ডেটা ১ বছর · টাইম ডেটা স্থায়ী
 app_tracking:   চালু (process + window title + domain; ফুল URL নয়)
 server:         VPS — hub.oxeio.com (ADR-026)   # ⚠️ আগে অফিসের PC ছিল
@@ -187,12 +187,12 @@ DB স্কিমা · API কনট্রাক্ট · এজেন্ট �
 > শুধু হাতে `halted` (H04, G69)।
 | ডেলিভারেবল | অবস্থা | Done-এর সংজ্ঞা |
 |---|:---:|---|
-| **নিয়মের কোর** (`oXeio.Core`) | ✅ | state machine, স্লট, ক্যাপচার উইন্ডো, ঢাকার সময়, idle গণিত, ঘুম-শনাক্তকরণ — **৫২টি ইউনিট টেস্ট** |
+| **নিয়মের কোর** (`oXeio.Core`) | ✅ | state machine, স্লট, ক্যাপচার উইন্ডো, ঢাকার সময়, idle গণিত, ঘুম-শনাক্তকরণ — **৩৯৫টি ইউনিট টেস্ট** *(৩০ আগস্ট ২০২৬; শুরুতে ৫২)* |
 | **Win32 স্তর** | ✅ | idle · lock · session · power — আসল PC-তে চালিয়ে যাচাই করা |
 | ক্যাপচার (DXGI + GDI) | ✅ | মাল্টি-মনিটর, DPI-সচেতন, WebP ([ADR-012c](05-Options-Decisions.md)) |
 | অফলাইন queue + sync | ✅ | SQLite, idempotent আপলোড — নেট কেটে যাচাই করা |
 | Tray UI + Watchdog | ✅ | tray মেনু · ব্র্যান্ড আইকন · লগঅন watchdog (৩০ সে. চেক) |
-| Idle state machine | ✅ | ১ মিনিট নিষ্ক্রিয়তায় hold, input-এ resume — ম্যানুয়াল স্টপওয়াচের সাথে ±২ সেকেন্ড |
+| Idle state machine | ✅ | **৩ মিনিট** নিষ্ক্রিয়তায় hold *(৩০ আগস্ট থেকে; আগে ১ মিনিট — [ADR-010](05-Options-Decisions.md))*, input-এ resume — ম্যানুয়াল স্টপওয়াচের সাথে ±২ সেকেন্ড |
 | Windows events | ✅ | logon/logoff/lock/unlock/sleep/resume ধরা পড়ে |
 | Screenshot scheduler | ✅ | ৫ মিনিট স্লটে র‍্যান্ডম, মাল্টি-মনিটর, WebP — **DXGI প্রধান, GDI ফলব্যাক**, আসল মেশিনে যাচাই করা |
 | Enrollment | ✅ | স্টাফের নিজের লগইন **অথবা** কোড — দুটো পথই মাঠে |
