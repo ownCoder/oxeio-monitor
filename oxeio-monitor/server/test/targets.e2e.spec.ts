@@ -1642,3 +1642,152 @@ describe('বাদ দেওয়ার কারণ', () => {
     expect(list.body.rows[0].dropReason).toBe('not_found');
   });
 });
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * **বাদ-যাওয়া ডিজাইনের রিভিউ কিউ** *(৩১ আগস্ট ২০২৬, মালিকের চাওয়া: "ami and
+ * manager ei delete and skip deya design gula alada vabe management korte
+ * paruk")*।
+ *
+ * ⚠️⚠️ সবচেয়ে জরুরি দাবি দ্বিতীয়টা: **কারণ ছাড়া পুরোনো সারি কিউতে ওঠে না**।
+ * নইলে প্রথম দিনেই ৯৭টা সারি নিয়ে কিউ শুরু হতো — আর পাহাড় দেখলে কেউ
+ * শুরুই করে না (২৪ আগস্টে আপলোড-কিউতে ঠিক এই ভুলটা হয়েছিল)।
+ */
+describe('রিভিউ কিউ — বাদ-যাওয়া ডিজাইন', () => {
+  async function seedPool(count: number): Promise<Session> {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join('\n'),
+    }).expect(201);
+    return owner;
+  }
+
+  const queue = (session: Session) =>
+    session.http.get('/api/v1/design-targets?stage=to_review').expect(200);
+
+  it('কারণসহ মোছা সারি কিউতে ওঠে', async () => {
+    const owner = await seedPool(2);
+    const [first] = (
+      await h.prisma.designTarget.findMany({
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    ).map((r) => r.id);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [first],
+      reason: 'copyright',
+    }).expect(201);
+
+    const list = await queue(owner);
+    expect(list.body.rows).toHaveLength(1);
+    expect(list.body.rows[0].dropReason).toBe('copyright');
+    expect(list.body.rows[0].reviewedAt).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ **এই টেস্টটাই কিউটাকে ব্যবহারযোগ্য রাখে।** কারণ চাওয়ার ব্যবস্থা
+   * ৩১ আগস্টের, তাই তার আগের `skipped` সারিতে কিছুই লেখা নেই — ম্যানেজারের
+   * "দেখে নেওয়ার" কিছুই নেই।
+   */
+  it('কারণ ছাড়া পুরোনো সারি কিউতে ওঠে না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    // ⚠️ পুরোনো সারির নকল — অবস্থা `skipped`, কিন্তু কারণ নেই
+    await h.prisma.designTarget.update({
+      where: { id: row.id },
+      data: { status: 'skipped', dropReason: null },
+    });
+
+    expect((await queue(owner)).body.rows).toHaveLength(0);
+  });
+
+  it('"দেখে নিয়েছি" চাপলে কিউ থেকে সরে যায়, কিন্তু অবস্থা বদলায় না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await post(owner, `/api/v1/design-targets/${row.id}/reviewed`, {}).expect(201);
+
+    expect((await queue(owner)).body.rows).toHaveLength(0);
+
+    const after = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    // ⭐ স্বীকৃতি, সিদ্ধান্ত নয় — সারিটা `deleted`-ই থাকে
+    expect(after.status).toBe('deleted');
+    expect(after.reviewedAt).not.toBeNull();
+    expect(after.reviewedById).not.toBeNull();
+  });
+
+  /** ⚠️ চিপের সংখ্যা আর তালিকার সংখ্যা আলাদা হলে দুটোই অবিশ্বাস্য হয়ে যায় */
+  it('চিপের সংখ্যা আর তালিকার সংখ্যা হুবহু এক', async () => {
+    const owner = await seedPool(3);
+    const ids = (
+      await h.prisma.designTarget.findMany({
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    ).map((r) => r.id);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: ids.slice(0, 2),
+      reason: 'events',
+    }).expect(201);
+
+    const stats = await owner.http.get('/api/v1/design-targets/stats').expect(200);
+    expect(stats.body.toReview).toBe(2);
+    expect((await queue(owner)).body.rows).toHaveLength(2);
+  });
+
+  /**
+   * ⚠️⚠️ পুলে ফিরলে চিহ্নটাও মুছে যায় — নইলে ভবিষ্যতে কেউ আবার Skip করলে
+   * সারিটা **কিউতেই উঠত না**, পুরোনো একটা চিহ্নের কারণে।
+   */
+  it('পুলে ফেরালে "দেখা হয়েছে" চিহ্নও মুছে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+    await post(owner, `/api/v1/design-targets/${row.id}/reviewed`, {}).expect(201);
+
+    await owner.http
+      .patch(`/api/v1/design-targets/${row.id}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ status: 'pool' })
+      .expect(200);
+
+    const back = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(back.reviewedAt).toBeNull();
+    expect(back.reviewedById).toBeNull();
+  });
+
+  /** ⚠️ গবেষক নন — মালিকের কথা ছিল "ami and manager" */
+  it('গবেষক "দেখে নিয়েছি" চাপতে পারেন না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await staff('OX-R1', 'researcher', 'r1@test.local', 'researcher');
+    const researcher = await loginReady(h, 'r1@test.local', 'staff-password-123');
+
+    await post(
+      researcher,
+      `/api/v1/design-targets/${row.id}/reviewed`,
+      {},
+    ).expect(403);
+  });
+});

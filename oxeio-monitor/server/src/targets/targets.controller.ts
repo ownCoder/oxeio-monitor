@@ -130,8 +130,9 @@ class ListQueryDto {
    *    নয়, **তারিখ** — আর সেটা ইচ্ছাকৃত, নইলে সারিটা `done` থেকে সরে
    *    গিয়ে সব "কতগুলো ডিজাইন হয়েছে" গণনা নীরবে কমে যেত।
    */
-  @IsOptional() @IsIn(['to_check', 'to_fix', 'to_upload', 'to_live'])
-  stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
+  @IsOptional()
+  @IsIn(['to_check', 'to_fix', 'to_upload', 'to_live', 'to_review'])
+  stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
 }
 
 class UpdateTargetDto {
@@ -350,6 +351,24 @@ export class TargetsController {
   ) {
     await this.targets.assertCanProofread(actor);
     return this.targets.markFixed(id, actor.userId, new Date());
+  }
+
+  /**
+   * ⭐⭐ **"দেখে নিয়েছি"** *(মালিকের চাওয়া, ৩১ আগস্ট ২০২৬:
+   * "ami and manager ei delete and skip deya design gula alada vabe
+   * management korte paruk")*।
+   *
+   * ⚠️⚠️ **owner ও manager ব্যতীত কেউ নয় — `assertCanUse` দিয়ে হতো না।**
+   * ওই পাহারায় গবেষকও পড়েন, অথচ মালিক স্পষ্ট করে দুজনের কথা
+   * বলেছেন — ডিজাইনার কেন skip দিলেন সেটা দল সামলানোর প্রশ্ন।
+   */
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post(':id/reviewed')
+  reviewed(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.targets.markReviewed(id, actor.userId, new Date());
   }
 
   @Post(':id/uploaded')

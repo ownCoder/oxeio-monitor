@@ -60,6 +60,13 @@ export interface TargetStats {
   /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
   toLive: number;
   /**
+   * ⭐⭐ **বাদ গেছে অথচ মালিক/ম্যানেজার এখনো দেখেননি** *(৩১ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ পুরোনো ৯৩টা `skipped` সারি এতে **নেই** — ওগুলোয় কোনো কারণ লেখা নেই,
+   * তাই দেখে নেওয়ার কিছুও নেই।
+   */
+  toReview: number;
+  /**
    * ⭐⭐ **বানান দেখা বাকি** *(ADR-038)* — সুমাইয়ার কিউ।
    *
    * ⚠️ যন্ত্র বানান পড়ে না; এটা কেবল *"কোনগুলো দেখা হয়নি"*-র হিসাব।
@@ -220,6 +227,9 @@ export interface TargetRow {
    * *(৩১ আগস্ট)*। ⚠️ পুরোনো সারিতে `null`, কারণ তখন কারণ চাওয়াই হতো না।
    */
   dropReason: DropReason | null;
+  /** ⭐ কে-কবে দেখে নিয়েছেন — `null` মানে এখনো কিউতে *(৩১ আগস্ট)* */
+  reviewedAt: string | null;
+  reviewedBy: { fullName: string; role: string } | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — `Hafiz-24-05-2026` */
   sourceNote: string | null;
 }
@@ -254,7 +264,8 @@ export function listTargets(
     from?: string;
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
+    /** ⚠️ `to_review` যোগ হয়েছে ৩১ আগস্ট — বাদ-যাওয়া, অথচ কেউ দেখেননি */
+    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
   },
   signal?: AbortSignal,
 ): Promise<TargetPage> {
@@ -313,6 +324,17 @@ export function deleteTargets(
   return api<DeleteResult>('/design-targets/delete', {
     method: 'POST',
     body: { ids, reason },
+  });
+}
+
+/**
+ * ⭐⭐ **"দেখে নিয়েছি"** — owner ও manager only *(৩১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️ সারির অবস্থা বদলায় না; এটা সিদ্ধান্ত নয়, স্বীকৃতি — "আমি দেখেছি"।
+ */
+export function markReviewed(id: number): Promise<{ ok: boolean }> {
+  return api<{ ok: boolean }>(`/design-targets/${id}/reviewed`, {
+    method: 'POST',
   });
 }
 

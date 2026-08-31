@@ -10,6 +10,7 @@ import {
   markLive,
   markChecked,
   markFixed,
+  markReviewed,
   markUploaded,
   targetStats,
   type DropReason,
@@ -59,7 +60,7 @@ export function AllTargetsPage() {
   );
 }
 
-type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
+type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
 type FilterKey = TargetStatus | 'all' | Stage;
 
 /**
@@ -76,7 +77,11 @@ type FilterKey = TargetStatus | 'all' | Stage;
  */
 /** ⭐ চিপটা ধাপ না অবস্থা — এক জায়গায় ঠিক হয়, দুই জায়গায় নয় */
 const stageOf = (key: FilterKey): Stage | undefined =>
-  key === 'to_check' || key === 'to_fix' || key === 'to_upload' || key === 'to_live'
+  key === 'to_check' ||
+  key === 'to_fix' ||
+  key === 'to_upload' ||
+  key === 'to_live' ||
+  key === 'to_review'
     ? key
     : undefined;
 
@@ -99,6 +104,15 @@ const FILTERS: { key: FilterKey; label: string; stage: Stage }[] = [
   { key: 'to_fix', label: 'To fix', stage: 'to_fix' },
   { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
   { key: 'to_live', label: 'To make live', stage: 'to_live' },
+  /**
+   * ⭐⭐ **পঞ্চম চিপ — মালিক ও ম্যানেজারের** *(৩১ আগস্ট ২০২৬)*।
+   *
+   * ⚠️ উপরের চারটে গবেষকের রোজকার কাজ; এটা আলাদা জাতের — কেউ একটা ডিজাইন
+   * **বাদ দিয়েছেন**, আর সেটা দেখে নেওয়ার দায়িত্ব দল যিনি সামলান তাঁর।
+   * ⭐ তবু একই সারিতে রাখা হয়েছে: চিপগুলোর গোটা কথাই "আজ কোথায় কাজ আছে",
+   * আর এটাও ঠিক তাই — শুধু অন্য কারো জন্য।
+   */
+  { key: 'to_review', label: 'To review', stage: 'to_review' },
 ];
 
 /**
@@ -335,7 +349,9 @@ function TargetList() {
                   ? 'A spelling error was found — waiting to be fixed'
                   : f.stage === 'to_upload'
                     ? 'Checked or not yet checked, and not sent to Amazon. Designs with an unfixed error are held back.'
-                    : f.stage === 'to_live'
+                    : f.stage === 'to_review'
+                      ? 'Skipped or deleted, with a reason — nobody has looked at these yet'
+                      : f.stage === 'to_live'
                       ? 'Sent to Amazon, not live yet'
                       : undefined
             }
@@ -359,7 +375,9 @@ function TargetList() {
                     ? stats.data.toFix
                     : f.stage === 'to_upload'
                       ? stats.data.toUpload
-                      : stats.data.toLive}
+                      : f.stage === 'to_review'
+                        ? stats.data.toReview
+                        : stats.data.toLive}
               </span>
             ) : null}
           </button>
@@ -681,6 +699,15 @@ function TargetList() {
                     <span className="flex flex-wrap items-center gap-1.5">
                       <StatusChip row={r} />
                       <DropReasonTag reason={r.dropReason} />
+                      {/*
+                        ⭐ দেখা হয়ে গেলে কে দেখেছেন সেটা এখানেই — সারিটা
+                           কিউ থেকে সরে যায় বলে নইলে খবরটা কোথাও থাকত না।
+                      */}
+                      {r.reviewedAt !== null && (
+                        <Chip tone="counted">
+                          Reviewed{r.reviewedBy ? ` · ${r.reviewedBy.fullName}` : ''}
+                        </Chip>
+                      )}
                     </span>
                     <WhenCell row={r} />
                   </span>
@@ -745,6 +772,13 @@ function TargetList() {
                       edit.run(async () => {
                         await undoComplete(r.id);
                         data.reload();
+                      })
+                    }
+                    onReviewed={() =>
+                      edit.run(async () => {
+                        await markReviewed(r.id);
+                        data.reload();
+                        stats.reload();
                       })
                     }
                     mayDelete={mayDelete}
@@ -934,6 +968,7 @@ function RowActions({
   onFixed,
   onLive,
   onUndo,
+  onReviewed,
   onDelete,
   mayDelete,
   mayProofread,
@@ -948,6 +983,8 @@ function RowActions({
   onLive: () => void;
   /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
   onUndo: () => void;
+  /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
+  onReviewed: () => void;
   onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
@@ -995,27 +1032,46 @@ function RowActions({
   }
 
   /**
-   * ⭐⭐ **মোছা সারিতে একটাই বোতাম — Undelete** *(মালিকের নির্দেশ, ৩১
-   * আগস্ট ২০২৬: "delete kora design e only un delete show korbe")*।
+   * ⭐⭐ **বাদ-যাওয়া সারিতে একটাই বোতাম — ফেরানোর** *(মালিকের নির্দেশ,
+   * ৩১ আগস্ট ২০২৬: "delete kora design e only un delete show korbe",
+   * তারপর "same jinis ta kew skip dileO hobe")*।
    *
-   * ⚠️⚠️ আগে মোছা সারিতেও বসত Complete · Skip · **Delete** — অর্থাৎ
-   * ইতিমধ্যে মোছা জিনিসকে আবার মোছার প্রস্তাব। ⭐ কোনোটাই ক্ষতি করত না
-   * (সার্ভার আগে-মোছা সারি ছুঁয়েই দেখে না), কিন্তু পর্দা মিথ্যা বলত —
-   * এমন কাজের প্রস্তাব দিত যার কোনো মানে নেই।
+   * ⚠️⚠️ আগে এই সারিগুলোতেও বসত Complete · Skip · Delete — অর্থাৎ
+   * ইতিমধ্যে বাদ-যাওয়া জিনিসকে আবার বাদ দেওয়ার, বা কেউ বানায়নি এমন
+   * ডিজাইনকে "শেষ" বলার প্রস্তাব। ⭐ কোনোটাই ক্ষতি করত না (সার্ভার
+   * প্রতিটা পথেই আলাদা পাহারা দেয়), কিন্তু পর্দা মিথ্যা বলত — এমন কাজের
+   * প্রস্তাব দিত যার কোনো মানে নেই।
    *
    * ⚠️⚠️ **শর্তটা `open`/`next`-এর আগে, আর জায়গাটাই এখানকার আসল কথা।**
    * প্রথমবার এটা নিচে বসানো হয়েছিল — খোলা মেনুর ভেতরে — আর তাতে গোটানো
-   * সারিতে `Complete` থেকেই যেত। ⭐ মালিক ছবি পাঠিয়ে ধরিয়ে দিয়েছেন
-   * (৩১ আগস্ট): *"deleted design er pase complete button keno?"*
+   * সারিতে `Complete` থেকেই যেত। ⭐ মালিক ছবি পাঠিয়ে ধরিয়ে দিয়েছেন:
+   * *"deleted design er pase complete button keno?"*
    *
-   * ⚠️ Undelete মানে **পুলে ফেরত** (`pool`), আর সার্ভার তখন কারণটাও মুছে
-   * দেয় — নইলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত।
+   * ⭐ **`skipped` ও `deleted` একই আচরণ পায়, কেবল লেখাটা আলাদা** — কর্মটা
+   * এক (পুলে ফেরত), কিন্তু বোতামের নাম যেটা ফেরানো হচ্ছে তারই উল্টো
+   * শব্দ, নইলে "To pool" পড়ে বোঝা যেত না কী ফিরছে।
+   *
+   * ⚠️ ফেরত মানে **পুলে ফেরত** (`pool`), আর সার্ভার তখন কারণটাও মুছে দেয়
+   * — নইলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত, আর পরের বণ্টনে
+   * যিনি পেতেন তিনি একটা মীমাংসিত সতর্কবার্তা দেখতেন।
    */
-  if (row.status === 'deleted') {
+  if (row.status === 'deleted' || row.status === 'skipped') {
     return (
-      <span className="flex justify-end">
+      <span className="flex flex-wrap items-center justify-end gap-1.5">
+        {/*
+          ⭐⭐ **"দেখে নিয়েছি" — কিউ খালি করার একমাত্র পথ** *(৩১ আগস্ট)*।
+          ⚠️ বোতামটা বসে **কেবল যতক্ষণ কেউ দেখেনি**, আর কেবল কারণসহ সারিতে
+             (পুরোনো ৯৩টায় কারণ নেই, তাই দেখার কিছুও নেই)। ⭐ দেখা হয়ে
+             গেলে বোতামটা উধাও, আর তার জায়গায় নিচের চিপটা বলে কে দেখেছেন।
+          ⚠️ `mayDelete` = owner/manager — সার্ভারের `@Roles`-এর সাথে এক।
+        */}
+        {mayDelete && row.dropReason !== null && row.reviewedAt === null && (
+          <MiniButton tone="good" disabled={busy} onClick={onReviewed}>
+            Reviewed
+          </MiniButton>
+        )}
         <MiniButton disabled={busy} onClick={() => onChange('pool')}>
-          Undelete
+          {row.status === 'deleted' ? 'Undelete' : 'Un-skip'}
         </MiniButton>
       </span>
     );
@@ -1150,11 +1206,16 @@ function RowActions({
             Undo complete
           </MiniButton>
         )}
-      {row.status !== 'skipped' && (
-        <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
-          Skip
-        </MiniButton>
-      )}
+      {/*
+        ⚠️ শর্তটা (`status !== 'skipped'`) উঠে গেছে *(৩১ আগস্ট)* — উপরের
+           early return-এর পর এখানে `skipped` সারি আর পৌঁছায়ই না, তাই
+           শর্তটা চিরকাল সত্যি ছিল। ⭐ টাইপচেকারই ধরিয়ে দিয়েছে
+           ("no overlap"), আর মৃত শর্ত রেখে দেওয়া মানে পরের পাঠককে
+           ভাবতে বাধ্য করা যে ওটা কখন মিথ্যা হয়।
+      */}
+      <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
+        Skip
+      </MiniButton>
       {/*
         ⚠️ গবেষকের হাতে Delete থাকবে না — ৪৬ হাজার সারির মধ্যে একটা
            ভুল ডিলিট কেউ খুঁজেই পেত না।
