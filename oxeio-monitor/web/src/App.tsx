@@ -14,6 +14,7 @@ import { LiveBoardPage } from './pages/LiveBoardPage';
 import { LoginPage } from './pages/LoginPage';
 import { MonthlyPage } from './pages/MonthlyPage';
 import { AllTargetsPage } from './pages/AllTargetsPage';
+import { ReviewPage } from './pages/ReviewPage';
 import { TargetsPage } from './pages/TargetsPage';
 import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -187,6 +188,12 @@ function Router() {
         */}
         <Route path="targets" element={<TargetsPage />} />
         <Route path="targets/all" element={<AllTargetsPage />} />
+        {/*
+          ⚠️ owner + manager — সাইডবার, এই রুট আর সার্ভারের
+             `@Roles(owner, manager)` তিন জায়গাতেই এক (G134-এর শিক্ষা:
+             তিনটের একটা বদলালে বাকি দুটোও বদলাতে হয়)।
+        */}
+        <Route path="targets/review" element={<ReviewPage />} />
 
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />

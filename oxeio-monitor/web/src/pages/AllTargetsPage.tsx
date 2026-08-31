@@ -104,16 +104,18 @@ const FILTERS: { key: FilterKey; label: string; stage: Stage }[] = [
   { key: 'to_fix', label: 'To fix', stage: 'to_fix' },
   { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
   { key: 'to_live', label: 'To make live', stage: 'to_live' },
-  /**
-   * ⭐⭐ **পঞ্চম চিপ — মালিক ও ম্যানেজারের** *(৩১ আগস্ট ২০২৬)*।
-   *
-   * ⚠️ উপরের চারটে গবেষকের রোজকার কাজ; এটা আলাদা জাতের — কেউ একটা ডিজাইন
-   * **বাদ দিয়েছেন**, আর সেটা দেখে নেওয়ার দায়িত্ব দল যিনি সামলান তাঁর।
-   * ⭐ তবু একই সারিতে রাখা হয়েছে: চিপগুলোর গোটা কথাই "আজ কোথায় কাজ আছে",
-   * আর এটাও ঠিক তাই — শুধু অন্য কারো জন্য।
-   */
-  { key: 'to_review', label: 'To review', stage: 'to_review' },
 ];
+
+/**
+ * ⚠️⚠️ **`to_review` এখানে নেই — ওটার নিজের পাতা** *(মালিকের নির্দেশ,
+ * ৩১ আগস্ট ২০২৬: "side bar e design pool er niche review name ekta page
+ * koro")*।
+ *
+ * ⭐ চিপটা একদিনের জন্য এখানে ছিল, তারপর সরে গেছে — আর নকল নয়, **সরানো**।
+ * উপরের চারটে গবেষকের রোজকার কাজ; বাদ-যাওয়া ডিজাইন দেখা মালিক ও
+ * ম্যানেজারের কাজ, অর্থাৎ অন্য মানুষ, অন্য ছন্দ। ⚠️ দুই জায়গায় একই কিউ
+ * রাখলে দুটো দরজা হতো, আর ২৫ আগস্টের ছাঁটাইয়ের গোটা কথাই ছিল এই পাতায়
+ * **কম** জিনিস রাখা।
 
 /**
  * ⭐ অবস্থার ড্রপডাউন — চিপ থেকে নামিয়ে আনা পাঁচটা।
@@ -157,8 +159,23 @@ function dhakaToday(): string {
   return new Date(Date.now() + 6 * 3_600_000).toISOString().slice(0, 10);
 }
 
-function TargetList() {
-  const [filter, setFilter] = useState<FilterKey>('all');
+/**
+ * ⭐⭐ **এক টেবিল, দুই পাতা** *(৩১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ `lockedStage` দিলে পাতাটা **ওই কিউতেই আটকে থাকে**: চিপের সারি ও
+ * অবস্থার ড্রপডাউন বসে না, কারণ ওগুলো দিয়ে কেউ Review পাতা থেকে বেরিয়ে
+ * অন্য কিছু দেখতে পারত — তখন পাতার নাম আর পাতার বিষয় আলাদা হয়ে যেত।
+ *
+ * ⭐ খোঁজা ও বাকি ছাঁকনি (ডিজাইনার · কে এনেছেন · তারিখ) **থাকে** — ওগুলো
+ * কিউয়ের ভেতরে খোঁজার জিনিস, কিউ থেকে বেরোনোর নয়।
+ *
+ * ⚠️ মার্কআপটা **নকল করা হয়নি, ভাগ করা হয়েছে** — ১৭ আগস্টে Worklog-এর
+ * সময় শেখা: দুই জায়গায় কপি থাকলে একদিন একটা বদলাত আর অন্যটা নয়।
+ */
+export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
+  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? 'all');
+  /** ⚠️ আটকানো পাতায় কিউ বদলানোর কন্ট্রোলগুলো বসে না */
+  const showQueues = lockedStage === undefined;
   const [q, setQ] = useState('');
   const [staffId, setStaffId] = useState('');
   /** ⭐ কে এনেছেন — `users.id`, `staffId`-র (`employees.id`) থেকে আলাদা */
@@ -337,7 +354,8 @@ function TargetList() {
       padded={false}
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
-        {FILTERS.map((f) => (
+        {showQueues &&
+          FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
@@ -381,7 +399,7 @@ function TargetList() {
               </span>
             ) : null}
           </button>
-        ))}
+          ))}
 
         {/*
           ⭐⭐ **পাঁচটা অবস্থা-চিপের বদলে একটা ড্রপডাউন** *(২৫ আগস্ট)*।
@@ -391,8 +409,9 @@ function TargetList() {
              দেখে আবার `done_today` দেখায়। ⭐ ছাঁকনি যা করেছে, ড্রপডাউন
              ঠিক তা-ই বলে; দুটো আলাদা হলে কেউ বিশ্বাস করত না।
         */}
-        <select
-          value={statusValue}
+        {showQueues && (
+          <select
+            value={statusValue}
           onChange={(e) =>
             change(() => {
               const v = e.target.value;
@@ -417,12 +436,13 @@ function TargetList() {
               : 'border-brand bg-brand-bg font-semibold text-brand-ink'
           }`}
         >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/*
           ⭐⭐ **বাকি ছাঁকনিগুলো গোটানো** *(২৫ আগস্ট)*।
