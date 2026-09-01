@@ -537,11 +537,27 @@ internal sealed class AgentHost : IAsyncDisposable
 
         try
         {
-            var frame = _capture.CapturePrimary();
-            if (frame is null) return;
+            /**
+             * ⭐⭐ <b>প্রতিটা মনিটরের ছাপ</b> (৩১ আগস্ট ২০২৬)। আগে কেবল
+             * প্রথম পর্দার ছাপ নেওয়া হতো, আর দ্বিতীয় মনিটরে কাজ করা
+             * মানুষের গোনা দশ মিনিট পর থেমে যেত।
+             *
+             * ⚠️ যে পর্দার ছাপ বানানো গেল না সেটা বাদ — কিন্তু বাকিগুলো
+             * তবু যায়। একটাও না পেলে কিছুই জানানো হয় না, আর তখন
+             * <c>StaleAfter</c> নিয়মটা "জানি না" বলে সন্দেহ করা বন্ধ রাখে।
+             */
+            var frames = _capture.CaptureEach();
+            if (frames.Count == 0) return;
 
-            var fingerprint = ScreenFingerprint.From(frame);
-            if (fingerprint is not null) _screen.Observe(fingerprint, now);
+            var prints = new List<byte[]>(frames.Count);
+
+            foreach (var frame in frames)
+            {
+                var print = ScreenFingerprint.From(frame);
+                if (print is not null) prints.Add(print);
+            }
+
+            if (prints.Count > 0) _screen.Observe(prints, now);
         }
         catch (Exception ex)
         {

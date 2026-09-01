@@ -99,7 +99,12 @@ public sealed class ScreenActivity
      */
     private readonly object _gate = new();
 
-    private byte[]? _last;
+    /**
+     * ⚠️⚠️ <b>প্রতি মনিটরের একটা করে ছাপ</b> (৩১ আগস্ট ২০২৬)। আগে ছিল
+     * একটামাত্র <c>byte[]</c> — কেবল প্রথম পর্দার, আর ওটাই মাঠে সৎ কর্মীর
+     * ঘণ্টা কেটেছে (নিচের <see cref="DiffersAny"/>-র টীকা)।
+     */
+    private byte[][]? _last;
     private DateTimeOffset _changedAt;
 
     /// <summary>শেষ নমুনা কখন এসেছিল — বদলাক বা না বদলাক।</summary>
@@ -139,6 +144,38 @@ public sealed class ScreenActivity
     }
 
     /// <summary>
+    /// ⭐⭐ <b>একাধিক পর্দার মধ্যে <i>যেকোনো একটা</i> বদলালেই "বদলেছে"।</b>
+    ///
+    /// ⚠️⚠️ <b>এটাই ৩১ আগস্ট ২০২৬-এ সারানো বাগটা।</b> ছাপ নেওয়া হতো কেবল
+    /// <b>প্রথম</b> মনিটর থেকে (<c>CapturePrimary()</c>), আর কেউ দ্বিতীয়
+    /// পর্দায় কাজ করলে প্রথমটা স্থির থাকত → দশ মিনিট পর "জমেছে" → গোনা বন্ধ।
+    /// মাঠে মাপা: দুই মনিটরের তিনটে PC-তে দুদিনে ৪৩ · ৯ · ৬টা ভুয়া idle,
+    /// আর এক-মনিটরের ছ-টা PC-তে <b>শূন্য</b>।
+    ///
+    /// ⚠️ পুরোনো কোডের টীকায় যুক্তিটা <b>উল্টো</b> লেখা ছিল — *"সব পর্দা
+    /// মেলালে একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই জমেছে বলে গোনা বন্ধ করত"*। সেটা
+    /// সত্যি হতো যদি নিয়মটা হতো "সব পর্দা জমলে তবেই বদলায়নি"-র উল্টোটা।
+    /// ⭐ ঠিক নিয়ম: <b>যেকোনো একটায় বদল = কাজ হচ্ছে</b>; তাই নিষ্ক্রিয় দ্বিতীয়
+    /// মনিটর কখনোই গোনা থামাতে পারে না, আর জিগলারের পাহারাও অটুট থাকে
+    /// (জিগলার চললে <b>কোনো</b> পর্দাই বদলায় না)।
+    ///
+    /// ⚠️ সংখ্যা আলাদা হলে "বদলেছে" — মনিটর যোগ বা বিয়োগ হয়েছে, অর্থাৎ
+    /// কেউ মেশিনটা ছুঁয়েছে।
+    /// </summary>
+    public static bool DiffersAny(
+        IReadOnlyList<byte[]> before, IReadOnlyList<byte[]> after)
+    {
+        if (before.Count != after.Count) return true;
+
+        for (var i = 0; i < before.Count; i++)
+        {
+            if (Differs(before[i], after[i])) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// পর্দার একটা নতুন নমুনা।
     ///
     /// ⚠️ প্রথম নমুনাটা <b>বদল হিসেবে ধরা হয়</b> — তার আগে তুলনা করার কিছুই
@@ -149,6 +186,18 @@ public sealed class ScreenActivity
     {
         ArgumentNullException.ThrowIfNull(fingerprint);
 
+        Observe([fingerprint], now);
+    }
+
+    /// <summary>
+    /// ⭐ প্রতি মনিটরের একটা করে ছাপ — ক্রমটা স্থির (মনিটরের ক্রম), তাই
+    /// একই সূচক মানে একই পর্দা।
+    /// </summary>
+    public void Observe(IReadOnlyList<byte[]> fingerprints, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(fingerprints);
+        if (fingerprints.Count == 0) return;
+
         lock (_gate)
         {
             // ⚠️ বদলাক বা না বদলাক — নমুনা এসেছে, সেটাই আলাদা করে মনে রাখা
@@ -156,9 +205,11 @@ public sealed class ScreenActivity
             //    আর দ্বিতীয়টার উত্তর না রাখাই ছিল অচলাবস্থার মূল।
             _sampledAt = now;
 
-            if (_last is null || Differs(_last, fingerprint))
+            if (_last is null || DiffersAny(_last, fingerprints))
             {
-                _last = fingerprint;
+                // ⚠️ কপি — কলার তালিকাটা পরে ফের ব্যবহার করলে আমাদের
+                //    "শেষ যা দেখেছি" নীরবে বদলে যেত।
+                _last = [.. fingerprints];
                 _changedAt = now;
             }
         }
