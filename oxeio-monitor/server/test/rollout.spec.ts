@@ -101,3 +101,45 @@ describe('rollout — ভার্সনের তুলনা', () => {
     expect(isNewer('1.10.0', '1.9.0')).toBe(true);
   });
 });
+/**
+ * ⭐⭐ **বেছে দেওয়া PC (pilot)** *(১ সেপ্টেম্বর ২০২৬, মালিকের চাওয়া:
+ * "OX-05 ei update age powa dorkar")*।
+ *
+ * ⚠️⚠️ ফাঁকটা নকশার: বালতি ঠিক হয় **মেশিন ধরে**, মানুষ ধরে নয় — তাই যে
+ * PC-তে বাগটা ধরা পড়ে, সংশোধনটা ঠিক সেখানেই আগে পরীক্ষা করা যেত না।
+ * মাঠে মাপা: OX-05-এর বালতি ৮৬, অথচ canary ৭ · partial ৫০।
+ */
+describe('rollout — বেছে দেওয়া PC', () => {
+  /** বালতি ৫০-এর উপরে, অর্থাৎ canary বা partial কোনোটাতেই পড়ে না */
+  const outsider = FLEET.find(
+    (g) => rolloutBucket(g, '1.0.0') >= 50,
+  ) as string;
+
+  it('বালতির বাইরে থাকলেও পাইলট অফার পায়', () => {
+    expect(isOfferedTo('canary', outsider, '1.0.0')).toBe(false);
+    expect(isOfferedTo('canary', outsider, '1.0.0', true)).toBe(true);
+    expect(isOfferedTo('partial', outsider, '1.0.0', true)).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **সবচেয়ে জরুরি দাবি:** থামানো বিল্ড পাইলটেও যায় না। নইলে খারাপ
+   * আপডেট থামানোর পরেও ঠিক সেই মেশিনটায় যেতেই থাকত যেটায় আমরা সবচেয়ে
+   * বেশি নজর রাখছি — আর স্বয়ংক্রিয় rollback নেই (G69)।
+   */
+  it('halted-এ পাইলটও পায় না', () => {
+    expect(isOfferedTo('halted', outsider, '1.0.0', true)).toBe(false);
+  });
+
+  it('পাইলট না দিলে আগের আচরণ অপরিবর্তিত', () => {
+    for (const guid of FLEET) {
+      expect(isOfferedTo('canary', guid, '1.0.0', false)).toBe(
+        isOfferedTo('canary', guid, '1.0.0'),
+      );
+    }
+  });
+
+  it('all-এ সবাই পায়, পাইলট হোক বা না হোক', () => {
+    expect(isOfferedTo('all', outsider, '1.0.0')).toBe(true);
+    expect(isOfferedTo('all', outsider, '1.0.0', true)).toBe(true);
+  });
+});

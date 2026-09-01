@@ -356,6 +356,8 @@ model Device {
   events          Event[]
   alerts          Alert[]
   enrollmentCodes EnrollmentCode[]
+  /** ⭐ যেসব রিলিজে এই PC-টাই পাইলট *(১ সেপ্টেম্বর ২০২৬)* */
+  pilotForVersions AgentVersion[] @relation("agentVersionPilot")
 
   @@unique([hostname, windowsUsername])
   @@map("devices")
@@ -648,6 +650,19 @@ model AgentVersion {
   sha256       String
   releaseNotes String?      @map("release_notes")
   rolloutStage RolloutStage @default(canary) @map("rollout_stage")
+
+  /**
+   * ⭐⭐ **যে একটা PC বালতি নির্বিশেষে আগে পাবে** *(১ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ রোলআউট চলে **মেশিন ধরে** (`machineGuid`-এর হ্যাশ), মানুষ ধরে নয়।
+   * ফলে যে PC-তে বাগটা ধরা পড়েছে ঠিক সেখানেই সংশোধনটা আগে পরীক্ষা করা
+   * যেত না — মালিকের কথায়: *"OX-05 ei update age powa dorkar"*, অথচ তাঁর
+   * বালতি ৮৬, আর canary ৭ · partial ৫০।
+   *
+   * ⚠️ `halted`-এ পাইলটও বাদ — জরুরি ব্রেক সবার জন্য।
+   */
+  pilotDeviceId Int?    @map("pilot_device_id")
+  pilotDevice   Device? @relation("agentVersionPilot", fields: [pilotDeviceId], references: [id])
   isMandatory  Boolean      @default(false) @map("is_mandatory")
   releasedAt   DateTime     @default(now()) @map("released_at") @db.Timestamptz(3)
 
