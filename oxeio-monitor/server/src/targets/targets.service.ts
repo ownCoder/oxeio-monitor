@@ -17,7 +17,6 @@ import {
   asinOf,
   canUseTargets,
   DESIGN_WORK_STAFF_TYPES,
-  type DropReason,
   parseBulk,
   POOL_PER_DESIGNER,
   UPLOAD_QUEUE_FROM,
@@ -110,25 +109,6 @@ export interface TargetRow {
   completedVia: string | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — "Hafiz-24-05-2026" */
   sourceNote: string | null;
-
-  /**
-   * ⭐⭐ **কেন সারিটা কাজের বাইরে গেল** *(৩১ আগস্ট ২০২৬)* — `not_found` ·
-   * `copyright` · `events`।
-   *
-   * ⚠️ `skipped` ও `deleted` **দুটোতেই** থাকে; বাকি অবস্থায় `null`।
-   * পর্দায় লেখাটা `DROP_REASON_LABELS` থেকে আসে, এই মান থেকে নয় —
-   * তাই লেখাটা বদলালেও জমা ডেটা অক্ষত থাকে।
-   */
-  dropReason: string | null;
-
-  /**
-   * ⭐⭐ **মালিক/ম্যানেজার এটা দেখে নিয়েছেন** *(৩১ আগস্ট ২০২৬)* — `null`
-   * মানে এখনো কিউতে আছে।
-   *
-   * ⚠️ কেবল বাদ-যাওয়া সারিতেই অর্থবহ; বাকি সব সারিতে চিরকাল `null`।
-   */
-  reviewedAt: string | null;
-  reviewedBy: { fullName: string; role: string } | null;
 
   /**
    * ⚠️⚠️ নিচের ঘরগুলো `list()` **আগে থেকেই ফেরত দিত**, কিন্তু এই টাইপে
@@ -756,14 +736,11 @@ export class TargetsService {
   async skip(
     employeeId: number,
     id: number,
-    reason: DropReason,
+    reason: string | null,
   ): Promise<{ ok: boolean }> {
     const { count } = await this.prisma.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
-      // ⚠️⚠️ কারণটা এখন **বাধ্যতামূলক** *(৩১ আগস্ট)* — ঐচ্ছিক থাকায়
-      //    পর্দা কোনোদিন কিছু পাঠায়ইনি, আর ৯৩টা skipped সারির একটাতেও
-      //    কারণ লেখা ছিল না। ⭐ ঘরটা `dropReason`, কারণ Delete-ও এখানেই লেখে।
-      data: { status: DesignTargetStatus.skipped, dropReason: reason },
+      data: { status: DesignTargetStatus.skipped, skippedReason: reason },
     });
 
     return { ok: count > 0 };
@@ -882,7 +859,7 @@ export class TargetsService {
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
+    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
   }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
     const page = Math.max(1, query.page ?? 1);
 
@@ -950,30 +927,7 @@ export class TargetsService {
               }
             : query.stage === 'to_live'
               ? { uploadedAt: { not: null }, liveAt: null }
-              : /**
-                 * ⭐⭐ **বাদ-যাওয়া অথচ কেউ দেখেনি** *(৩১ আগস্ট ২০২৬)*।
-                 *
-                 * ⚠️⚠️ **কাটা-তারিখের বদলে `dropReason: { not: null }`,
-                 * আর এটাই এখানকার একমাত্র চালাকি।** পুরোনো ৯৩টা `skipped`
-                 * সারিতে কোনো কারণ লেখা নেই (কারণ চাওয়ার ব্যবস্থাটা ৩১
-                 * আগস্টের), তাই ম্যানেজারের "দেখে নেওয়ার" কিছুই নেই —
-                 * ওগুলো এমনিতেই বাদ পড়ে যায়। ⭐ `UPLOAD_QUEUE_FROM`-এর মতো
-                 * একটা তারিখ-ধ্রুবক লাগেনি: শর্তটা **অর্থ** ধরে চলে,
-                 * ক্যালেন্ডার ধরে নয় — আর তাই একদিন তারিখ বদলানোর কথা
-                 * কারো মনে রাখতে হবে না।
-                 */
-                query.stage === 'to_review'
-                ? {
-                    status: {
-                      in: [
-                        DesignTargetStatus.skipped,
-                        DesignTargetStatus.deleted,
-                      ],
-                    },
-                    dropReason: { not: null },
-                    reviewedAt: null,
-                  }
-                : {};
+              : {};
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
@@ -1004,9 +958,6 @@ export class TargetsService {
           liveAt: true,
           liveAsin: true,
           sourceNote: true,
-          dropReason: true,
-          reviewedAt: true,
-          reviewedBy: { select: { fullName: true, role: true } },
           assignedTo: { select: { empCode: true, fullName: true } },
           // ⭐ কে "শেষ" বলেছেন — বরাদ্দ পাওয়া মানুষ আর শেষ করা মানুষ
           //    এক না-ও হতে পারে (মালিক নিজেও চাপতে পারেন)
@@ -1060,9 +1011,6 @@ export class TargetsService {
         liveAt: r.liveAt?.toISOString() ?? null,
         liveAsin: r.liveAsin,
         sourceNote: r.sourceNote,
-        dropReason: r.dropReason,
-        reviewedAt: r.reviewedAt?.toISOString() ?? null,
-        reviewedBy: r.reviewedBy,
       })),
       total,
       page,
@@ -1106,23 +1054,6 @@ export class TargetsService {
             // ⚠️ এটাও মুছতে হয় — নইলে পুলে ফেরত যাওয়া সারিতে "কে শেষ
             //    করেছিল" লেখা থেকে যেত, অথচ কাজটা আর শেষ নয়
             completedById: null,
-            /**
-             * ⚠️⚠️ **কারণটাও মুছে যায়** *(৩১ আগস্ট ২০২৬)*। সারিটা আবার
-             * পুলে ফিরছে মানে "Not Found" কথাটা আর সত্যি নয় — কেউ দেখে
-             * নিয়েছেন যে পাতাটা আছে, বা ভুল করে মোছা হয়েছিল। ⭐ কারণ
-             * রেখে দিলে পরের বার কেউ বণ্টন পেয়ে দেখতেন সারিটা
-             * "Copyright" বলে দাগানো, অথচ সেটা মীমাংসিত।
-             */
-            dropReason: null,
-            /**
-             * ⚠️⚠️ **"দেখা হয়েছে" চিহ্নটাও মুছে যায়** *(৩১ আগস্ট)*। সারিটা
-             * পুলে ফিরছে মানে সেটা আর বাদ-যাওয়া নয়, অর্থাৎ ম্যানেজার কী
-             * দেখেছিলেন তার কোনো বিষয়ই আর নেই। ⭐ রেখে দিলে ভবিষ্যতে কেউ
-             * আবার Skip করলে সারিটা **কিউতেই উঠত না** — পুরোনো একটা
-             * চিহ্নের কারণে নতুন সমস্যা চাপা পড়ত।
-             */
-            reviewedAt: null,
-            reviewedById: null,
           }
         : status === DesignTargetStatus.done
           ? { status, completedAt: now, completedVia: 'manual', completedById: userId }
@@ -1164,7 +1095,6 @@ export class TargetsService {
     ids: readonly number[],
     userId: number,
     ip: string,
-    reason: DropReason,
   ): Promise<DeleteResult> {
     // ⚠️ একই id দুবার এলে দুবার গোনা হতো — পর্দায় সংখ্যাটা তখন বাড়িয়ে দেখাত
     const wanted = [...new Set(ids)];
@@ -1193,9 +1123,7 @@ export class TargetsService {
         ? { count: 0 }
         : await this.prisma.designTarget.updateMany({
             where: { id: { in: doable } },
-            // ⭐ ডিজাইনারের Skip-এর সাথে **একই ঘর** — "কেন বাদ গেল"
-            //    প্রশ্নটা এক, তাই উত্তরও এক জায়গায় (৩১ আগস্ট)
-            data: { status: DesignTargetStatus.deleted, dropReason: reason },
+            data: { status: DesignTargetStatus.deleted },
           });
 
     if (count > 0) {
@@ -1206,7 +1134,7 @@ export class TargetsService {
         targetId: doable.length === 1 ? String(doable[0]) : 'bulk',
         ipAddress: ip,
         // ⚠️ ASIN-গুলো নয়, সংখ্যাগুলো — তালিকাটা টেবিলেই আছে (`bulkAdd`-এর একই নিয়ম)
-        meta: { deleted: count, keptDone, asked: wanted.length, reason },
+        meta: { deleted: count, keptDone, asked: wanted.length },
       });
     }
 
@@ -1287,8 +1215,7 @@ export class TargetsService {
      * schema-র নোট দেখুন)। একটা কাজ একই সাথে `done` **আর** আপলোড **আর**
      * লাইভ হতে পারে, আর সেটাই ঠিক।
      */
-    const [rows, uploaded, live, toCheck, toFix, toUpload, toLive, toReview] =
-      await Promise.all([
+    const [rows, uploaded, live, toCheck, toFix, toUpload, toLive] = await Promise.all([
       this.prisma.designTarget.groupBy({
         by: ['status'],
         _count: { _all: true },
@@ -1320,17 +1247,6 @@ export class TargetsService {
       this.prisma.designTarget.count({
         where: { uploadedAt: { not: null }, liveAt: null },
       }),
-      // ⭐ `list()`-এর `to_review` শর্তের যমজ — দুটো আলাদা হলে চিপের সংখ্যা
-      //    আর তালিকার সংখ্যা মিলত না (২৪ আগস্টের শিক্ষা)
-      this.prisma.designTarget.count({
-        where: {
-          status: {
-            in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted],
-          },
-          dropReason: { not: null },
-          reviewedAt: null,
-        },
-      }),
     ]);
 
     const out = {
@@ -1354,7 +1270,6 @@ export class TargetsService {
       toFix,
       toUpload,
       toLive,
-      toReview,
     };
     for (const r of rows) out[r.status] = r._count._all;
 
@@ -1437,34 +1352,6 @@ export class TargetsService {
       data: { fixedAt: now, fixedById: userId },
     });
     return { ok: true };
-  }
-
-  /**
-   * ⭐⭐ **"দেখে নিয়েছি"** *(মালিকের চাওয়া, ৩১ আগস্ট ২০২৬)* — মালিক ও
-   * ম্যানেজারের কিউ খালি করার একমাত্র পথ।
-   *
-   * ⚠️⚠️ **সারিটার অবস্থা বদলায় না** — `skipped` `skipped`-ই থাকে। এটা
-   * কোনো সিদ্ধান্ত নয়, একটা **স্বীকৃতি**: "আমি দেখেছি"। ⭐ সিদ্ধান্ত
-   * নিতে চাইলে পাশের বোতামটা আছে (পুলে ফেরত), আর সেটা আলাদা কাজ।
-   *
-   * ⚠️ কেবল বাদ-যাওয়া ও কারণসহ সারিতেই চলে — নইলে যেকোনো সারিতে চিহ্ন
-   * বসিয়ে দেওয়া যেত, আর ঘরটার মানে হারাত।
-   */
-  async markReviewed(
-    id: number,
-    userId: number,
-    now: Date,
-  ): Promise<{ ok: boolean }> {
-    const { count } = await this.prisma.designTarget.updateMany({
-      where: {
-        id,
-        status: { in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted] },
-        dropReason: { not: null },
-      },
-      data: { reviewedAt: now, reviewedById: userId },
-    });
-
-    return { ok: count > 0 };
   }
 
   async markUploaded(id: number, now: Date): Promise<{ ok: true }> {

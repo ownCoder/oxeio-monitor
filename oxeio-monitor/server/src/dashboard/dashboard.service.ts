@@ -16,7 +16,6 @@ import {
   monthStartOf,
   parseWorkDate,
   previousWorkDate,
-  rankLaggards,
   spreadIntoHourBuckets,
   spreadTeamIntoHourBuckets,
   type DeviceReport,
@@ -204,42 +203,6 @@ export interface TrendLeader {
   creditedSec: number;
 }
 
-/**
- * ⭐⭐ **"সবচেয়ে কম" কত দিনের জানালায় দেখা হবে** *(৩০ আগস্ট ২০২৬)*।
- *
- * ⚠️⚠️ **৭, ৩০ নয় — আর দুটো আলাদা কারণে।** এক· মালিকের প্রশ্নটাই ছিল
- * *"last kiso din er upore base kore"*, অর্থাৎ এখনকার অবস্থা, ইতিহাস নয়।
- * দুই· ৩০ দিনের জানালায় একটা খারাপ সপ্তাহ গড়ে মিলিয়ে যেত, আর তালিকাটা
- * সাড়া দিত অনেক দেরিতে — অথচ এই তালিকার কাজই **সময়মতো চোখে পড়া**।
- *
- * ⭐ সংখ্যাটা পর্দাতেও যায় (`laggardDays`), হার্ডকোড করা হয়নি — নইলে
- * একদিন এটা বদলাত আর কার্ডের লেখাটা পুরোনো কথাই বলে যেত।
- */
-export const LAGGARD_DAYS = 7;
-
-/**
- * ⭐⭐ **সবচেয়ে কম ঘণ্টা যাঁদের** *(মালিকের চাওয়া, ৩০ আগস্ট ২০২৬)* — বোর্ডের
- * ডান কলামে।
- *
- * ⚠️⚠️ **`daysCounted` ছাড়া এই সারিটা মিথ্যা বলত, আর সেটাই এই ঘরটার
- * গোটা কারণ।** "৪ ঘণ্টা" পড়ে যে কেউ ধরে নিতেন লোকটা কাজ করেননি — অথচ
- * তিনি হয়তো ছুটিতে ছিলেন, বা মাত্র যোগ দিয়েছেন। ⭐ পাশে "৭ দিনের ২ দিন"
- * লেখা থাকলে সংখ্যাটা আর দুভাবে পড়া যায় না ([`Stat`-এর `sub`-এর একই
- * নিয়ম](../../../web/src/pages/settings/ui.tsx))।
- *
- * ⚠️ শূন্য ঘণ্টার কর্মীও তালিকায় থাকেন — `creditedSec > 0` ছাঁকনি দিলে
- * যিনি **একদিনও** আসেননি তিনিই তালিকা থেকে উধাও হতেন, অথচ প্রশ্নটা
- * ঠিক তাঁকে নিয়েই।
- */
-export interface TrendLaggard {
-  employeeId: number;
-  fullName: string;
-  /** ⭐ জানালার ভেতরে মোট — worked + সংশোধন */
-  creditedSec: number;
-  /** ⚠️ কত দিনে কিছু গোনা হয়েছে — অনুপস্থিতি যেন সংখ্যাটার আড়ালে না পড়ে */
-  daysCounted: number;
-}
-
 export interface TeamTrend {
   /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
   days: TrendDay[];
@@ -274,23 +237,6 @@ export interface TeamTrend {
    *    আর সেই পছন্দটা কেড়ে না নিয়ে নতুন জানালাটা যোগ করা হয়েছে।
    */
   leaders30: TrendLeader[];
-  /**
-   * ⭐⭐ **সবচেয়ে কম ঘণ্টা, নিচ থেকে** — সর্বোচ্চ পাঁচজন *(৩০ আগস্ট ২০২৬)*।
-   *
-   * ⚠️⚠️ জানালাটা **৭ দিন**, ৩০ নয় — আর দুটো আলাদা কারণে। এক· প্রশ্নটাই
-   * ছিল *"last kiso din"*, অর্থাৎ এখনকার অবস্থা, ইতিহাস নয়। দুই· ৩০
-   * দিনের জানালায় একটা খারাপ সপ্তাহ গড়ে মিলিয়ে যেত, আর তখন তালিকাটা
-   * দেরিতে সাড়া দিত — যে তালিকার কাজই সময়মতো চোখে পড়া।
-   *
-   * ⚠️ `leaders30`-এর মতো `creditedSec > 0` ছাঁকনি **নেই**: এখানে শূন্যই
-   * সবচেয়ে জরুরি সারি।
-   */
-  laggards: TrendLaggard[];
-  /**
-   * ⭐ উপরের তালিকার জানালা কত দিনের — পর্দার লেখাটা যেন সার্ভারের
-   * সংখ্যার সাথে কখনো আলাদা না হয়ে যায়।
-   */
-  laggardDays: number;
 }
 
 /** E01 — লাইভ বোর্ডের দিনের-ছন্দ চার্ট (`GET /live/pulse`) */
@@ -941,11 +887,7 @@ export class DashboardService {
      */
     // ⚠️ ২৯, ৩০ নয় — আজ **সহ** ৩০ দিন। ৩০ বিয়োগ করলে জানালাটা ৩১ দিনের হতো।
     const since = new Date(today.getTime() - 29 * 24 * 3600_000);
-    /**
-     * ⚠️ ৬ বিয়োগ, ৭ নয় — আজ **সহ** সাত দিন (উপরের ৩০ দিনের একই যুক্তি)।
-     */
-    const since7 = new Date(today.getTime() - (LAGGARD_DAYS - 1) * 24 * 3600_000);
-    const [lifetime, recent, worked7] = await Promise.all([
+    const [lifetime, recent] = await Promise.all([
       this.prisma.monthlySummary.groupBy({
         by: ['employeeId'],
         _sum: { creditedSec: true },
@@ -954,21 +896,6 @@ export class DashboardService {
         by: ['employeeId'],
         where: { workDate: { gte: since, lte: today } },
         _sum: { creditedSec: true },
-      }),
-      /**
-       * ⚠️⚠️ `creditedSec: { gt: 0 }` ছাঁকনিটা **গোনার জন্য**, যোগফলের জন্য
-       * নয় — শূন্য সেকেন্ডের সারি যোগফলে কিছুই যোগ করত না, কিন্তু
-       * `_count`-এ একটা "দিন" হিসেবে বসে যেত। ⭐ তাতে ছুটিতে থাকা কেউ
-       * "৭ দিনের ৭ দিন কাজ করেছেন, মাত্র ০ ঘণ্টা" দেখাতেন — ঠিক উল্টো কথা।
-       */
-      this.prisma.dailySummary.groupBy({
-        by: ['employeeId'],
-        where: {
-          workDate: { gte: since7, lte: today },
-          creditedSec: { gt: 0 },
-        },
-        _sum: { creditedSec: true },
-        _count: { _all: true },
       }),
     ]);
 
@@ -989,25 +916,10 @@ export class DashboardService {
     const leaders = rank(lifetime);
     const leaders30 = rank(recent);
 
-    /**
-     * ⭐ ক্রমের নিয়মটা `dashboard.math.ts`-এ, খাঁটি ফাংশনে — কারণ ভুল হলে
-     * এটা কোনো এরর দেয় না, শুধু ভুল পাঁচটা নাম দেখায়। ⚠️ এখানে কেবল
-     * কোয়েরির আকারটা নিয়মের আকারে আনা হয়।
-     */
-    const by7 = new Map(
-      worked7.map((r) => [
-        r.employeeId,
-        { creditedSec: r._sum.creditedSec ?? 0, daysCounted: r._count._all },
-      ]),
-    );
-    const laggards: TrendLaggard[] = rankLaggards(nameOf, by7);
-
     return {
       days,
       leaders,
       leaders30,
-      laggards,
-      laggardDays: LAGGARD_DAYS,
       month: {
         yearMonth: monthKey,
         creditedSec,

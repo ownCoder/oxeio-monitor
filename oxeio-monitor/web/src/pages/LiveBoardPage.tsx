@@ -29,12 +29,7 @@ import { OpenAlerts } from './live/OpenAlerts';
 import { TopApps } from './live/TopApps';
 import { StatusStrip } from './live/TeamBars';
 import { TeamTable } from './live/TeamTable';
-import {
-  FewestHours,
-  MonthCard,
-  TopPerformers,
-  WeekBars,
-} from './live/WeekAndMonth';
+import { MonthCard, TopPerformers, WeekBars } from './live/WeekAndMonth';
 import { isWorking } from './live/onTheClock';
 
 /**
@@ -605,37 +600,6 @@ export function LiveBoardPage() {
               )}
             </Card>
           )}
-          {/*
-            ⭐⭐ **সবচেয়ে কম ঘণ্টা** *(মালিকের চাওয়া, ৩০ আগস্ট ২০২৬)* —
-               `Top Performers`-এর উল্টো পিঠ, কিন্তু **এখানে**, নিচের সারিতে
-               নয়। ⚠️ দুটো তালিকা পাশাপাশি বসালে পর্দাটা একটা লিডারবোর্ড
-               হয়ে উঠত — উপরে ভালো, নিচে খারাপ। ⭐ ডান কলামে "দেখে নেওয়ার
-               জিনিস"গুলোর সাথে থাকলে এটা যা, তা-ই থাকে: একটা প্রশ্ন।
-
-            ⚠️ `isOwner` দিয়ে ঢাকা হয়নি — বোর্ডটাই owner ও manager ছাড়া
-               কেউ দেখেন না (`/live`-এর `@Roles`), আর দল কে সামলান সেটা
-               ম্যানেজারের নিজেরই কাজ।
-          */}
-          <Card
-            title="Fewest Hours"
-            hint={
-              trend.data
-                ? `Least counted in the last ${trend.data.laggardDays} days`
-                : 'Least counted recently'
-            }
-            padded={false}
-          >
-            {trend.data ? (
-              <FewestHours
-                people={trend.data.laggards}
-                days={trend.data.laggardDays}
-              />
-            ) : (
-              <div className="px-4 py-8">
-                <div className="h-24 rounded bg-line/40" />
-              </div>
-            )}
-          </Card>
           </div>
         </div>
 

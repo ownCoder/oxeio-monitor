@@ -620,13 +620,6 @@ export interface AgentVersionView {
   /** ⚠️ সারি আছে কিন্তু MSI-টা ডিস্কে নেই — এজেন্ট নামাতে গিয়ে ৪০৪ পাবে */
   fileMissing: boolean;
   devicesOn: number;
-  /**
-   * ⭐⭐ **বালতি নির্বিশেষে যে PC-টা আগে পায়** *(১ সেপ্টেম্বর ২০২৬)* —
-   * `null` মানে কেউ নয়।
-   */
-  pilotDeviceId: number | null;
-  /** ⭐ পর্দায় দেখানোর নাম — কর্মীর নাম, না থাকলে hostname */
-  pilotLabel: string | null;
 }
 
 export function listAgentVersions(
@@ -648,25 +641,13 @@ export function publishAgentVersion(body: {
   return api<AgentVersionView>('/agent-versions', { method: 'POST', body });
 }
 
-/**
- * ⚠️⚠️ `pilotDeviceId` **না পাঠানো** আর **`null` পাঠানো** এক নয়: প্রথমটা
- * "যা ছিল তাই থাক", দ্বিতীয়টা "পাইলট তুলে দাও"। ⭐ পার্থক্যটা না রাখলে
- * শুধু ধাপ বদলাতে গেলেই বেছে নেওয়া PC-টা নীরবে মুছে যেত।
- */
 export function setAgentRollout(
   version: string,
   rolloutStage: RolloutStage,
-  pilotDeviceId?: number | null,
 ): Promise<AgentVersionView> {
   return api<AgentVersionView>(
     `/agent-versions/${encodeURIComponent(version)}/stage`,
-    {
-      method: 'POST',
-      body:
-        pilotDeviceId === undefined
-          ? { rolloutStage }
-          : { rolloutStage, pilotDeviceId },
-    },
+    { method: 'POST', body: { rolloutStage } },
   );
 }
 

@@ -60,13 +60,6 @@ export interface TargetStats {
   /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
   toLive: number;
   /**
-   * ⭐⭐ **বাদ গেছে অথচ মালিক/ম্যানেজার এখনো দেখেননি** *(৩১ আগস্ট ২০২৬)*।
-   *
-   * ⚠️ পুরোনো ৯৩টা `skipped` সারি এতে **নেই** — ওগুলোয় কোনো কারণ লেখা নেই,
-   * তাই দেখে নেওয়ার কিছুও নেই।
-   */
-  toReview: number;
-  /**
    * ⭐⭐ **বানান দেখা বাকি** *(ADR-038)* — সুমাইয়ার কিউ।
    *
    * ⚠️ যন্ত্র বানান পড়ে না; এটা কেবল *"কোনগুলো দেখা হয়নি"*-র হিসাব।
@@ -138,14 +131,7 @@ export function undoTarget(id: number): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/me/targets/${id}/undone`, { method: 'POST' });
 }
 
-/**
- * ⚠️⚠️ `reason` এখন **বাধ্যতামূলক** *(৩১ আগস্ট)* — আগে ঐচ্ছিক ছিল, আর
- * পর্দা কোনোদিন পাঠায়ইনি; ফলে ৯৩টা skipped সারির একটাতেও কারণ ছিল না।
- */
-export function skipTarget(
-  id: number,
-  reason: DropReason,
-): Promise<{ ok: boolean }> {
+export function skipTarget(id: number, reason?: string): Promise<{ ok: boolean }> {
   return api<{ ok: boolean }>(`/me/targets/${id}/skip`, {
     method: 'POST',
     body: { reason },
@@ -153,26 +139,6 @@ export function skipTarget(
 }
 
 export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
-
-/**
- * ⭐⭐ **একটা টার্গেট কেন কাজের বাইরে গেল** *(মালিকের চাওয়া, ৩১ আগস্ট ২০২৬)*।
- *
- * ⚠️ ক্রমটাই পর্দার ক্রম, আর **`not_found` প্রথমে** — মাঠে ওটাই সবচেয়ে
- * বেশি ঘটে (Amazon-এ পাতাটাই নেই)। বেশি-ব্যবহৃতটা হাতের কাছে থাকে।
- */
-export const DROP_REASONS = ['not_found', 'copyright', 'events'] as const;
-
-export type DropReason = (typeof DROP_REASONS)[number];
-
-/**
- * ⚠️⚠️ **জমা হয় যন্ত্রের মান, দেখা যায় এই লেখা** — দুটো আলাদা রাখা হয়েছে
- * বলেই একদিন "Not Found"-কে "Page gone" বলা যাবে পুরোনো সারি না ছুঁয়ে।
- */
-export const DROP_REASON_LABEL: Record<DropReason, string> = {
-  not_found: 'Not Found',
-  copyright: 'Copyright',
-  events: 'Events',
-};
 
 /** ⭐ মোছার ফল — কতগুলো গেল, আর শেষ হয়ে যাওয়া কতগুলো থেকে গেল */
 export interface DeleteResult {
@@ -222,14 +188,6 @@ export interface TargetRow {
   liveAt: string | null;
   /** ⚠️ **আমাদের নিজের** পণ্যের ASIN — উপরের `asin` নমুনার */
   liveAsin: string | null;
-  /**
-   * ⭐ কেন বাদ গেল — `skipped` ও `deleted` সারিতে থাকে, বাকিতে `null`
-   * *(৩১ আগস্ট)*। ⚠️ পুরোনো সারিতে `null`, কারণ তখন কারণ চাওয়াই হতো না।
-   */
-  dropReason: DropReason | null;
-  /** ⭐ কে-কবে দেখে নিয়েছেন — `null` মানে এখনো কিউতে *(৩১ আগস্ট)* */
-  reviewedAt: string | null;
-  reviewedBy: { fullName: string; role: string } | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — `Hafiz-24-05-2026` */
   sourceNote: string | null;
 }
@@ -264,8 +222,7 @@ export function listTargets(
     from?: string;
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    /** ⚠️ `to_review` যোগ হয়েছে ৩১ আগস্ট — বাদ-যাওয়া, অথচ কেউ দেখেননি */
-    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
+    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
   },
   signal?: AbortSignal,
 ): Promise<TargetPage> {
@@ -302,14 +259,8 @@ export function updateTarget(id: number, status: TargetStatus): Promise<{ ok: bo
  * ⚠️⚠️ আগে এটা সত্যিকারের `DELETE` ছিল, আর তাতে `asin` UNIQUE প্রহরীও
  * উধাও হতো — মরা ASIN কাল আবার পুলে ঢুকে বণ্টনে চলে যেত।
  */
-export function deleteTarget(
-  id: number,
-  reason: DropReason,
-): Promise<DeleteResult> {
-  // ⚠️ কারণটা query-তে — বডিসহ DELETE অনেক প্রক্সি নীরবে ফেলে দেয়
-  return api<DeleteResult>(`/design-targets/${id}?reason=${reason}`, {
-    method: 'DELETE',
-  });
+export function deleteTarget(id: number): Promise<DeleteResult> {
+  return api<DeleteResult>(`/design-targets/${id}`, { method: 'DELETE' });
 }
 
 /**
@@ -317,24 +268,10 @@ export function deleteTarget(
  *
  * ⚠️ `POST`, `DELETE` নয় — বডিসহ `DELETE` অনেক প্রক্সি নীরবে ফেলে দেয়।
  */
-export function deleteTargets(
-  ids: number[],
-  reason: DropReason,
-): Promise<DeleteResult> {
+export function deleteTargets(ids: number[]): Promise<DeleteResult> {
   return api<DeleteResult>('/design-targets/delete', {
     method: 'POST',
-    body: { ids, reason },
-  });
-}
-
-/**
- * ⭐⭐ **"দেখে নিয়েছি"** — owner ও manager only *(৩১ আগস্ট ২০২৬)*।
- *
- * ⚠️ সারির অবস্থা বদলায় না; এটা সিদ্ধান্ত নয়, স্বীকৃতি — "আমি দেখেছি"।
- */
-export function markReviewed(id: number): Promise<{ ok: boolean }> {
-  return api<{ ok: boolean }>(`/design-targets/${id}/reviewed`, {
-    method: 'POST',
+    body: { ids },
   });
 }
 

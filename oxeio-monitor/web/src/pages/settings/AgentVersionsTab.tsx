@@ -2,12 +2,10 @@ import { useState } from 'react';
 
 import {
   listAgentVersions,
-  listDevices,
   publishAgentVersion,
   setAgentRollout,
   STAGE_LABEL,
   type AgentVersionView,
-  type DeviceView,
   type RolloutStage,
 } from '../../api/admin';
 import { useApi } from '../../api/useApi';
@@ -51,15 +49,6 @@ export function AgentVersionsTab() {
   const [publishing, setPublishing] = useState(false);
   const rows = data ?? [];
 
-  /**
-   * ⭐ পাইলট বাছার তালিকা — `FleetCard`-ও এই একই কল করে।
-   *
-   * ⚠️ ব্যর্থ হলে চুপচাপ খালি তালিকা: ডিভাইস আনতে না পারা মানে ভার্সনের
-   * পাতাটাই ভেঙে দেখানো নয় — ধাপ বদলানো তখনো কাজ করবে।
-   */
-  const fleet = useApi((signal) => listDevices(signal), []);
-  const devices = fleet.data ?? [];
-
   return (
     <div className="space-y-4">
       {/*
@@ -87,9 +76,7 @@ export function AgentVersionsTab() {
             hint="Agents keep running on whatever was installed by hand — they just never get offered an update."
           />
         )}
-        {rows.length > 0 && <VersionTable
-          rows={rows}
-          devices={devices} onChanged={reload} />}
+        {rows.length > 0 && <VersionTable rows={rows} onChanged={reload} />}
       </Card>
 
       {/*
@@ -118,12 +105,9 @@ export function AgentVersionsTab() {
 
 function VersionTable({
   rows,
-  devices,
   onChanged,
 }: {
   rows: AgentVersionView[];
-  /** ⭐ পাইলট বাছার তালিকা — খালি হলে শুধু "Nobody" থাকে */
-  devices: DeviceView[];
   onChanged: () => void;
 }) {
   const { busy, error, run } = useMutation();
@@ -165,47 +149,6 @@ function VersionTable({
                 ).map((stage) => (
                   <option key={stage} value={stage}>
                     {STAGE_LABEL[stage]}
-                  </option>
-                ))}
-              </select>
-            ),
-          },
-          {
-            /**
-             * ⭐⭐ **বেছে দেওয়া PC** *(মালিকের চাওয়া, ১ সেপ্টেম্বর ২০২৬:
-             * "OX-05 ei update age powa dorkar")*।
-             *
-             * ⚠️⚠️ রোলআউট চলে **মেশিন ধরে** (হ্যাশ-বালতি), মানুষ ধরে নয় —
-             * তাই যে PC-তে বাগটা ধরা পড়ে, সংশোধনটা ঠিক সেখানেই আগে
-             * পরীক্ষা করা যেত না। মাঠে: OX-05-এর বালতি ৮৬, অথচ canary ৭।
-             *
-             * ⚠️ `Stopped`-এ পাইলটও পায় না — জরুরি ব্রেক সবার জন্য।
-             *    সেটা সার্ভারের নিয়মে বাঁধা, পর্দার সদিচ্ছায় নয়।
-             */
-            key: 'pilot',
-            header: 'First to',
-            render: (r) => (
-              <select
-                value={r.pilotDeviceId ?? ''}
-                disabled={busy}
-                title="This PC gets the build no matter what the rollout says"
-                onChange={(e) =>
-                  run(async () => {
-                    await setAgentRollout(
-                      r.version,
-                      r.rolloutStage,
-                      e.target.value === '' ? null : Number(e.target.value),
-                    );
-                    onChanged();
-                  })
-                }
-                className="rounded-md border border-line bg-surface px-2 py-1 text-[12.5px]"
-              >
-                {/* ⚠️ খালি ঘরটা "কেউ নয়" — ফাঁকা দেখতে যেন প্রশ্ন না জাগে */}
-                <option value="">Nobody</option>
-                {devices.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.employee?.fullName ?? d.hostname}
                   </option>
                 ))}
               </select>

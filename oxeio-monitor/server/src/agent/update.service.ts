@@ -41,8 +41,6 @@ export class UpdateService {
   async offerFor(
     currentVersion: string,
     machineGuid?: string | null,
-    /** ⭐ কোন ডিভাইস জিজ্ঞেস করছে — পাইলট মেলানোর জন্য *(১ সেপ্টেম্বর ২০২৬)* */
-    deviceId?: number | null,
   ): Promise<UpdateOffer | null> {
     const latest = await this.prisma.agentVersion.findFirst({
       where: { rolloutStage: { not: 'halted' } },
@@ -54,20 +52,8 @@ export class UpdateService {
     // H04 — ⭐ ধাপে ধাপে। machineGuid না জানলে **কিছুই দেওয়া হয় না**:
     //    অজানা ডিভাইসকে আপডেট দেওয়ার চেয়ে না দেওয়া নিরাপদ, কারণ
     //    canary-র পুরো মানেই "গুটিকয়েক মেশিনে আগে"।
-    /**
-     * ⭐ পাইলট হলে বালতি এড়ানো যায়, কিন্তু `machineGuid` ছাড়া নয় —
-     * পরিচয়হীন কোনো কল যেন কখনো অফার না পায়।
-     */
-    const isPilot =
-      latest.pilotDeviceId !== null &&
-      deviceId !== null &&
-      deviceId !== undefined &&
-      latest.pilotDeviceId === deviceId;
-
     if (!machineGuid) return null;
-    if (
-      !isOfferedTo(latest.rolloutStage, machineGuid, latest.version, isPilot)
-    ) {
+    if (!isOfferedTo(latest.rolloutStage, machineGuid, latest.version)) {
       return null;
     }
 

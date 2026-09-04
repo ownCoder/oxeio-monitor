@@ -270,31 +270,3 @@ export function canUseTargets(role: UserRole): boolean {
     role === UserRole.researcher
   );
 }
-
-/**
- * ⭐⭐ **একটা টার্গেট কেন কাজের বাইরে গেল** *(মালিকের চাওয়া, ৩১ আগস্ট
- * ২০২৬: "'Not Found, Copyright, Events' eigula add kore dao")*।
- *
- * ⚠️⚠️ **দুটো পথে একই তিনটে কারণ, আর এটাই এখানকার আসল সিদ্ধান্ত।**
- * ডিজাইনার Skip চাপেন, মালিক Delete চাপেন — কিন্তু প্রশ্নটা এক:
- * *"এটা কেন বাদ গেল?"* ⭐ দুই জায়গায় দুই তালিকা রাখলে একদিন একটায়
- * নতুন কারণ যোগ হতো আর অন্যটায় নয়, আর তখন গোনাই অসম্ভব হতো।
- *
- * ⚠️ **যন্ত্রের মান, পর্দার লেখা নয়** — `not_found` জমা হয়, `"Not Found"`
- * নয়। পর্দার লেখা বদলানো সস্তা; জমা-হয়ে-যাওয়া হাজারটা সারির মানে
- * বদলানো নয়।
- *
- * ⚠️ কারণটা **বাধ্যতামূলক** (পর্দায় বোতামটাই কারণ)। ঐচ্ছিক রাখলে
- * সবাই খালি রেখে দিতেন, আর ঘরটা আজকের `skipped_reason`-এর মতোই
- * ৯৩টা সারিতে NULL হয়ে পড়ে থাকত।
- */
-export const DROP_REASONS = ['not_found', 'copyright', 'events'] as const;
-
-export type DropReason = (typeof DROP_REASONS)[number];
-
-/** ⚠️ বাইরের কাঁচা স্ট্রিং যাচাই — DTO ও সার্ভিস দুটোই এটাই ডাকে */
-export function isDropReason(raw: unknown): raw is DropReason {
-  return (
-    typeof raw === 'string' && (DROP_REASONS as readonly string[]).includes(raw)
-  );
-}

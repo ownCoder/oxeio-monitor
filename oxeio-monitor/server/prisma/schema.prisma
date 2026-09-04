@@ -300,8 +300,6 @@ model User {
   completedTargets DesignTarget[] @relation("designTargetCompletedBy")
   /// ⭐ বানান যাচাই করেছেন (ADR-038) — সাধারণত গবেষক
   checkedTargets   DesignTarget[] @relation("designTargetCheckedBy")
-  /** ⭐ বাদ-যাওয়া যেসব ডিজাইন ইনি দেখে নিয়েছেন *(৩১ আগস্ট)* */
-  reviewedTargets  DesignTarget[] @relation("designTargetReviewedBy")
   /// ⭐ ভুল ঠিক করেছেন — সাধারণত ম্যানেজার
   fixedTargets     DesignTarget[] @relation("designTargetFixedBy")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -356,8 +354,6 @@ model Device {
   events          Event[]
   alerts          Alert[]
   enrollmentCodes EnrollmentCode[]
-  /** ⭐ যেসব রিলিজে এই PC-টাই পাইলট *(১ সেপ্টেম্বর ২০২৬)* */
-  pilotForVersions AgentVersion[] @relation("agentVersionPilot")
 
   @@unique([hostname, windowsUsername])
   @@map("devices")
@@ -650,19 +646,6 @@ model AgentVersion {
   sha256       String
   releaseNotes String?      @map("release_notes")
   rolloutStage RolloutStage @default(canary) @map("rollout_stage")
-
-  /**
-   * ⭐⭐ **যে একটা PC বালতি নির্বিশেষে আগে পাবে** *(১ সেপ্টেম্বর ২০২৬)*।
-   *
-   * ⚠️⚠️ রোলআউট চলে **মেশিন ধরে** (`machineGuid`-এর হ্যাশ), মানুষ ধরে নয়।
-   * ফলে যে PC-তে বাগটা ধরা পড়েছে ঠিক সেখানেই সংশোধনটা আগে পরীক্ষা করা
-   * যেত না — মালিকের কথায়: *"OX-05 ei update age powa dorkar"*, অথচ তাঁর
-   * বালতি ৮৬, আর canary ৭ · partial ৫০।
-   *
-   * ⚠️ `halted`-এ পাইলটও বাদ — জরুরি ব্রেক সবার জন্য।
-   */
-  pilotDeviceId Int?    @map("pilot_device_id")
-  pilotDevice   Device? @relation("agentVersionPilot", fields: [pilotDeviceId], references: [id])
   isMandatory  Boolean      @default(false) @map("is_mandatory")
   releasedAt   DateTime     @default(now()) @map("released_at") @db.Timestamptz(3)
 
@@ -761,21 +744,6 @@ model DesignTarget {
   /// "কতগুলো ডিজাইন হয়েছে" সব গণনা নীরবে কমে যেত।
   ///
   /// ⚠️ `null` = **এখনো দেখা হয়নি**, "ভুল নেই" নয় — দুটো আলাদা।
-  /**
-   * ⭐⭐ **বাদ-যাওয়া সারিটা মালিক/ম্যানেজার দেখে নিয়েছেন** *(৩১ আগস্ট ২০২৬)*।
-   *
-   * ⚠️⚠️ **`NULL` মানেই কিউতে আছে**, আর সেটাই কিউয়ের একমাত্র শর্ত (সাথে
-   * `dropReason != null`)। ⭐ চিহ্নটা না থাকলে তালিকাটা কোনোদিন খালি হতো
-   * না — আর ২৪ আগস্টে ঠিক সেই ভুলে আপলোড-কিউতে ২৭,৬৪১টা সারি দাঁড়িয়ে
-   * গিয়েছিল (`UPLOAD_QUEUE_FROM`-এর টীকা)।
-   *
-   * ⚠️ পুলে ফেরত পাঠালে এটাও মুছে যায় — সারিটা তখন আর বাদ-যাওয়া নয়,
-   * অর্থাৎ "দেখা হয়েছে" কথাটার কোনো বিষয়ই থাকে না।
-   */
-  reviewedAt   DateTime? @map("reviewed_at") @db.Timestamptz(3)
-  reviewedById Int?      @map("reviewed_by_id")
-  reviewedBy   User?     @relation("designTargetReviewedBy", fields: [reviewedById], references: [id])
-
   checkedAt    DateTime? @map("checked_at") @db.Timestamptz(3)
   checkedById  Int?      @map("checked_by_id")
   checkedBy    User?     @relation("designTargetCheckedBy", fields: [checkedById], references: [id])
@@ -837,20 +805,7 @@ model DesignTarget {
   /// `filename` (নিজে থেকে ধরা) বা `manual` (ডিজাইনার নিজে বলেছেন)
   completedVia String? @map("completed_via") @db.VarChar(16)
 
-  /**
-   * ⭐⭐ **কেন সারিটা চলে গেল** *(৩১ আগস্ট ২০২৬)* — `not_found` ·
-   * `copyright` · `events`।
-   *
-   * ⚠️⚠️ **এক ঘর, দুই পথ:** ডিজাইনারের Skip আর মালিকের Delete — দুটোই
-   * এখানেই লেখে। কোন পথে গেছে সেটা `status` বলে, তাই কারণটা দুবার রাখার
-   * দরকার নেই। ⭐ আগে নাম ছিল `skipped_reason`, কিন্তু ৯৩টা skipped
-   * সারির একটাতেও কিছু লেখা ছিল না — পর্দা কোনোদিন কারণ পাঠাত না।
-   *
-   * ⚠️ **যন্ত্রের মান জমা হয়, পর্দার লেখা নয়** (`not_found`, "Not Found"
-   * নয়) — নইলে একদিন লেখাটা বদলালে পুরোনো সব সারি অন্য জিনিস বোঝাত।
-   * তালিকাটা এক জায়গায়: `targets.rules.ts`-এর `DROP_REASONS`।
-   */
-  dropReason String? @map("drop_reason") @db.VarChar(16)
+  skippedReason String? @map("skipped_reason")
 
   /**
    * ⭐⭐ **oXeio-র আগে এই সারিটা কোথায় ছিল** *(২২ আগস্ট, ইমপোর্ট)*।
