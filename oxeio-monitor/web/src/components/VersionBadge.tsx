@@ -82,11 +82,25 @@ export function VersionBadge() {
          হতো বোতামটা ভাঙা।
     */
     <div className="pointer-events-none fixed right-2 bottom-2 z-40 select-none">
+      {/*
+        ⚠️⚠️ **আগে এটা পড়াই যেত না** *(মালিকের রিপোর্ট, ৩১ আগস্ট ২০২৬:
+           "vershoning ta ekotu boro… chokei mele na")*। ছিল ১০px, `ink-3`
+           (সবচেয়ে ম্লান কালি), আর পটভূমি ৭০% স্বচ্ছ — অর্থাৎ তিনটে জিনিস
+           একসাথে ব্যাজটাকে মুছে দিচ্ছিল।
+
+        ⭐ এখন ১২px · `ink-2` · **নিরেট** পটভূমি · একটা বর্ডার। ⚠️ তবু
+           ছোটই — এটা পাতার কাজের অংশ নয়, একটা রসিদ; বড় করলে প্রতিটা
+           পর্দার কোণে চোখ টানত। ⭐ যতটুকু না হলে **পড়া যায় না**, ঠিক
+           ততটুকুই বাড়ানো হয়েছে।
+
+        ⚠️ বর্ডারটা জরুরি: ব্যাজটা যেকোনো পটভূমির উপরে বসে (টেবিল, চার্ট,
+           খালি জায়গা), আর নিরেট রং ছাড়া ওটা কখনো কখনো মিশে যেত।
+      */}
       <span
-        className={`num rounded-md px-1.5 py-0.5 text-[10px] tabular-nums [@media(hover:hover)]:pointer-events-auto ${
+        className={`num rounded-md border px-2 py-1 text-[12px] tabular-nums [@media(hover:hover)]:pointer-events-auto ${
           mismatch
-            ? 'bg-brand-bg text-brand-ink'
-            : 'bg-surface/70 text-ink-3 hover:text-ink-2'
+            ? 'border-brand/40 bg-brand-bg text-brand-ink'
+            : 'border-line bg-surface text-ink-2 hover:text-ink'
         }`}
         title={detail}
       >

@@ -321,6 +321,87 @@ public class ScreenActivityTests
     {
         var screen = new ScreenActivity();
 
-        Assert.Throws<ArgumentNullException>(() => screen.Observe(null!, At(0)));
+        // ⚠️ ৩১ আগস্ট থেকে দুটো overload, তাই null-এর ধরন লিখে দিতে হয়
+        Assert.Throws<ArgumentNullException>(() => screen.Observe((byte[])null!, At(0)));
+        Assert.Throws<ArgumentNullException>(
+            () => screen.Observe((IReadOnlyList<byte[]>)null!, At(0)));
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // ⭐⭐ একাধিক মনিটর (৩১ আগস্ট ২০২৬)
+    //
+    // ⚠️⚠️ মাঠের বাগ: ছাপ নেওয়া হতো কেবল **প্রথম** পর্দা থেকে, আর কেউ
+    //    দ্বিতীয় মনিটরে কাজ করলে প্রথমটা স্থির থাকত → দশ মিনিট পর "জমেছে"
+    //    → গোনা বন্ধ। মাপা: দুই মনিটরের তিনটে PC-তে দুদিনে ৪৩ · ৯ · ৬টা
+    //    ভুয়া idle, এক-মনিটরের ছ-টায় শূন্য।
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// ⭐⭐ এই টেস্টটাই আসল দাবি: <b>দ্বিতীয় পর্দা বদলালে প্রথমটা স্থির
+    /// থাকলেও জমেনি</b>।
+    /// </summary>
+    [Fact]
+    public void দ্বিতীয়_মনিটর_বদলালে_পর্দা_জমেনি()
+    {
+        var screen = new ScreenActivity();
+
+        // প্রথম পর্দা সারাক্ষণ একই, দ্বিতীয়টায় প্রতি মিনিটে কাজ চলছে
+        for (var m = 0; m <= 20; m++)
+        {
+            screen.Observe([Flat(100), Flat((byte)(m * 5))], At(m));
+        }
+
+        Assert.False(screen.IsFrozen(At(20)));
+    }
+
+    /// <summary>
+    /// ⚠️ পাহারাটা অটুট: জিগলার চললে <b>কোনো</b> পর্দাই বদলায় না, তাই
+    /// দুই মনিটরেও ঠিক আগের মতোই ধরা পড়ে।
+    /// </summary>
+    [Fact]
+    public void দুই_মনিটরের_কোনোটাই_না_বদলালে_জমে_যায়()
+    {
+        var screen = new ScreenActivity();
+
+        for (var m = 0; m <= 20; m++)
+        {
+            screen.Observe([Flat(100), Flat(200)], At(m));
+        }
+
+        Assert.True(screen.IsFrozen(At(20)));
+    }
+
+    /// <summary>⚠️ মনিটর যোগ বা বিয়োগ হলে "বদলেছে" — কেউ মেশিনটা ছুঁয়েছে।</summary>
+    [Fact]
+    public void মনিটরের_সংখ্যা_বদলালে_বদল_হিসেবে_ধরা_হয়()
+    {
+        Assert.True(ScreenActivity.DiffersAny([Flat(10)], [Flat(10), Flat(10)]));
+        Assert.False(ScreenActivity.DiffersAny([Flat(10)], [Flat(10)]));
+    }
+
+    /// <summary>
+    /// ⭐ একটামাত্র পর্দার পুরোনো ডাকটাও আগের মতোই চলে — ওটা এখন
+    /// এক-সদস্যের তালিকা।
+    /// </summary>
+    [Fact]
+    public void এক_মনিটরের_পুরোনো_আচরণ_অপরিবর্তিত()
+    {
+        var screen = new ScreenActivity();
+
+        for (var m = 0; m <= 20; m++) screen.Observe(Flat(100), At(m));
+
+        Assert.True(screen.IsFrozen(At(20)));
+    }
+
+    /// <summary>⚠️ খালি তালিকা মানে "কিছুই তুলতে পারিনি" — নমুনাই নয়।</summary>
+    [Fact]
+    public void খালি_তালিকা_নমুনা_হিসেবে_গোনা_হয়_না()
+    {
+        var screen = new ScreenActivity();
+
+        screen.Observe(System.Array.Empty<byte[]>(), At(0));
+
+        // নমুনা নেই ⇒ সন্দেহও নেই
+        Assert.False(screen.IsFrozen(At(20)));
     }
 }

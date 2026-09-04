@@ -1,6 +1,7 @@
 import { DeviceStatus, RolloutStage } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ValidateIf,
   IsBoolean,
   IsEmail,
   IsEnum,
@@ -438,6 +439,19 @@ export class SetStageDto {
 
   @IsOptional() @IsBoolean()
   isMandatory?: boolean;
+
+  /**
+   * ⭐⭐ **যে একটা PC বালতি নির্বিশেষে আগে পাবে** *(১ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️ `null` পাঠানো মানে **পাইলট তুলে দেওয়া**, আর ঘরটা না পাঠানো মানে
+   * "যা ছিল তাই থাক" — দুটো আলাদা কথা, তাই `@IsOptional()` আর
+   * `@ValidateIf` দুটোই লাগে। নইলে ধাপ বদলাতে গেলেই পাইলট নীরবে মুছে যেত।
+   */
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  pilotDeviceId?: number | null;
 }
 
 

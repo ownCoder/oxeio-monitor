@@ -418,7 +418,7 @@ internal static partial class Program
     }
 
     /// <summary>Windows-এর ~৫ সেকেন্ডের চেয়ে কম, যাতে আমরা নিজেরাই আগে সরে যাই।</summary>
-    private static readonly TimeSpan ShutdownBudget = TimeSpan.FromSeconds(4);
+    internal static readonly TimeSpan ShutdownBudget = TimeSpan.FromSeconds(4);
 
     private static AgentHost? _host;
     private static PowerMonitor? _power;

@@ -64,14 +64,19 @@ internal sealed class AgentHost : IAsyncDisposable
     /// ⚠️ Windows-এর পুরো শাটডাউন বাজেট কয়েক সেকেন্ড, আর তার পরেও শেষ
     /// drain-এর জন্য সময় রাখতে হয়।
     /// </summary>
-    private static readonly TimeSpan StopEnqueueBudget = TimeSpan.FromSeconds(2);
+    internal static readonly TimeSpan StopEnqueueBudget = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// বন্ধ হওয়ার আগে শেষ drain-এ সর্বোচ্চ যতক্ষণ।
     /// ⚠️ <c>Program.ShutdownBudget</c>-এর (৪ সে.) ভেতরে থাকতে হবে — এর
     /// চেয়ে বড় দিলে drain কখনো নিজে থামত না, বাইরে থেকে প্রসেস মারা পড়ত।
     /// </summary>
-    private static readonly TimeSpan FinalDrainBudget = TimeSpan.FromSeconds(3);
+    /// ⚠️⚠️ ৩ → ১.৫ সে. *(৪ সেপ্টেম্বর ২০২৬)*। A1-এ <see cref="GoodbyeBudget"/>
+    /// (২ সে.) যোগ হয়েছিল, কিন্তু এটা কমানো হয়নি — ফলে দুটো মিলে ৫ সে.,
+    /// অথচ <c>Program.ShutdownBudget</c> ৪। <c>Shutdown()</c> তাই ৪ সেকেন্ডে
+    /// হাল ছেড়ে দিত আর <b>শেষ full drain কখনো পুরো সময় পেত না</b> — মন্তব্যে
+    /// শর্তটা লেখা ছিল, পাহারা ছিল না। ⭐ এখন `ShutdownBudgetTests` ধরে।
+    internal static readonly TimeSpan FinalDrainBudget = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>
     /// ⭐ শেষ full drain-এর <b>আগে</b> শুধু বিদায়ী ইভেন্ট পাঠানোর বাজেট (G136)।
@@ -82,7 +87,52 @@ internal sealed class AgentHost : IAsyncDisposable
     /// সারিগুলো ছোট, জীবন্ত লিংকে অর্ধ সেকেন্ডেই যায়; মরা লিংকে এইটুকুতেই থেমে
     /// full drain-কে সময় ছাড়ে (মোট ছাদ <c>Program.ShutdownBudget</c> ৪ সে.)।
     /// </summary>
-    private static readonly TimeSpan GoodbyeBudget = TimeSpan.FromSeconds(2);
+    internal static readonly TimeSpan GoodbyeBudget = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// ⭐⭐ <b>R29-B — <c>WM_ENDSESSION</c>-এই বিদায়ী ইভেন্ট পাঠানোর ছাদ।</b>
+    ///
+    /// ⚠️⚠️ কেন দরকার হলো, মাঠে মাপা (৪ সেপ্টেম্বর ২০২৬): শেষ ৭ দিনে
+    /// <c>agent_stop</c> সার্ভারে পৌঁছেছে <b>গড়ে ৭৪০ মিনিট দেরিতে</b>
+    /// (সর্বোচ্চ ১১২৭)। ৪৮টারই <c>reason: shutdown</c> — অর্থাৎ ঘটনাটা ঠিক
+    /// সময়ে <b>ধরা পড়ে</b> ও কিউয়ে বসে; দেরিটা পুরোটাই <b>পাঠানোয়</b>।
+    /// দুপুরে বন্ধ হলে ১ মিনিটে যায় (PC আবার চালু হয়), সন্ধ্যায় বন্ধ হলে
+    /// পরদিন সকাল — কারণ পাঠানোর কাজটা হয় <b>পরের স্টার্টআপে</b>।
+    ///
+    /// ⭐ A1 (০.৪.৭) <c>DisposeAsync</c>-এ অগ্রাধিকার-drain বসিয়েছিল, আর
+    /// সেটা দেরি ২৩৪১ → ৭৪০ মিনিটে নামিয়েছে। কিন্তু <c>DisposeAsync</c> চলে
+    /// কেবল <c>Application.Run()</c> ফিরলে — আর OS শাটডাউনে সেটা ফেরে না।
+    /// তাই রাতের কেসটা রয়ে গিয়েছিল।
+    ///
+    /// ⚠️⚠️ এখানে আগে লেখা ছিল <i>"পাঠানোর চেষ্টা করলে ডেস্কটপ আটকে যেত"</i>।
+    /// কথাটা তখন ঠিক ছিল — সার্ভার ছিল USA-তে, পিং ২৫০ ms। ২২ আগস্ট সার্ভার
+    /// BDIX-এ এসেছে, <b>পিং ৫ ms</b> (ADR-034), আর তাতে হিসাবটাই বদলে গেছে:
+    /// একটা ছোট POST এখন কয়েক ডজন মিলিসেকেন্ডের কাজ।
+    ///
+    /// ⚠️ তবু <b>ছাদ</b> ছাড়া নয়। Windows-এর <c>WaitToKillAppTimeout</c>
+    /// ডিফল্ট ৫ সে.; আমরা তার অর্ধেকও নিই না, আর ব্যর্থ হলে ইভেন্টটা
+    /// outbox-এই থাকে — অর্থাৎ সবচেয়ে খারাপ ফল হলো <b>আজকের আচরণ</b>।
+    /// </summary>
+    internal static readonly TimeSpan EndSessionSendBudget = TimeSpan.FromMilliseconds(1500);
+
+    /// <summary>
+    /// উপরের ছাদের ভেতরে — কিউয়ে লেখা শেষ হওয়ার জন্য যতটুকু।
+    /// ⚠️ <see cref="RaiseEvent"/> fire-and-forget, তাই না অপেক্ষা করলে
+    /// drain এমন একটা সারি খুঁজত যা তখনো SQLite-এ বসেনি।
+    /// </summary>
+    internal static readonly TimeSpan EndSessionEnqueueWait = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// ⭐ UI থ্রেড সব মিলিয়ে যতক্ষণ আটকাতে পারে — দুই ধাপের যোগফল।
+    ///
+    /// ⚠️⚠️ আলাদা ধ্রুবক রাখা হয়েছে **ইচ্ছাকৃতভাবে**। প্রথম খসড়ায় বাইরের
+    /// ছাদ ছিল কেবল <see cref="EndSessionSendBudget"/>, অথচ ভেতরের কাজ
+    /// দুই ধাপ মিলিয়ে তার চেয়ে বেশি নিতে পারত — অর্থাৎ লেখা শেষ হতে দেরি
+    /// হলে পাঠানোর জন্য প্রায় কোনো সময়ই থাকত না, আর ছাদটা তখন **অন্য
+    /// জিনিস মাপত** যা সে মাপছে বলে দাবি করে।
+    /// </summary>
+    internal static readonly TimeSpan EndSessionTotalBudget =
+        EndSessionEnqueueWait + EndSessionSendBudget;
 
     private readonly AgentSettings _settings;
     private readonly string _version;
@@ -537,11 +587,27 @@ internal sealed class AgentHost : IAsyncDisposable
 
         try
         {
-            var frame = _capture.CapturePrimary();
-            if (frame is null) return;
+            /**
+             * ⭐⭐ <b>প্রতিটা মনিটরের ছাপ</b> (৩১ আগস্ট ২০২৬)। আগে কেবল
+             * প্রথম পর্দার ছাপ নেওয়া হতো, আর দ্বিতীয় মনিটরে কাজ করা
+             * মানুষের গোনা দশ মিনিট পর থেমে যেত।
+             *
+             * ⚠️ যে পর্দার ছাপ বানানো গেল না সেটা বাদ — কিন্তু বাকিগুলো
+             * তবু যায়। একটাও না পেলে কিছুই জানানো হয় না, আর তখন
+             * <c>StaleAfter</c> নিয়মটা "জানি না" বলে সন্দেহ করা বন্ধ রাখে।
+             */
+            var frames = _capture.CaptureEach();
+            if (frames.Count == 0) return;
 
-            var fingerprint = ScreenFingerprint.From(frame);
-            if (fingerprint is not null) _screen.Observe(fingerprint, now);
+            var prints = new List<byte[]>(frames.Count);
+
+            foreach (var frame in frames)
+            {
+                var print = ScreenFingerprint.From(frame);
+                if (print is not null) prints.Add(print);
+            }
+
+            if (prints.Count > 0) _screen.Observe(prints, now);
         }
         catch (Exception ex)
         {
@@ -1642,7 +1708,7 @@ internal sealed class AgentHost : IAsyncDisposable
     /// <c>ConfigureAwait(false)</c> ব্যবহার করে, তাই আসল লেখাটা থ্রেড-পুলে যায়
     /// আর ডেস্কটপ আটকে থাকে না।
     /// </summary>
-    private void RaiseEvent(string type, IReadOnlyDictionary<string, object?>? meta = null) =>
+    private Task RaiseEvent(string type, IReadOnlyDictionary<string, object?>? meta = null) =>
         RaiseEvent(new AgentEventRecord
         {
             ClientUuid = Guid.NewGuid(),
@@ -1651,9 +1717,10 @@ internal sealed class AgentHost : IAsyncDisposable
             Meta = meta,
         });
 
-    private void RaiseEvent(AgentEventRecord record)
+    /// <returns>ডিস্কে লেখা শেষ হওয়ার টাস্ক — বিদায়ের পথ এটার অপেক্ষা করে।</returns>
+    private Task RaiseEvent(AgentEventRecord record)
     {
-        if (_outbox is null) return;
+        if (_outbox is null) return Task.CompletedTask;
 
         // ⚠️ সাইন ইনের আগে ইভেন্টও নয় — নিয়মটা "কিছুই যাবে না", আংশিক নয়।
         //    এগুলো সবই বিদায়ী ইভেন্ট (agent_stop · logoff · shutdown), তাই
@@ -1667,13 +1734,29 @@ internal sealed class AgentHost : IAsyncDisposable
                 _credentials?.IsEnrolled == true,
                 _credentials?.IsRevoked == true))
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        _outbox.EnqueueAsync(OutboxCodec.Item(record, DateTimeOffset.UtcNow))
-               .ContinueWith(
-                   t => _log.Error($"Could not queue the event ({record.Type})", t.Exception),
-                   TaskContinuationOptions.OnlyOnFaulted);
+        var queued = _outbox.EnqueueAsync(OutboxCodec.Item(record, DateTimeOffset.UtcNow));
+
+        queued.ContinueWith(
+            t => _log.Error($"Could not queue the event ({record.Type})", t.Exception),
+            TaskContinuationOptions.OnlyOnFaulted);
+
+        // ⭐ R29-B — লেখাটা **ফেরত দেওয়া হয়**, যাতে বিদায়ের পথ জানতে পারে
+        //    সারিটা সত্যিই ডিস্কে বসেছে কি না।
+        //
+        // ⚠️ ব্যর্থতা এখানে গিলে ফেলা হয় (উপরের `ContinueWith` রিপোর্ট করে):
+        //    কলার এটাকে `WaitAsync`-এ ফেলে, আর ব্যর্থ টাস্ক সেখানে ছুড়ে
+        //    দিলে বিদায়ের মুহূর্তে অকারণ exception উঠত।
+        //
+        // ⚠️⚠️ কোনো **ক্ষেত্র-চেইন রাখা হয় না**, ইচ্ছাকৃত। প্রথম খসড়ায়
+        //    `_pendingEnqueue = Task.WhenAll(previous, …)` ছিল — দেখতে
+        //    নিরীহ, কিন্তু ওটা প্রতি ইভেন্টে চেইনটাকে লম্বা করত আর কোনো
+        //    টাস্কই কোনোদিন সংগ্রহযোগ্য হতো না। দিনে হাজারো ইভেন্টে সেটা
+        //    **স্মৃতি-ফাঁস**। বিদায়ের পথ কেবল **নিজের দুটো** লেখার
+        //    অপেক্ষা করে, আর সেগুলো সে হাতেই ধরে রাখতে পারে।
+        return queued.ContinueWith(static _ => { }, TaskScheduler.Default);
     }
 
     /// <summary>
@@ -1706,11 +1789,22 @@ internal sealed class AgentHost : IAsyncDisposable
     /// লগঅফ করে তারপর কেউ PC বন্ধ করেছে।
     /// </summary>
     /// <returns>সত্যিই কিউয়ে গেল কি না।</returns>
-    private bool RaiseClosingEvent(string type, IReadOnlyDictionary<string, object?>? meta = null)
+    private bool RaiseClosingEvent(string type, IReadOnlyDictionary<string, object?>? meta = null) =>
+        RaiseClosingEvent(type, out _, meta);
+
+    /// <param name="queued">
+    /// ডিস্কে লেখা শেষ হওয়ার টাস্ক (R29-B)। ⚠️ ইভেন্টটা বাদ পড়লে
+    /// <see cref="Task.CompletedTask"/> — কলারকে তখন `null` সামলাতে হয় না।
+    /// </param>
+    private bool RaiseClosingEvent(
+        string type,
+        out Task queued,
+        IReadOnlyDictionary<string, object?>? meta = null)
     {
+        queued = Task.CompletedTask;
         if (!TryMarkClosing(type)) return false;
 
-        RaiseEvent(type, meta);
+        queued = RaiseEvent(type, meta);
         _log.Info($"Event queued: {type}");
         return true;
     }
@@ -1879,7 +1973,7 @@ internal sealed class AgentHost : IAsyncDisposable
     {
         if (eventType is null) return;
 
-        if (!RaiseClosingEvent(eventType, new Dictionary<string, object?>
+        if (!RaiseClosingEvent(eventType, out var closingQueued, new Dictionary<string, object?>
             {
                 ["source"] = "endsession",
             }))
@@ -1896,7 +1990,74 @@ internal sealed class AgentHost : IAsyncDisposable
         //    উল্টো ফাঁক।
         //
         //    দুবার বসার ভয় নেই: DisposeAsync চললে TryMarkClosing তাকে থামিয়ে দেবে।
-        if (TryMarkClosing(AgentEventTypes.AgentStop)) RaiseEvent(BuildStopEvent());
+        var stopQueued = TryMarkClosing(AgentEventTypes.AgentStop)
+            ? RaiseEvent(BuildStopEvent())
+            : Task.CompletedTask;
+
+        // ⭐⭐ R29-B — আর এখানেই **পাঠানোর** চেষ্টাটা।
+        TryFlushGoodbye(closingQueued, stopQueued);
+    }
+
+    /// <summary>
+    /// ⭐⭐ <b>R29-B — বিদায়ী ইভেন্ট এখনই পাঠানোর শেষ সুযোগ।</b>
+    ///
+    /// <c>WM_ENDSESSION</c>-এর পর Windows প্রসেসটা মেরে ফেলে, আর
+    /// <c>Application.Run()</c> ফেরে কি না তার কোনো নিশ্চয়তা নেই — মাঠের
+    /// সংখ্যা বলছে OS শাটডাউনে ফেরে <b>না</b> (দেরি গড়ে ৭৪০ মিনিট, অর্থাৎ
+    /// পাঠানোটা হচ্ছে পরের স্টার্টআপে)। তাই <c>DisposeAsync</c>-এর
+    /// অগ্রাধিকার-drain-এর ভরসায় থাকা যায় না; এটাই শেষ জায়গা যেখানে
+    /// আমরা এখনো জীবিত।
+    ///
+    /// ⚠️⚠️ <b>UI থ্রেড এখানে অপেক্ষা করে, আর সেটাই এই মেথডের একমাত্র ঝুঁকি।</b>
+    /// তিনটে জিনিস দিয়ে সেটা বাঁধা:
+    /// <list type="bullet">
+    /// <item>কাজটা <c>Task.Run</c>-এ, অর্থাৎ থ্রেড-পুলে — UI-র
+    /// <c>SynchronizationContext</c> ছাড়াই। ⚠️ সরাসরি <c>.Wait()</c> করলে
+    /// ক্লাসিক ডেডলক হতো: continuation UI থ্রেড চাইত, আর UI থ্রেড অপেক্ষায়।</item>
+    /// <item>মোট ছাদ <see cref="EndSessionSendBudget"/> — Windows-এর
+    /// <c>WaitToKillAppTimeout</c> (ডিফল্ট ৫ সে.) এর অর্ধেকেরও কম।</item>
+    /// <item>ব্যর্থ হলে কিছুই হারায় না — ইভেন্ট outbox-এ থাকে, পরের
+    /// স্টার্টআপ পাঠায়। <b>সবচেয়ে খারাপ ফল = আজকের আচরণ।</b></item>
+    /// </list>
+    ///
+    /// ⚠️ <c>ShutdownBlockReasonCreate</c> ব্যবহার করা হয়নি, যদিও রোডম্যাপে
+    /// (R29-B) ওটাই লেখা ছিল। ওটা Windows-কে "দাঁড়াও" বলে — ব্যবহারকারী
+    /// "oXeio শাটডাউন আটকাচ্ছে" পর্দা দেখেন, আর ছেড়ে দিতে ভুল হলে ডেস্কটপ
+    /// ঝুলে যায়। ⭐ এখানে দরকার কেবল কয়েকশো মিলিসেকেন্ড, আর সেটা না চেয়েও
+    /// পাওয়া যায়; OS-স্তরের ব্লক নেওয়ার আগে সস্তা পথটা মেপে দেখাই সঠিক ক্রম।
+    /// </summary>
+    private void TryFlushGoodbye(params Task[] queued)
+    {
+        var worker = _worker;
+        if (worker is null) return;
+
+        var flush = Task.Run(async () =>
+        {
+            // ধাপ ১ — এই মুহূর্তে বসানো সারিগুলো ডিস্কে পৌঁছাক
+            try { await Task.WhenAll(queued).WaitAsync(EndSessionEnqueueWait); }
+            catch (Exception) { /* লেখা শেষ হয়নি — তবু পাঠানোর চেষ্টা করি */ }
+
+            // ধাপ ২ — কেবল Event, সেগমেন্ট বা ছবি নয়
+            // ⚠️ `DrainOnceAsync` Segment→Event ক্রমে চলে, তাই ব্যাকলগ থাকলে
+            //    goodbye-টা কোনোদিন সময় পেত না। এখানে একটাই kind।
+            using var cts = new CancellationTokenSource(EndSessionSendBudget);
+            await worker.DrainKindOnceAsync(OutboundKind.Event, cts.Token);
+        });
+
+        // ⚠️ ব্যতিক্রম গিলে ফেলা হয় — বিদায়ের মুহূর্তে ছুড়ে দেওয়া exception
+        //    WndProc-এ গিয়ে প্রসেসটাকে নোংরাভাবে ফেলত, আর তখন `agent_stop`
+        //    outbox-এ বসেই থাকত। ঠিক যেটা ঠেকাতে এই কোড।
+        try
+        {
+            if (!flush.Wait(EndSessionTotalBudget))
+            {
+                _log.Info("Goodbye send did not finish in time — the outbox keeps it");
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Goodbye send failed — the outbox keeps it", ex);
+        }
     }
 
     /// <summary>

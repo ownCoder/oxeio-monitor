@@ -10,8 +10,10 @@ import {
   markLive,
   markChecked,
   markFixed,
+  markReviewed,
   markUploaded,
   targetStats,
+  type DropReason,
   type TargetRow,
   type TargetStatus,
   updateTarget,
@@ -25,12 +27,13 @@ import { Table, type Column } from '../components/Table';
 import { formatDateTime } from '../lib/format';
 import {
   Chip,
-  ConfirmDialog,
   MiniButton,
+  Modal,
   Notice,
   ServerError,
   useMutation,
 } from './settings/ui';
+import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -57,7 +60,7 @@ export function AllTargetsPage() {
   );
 }
 
-type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live';
+type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
 type FilterKey = TargetStatus | 'all' | Stage;
 
 /**
@@ -74,7 +77,11 @@ type FilterKey = TargetStatus | 'all' | Stage;
  */
 /** ⭐ চিপটা ধাপ না অবস্থা — এক জায়গায় ঠিক হয়, দুই জায়গায় নয় */
 const stageOf = (key: FilterKey): Stage | undefined =>
-  key === 'to_check' || key === 'to_fix' || key === 'to_upload' || key === 'to_live'
+  key === 'to_check' ||
+  key === 'to_fix' ||
+  key === 'to_upload' ||
+  key === 'to_live' ||
+  key === 'to_review'
     ? key
     : undefined;
 
@@ -98,6 +105,17 @@ const FILTERS: { key: FilterKey; label: string; stage: Stage }[] = [
   { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
   { key: 'to_live', label: 'To make live', stage: 'to_live' },
 ];
+
+/**
+ * ⚠️⚠️ **`to_review` এখানে নেই — ওটার নিজের পাতা** *(মালিকের নির্দেশ,
+ * ৩১ আগস্ট ২০২৬: "side bar e design pool er niche review name ekta page
+ * koro")*।
+ *
+ * ⭐ চিপটা একদিনের জন্য এখানে ছিল, তারপর সরে গেছে — আর নকল নয়, **সরানো**।
+ * উপরের চারটে গবেষকের রোজকার কাজ; বাদ-যাওয়া ডিজাইন দেখা মালিক ও
+ * ম্যানেজারের কাজ, অর্থাৎ অন্য মানুষ, অন্য ছন্দ। ⚠️ দুই জায়গায় একই কিউ
+ * রাখলে দুটো দরজা হতো, আর ২৫ আগস্টের ছাঁটাইয়ের গোটা কথাই ছিল এই পাতায়
+ * **কম** জিনিস রাখা।
 
 /**
  * ⭐ অবস্থার ড্রপডাউন — চিপ থেকে নামিয়ে আনা পাঁচটা।
@@ -141,8 +159,23 @@ function dhakaToday(): string {
   return new Date(Date.now() + 6 * 3_600_000).toISOString().slice(0, 10);
 }
 
-function TargetList() {
-  const [filter, setFilter] = useState<FilterKey>('all');
+/**
+ * ⭐⭐ **এক টেবিল, দুই পাতা** *(৩১ আগস্ট ২০২৬)*।
+ *
+ * ⚠️⚠️ `lockedStage` দিলে পাতাটা **ওই কিউতেই আটকে থাকে**: চিপের সারি ও
+ * অবস্থার ড্রপডাউন বসে না, কারণ ওগুলো দিয়ে কেউ Review পাতা থেকে বেরিয়ে
+ * অন্য কিছু দেখতে পারত — তখন পাতার নাম আর পাতার বিষয় আলাদা হয়ে যেত।
+ *
+ * ⭐ খোঁজা ও বাকি ছাঁকনি (ডিজাইনার · কে এনেছেন · তারিখ) **থাকে** — ওগুলো
+ * কিউয়ের ভেতরে খোঁজার জিনিস, কিউ থেকে বেরোনোর নয়।
+ *
+ * ⚠️ মার্কআপটা **নকল করা হয়নি, ভাগ করা হয়েছে** — ১৭ আগস্টে Worklog-এর
+ * সময় শেখা: দুই জায়গায় কপি থাকলে একদিন একটা বদলাত আর অন্যটা নয়।
+ */
+export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
+  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? 'all');
+  /** ⚠️ আটকানো পাতায় কিউ বদলানোর কন্ট্রোলগুলো বসে না */
+  const showQueues = lockedStage === undefined;
   const [q, setQ] = useState('');
   const [staffId, setStaffId] = useState('');
   /** ⭐ কে এনেছেন — `users.id`, `staffId`-র (`employees.id`) থেকে আলাদা */
@@ -321,7 +354,8 @@ function TargetList() {
       padded={false}
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
-        {FILTERS.map((f) => (
+        {showQueues &&
+          FILTERS.map((f) => (
           <button
             key={f.key}
             type="button"
@@ -333,7 +367,9 @@ function TargetList() {
                   ? 'A spelling error was found — waiting to be fixed'
                   : f.stage === 'to_upload'
                     ? 'Checked or not yet checked, and not sent to Amazon. Designs with an unfixed error are held back.'
-                    : f.stage === 'to_live'
+                    : f.stage === 'to_review'
+                      ? 'Skipped or deleted, with a reason — nobody has looked at these yet'
+                      : f.stage === 'to_live'
                       ? 'Sent to Amazon, not live yet'
                       : undefined
             }
@@ -357,11 +393,13 @@ function TargetList() {
                     ? stats.data.toFix
                     : f.stage === 'to_upload'
                       ? stats.data.toUpload
-                      : stats.data.toLive}
+                      : f.stage === 'to_review'
+                        ? stats.data.toReview
+                        : stats.data.toLive}
               </span>
             ) : null}
           </button>
-        ))}
+          ))}
 
         {/*
           ⭐⭐ **পাঁচটা অবস্থা-চিপের বদলে একটা ড্রপডাউন** *(২৫ আগস্ট)*।
@@ -371,8 +409,9 @@ function TargetList() {
              দেখে আবার `done_today` দেখায়। ⭐ ছাঁকনি যা করেছে, ড্রপডাউন
              ঠিক তা-ই বলে; দুটো আলাদা হলে কেউ বিশ্বাস করত না।
         */}
-        <select
-          value={statusValue}
+        {showQueues && (
+          <select
+            value={statusValue}
           onChange={(e) =>
             change(() => {
               const v = e.target.value;
@@ -397,12 +436,13 @@ function TargetList() {
               : 'border-brand bg-brand-bg font-semibold text-brand-ink'
           }`}
         >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/*
           ⭐⭐ **বাকি ছাঁকনিগুলো গোটানো** *(২৫ আগস্ট)*।
@@ -572,35 +612,56 @@ function TargetList() {
             </div>
           )}
 
+          {/*
+            ⚠️⚠️ **`ConfirmDialog` নয়, খোলা `Modal` — আর কারণটা গঠনগত**
+               *(৩১ আগস্ট)*। ওই ডায়ালগের নিজের একটা "Delete" বোতাম আছে, আর
+               কারণ বাছাই তার সাথে বাঁধা যেত না: হয় কারণ ছাড়াই মোছা যেত,
+               নয় একটা ডিফল্ট বসাতে হতো — আর ডিফল্ট মানে কেউ কোনোদিন
+               ভেবে বাছত না। ⭐ এখানে **তিনটে কারণই নিচের বোতাম**, অর্থাৎ
+               কারণ না বেছে মোছার কোনো পথ নেই।
+          */}
           {confirmingBulk && (
-            <ConfirmDialog
+            <Modal
               title={
                 picked.size === 1
                   ? 'Delete 1 target?'
                   : 'Delete ' + picked.size + ' targets?'
               }
-              intro="Use this for links whose Amazon page is gone."
-              /*
-                ⚠️⚠️ পরিণামটা **দুই দিক থেকেই** লেখা: আর কারো কাছে যাবে না,
-                   আর ওই ASIN কোনোদিন পুলে ফিরতেও পারবে না। দ্বিতীয় কথাটাই
-                   এই বদলের গোটা কারণ, তাই লুকোনো চলে না।
-              */
-              warning="They stay in the list as Deleted, never go to anyone again, and the same ASIN can never be added back to the pool. Finished designs in the selection are left alone."
-              confirmLabel="Delete"
-              busy={edit.busy}
-              error={edit.error}
-              onConfirm={() =>
-                edit.run(async () => {
-                  const res = await deleteTargets([...picked]);
-                  setKept(res.keptDone);
-                  setPicked(new Set());
-                  setConfirmingBulk(false);
-                  data.reload();
-                  stats.reload();
-                })
-              }
               onClose={() => setConfirmingBulk(false)}
-            />
+              footer={
+                <DropReasonPicker
+                  busy={edit.busy}
+                  onPick={(reason) =>
+                    edit.run(async () => {
+                      const res = await deleteTargets([...picked], reason);
+                      setKept(res.keptDone);
+                      setPicked(new Set());
+                      setConfirmingBulk(false);
+                      data.reload();
+                      stats.reload();
+                    })
+                  }
+                  onCancel={() => setConfirmingBulk(false)}
+                />
+              }
+            >
+              <div className="space-y-3">
+                <p className="text-[13px] text-ink-2">
+                  Use this for links whose Amazon page is gone.
+                </p>
+                {/*
+                  ⚠️⚠️ পরিণামটা **দুই দিক থেকেই** লেখা: আর কারো কাছে যাবে না,
+                     আর ওই ASIN কোনোদিন পুলে ফিরতেও পারবে না। দ্বিতীয় কথাটাই
+                     এই বদলের গোটা কারণ, তাই লুকোনো চলে না।
+                */}
+                <Notice tone="attention">
+                  They stay in the list as Deleted, never go to anyone again, and
+                  the same ASIN can never be added back to the pool. Finished
+                  designs in the selection are left alone.
+                </Notice>
+                <ServerError error={edit.error} />
+              </div>
+            </Modal>
           )}
 
           <Table
@@ -650,7 +711,24 @@ function TargetList() {
                 header: 'Stage',
                 render: (r) => (
                   <span className="block">
-                    <StatusChip row={r} />
+                    {/*
+                      ⭐ কারণটা চিপের **পাশে**, নিচে নয় *(৩১ আগস্ট)* — নিচের
+                         লাইনটা তারিখের, আর দুটো আলাদা জিনিস এক লাইনে বসলে
+                         কোনটা কী বোঝা যেত না।
+                    */}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <StatusChip row={r} />
+                      <DropReasonTag reason={r.dropReason} />
+                      {/*
+                        ⭐ দেখা হয়ে গেলে কে দেখেছেন সেটা এখানেই — সারিটা
+                           কিউ থেকে সরে যায় বলে নইলে খবরটা কোথাও থাকত না।
+                      */}
+                      {r.reviewedAt !== null && (
+                        <Chip tone="counted">
+                          Reviewed{r.reviewedBy ? ` · ${r.reviewedBy.fullName}` : ''}
+                        </Chip>
+                      )}
+                    </span>
                     <WhenCell row={r} />
                   </span>
                 ),
@@ -716,13 +794,20 @@ function TargetList() {
                         data.reload();
                       })
                     }
+                    onReviewed={() =>
+                      edit.run(async () => {
+                        await markReviewed(r.id);
+                        data.reload();
+                        stats.reload();
+                      })
+                    }
                     mayDelete={mayDelete}
                     mayProofread={user?.canProofread === true}
-                    onDelete={() =>
+                    onDelete={(reason) =>
                       edit.run(async () => {
                         // ⚠️ একক পথেও `keptDone` আসে — শেষ-হওয়া সারিতে
                         //    Delete চাপলে কিছুই ঘটে না, আর সেটা বলা দরকার
-                        const res = await deleteTarget(r.id);
+                        const res = await deleteTarget(r.id, reason);
                         setKept(res.keptDone);
                         data.reload();
                         stats.reload();
@@ -903,6 +988,7 @@ function RowActions({
   onFixed,
   onLive,
   onUndo,
+  onReviewed,
   onDelete,
   mayDelete,
   mayProofread,
@@ -917,7 +1003,9 @@ function RowActions({
   onLive: () => void;
   /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
   onUndo: () => void;
-  onDelete: () => void;
+  /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
+  onReviewed: () => void;
+  onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
   /**
@@ -943,14 +1031,67 @@ function RowActions({
    */
   const [open, setOpen] = useState(false);
 
+  /**
+   * ⭐⭐ **"Really delete" উঠে গেছে, তার জায়গায় তিনটে কারণ** *(৩১ আগস্ট)*।
+   *
+   * ⚠️ পুরোনো বোতামটা একটা প্রশ্ন করত যার উত্তরে **কোনো তথ্য ছিল না** —
+   * "হ্যাঁ" ছাড়া কিছু জানা যেত না। এখন একই চাপে নিশ্চিতকরণ **আর** কারণ,
+   * দুটোই আসে।
+   */
   if (confirming) {
     return (
-      <span className="flex justify-end gap-1.5 whitespace-nowrap">
-        <MiniButton tone="danger" disabled={busy} onClick={onDelete}>
-          Really delete
-        </MiniButton>
-        <MiniButton disabled={busy} onClick={() => setConfirming(false)}>
-          Cancel
+      <DropReasonPicker
+        busy={busy}
+        onPick={(reason) => {
+          setConfirming(false);
+          onDelete(reason);
+        }}
+        onCancel={() => setConfirming(false)}
+      />
+    );
+  }
+
+  /**
+   * ⭐⭐ **বাদ-যাওয়া সারিতে একটাই বোতাম — ফেরানোর** *(মালিকের নির্দেশ,
+   * ৩১ আগস্ট ২০২৬: "delete kora design e only un delete show korbe",
+   * তারপর "same jinis ta kew skip dileO hobe")*।
+   *
+   * ⚠️⚠️ আগে এই সারিগুলোতেও বসত Complete · Skip · Delete — অর্থাৎ
+   * ইতিমধ্যে বাদ-যাওয়া জিনিসকে আবার বাদ দেওয়ার, বা কেউ বানায়নি এমন
+   * ডিজাইনকে "শেষ" বলার প্রস্তাব। ⭐ কোনোটাই ক্ষতি করত না (সার্ভার
+   * প্রতিটা পথেই আলাদা পাহারা দেয়), কিন্তু পর্দা মিথ্যা বলত — এমন কাজের
+   * প্রস্তাব দিত যার কোনো মানে নেই।
+   *
+   * ⚠️⚠️ **শর্তটা `open`/`next`-এর আগে, আর জায়গাটাই এখানকার আসল কথা।**
+   * প্রথমবার এটা নিচে বসানো হয়েছিল — খোলা মেনুর ভেতরে — আর তাতে গোটানো
+   * সারিতে `Complete` থেকেই যেত। ⭐ মালিক ছবি পাঠিয়ে ধরিয়ে দিয়েছেন:
+   * *"deleted design er pase complete button keno?"*
+   *
+   * ⭐ **`skipped` ও `deleted` একই আচরণ পায়, কেবল লেখাটা আলাদা** — কর্মটা
+   * এক (পুলে ফেরত), কিন্তু বোতামের নাম যেটা ফেরানো হচ্ছে তারই উল্টো
+   * শব্দ, নইলে "To pool" পড়ে বোঝা যেত না কী ফিরছে।
+   *
+   * ⚠️ ফেরত মানে **পুলে ফেরত** (`pool`), আর সার্ভার তখন কারণটাও মুছে দেয়
+   * — নইলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত, আর পরের বণ্টনে
+   * যিনি পেতেন তিনি একটা মীমাংসিত সতর্কবার্তা দেখতেন।
+   */
+  if (row.status === 'deleted' || row.status === 'skipped') {
+    return (
+      <span className="flex flex-wrap items-center justify-end gap-1.5">
+        {/*
+          ⭐⭐ **"দেখে নিয়েছি" — কিউ খালি করার একমাত্র পথ** *(৩১ আগস্ট)*।
+          ⚠️ বোতামটা বসে **কেবল যতক্ষণ কেউ দেখেনি**, আর কেবল কারণসহ সারিতে
+             (পুরোনো ৯৩টায় কারণ নেই, তাই দেখার কিছুও নেই)। ⭐ দেখা হয়ে
+             গেলে বোতামটা উধাও, আর তার জায়গায় নিচের চিপটা বলে কে দেখেছেন।
+          ⚠️ `mayDelete` = owner/manager — সার্ভারের `@Roles`-এর সাথে এক।
+        */}
+        {mayDelete && row.dropReason !== null && row.reviewedAt === null && (
+          <MiniButton tone="good" disabled={busy} onClick={onReviewed}>
+            Reviewed
+          </MiniButton>
+        )}
+        <MiniButton disabled={busy} onClick={() => onChange('pool')}>
+          {row.status === 'deleted' ? 'Undelete' : 'Un-skip'}
         </MiniButton>
       </span>
     );
@@ -1085,11 +1226,16 @@ function RowActions({
             Undo complete
           </MiniButton>
         )}
-      {row.status !== 'skipped' && (
-        <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
-          Skip
-        </MiniButton>
-      )}
+      {/*
+        ⚠️ শর্তটা (`status !== 'skipped'`) উঠে গেছে *(৩১ আগস্ট)* — উপরের
+           early return-এর পর এখানে `skipped` সারি আর পৌঁছায়ই না, তাই
+           শর্তটা চিরকাল সত্যি ছিল। ⭐ টাইপচেকারই ধরিয়ে দিয়েছে
+           ("no overlap"), আর মৃত শর্ত রেখে দেওয়া মানে পরের পাঠককে
+           ভাবতে বাধ্য করা যে ওটা কখন মিথ্যা হয়।
+      */}
+      <MiniButton tone="danger" disabled={busy} onClick={() => onChange('skipped')}>
+        Skip
+      </MiniButton>
       {/*
         ⚠️ গবেষকের হাতে Delete থাকবে না — ৪৬ হাজার সারির মধ্যে একটা
            ভুল ডিলিট কেউ খুঁজেই পেত না।

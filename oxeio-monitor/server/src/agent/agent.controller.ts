@@ -146,7 +146,11 @@ export class AgentController {
     await this.recordHeartbeatState(device, dto.state, runningVersion);
 
     if (runningVersion) {
-      const offer = await this.updates.offerFor(runningVersion, device.machineGuid);
+      const offer = await this.updates.offerFor(
+        runningVersion,
+        device.machineGuid,
+        device.id,
+      );
       if (offer) commands.push('update_agent');
     }
 

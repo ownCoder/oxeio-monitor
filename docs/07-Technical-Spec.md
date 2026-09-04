@@ -40,9 +40,9 @@ screenshot:
   blur: false
 
 idle:
-  threshold_seconds: 60           # ১ মিনিট
+  threshold_seconds: 180          # ৩ মিনিট ⚠️ ৩০ আগস্ট ২০২৬-এ ৬০ → ১৮০ (ADR-010)
   poll_seconds: 1
-  retro_subtract: true            # idle-এ যাওয়ার ৬০ সেকেন্ডও বাদ
+  retro_subtract: true            # idle-এ যাওয়ার threshold-টুকুও বাদ
 
 app_tracking:
   enabled: true
@@ -678,7 +678,7 @@ void Tick()  // প্রতি ১ সেকেন্ডে
     {
         if (state == ACTIVE)
         {
-            // ⭐ retro-adjust: idle শুরু হয়েছিল ৬০ সেকেন্ড আগে,
+            // ⭐ retro-adjust: idle শুরু হয়েছিল threshold-টা আগেই,
             //    তাই active segment ওইখানেই শেষ ধরা হবে
             CloseSegment(ACTIVE, endedAt: now.AddSeconds(-IDLE_THRESHOLD));
             OpenSegment(IDLE,   startedAt: now.AddSeconds(-IDLE_THRESHOLD));

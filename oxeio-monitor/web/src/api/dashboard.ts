@@ -168,6 +168,20 @@ export interface TrendLeader {
   creditedSec: number;
 }
 
+/**
+ * ⭐ **সবচেয়ে কম ঘণ্টা** — নামের সাথে **কত দিনে** সেটাও আসে।
+ *
+ * ⚠️⚠️ `daysCounted` ছাড়া সংখ্যাটা মিথ্যা বলত: "৪ ঘণ্টা" পড়ে যে কেউ ধরে
+ * নিতেন লোকটা কাজ করেননি, অথচ তিনি হয়তো ছুটিতে ছিলেন।
+ */
+export interface TrendLaggard {
+  employeeId: number;
+  fullName: string;
+  creditedSec: number;
+  /** কত দিনে কিছু গোনা হয়েছে — জানালার ভেতরে */
+  daysCounted: number;
+}
+
 export interface TeamTrend {
   /** সবসময় ৭টা, আজ সহ — পুরোনো আগে */
   days: TrendDay[];
@@ -188,6 +202,15 @@ export interface TeamTrend {
    *    আছে" বলে। ৩০ দিনের জানালা সবাইকে একই মাপে আনে।
    */
   leaders30: TrendLeader[];
+  /**
+   * ⭐⭐ **সবচেয়ে কম ঘণ্টা যাঁদের** *(৩০ আগস্ট ২০২৬)* — নিচ থেকে পাঁচজন।
+   *
+   * ⚠️ শূন্য ঘণ্টার কর্মীও থাকেন, আর সেটাই সবচেয়ে জরুরি সারি — তাই
+   * `leaders`-এর `creditedSec > 0` ছাঁকনিটা এখানে নেই।
+   */
+  laggards: TrendLaggard[];
+  /** ⭐ উপরের তালিকা কত দিনের জানালায় — লেখাটা সার্ভারের সংখ্যা ধরেই বসে */
+  laggardDays: number;
 }
 
 /** E01 — দলের দিনের ছন্দের এক ঘণ্টা (`GET /live/pulse`) */

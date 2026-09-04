@@ -479,7 +479,7 @@ describe('দিন শেষে পুলে ফেরত', () => {
      */
     const anyUser = await h.prisma.user.findFirstOrThrow({ select: { id: true } });
     await targets.markDone(designer.id, mine[0].id, anyUser.id);
-    await targets.skip(designer.id, mine[1].id, 'not usable');
+    await targets.skip(designer.id, mine[1].id, 'not_found');
 
     const { returned } = await targets.returnUnworked(workDateOf(TODAY));
 
@@ -1345,6 +1345,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     const res = await post(owner, '/api/v1/design-targets/delete', {
       ids: (await ids()).slice(0, 2),
+      reason: 'not_found',
     }).expect(201);
 
     expect(res.body).toEqual({ deleted: 2, keptDone: 0 });
@@ -1371,6 +1372,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     await post(owner, '/api/v1/design-targets/delete', {
       ids: await ids(),
+      reason: 'not_found',
     }).expect(201);
 
     const again = await post(owner, '/api/v1/design-targets/bulk', {
@@ -1399,6 +1401,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     const res = await post(owner, '/api/v1/design-targets/delete', {
       ids: [first, second],
+      reason: 'copyright',
     }).expect(201);
 
     expect(res.body).toEqual({ deleted: 1, keptDone: 1 });
@@ -1423,6 +1426,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     await post(owner, '/api/v1/design-targets/delete', {
       ids: [mine[0].id],
+      reason: 'not_found',
     }).expect(201);
 
     expect(await targets.mine(designer.id)).toHaveLength(29);
@@ -1439,6 +1443,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     const res = await post(owner, '/api/v1/design-targets/delete', {
       ids: [only, only],
+      reason: 'events',
     }).expect(201);
 
     expect(res.body.deleted).toBe(1);
@@ -1449,9 +1454,13 @@ describe('মরা ASIN মুছে ফেলা', () => {
     const owner = await seedPool(1);
     const only = await ids();
 
-    await post(owner, '/api/v1/design-targets/delete', { ids: only }).expect(201);
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: only,
+      reason: 'not_found',
+    }).expect(201);
     const twice = await post(owner, '/api/v1/design-targets/delete', {
       ids: only,
+      reason: 'not_found',
     }).expect(201);
 
     expect(twice.body).toEqual({ deleted: 0, keptDone: 0 });
@@ -1466,7 +1475,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
     const [only] = await ids();
 
     await owner.http
-      .delete(`/api/v1/design-targets/${only}`)
+      .delete(`/api/v1/design-targets/${only}?reason=copyright`)
       .set('X-CSRF-Token', owner.csrf)
       .expect(200);
 
@@ -1474,5 +1483,311 @@ describe('মরা ASIN মুছে ফেলা', () => {
       (await h.prisma.designTarget.findUniqueOrThrow({ where: { id: only } }))
         .status,
     ).toBe('deleted');
+  });
+});
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * **"কেন বাদ দিলেন" — তিনটে কারণ, দুই পথে এক** *(৩১ আগস্ট ২০২৬, মালিকের
+ * চাওয়া: "'Not Found, Copyright, Events' eigula add kore dao… kono designer
+ * skip press korleO tar kache same 3 ta option dibe")*।
+ *
+ * ⚠️⚠️ সবচেয়ে জরুরি দাবি: **কারণ ছাড়া কোনো পথ নেই**। আগে ঘরটা ঐচ্ছিক ছিল,
+ * আর ফল — মাঠে ৯৩টা skipped সারির একটাতেও কারণ লেখা ছিল না।
+ */
+describe('বাদ দেওয়ার কারণ', () => {
+  async function seedPool(count: number): Promise<Session> {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join('\n'),
+    }).expect(201);
+    return owner;
+  }
+
+  it('Delete-এ কারণ সারিতে বসে', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'copyright',
+    }).expect(201);
+
+    const after = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(after.status).toBe('deleted');
+    expect(after.dropReason).toBe('copyright');
+  });
+
+  /** ⚠️⚠️ কারণ ছাড়া মোছার পথ থাকলে ঘরটা আবার খালি পড়ে থাকত */
+  it('কারণ ছাড়া Delete আটকে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+    }).expect(400);
+
+    expect(
+      (await h.prisma.designTarget.findUniqueOrThrow({ where: { id: row.id } }))
+        .status,
+    ).toBe('pool');
+  });
+
+  /** ⚠️ তালিকার বাইরের কারণ নেওয়া যাবে না — নইলে গোনা অর্থহীন হতো */
+  it('অচেনা কারণ আটকে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'boring',
+    }).expect(400);
+  });
+
+  /** ⭐⭐ ডিজাইনারের Skip — একই তিনটে কারণ, একই ঘর */
+  it('Skip-এ কারণ একই ঘরে বসে', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    await seedPool(1);
+    await h.app.get(TargetsService).distribute();
+
+    const staffSession = await loginReady(
+      h,
+      'd1@test.local',
+      'staff-password-123',
+    );
+    const mine = await h.app.get(TargetsService).mine(designer.id);
+
+    await post(staffSession, `/api/v1/me/targets/${mine[0].id}/skip`, {
+      reason: 'events',
+    }).expect(201);
+
+    const after = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: mine[0].id },
+    });
+    expect(after.status).toBe('skipped');
+    expect(after.dropReason).toBe('events');
+  });
+
+  it('কারণ ছাড়া Skip আটকে যায়', async () => {
+    const designer = await staff('OX-D1', 'designer', 'd1@test.local');
+    await seedPool(1);
+    await h.app.get(TargetsService).distribute();
+
+    const staffSession = await loginReady(
+      h,
+      'd1@test.local',
+      'staff-password-123',
+    );
+    const mine = await h.app.get(TargetsService).mine(designer.id);
+
+    await post(staffSession, `/api/v1/me/targets/${mine[0].id}/skip`, {}).expect(
+      400,
+    );
+
+    expect(
+      (
+        await h.prisma.designTarget.findUniqueOrThrow({
+          where: { id: mine[0].id },
+        })
+      ).status,
+    ).toBe('assigned');
+  });
+
+  /**
+   * ⭐⭐ **Undelete — সারিটা পুলে ফেরে, আর কারণটাও মুছে যায়** *(মালিকের
+   * নির্দেশ, ৩১ আগস্ট: "delete kora design e only un delete show korbe")*।
+   *
+   * ⚠️⚠️ কারণ না মুছলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত,
+   * আর পরের বণ্টনে যিনি পেতেন তিনি একটা মীমাংসিত সতর্কবার্তা দেখতেন।
+   */
+  it('পুলে ফেরালে কারণটাও মুছে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await owner.http
+      .patch(`/api/v1/design-targets/${row.id}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ status: 'pool' })
+      .expect(200);
+
+    const back = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(back.status).toBe('pool');
+    expect(back.dropReason).toBeNull();
+  });
+
+  /** ⭐ কারণটা তালিকাতেও যায় — নইলে পর্দায় দেখানোর উপায় থাকত না */
+  it('তালিকার সারিতে কারণটা ফেরত আসে', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    const list = await owner.http
+      .get('/api/v1/design-targets?status=deleted')
+      .expect(200);
+
+    expect(list.body.rows).toHaveLength(1);
+    expect(list.body.rows[0].dropReason).toBe('not_found');
+  });
+});
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * **বাদ-যাওয়া ডিজাইনের রিভিউ কিউ** *(৩১ আগস্ট ২০২৬, মালিকের চাওয়া: "ami and
+ * manager ei delete and skip deya design gula alada vabe management korte
+ * paruk")*।
+ *
+ * ⚠️⚠️ সবচেয়ে জরুরি দাবি দ্বিতীয়টা: **কারণ ছাড়া পুরোনো সারি কিউতে ওঠে না**।
+ * নইলে প্রথম দিনেই ৯৭টা সারি নিয়ে কিউ শুরু হতো — আর পাহাড় দেখলে কেউ
+ * শুরুই করে না (২৪ আগস্টে আপলোড-কিউতে ঠিক এই ভুলটা হয়েছিল)।
+ */
+describe('রিভিউ কিউ — বাদ-যাওয়া ডিজাইন', () => {
+  async function seedPool(count: number): Promise<Session> {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: Array.from({ length: count }, (_, i) => URL_OF(i + 1)).join('\n'),
+    }).expect(201);
+    return owner;
+  }
+
+  const queue = (session: Session) =>
+    session.http.get('/api/v1/design-targets?stage=to_review').expect(200);
+
+  it('কারণসহ মোছা সারি কিউতে ওঠে', async () => {
+    const owner = await seedPool(2);
+    const [first] = (
+      await h.prisma.designTarget.findMany({
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    ).map((r) => r.id);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [first],
+      reason: 'copyright',
+    }).expect(201);
+
+    const list = await queue(owner);
+    expect(list.body.rows).toHaveLength(1);
+    expect(list.body.rows[0].dropReason).toBe('copyright');
+    expect(list.body.rows[0].reviewedAt).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ **এই টেস্টটাই কিউটাকে ব্যবহারযোগ্য রাখে।** কারণ চাওয়ার ব্যবস্থা
+   * ৩১ আগস্টের, তাই তার আগের `skipped` সারিতে কিছুই লেখা নেই — ম্যানেজারের
+   * "দেখে নেওয়ার" কিছুই নেই।
+   */
+  it('কারণ ছাড়া পুরোনো সারি কিউতে ওঠে না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    // ⚠️ পুরোনো সারির নকল — অবস্থা `skipped`, কিন্তু কারণ নেই
+    await h.prisma.designTarget.update({
+      where: { id: row.id },
+      data: { status: 'skipped', dropReason: null },
+    });
+
+    expect((await queue(owner)).body.rows).toHaveLength(0);
+  });
+
+  it('"দেখে নিয়েছি" চাপলে কিউ থেকে সরে যায়, কিন্তু অবস্থা বদলায় না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await post(owner, `/api/v1/design-targets/${row.id}/reviewed`, {}).expect(201);
+
+    expect((await queue(owner)).body.rows).toHaveLength(0);
+
+    const after = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    // ⭐ স্বীকৃতি, সিদ্ধান্ত নয় — সারিটা `deleted`-ই থাকে
+    expect(after.status).toBe('deleted');
+    expect(after.reviewedAt).not.toBeNull();
+    expect(after.reviewedById).not.toBeNull();
+  });
+
+  /** ⚠️ চিপের সংখ্যা আর তালিকার সংখ্যা আলাদা হলে দুটোই অবিশ্বাস্য হয়ে যায় */
+  it('চিপের সংখ্যা আর তালিকার সংখ্যা হুবহু এক', async () => {
+    const owner = await seedPool(3);
+    const ids = (
+      await h.prisma.designTarget.findMany({
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+    ).map((r) => r.id);
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: ids.slice(0, 2),
+      reason: 'events',
+    }).expect(201);
+
+    const stats = await owner.http.get('/api/v1/design-targets/stats').expect(200);
+    expect(stats.body.toReview).toBe(2);
+    expect((await queue(owner)).body.rows).toHaveLength(2);
+  });
+
+  /**
+   * ⚠️⚠️ পুলে ফিরলে চিহ্নটাও মুছে যায় — নইলে ভবিষ্যতে কেউ আবার Skip করলে
+   * সারিটা **কিউতেই উঠত না**, পুরোনো একটা চিহ্নের কারণে।
+   */
+  it('পুলে ফেরালে "দেখা হয়েছে" চিহ্নও মুছে যায়', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+    await post(owner, `/api/v1/design-targets/${row.id}/reviewed`, {}).expect(201);
+
+    await owner.http
+      .patch(`/api/v1/design-targets/${row.id}`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ status: 'pool' })
+      .expect(200);
+
+    const back = await h.prisma.designTarget.findUniqueOrThrow({
+      where: { id: row.id },
+    });
+    expect(back.reviewedAt).toBeNull();
+    expect(back.reviewedById).toBeNull();
+  });
+
+  /** ⚠️ গবেষক নন — মালিকের কথা ছিল "ami and manager" */
+  it('গবেষক "দেখে নিয়েছি" চাপতে পারেন না', async () => {
+    const owner = await seedPool(1);
+    const row = await h.prisma.designTarget.findFirstOrThrow();
+    await post(owner, '/api/v1/design-targets/delete', {
+      ids: [row.id],
+      reason: 'not_found',
+    }).expect(201);
+
+    await staff('OX-R1', 'researcher', 'r1@test.local', 'researcher');
+    const researcher = await loginReady(h, 'r1@test.local', 'staff-password-123');
+
+    await post(
+      researcher,
+      `/api/v1/design-targets/${row.id}/reviewed`,
+      {},
+    ).expect(403);
   });
 });

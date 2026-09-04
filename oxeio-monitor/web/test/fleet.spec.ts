@@ -51,6 +51,8 @@ function version(over: Partial<AgentVersionView> = {}): AgentVersionView {
     releasedAt: NOW.toISOString(),
     fileMissing: false,
     devicesOn: 0,
+    pilotDeviceId: null,
+    pilotLabel: null,
     ...over,
   };
 }

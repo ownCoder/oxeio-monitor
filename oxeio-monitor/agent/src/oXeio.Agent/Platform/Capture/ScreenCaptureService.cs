@@ -79,24 +79,42 @@ internal sealed class ScreenCaptureService(IScreenCapturer capturer) : IDisposab
     }
 
     /// <summary>
-    /// ⭐⭐ <b>G46</b> — শুধু প্রথম মনিটরের কাঁচা ছবি, ছাপ বানানোর জন্য।
+    /// ⭐⭐ <b>G46</b> — <b>প্রতিটা</b> মনিটরের কাঁচা ছবি, ছাপ বানানোর জন্য।
     ///
-    /// ⚠️ <see cref="CaptureAll"/> নয়, ইচ্ছাকৃতভাবে: ওটা সব মনিটরের ছবি তোলে
-    /// আর প্রতিটাকে WebP-তে এনকোড করে — ছাপের জন্য দুটোরই দরকার নেই, অথচ
-    /// এটা মিনিটে একবার (জমে থাকলে ৫ সেকেন্ডে একবার) চলে।
+    /// ⚠️⚠️ <b>৩১ আগস্ট ২০২৬ পর্যন্ত এটা ছিল <c>CapturePrimary()</c> — কেবল
+    /// প্রথম পর্দা, আর সেটাই মাঠে সৎ কর্মীর ঘণ্টা কেটেছে।</b> কেউ দ্বিতীয়
+    /// মনিটরে কাজ করলে প্রথমটা স্থির থাকত → দশ মিনিট পর "জমেছে" → গোনা বন্ধ।
+    /// মাপা: দুই মনিটরের তিনটে PC-তে দুদিনে ৪৩ · ৯ · ৬টা ভুয়া idle, আর
+    /// এক-মনিটরের ছ-টায় শূন্য।
     ///
-    /// ⚠️⚠️ ছবিটা <b>কোথাও জমে না, যায়ও না</b> — এখান থেকে বেরোয় কেবল
-    /// ২৫৬ বাইটের একটা ছাপ, আর সেটাও মেশিন ছাড়ে না।
+    /// ⭐ পুরোনো টীকায় ভয় ছিল *"নিষ্ক্রিয় দ্বিতীয় মনিটরই জমেছে বলে গোনা বন্ধ
+    /// করত"* — কিন্তু সেটা নির্ভর করে নিয়মটার উপর, আর নিয়ম হলো
+    /// <b>যেকোনো একটা পর্দা বদলালেই বদলেছে</b>
+    /// (<see cref="oXeio.Core.Tracking.ScreenActivity.DiffersAny"/>)।
+    ///
+    /// ⚠️ <see cref="CaptureAll"/> নয়, ইচ্ছাকৃতভাবে: ওটা প্রতিটাকে WebP-তে
+    /// এনকোডও করে — ছাপের জন্য সেটার দরকার নেই, অথচ এই কাজটা মিনিটে একবার
+    /// (জমে থাকলে ৫ সেকেন্ডে একবার) চলে।
+    ///
+    /// ⚠️⚠️ ছবিগুলো <b>কোথাও জমে না, যায়ও না</b> — এখান থেকে বেরোয় কেবল
+    /// প্রতি পর্দার ২৫৬ বাইটের একটা ছাপ, আর সেটাও মেশিন ছাড়ে না।
     /// </summary>
-    public CapturedFrame? CapturePrimary()
+    public IReadOnlyList<CapturedFrame> CaptureEach()
     {
         var monitors = MonitorEnumerator.Enumerate();
-        if (monitors.Count == 0) return null;
+        if (monitors.Count == 0) return [];
 
-        // ⚠️ প্রথমটাই — CaptureAll-এও ছাপ নেওয়া হতো MinBy(MonitorIndex) থেকে,
-        //    অর্থাৎ একই পর্দা। সাধারণত ওখানেই কাজ হয়, আর সব পর্দা মেলালে
-        //    একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই "জমেছে" বলে গোনা বন্ধ করত।
-        return capturer.Capture(monitors[0]);
+        var frames = new List<CapturedFrame>(monitors.Count);
+
+        foreach (var monitor in monitors)
+        {
+            // ⚠️ একটা পর্দা তুলতে না পারলে বাকিগুলো তবু নেওয়া হয় — নইলে
+            //    একটা ভাঙা আউটপুট গোটা পাহারাটাই অন্ধ করে দিত।
+            var frame = capturer.Capture(monitor);
+            if (frame is not null) frames.Add(frame);
+        }
+
+        return frames;
     }
 
     public void Dispose() => capturer.Dispose();

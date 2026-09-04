@@ -32,6 +32,13 @@ export interface AgentVersionView {
   fileMissing: boolean;
   /** এই ভার্সনে কতগুলো ডিভাইস ইতিমধ্যে চলছে */
   devicesOn: number;
+  /**
+   * ⭐ বালতি নির্বিশেষে যে PC-টা আগে পায় — `null` মানে কেউ নয়
+   * *(১ সেপ্টেম্বর ২০২৬)*।
+   */
+  pilotDeviceId: number | null;
+  /** ⭐ পর্দায় নাম দেখানোর জন্য — কর্মীর নাম, না থাকলে hostname */
+  pilotLabel: string | null;
 }
 
 /**
@@ -66,6 +73,26 @@ export class AgentVersionsService {
     this.root = resolve(storageRoot(config));
   }
 
+  /**
+   * ⭐ পাইলট PC-র নাম — কর্মীর নাম, না থাকলে hostname।
+   *
+   * ⚠️ সংখ্যাটা (`pilotDeviceId`) পর্দায় কারো কাজে আসে না; মালিক "কার PC"
+   * জানতে চান। ⭐ কর্মী সরিয়ে দিলেও hostname টেকে, তাই ঘরটা কখনো
+   * "ডিভাইস ৬" বলে হেঁয়ালি করে না।
+   */
+  private async pilotLabelOf(deviceId: number | null): Promise<string | null> {
+    if (deviceId === null) return null;
+
+    const device = await this.prisma.device.findUnique({
+      where: { id: deviceId },
+      select: { hostname: true, employee: { select: { fullName: true } } },
+    });
+
+    if (!device) return null;
+
+    return device.employee?.fullName ?? device.hostname;
+  }
+
   async list(): Promise<AgentVersionView[]> {
     const [rows, byVersion] = await Promise.all([
       this.prisma.agentVersion.findMany({ orderBy: { releasedAt: 'desc' } }),
@@ -93,6 +120,8 @@ export class AgentVersionsService {
           releasedAt: r.releasedAt.toISOString(),
           fileMissing: file === null,
           devicesOn: counts.get(r.version) ?? 0,
+          pilotDeviceId: r.pilotDeviceId,
+          pilotLabel: await this.pilotLabelOf(r.pilotDeviceId),
         };
       }),
     );
@@ -188,6 +217,8 @@ export class AgentVersionsService {
       releasedAt: row.releasedAt.toISOString(),
       fileMissing: false,
       devicesOn: 0,
+      pilotDeviceId: row.pilotDeviceId,
+      pilotLabel: await this.pilotLabelOf(row.pilotDeviceId),
     };
   }
 
@@ -215,6 +246,14 @@ export class AgentVersionsService {
       data: {
         rolloutStage: dto.rolloutStage,
         ...(dto.isMandatory === undefined ? {} : { isMandatory: dto.isMandatory }),
+        /**
+         * ⚠️⚠️ **`undefined` আর `null` এক নয়।** ঘরটা না পাঠালে যা ছিল তাই
+         * থাকে; `null` পাঠালে পাইলট তুলে নেওয়া হয়। ⭐ পার্থক্যটা না রাখলে
+         * শুধু ধাপ বদলাতে গেলেই পাইলট নীরবে মুছে যেত।
+         */
+        ...(dto.pilotDeviceId === undefined
+          ? {}
+          : { pilotDeviceId: dto.pilotDeviceId }),
       },
     });
 
@@ -248,6 +287,8 @@ export class AgentVersionsService {
       releasedAt: updated.releasedAt.toISOString(),
       fileMissing: file === null,
       devicesOn,
+      pilotDeviceId: updated.pilotDeviceId,
+      pilotLabel: await this.pilotLabelOf(updated.pilotDeviceId),
     };
   }
 
