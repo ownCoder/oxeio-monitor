@@ -6,7 +6,6 @@ import { AgentDownCheck } from '../src/alerts/agent-down.check';
 import { AlertsService } from '../src/alerts/alerts.service';
 import {
   createHarness,
-  minutesAgo,
   resetDatabase,
   type Harness,
 } from './setup/harness';
@@ -47,6 +46,27 @@ async function seedDevice(
   return d.id;
 }
 
+/**
+ * ⭐⭐ **স্থির ঘড়ি — আর এটাই এই ফাইলের সবচেয়ে জরুরি লাইন।**
+ *
+ * ⚠️⚠️ এখানে আগে `new Date()` ছিল, অর্থাৎ CI যখন চলত তখনকার আসল সময়।
+ * কিন্তু `AgentDownCheck.runOnce()` অ্যালার্ট তোলে **কেবল অফিস-সময়ে**
+ * (`isAgentWatchOpen` — ৯:০০ + ১৫ মিনিট ছাড়)। ফলে দিনে CI সবুজ, রাতে
+ * লাল — ৪ সেপ্টেম্বর রাত ১১:১৯-এ ঠিক তাই হয়েছে, পাঁচটা টেস্ট একসাথে।
+ *
+ * ⭐ ব্যর্থতাটা **কোডের নয়, টেস্টের** — অ্যালার্ট চাপা দেওয়াটাই সঠিক
+ * আচরণ (২৩ আগস্টে ছটা মিথ্যা অ্যালার্টের পর ওটা বসানো হয়েছিল)। তাই
+ * নিয়মটা শিথিল না করে **টেস্টকে একটা জানা মুহূর্তে দাঁড় করানো হলো**।
+ *
+ * ⚠️ বুধবার বাছা হয়েছে ইচ্ছাকৃতভাবে — শুক্রবার সাপ্তাহিক ছুটি, তখন
+ * `isOfficeOpen()` এমনিতেই বন্ধ বলত আর টেস্ট আবার সময়-নির্ভর হতো।
+ */
+const NOW = new Date('2026-09-02T05:00:00.000Z'); // বুধবার, ঢাকার ১১:০০
+
+/** `NOW`-এর সাপেক্ষে — ⚠️ `harness`-এর `minutesAgo` আসল ঘড়ি ধরে, তাই নয় */
+const before = (minutes: number): Date =>
+  new Date(NOW.getTime() - minutes * 60_000);
+
 const agentDownRows = () =>
   h.prisma.alert.findMany({ where: { type: 'agent_down' } });
 
@@ -74,8 +94,8 @@ beforeEach(async () => {
 describe('agent_down — ফিরে এলে নিজে বন্ধ', () => {
   /** ⭐⭐ মূল দাবি: চুপ → alert ওঠে; ফিরে এলে সেটাই resolve হয়। */
   it('চুপ ডিভাইসে alert ওঠে, ফিরে এলে সেটাই resolve হয়', async () => {
-    const now = new Date();
-    const deviceId = await seedDevice(minutesAgo(30));
+    const now = NOW;
+    const deviceId = await seedDevice(before(30));
 
     expect(await check.runOnce(now)).toBe(1);
     const [raised] = await agentDownRows();
@@ -85,7 +105,7 @@ describe('agent_down — ফিরে এলে নিজে বন্ধ', () =
     // এজেন্ট আবার হাজিরা দিলো (lastSeenAt সাম্প্রতিক)
     await h.prisma.device.update({
       where: { id: deviceId },
-      data: { lastSeenAt: minutesAgo(1) },
+      data: { lastSeenAt: before(1) },
     });
 
     expect(await check.resolveReturned(now)).toBe(1);
@@ -98,13 +118,13 @@ describe('agent_down — ফিরে এলে নিজে বন্ধ', () =
   });
 
   it('resolve হলে openCount কমে, কিন্তু "Show all"-এ ইতিহাসে থাকে', async () => {
-    const now = new Date();
-    const deviceId = await seedDevice(minutesAgo(30));
+    const now = NOW;
+    const deviceId = await seedDevice(before(30));
     await check.runOnce(now);
 
     await h.prisma.device.update({
       where: { id: deviceId },
-      data: { lastSeenAt: minutesAgo(1) },
+      data: { lastSeenAt: before(1) },
     });
     await check.resolveReturned(now);
 
@@ -117,8 +137,8 @@ describe('agent_down — ফিরে এলে নিজে বন্ধ', () =
   });
 
   it('এখনো চুপ থাকা ডিভাইসের alert বন্ধ হয় না', async () => {
-    const now = new Date();
-    await seedDevice(minutesAgo(30));
+    const now = NOW;
+    await seedDevice(before(30));
     await check.runOnce(now);
 
     // lastSeenAt বদলায়নি — এখনো চুপ
@@ -130,12 +150,12 @@ describe('agent_down — ফিরে এলে নিজে বন্ধ', () =
 
   /** ⚠️ প্রতি ৫-মিনিট টিকে চলে — দ্বিতীয়বার যেন reason/সময় নতুন করে না বসে */
   it('idempotent — দ্বিতীয়বার resolveReturned আর কিছু ছোঁয় না', async () => {
-    const now = new Date();
-    const deviceId = await seedDevice(minutesAgo(30));
+    const now = NOW;
+    const deviceId = await seedDevice(before(30));
     await check.runOnce(now);
     await h.prisma.device.update({
       where: { id: deviceId },
-      data: { lastSeenAt: minutesAgo(1) },
+      data: { lastSeenAt: before(1) },
     });
 
     expect(await check.resolveReturned(now)).toBe(1);
@@ -149,13 +169,13 @@ describe('agent_down — ফিরে এলে নিজে বন্ধ', () =
 
   /** ⚠️ revoke করা ডিভাইসের চুপ থাকাটাই উদ্দেশ্য — এই পথে বন্ধ নয় */
   it('revoke করা ডিভাইসের alert এই পথে বন্ধ হয় না', async () => {
-    const now = new Date();
-    const deviceId = await seedDevice(minutesAgo(30));
+    const now = NOW;
+    const deviceId = await seedDevice(before(30));
     await check.runOnce(now);
 
     await h.prisma.device.update({
       where: { id: deviceId },
-      data: { lastSeenAt: minutesAgo(1), status: 'revoked' },
+      data: { lastSeenAt: before(1), status: 'revoked' },
     });
 
     expect(await check.resolveReturned(now)).toBe(0);
