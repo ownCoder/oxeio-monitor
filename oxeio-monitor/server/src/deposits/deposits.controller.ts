@@ -20,8 +20,12 @@ import {
   type DepositPolicyView,
   type DepositSettlementView,
 } from './deposits.service';
-import { SetDepositStartDto,
-  SettleDepositDto, UpdateDepositPolicyDto } from './dto';
+import {
+  CorrectInstalmentDto,
+  SetDepositStartDto,
+  SettleDepositDto,
+  UpdateDepositPolicyDto,
+} from './dto';
 
 /**
  * R21 — জামানতের owner-এর দিক (`/api/v1/deposits`)।
@@ -80,6 +84,45 @@ export class DepositsController {
    * রাখে। ⚠️ দ্বিতীয়বার ডাকলে ৪০৯ — টাকা দুবার ফেরত দেওয়ার হিসাব
    * কোথাও লেখা থাকত না।
    */
+  /**
+   * `GET /api/v1/deposits/:employeeId/months` — একজনের মাস-ধরে খাতা।
+   *
+   * ⚠️⚠️ **এটা ছাড়া মালিক নিজের খাতাই দেখতে পেতেন না।** পাতায় ছিল কেবল
+   * যোগফল (*"2 months held · ৳500"*), আর সেই দুটো সংখ্যা একসাথে পড়লে
+   * অর্থহীন হতে পারে — মাঠে ঠিক তাই হয়েছিল (একটা মাস ৳০ ছিল)। মাসগুলো
+   * এতদিন কেবল **কর্মীর নিজের** পাতায় (`/me/deposit`) দেখা যেত।
+   */
+  @Get(':employeeId/months')
+  months(
+    @Param('employeeId', ParseIntPipe) employeeId: number,
+  ): Promise<unknown> {
+    return this.deposits.forEmployee(employeeId);
+  }
+
+  /**
+   * `PATCH /api/v1/deposits/:employeeId/instalment` — ভুল অঙ্ক সংশোধন।
+   *
+   * ⚠️⚠️ এতদিন এর **কোনো পথই ছিল না** — `ensureLedger()` বিদ্যমান সারি
+   * কখনো হালনাগাদ করে না (ইচ্ছাকৃত), তাই ভুল অঙ্ক চিরকাল বসে থাকত।
+   * ⭐ কারণ (`reason`) বাধ্যতামূলক, আর বন্ধ মাসে বা নিষ্পত্তির পরে নয়।
+   */
+  @Patch(':employeeId/instalment')
+  correct(
+    @CurrentUser() actor: SessionUser,
+    @Param('employeeId', ParseIntPipe) employeeId: number,
+    @Body() dto: CorrectInstalmentDto,
+    @Ip() ip: string,
+  ): Promise<{ from: number; to: number }> {
+    return this.deposits.correctInstalment(
+      actor,
+      employeeId,
+      dto.yearMonth,
+      dto.amountPaisa,
+      dto.reason,
+      ip,
+    );
+  }
+
   @Post(':employeeId/settle')
   @HttpCode(HttpStatus.CREATED)
   settle(

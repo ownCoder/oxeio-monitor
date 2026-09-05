@@ -348,6 +348,144 @@ export class DepositsService {
   }
 
   /**
+   * ⭐⭐⭐ **বসে যাওয়া একটা কিস্তির অঙ্ক সংশোধন** *(৫ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **কেন দরকার হলো:** খাতায় ভুল অঙ্কে একটা কিস্তি বসে গেলে সেটা
+   * ঠিক করার **কোনো পথই ছিল না**। `ensureLedger()` চলে
+   * `createMany({ skipDuplicates: true })` দিয়ে, তাই বিদ্যমান সারি কখনো
+   * হালনাগাদ হয় না — আর সেটা ইচ্ছাকৃত (নিয়মের অঙ্ক বদলালে পুরোনো মাস
+   * ফিরে লেখা হয় না)। ফলে মাঠে একটা ৳০ সারি দু-সপ্তাহ ধরে বসে ছিল, আর
+   * পাতা দেখাত *"2 months held · ৳500"*।
+   *
+   * ⭐ ওটা শেষমেশ সারানো গেছে একটা **কৌশলে**: শুরুর মাস এগিয়ে দিয়ে সারিটা
+   * মুছে, তারপর নিয়মে ফিরিয়ে নতুন করে বসিয়ে। কাজ করেছে **কেবল কারণ ভুল
+   * মাসটা শুরুর দিকে ছিল**; মাঝের কোনো মাস হলে ওই কৌশল আগের সব মাসও
+   * মুছে দিত। কৌশলটা কোথাও লেখাও ছিল না।
+   *
+   * ⚠️ **এটা "নিয়ম বদল" নয়, "ভুল সংশোধন"** — তাই `reason` বাধ্যতামূলক,
+   * ঠিক `time_adjustments`-এর মতো। ছ-মাস পরে "ওই মাসে অন্যদের ৫০০, এর
+   * ৩০০ কেন" প্রশ্নের উত্তর খাতাতেই থাকা দরকার।
+   *
+   * ⚠️⚠️ **শূন্য বসানো যায় না** — ডাটাবেসের `CHECK`-ও তা আটকায়। মকুব মানে
+   * ওই মাসে কিস্তি **নেই**, ৳০-এর কিস্তি **আছে**; দুটো এক করে ফেললে
+   * "কত মাস জমা হয়েছে" প্রশ্নের উত্তরই নষ্ট হয়। শুরুর দিকের মাস বাদ দিতে
+   * `setStartMonth()` আছে।
+   * ⏳ **মাঝের একটা মাস মকুব করার কোনো ব্যবস্থা এখনো নেই** — লাগলে সেটা
+   *    আলাদা সিদ্ধান্ত (সারি রেখে `waived` চিহ্ন, নাকি মুছে ফেলা), আর
+   *    মুছে ফেললে `ensureLedger()` ওটা আবার বসিয়ে দেবে।
+   */
+  async correctInstalment(
+    actor: SessionUser,
+    employeeId: number,
+    yearMonth: string,
+    amountPaisa: number,
+    reason: string,
+    ip: string,
+  ): Promise<{ from: number; to: number }> {
+    if (!isYearMonth(yearMonth)) {
+      throw new BadRequestException('Month must be in YYYY-MM format');
+    }
+
+    /**
+     * ⚠️ ০ বা ঋণাত্মক এখানেই আটকানো, ডাটাবেসের `CHECK`-এর ভরসায় নয় —
+     *    নইলে বার্তাটা হতো একটা কাঁচা Postgres এরর, আর মালিক বুঝতেন না
+     *    কী ভুল করলেন।
+     */
+    if (!Number.isInteger(amountPaisa) || amountPaisa <= 0) {
+      throw new BadRequestException(
+        'The instalment must be more than zero — to skip the early months use the start month instead',
+      );
+    }
+
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException(
+        'Write why — six months from now this line is the only answer',
+      );
+    }
+
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { id: true, fullName: true, empCode: true },
+    });
+    if (!employee) throw new NotFoundException('Staff member not found');
+
+    /**
+     * ⚠️ নিষ্পত্তি হয়ে গেলে খাতা বন্ধ — টাকা ফেরত বা বাজেয়াপ্ত হয়ে গেছে,
+     *    তাই এখন অঙ্ক বদলানো মানে মিটে যাওয়া হিসাব নাড়ানো।
+     *    ⭐ শর্তটা `setStartMonth()`-এর হুবহু একই।
+     */
+    const settled = await this.prisma.depositSettlement.findFirst({
+      where: { employeeId },
+      select: { employeeId: true },
+    });
+    if (settled) {
+      throw new ConflictException(
+        'This deposit is already settled — the ledger is closed',
+      );
+    }
+
+    /**
+     * ⚠️⚠️ **বন্ধ মাসে সংশোধন নয়** (R1) — ছুটি ও সংশোধনের ঠিক একই নিয়ম।
+     *    বন্ধ মাস মানে ওই মাসের কাগজ বেরিয়ে গেছে; খাতা বদলালে কাগজ আর
+     *    খাতা দুই কথা বলত, আর কেউ টের পেত না।
+     */
+    const closed = await this.prisma.monthClosure.findUnique({
+      where: { yearMonth },
+      select: { yearMonth: true },
+    });
+    if (closed) {
+      throw new ConflictException(
+        `${yearMonth} is closed — reopen the month first`,
+      );
+    }
+
+    /**
+     * ⚠️ সারিটা **থাকতে হবে**। না থাকলে এটা সংশোধন নয়, নতুন কিস্তি বসানো —
+     *    আর সেটা `ensureLedger()`-এর কাজ, নিয়ম ধরে। এখানে বসাতে দিলে
+     *    খাতায় এমন মাস ঢুকত যেটা কোনো নিয়ম থেকে আসেনি।
+     */
+    const row = await this.prisma.securityDeposit.findUnique({
+      where: { employeeId_yearMonth: { employeeId, yearMonth } },
+    });
+    if (!row) {
+      throw new NotFoundException(
+        `No instalment for ${yearMonth} — the ledger only holds months the rule created`,
+      );
+    }
+
+    // ⚠️ কিছুই বদলায়নি — খাতায় ঘটনা লেখা হয় না (setStartMonth-এর একই নিয়ম)
+    if (row.amountPaisa === amountPaisa) return { from: row.amountPaisa, to: amountPaisa };
+
+    await this.prisma.securityDeposit.update({
+      where: { employeeId_yearMonth: { employeeId, yearMonth } },
+      data: { amountPaisa },
+    });
+
+    await this.audit.record({
+      userId: actor.userId,
+      action: 'deposit_policy_update',
+      targetType: 'employee',
+      targetId: employeeId,
+      ipAddress: ip,
+      meta: {
+        op: 'deposit_instalment_corrected',
+        empCode: employee.empCode,
+        yearMonth,
+        fromPaisa: row.amountPaisa,
+        toPaisa: amountPaisa,
+        why: trimmed,
+      },
+    });
+
+    this.logger.warn(
+      `${employee.fullName}: ${yearMonth}-এর কিস্তি ${row.amountPaisa} → ${amountPaisa} পয়সা · ${trimmed}`,
+    );
+
+    return { from: row.amountPaisa, to: amountPaisa };
+  }
+
+  /**
    * ⭐ একটা মাসের কিস্তিগুলো, কর্মী ধরে — পে-রোলের শিট এটাই ডাকে।
    *
    * ⚠️ ম্যাপে **যাঁর কিস্তি বসেনি তাঁর চাবিই থাকে না**, শূন্য নয়। শিটে

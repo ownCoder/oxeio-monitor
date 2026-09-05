@@ -96,3 +96,29 @@ export class SetDepositStartDto {
   @Matches(YEAR_MONTH, { message: 'yearMonth must be in YYYY-MM format' })
   yearMonth!: string | null;
 }
+
+/**
+ * ⭐⭐ **বসে যাওয়া একটা কিস্তির অঙ্ক সংশোধন** *(৫ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️ এটা নিয়ম বদলানো নয়, **ভুল সংশোধন** — তাই `reason` বাধ্যতামূলক।
+ */
+export class CorrectInstalmentDto {
+  @Matches(YEAR_MONTH, { message: 'yearMonth must be YYYY-MM' })
+  yearMonth!: string;
+
+  /**
+   * ⚠️⚠️ `@Min(1)` — শূন্য বসানোর কোনো পথ নেই, আর সেটাই নকশা। মকুব মানে
+   * ওই মাসে কিস্তি **নেই**, ৳০-এর কিস্তি **আছে**; দুটো এক করে ফেললে
+   * "কত মাস জমা হয়েছে" প্রশ্নের উত্তরই নষ্ট হয় — মাঠে ঠিক সেটাই ঘটেছিল।
+   * শুরুর দিকের মাস বাদ দিতে `PATCH :id/start` আছে।
+   */
+  @IsInt()
+  @Min(1)
+  @Max(100_000_00)
+  amountPaisa!: number;
+
+  /** ⚠️ ছ-মাস পরে "ওই মাসে এর অঙ্ক আলাদা কেন" প্রশ্নের একমাত্র উত্তর */
+  @IsString()
+  @MaxLength(300)
+  reason!: string;
+}

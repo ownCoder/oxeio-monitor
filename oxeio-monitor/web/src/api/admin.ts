@@ -544,6 +544,47 @@ export function testTelegram(): Promise<{ outcome: string }> {
   return api<{ outcome: string }>('/settings/telegram/test', { method: 'PATCH' });
 }
 
+/** একজনের মাস-ধরে খাতা — owner-এর সংশোধনের পর্দার জন্য */
+export interface DepositMonths {
+  months: { yearMonth: string; amount: string }[];
+  total: string;
+  totalPaisa: number;
+  settlement: unknown | null;
+  noticeDays: number;
+}
+
+/**
+ * ⚠️⚠️ **মাসগুলো এতদিন কেবল কর্মীর নিজের পাতায় দেখা যেত** (`/me/deposit`)।
+ * মালিকের পাতায় ছিল শুধু যোগফল — *"2 months held · ৳500"* — আর ওই দুটো
+ * সংখ্যা একসাথে পড়লে অর্থহীন হতে পারে। মাঠে ঠিক তাই হয়েছিল: একটা মাস
+ * ৳০-তে বসে ছিল, আর কেউ ধরতেই পারছিল না কেন যোগফল মেলে না।
+ */
+export function depositMonths(
+  employeeId: number,
+  signal?: AbortSignal,
+): Promise<DepositMonths> {
+  return api<DepositMonths>(`/deposits/${employeeId}/months`, { signal });
+}
+
+/**
+ * ⭐⭐ বসে যাওয়া একটা কিস্তির অঙ্ক সংশোধন।
+ *
+ * ⚠️ এতদিন এর কোনো পথ ছিল না — `ensureLedger()` বিদ্যমান সারি কখনো
+ * হালনাগাদ করে না (ইচ্ছাকৃত), তাই ভুল অঙ্ক চিরকাল বসে থাকত।
+ * ⚠️ `reason` বাধ্যতামূলক, আর `amountPaisa` শূন্য হতে পারে না।
+ */
+export function correctDepositInstalment(
+  employeeId: number,
+  yearMonth: string,
+  amountPaisa: number,
+  reason: string,
+): Promise<{ from: number; to: number }> {
+  return api<{ from: number; to: number }>(
+    `/deposits/${employeeId}/instalment`,
+    { method: 'PATCH', body: { yearMonth, amountPaisa, reason } },
+  );
+}
+
 export function setDepositStart(
   employeeId: number,
   yearMonth: string | null,

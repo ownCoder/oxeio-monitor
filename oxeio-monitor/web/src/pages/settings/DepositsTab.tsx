@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 import {
+  correctDepositInstalment,
+  depositMonths,
   listDeposits,
   setDepositStart,
   settleDeposit,
@@ -47,6 +49,8 @@ export function DepositsTab() {
   const [editingRule, setEditingRule] = useState(false);
   const [settling, setSettling] = useState<DepositBalance | null>(null);
   const [startFor, setStartFor] = useState<DepositBalance | null>(null);
+  /** ⭐ মাস-ধরে খাতা ও ভুল অঙ্ক সংশোধনের পর্দা */
+  const [monthsFor, setMonthsFor] = useState<DepositBalance | null>(null);
 
   const rows = data?.rows ?? [];
   const open = rows.filter((r) => !r.settlement);
@@ -167,6 +171,15 @@ export function DepositsTab() {
                       ⚠️ নিষ্পত্তি হয়ে গেলে খাতা বন্ধ — সার্ভার ৪০৯ দেয়,
                          তাই বোতামটাও থাকে না।
                     */}
+                    {/*
+                      ⭐⭐ **মাসগুলো দেখার দরজা।** এতদিন মালিক কেবল যোগফল
+                         দেখতেন (*"2 months held · ৳500"*) — দুটোই সত্যি,
+                         একসাথে পড়লে অর্থহীন। ⚠️ নিষ্পত্তির পরেও দেখা
+                         যায়: খাতা বন্ধ মানে বদলানো যায় না, পড়া যায় না নয়।
+                    */}
+                    <MiniButton onClick={() => setMonthsFor(row)}>
+                      Months
+                    </MiniButton>
                     {!row.settlement && (
                       <MiniButton onClick={() => setStartFor(row)}>
                         Start month
@@ -191,6 +204,14 @@ export function DepositsTab() {
           only the amount handed over that month goes down.
         </Caveat>
       </Card>
+
+      {monthsFor && (
+        <MonthsDialog
+          row={monthsFor}
+          onClose={() => setMonthsFor(null)}
+          onSaved={reload}
+        />
+      )}
 
       {startFor && (
         <StartMonthDialog
@@ -548,6 +569,140 @@ function StartMonthDialog({
           }
         />
       </div>
+    </Modal>
+  );
+}
+
+/**
+ * ⭐⭐⭐ **একজনের মাস-ধরে খাতা, আর ভুল অঙ্ক সংশোধন** *(৫ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **কেন এটা দরকার হলো:** মালিকের পাতায় ছিল কেবল যোগফল —
+ * *"2 months held · ৳500"*। দুটোই সত্যি, একসাথে পড়লে অর্থহীন, আর মাঠে
+ * ঠিক সেই প্রশ্নই এসেছে: *"Saifur OX-10 2 mase 500 joma dekhacche keno?"*
+ * কারণটা ছিল একটা মাস ৳০-তে বসে থাকা — কিন্তু **মাসগুলো দেখারই কোনো উপায়
+ * ছিল না** মালিকের পর্দায় (কেবল কর্মীর নিজের `/me/deposit`-এ)।
+ *
+ * ⚠️ আর দেখা গেলেও **সংশোধনের পথ ছিল না**: `ensureLedger()` বিদ্যমান সারি
+ * কখনো হালনাগাদ করে না (ইচ্ছাকৃত — নিয়মের অঙ্ক বদলালে পুরোনো মাস ফিরে
+ * লেখা হয় না)। শেষমেশ সারানো গেছে একটা কৌশলে, যেটা কেবল **শুরুর দিকের**
+ * মাসে খাটে আর কোথাও লেখাও ছিল না।
+ */
+function MonthsDialog({
+  row,
+  onClose,
+  onSaved,
+}: {
+  row: DepositBalance;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const months = useApi(
+    (signal) => depositMonths(row.employeeId, signal),
+    [row.employeeId],
+  );
+
+  const [editing, setEditing] = useState<string | null>(null);
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const mutation = useMutation();
+
+  /**
+   * ⚠️ টাকা → পয়সা এখানেই, আর `Math.round` দিয়ে। ভাসমান গুণফল
+   *    (`500.10 * 100 = 50009.999…`) সরাসরি পাঠালে সার্ভারের `@IsInt()`
+   *    ৪০০ দিত, আর মালিক বুঝতেন না কী ভুল করলেন।
+   */
+  const paisa = Math.round(Number(amount) * 100);
+  const ready =
+    Number.isFinite(paisa) && paisa > 0 && reason.trim().length > 0;
+
+  return (
+    <Modal
+      title={`${row.fullName} — month by month`}
+      onClose={onClose}
+    >
+      {months.loading && <Loading />}
+      {months.error && <ErrorBox error={months.error} />}
+
+      {months.data && months.data.months.length === 0 && (
+        <Empty
+          title="No instalments yet"
+          hint="The ledger fills month by month once the rule starts."
+        />
+      )}
+
+      {months.data && months.data.months.length > 0 && (
+        <ul className="divide-y divide-line">
+          {months.data.months.map((m) => (
+            <li key={m.yearMonth} className="flex items-center gap-3 py-2">
+              <span className="num flex-1 text-[13px]">{m.yearMonth}</span>
+              <span className="num text-[13px] font-semibold">{m.amount}</span>
+              <MiniButton
+                onClick={() => {
+                  setEditing(m.yearMonth);
+                  setAmount(m.amount);
+                  setReason('');
+                }}
+              >
+                Correct
+              </MiniButton>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {editing && (
+        <FormGrid>
+          <TextField
+            label={`New amount for ${editing}`}
+            value={amount}
+            onChange={setAmount}
+            /*
+              ⚠️⚠️ শূন্য বসানো যায় না, আর কারণটা এখানেই লেখা — সার্ভার ও
+                 ডাটাবেস দুটোই আটকায়, কিন্তু বাধার কারণ পর্দায় না লিখলে
+                 মালিক বারবার চেষ্টা করতেন।
+            */
+            hint="More than zero. To skip the early months use Start month instead."
+          />
+          <TextField
+            label="Why"
+            value={reason}
+            onChange={setReason}
+            hint="Six months from now this line is the only answer"
+          />
+          <FullWidth>
+            <ServerError error={mutation.error} />
+            <RowActions>
+              <MiniButton onClick={() => setEditing(null)}>Cancel</MiniButton>
+              <MiniButton
+                disabled={!ready || mutation.busy}
+                onClick={() =>
+                  mutation.run(async () => {
+                    await correctDepositInstalment(
+                      row.employeeId,
+                      editing,
+                      paisa,
+                      reason.trim(),
+                    );
+                    setEditing(null);
+                    // ⭐ দুটোই — ভেতরের তালিকা আর বাইরের যোগফল, নইলে
+                    //   পর্দায় দুটো সংখ্যা দুই কথা বলত
+                    months.reload();
+                    onSaved();
+                  })
+                }
+              >
+                Save
+              </MiniButton>
+            </RowActions>
+          </FullWidth>
+        </FormGrid>
+      )}
+
+      <Caveat>
+        Correcting a month changes the ledger, not the rule — the amount for
+        every other month stays as it was written. A closed month cannot be
+        corrected; reopen it first.
+      </Caveat>
     </Modal>
   );
 }

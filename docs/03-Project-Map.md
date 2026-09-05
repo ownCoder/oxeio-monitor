@@ -275,7 +275,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১৬৪৮টি টেস্ট, ৮২টি ফাইল** *(৫ সেপ্টেম্বর মাপা, ১টি skipped)*
+│   └── test/                               ✅ Vitest + supertest — **১৬৫৯টি টেস্ট, ৮২টি ফাইল** *(৫ সেপ্টেম্বর মাপা, ১টি skipped)*
 │       #  ⚠️ ৪৪টি ফাইল DB ছাড়াই চলে; ২৩টি `*.e2e.spec.ts`
 │       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
