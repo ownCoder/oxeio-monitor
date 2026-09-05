@@ -164,6 +164,13 @@ export interface HourlyBucket {
 }
 
 /** E01 — সাত দিনের চার্টের একটা দিন (`GET /live/trend`) */
+/**
+ * ⚠️⚠️ ঢাকা UTC+৬, কোনো DST নেই। ⭐ এটা কেবল **লেবেল → মুহূর্ত** অনুবাদে
+ * ব্যবহার হয়: `workDateOf()` ঢাকার দিনটাকে UTC-মধ্যরাত হিসেবে ফেরায়, আর
+ * আসল ঢাকা-মধ্যরাত ওটার এত মিলিসেকেন্ড আগে।
+ */
+const DHAKA_OFFSET_MS = 6 * 3600_000;
+
 export interface TrendDay {
   /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */
   date: string;
@@ -182,6 +189,20 @@ export interface TrendDay {
    * "জানি না"-কে "নেই" বলে ফেলা এখানেও একইভাবে নিষিদ্ধ।
    */
   tracked: boolean;
+  /**
+   * ⭐⭐ **ওই দিনে কতগুলো ডিজাইন শেষ হয়েছে** *(৫ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **"শেষ", "খোলা" নয়** — আর এটাই মালিকের বাছাই *(২৩ আগস্ট,
+   * ADR-033)*। `design_credits` বলে কতগুলো ফাইল **খোলা** হয়েছে, আর সেই
+   * সংখ্যাটা মাঠে বিভ্রান্তি তৈরি করেছিল: ম্যানেজার ১৯টা ফাইলে ৪৪ মিনিট
+   * দিয়ে "১৬" দেখাচ্ছিলেন। তাই এখানে কেবল `design_targets.completed_at`।
+   *
+   * ⚠️ দিনের সীমানা **ঢাকার**, UTC-র নয় — `completed_at` timestamptz, আর
+   * ওই টেবিলে `work_date` কলাম নেই, তাই বালতি করা হয় `workDateOf()` দিয়ে।
+   * একই ফাংশন, যেটা দিয়ে গোটা সিস্টেমের "কোন দিন" ঠিক হয়।
+   */
+  designsFinished: number;
+
   /** ওই দিনে কতজনের সত্যিই টার্গেট ছিল — শূন্য মানে সবারই ছুটি */
   expectedStaff: number;
   /** ওই দিনে দলের মোট প্রত্যাশিত সেকেন্ড — চার্টের টার্গেট-রেখা */
@@ -772,7 +793,8 @@ export class DashboardService {
 
     // ⚠️ কর্মীপ্রতি সারি, গোষ্ঠীবদ্ধ নয় — দৈনিক টার্গেট ও সাপ্তাহিক ছুটি
     //    দুটোই কর্মীভেদে আলাদা, তাই যোগফলটা কোডে করা হয়।
-    const [rowsAll, monthRowsAll, firstSeen, holidayRows] = await Promise.all([
+    const [rowsAll, monthRowsAll, firstSeen, holidayRows, finishedRows] =
+      await Promise.all([
       this.prisma.dailySummary.findMany({
         where: { workDate: { gte: first, lte: today } },
         select: {
@@ -825,6 +847,32 @@ export class DashboardService {
       this.prisma.holiday.findMany({
         where: { holidayDate: { gte: first, lte: today } },
         select: { holidayDate: true },
+      }),
+      /**
+       * ⭐⭐ **ফিতের সাত দিনে কতগুলো ডিজাইন শেষ হয়েছে** *(৫ সেপ্টেম্বর ২০২৬)*।
+       *
+       * ⚠️ `groupBy` দিয়ে নয়, কাঁচা `completed_at` এনে কোডে বালতি করা হয় —
+       *    কারণ দিনের সীমানা **ঢাকার**, আর SQL-এ সেটা করতে হলে টাইমজোনের
+       *    নিয়মটা দ্বিতীয়বার লিখতে হতো। ⭐ `workDateOf()` গোটা সিস্টেমে
+       *    "কোন দিন" ঠিক করার একমাত্র জায়গা; দ্বিতীয় সংজ্ঞা মানেই একদিন
+       *    দুটো পাতা দুই সংখ্যা বলা।
+       *
+       * ⚠️⚠️ **`first` ও `today` হলো লেবেল, মুহূর্ত নয়** — `workDateOf()`
+       *    ঢাকার দিনটাকে **UTC-মধ্যরাত** হিসেবে লিখে রাখে, আর আসল
+       *    ঢাকা-মধ্যরাতের মুহূর্ত ওটার **৬ ঘণ্টা আগে**। এই পার্থক্যটাই
+       *    এই রেপোতে বারবার বাগের উৎস, তাই সীমানা দুটো হাতে গুনে বসানো:
+       *      শুরু = `first`-এর ঢাকা-মধ্যরাত      → `first − ৬ঘ`
+       *      শেষ  = `today`-এর পরের ঢাকা-মধ্যরাত → `today + ২৪ঘ − ৬ঘ`
+       *    ⚠️ ভুল করলে আগের দিনের সন্ধ্যার কাজ আজকের ঘরে পড়ত।
+       */
+      this.prisma.designTarget.findMany({
+        where: {
+          completedAt: {
+            gte: new Date(first.getTime() - DHAKA_OFFSET_MS),
+            lt: new Date(today.getTime() + 86_400_000 - DHAKA_OFFSET_MS),
+          },
+        },
+        select: { completedAt: true },
       }),
     ]);
 
@@ -891,6 +939,19 @@ export class DashboardService {
         dailyTargetSec: dailyTargetOf.get(e.id) ?? 0,
       }));
 
+    /**
+     * ⭐ ঢাকার দিন ধরে বালতি — একবারই, তারপর নিচের লুপে শুধু পড়া হয়।
+     * ⚠️ `completedAt` কখনো `null` হতে পারে (`DateTime?`), যদিও কোয়েরি
+     *    ছেঁকে আনে; TypeScript-কে সেটা বলে দিতে হয়, আর `null` বাদ দেওয়াই
+     *    ঠিক — অসম্পূর্ণ টার্গেট "আজ শেষ হয়েছে" নয়।
+     */
+    const finishedByDay = new Map<number, number>();
+    for (const d of finishedRows) {
+      if (d.completedAt === null) continue;
+      const key = workDateOf(d.completedAt).getTime();
+      finishedByDay.set(key, (finishedByDay.get(key) ?? 0) + 1);
+    }
+
     const days: TrendDay[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(first.getTime() + i * 86_400_000);
@@ -906,6 +967,7 @@ export class DashboardService {
       days.push({
         date: formatWorkDate(date),
         workedSec,
+        designsFinished: finishedByDay.get(ms) ?? 0,
         // ⚠️ সারি থাকা নয়, **তারিখটা ট্র্যাকিং শুরুর পরে কি না** — সেটাই
         //    মাপকাঠি। নইলে ভবিষ্যতের কোনো ফাঁকা দিনও "দেখা হয়নি" হয়ে যেত।
         tracked: trackedFromMs !== null && ms >= trackedFromMs,

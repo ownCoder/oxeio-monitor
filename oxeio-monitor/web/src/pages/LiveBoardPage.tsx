@@ -21,8 +21,10 @@ import { Tabs } from '../components/Tabs';
 import {
   dhakaHourNow,
   formatDate,
+  formatDateShort,
   formatDuration,
   formatTime,
+  weekdayOf,
 } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
 import { OpenAlerts } from './live/OpenAlerts';
@@ -600,6 +602,23 @@ export function LiveBoardPage() {
                পুরো চওড়া হয়ে যেত, আর একই বোর্ড দুই ভূমিকায় দু-রকম দেখাত।
           */}
           <div className="grid content-start gap-3">
+          {/*
+            ⭐⭐ **শেষ ৭ দিনে রোজ কতগুলো ডিজাইন** *(মালিকের চাওয়া,
+               ৫ সেপ্টেম্বর)* — ইচ্ছাকৃতভাবে "Where Today Went"-এর **উপরে**।
+               ⚠️ ওটা আজকের অ্যাপ-সময়ের কথা বলে, এটা সপ্তাহের ফলের —
+               ফল আগে, ব্যাখ্যা পরে।
+            ⚠️ `trend.data` না এলে কার্ডটাই বসে না; খালি বাক্স দেখিয়ে
+               "শূন্য ডিজাইন" বলে ভুল দাবি করার চেয়ে চুপ থাকা ভালো।
+          */}
+          {trend.data && (
+            <Card
+              title="Designs Finished"
+              hint="Last 7 days · whole team"
+              padded={false}
+            >
+              <DesignsThisWeek days={trend.data.days} />
+            </Card>
+          )}
           <Card
             title="Where Today Went"
             hint="Whole team · counted app time only"
@@ -992,3 +1011,71 @@ export function LiveBoardPage() {
   function isoOf(at: Date | null): string | null {
     return at ? at.toISOString() : null;
   }
+
+/**
+ * ⭐⭐ **শেষ ৭ দিনে রোজ কতগুলো ডিজাইন শেষ হয়েছে** *(মালিকের চাওয়া,
+ * ৫ সেপ্টেম্বর ২০২৬)* — *"Where Today Went"*-এর ঠিক উপরে।
+ *
+ * ⚠️⚠️ **সংখ্যাটা "শেষ", "খোলা" নয়** — মালিকের নিজের বাছাই *(২৩ আগস্ট,
+ * ADR-033)*। ফাইল খোলার সংখ্যা মাঠে বিভ্রান্তি তৈরি করেছিল: ম্যানেজার
+ * ১৯টা ফাইলে ৪৪ মিনিট দিয়ে "১৬" দেখাচ্ছিলেন। শিরোনামে তাই **Finished**
+ * কথাটা লেখা থাকে — নইলে সংখ্যাটা আবার দুভাবে পড়া যেত।
+ *
+ * ⚠️ ট্র্যাকিং শুরুর আগের দিন **ডটেড**, শূন্য নয় — বোর্ডের বাকি জায়গার
+ * হুবহু একই নিয়ম (`TrendDay.tracked`)। "জানি না"-কে "কিছু হয়নি" বলা এই
+ * অ্যাপে সর্বত্র নিষিদ্ধ।
+ */
+function DesignsThisWeek({ days }: { days: TrendDay[] }) {
+  const total = days.reduce((sum, d) => sum + d.designsFinished, 0);
+
+  /**
+   * ⚠️ বারের উচ্চতা সবচেয়ে বড় দিনটার সাপেক্ষে, কোনো ধ্রুবক টার্গেটের নয় —
+   *    ডিজাইনের দৈনিক টার্গেট কর্মীভেদে আলাদা, আর দলগত কোনো টার্গেট নেই।
+   * ⚠️ `|| 1` — সব শূন্য হলে শূন্য দিয়ে ভাগ হতো।
+   */
+  const peak = Math.max(...days.map((d) => d.designsFinished), 0) || 1;
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-end justify-between gap-2">
+        {days.map((d) => {
+          const height = Math.round((d.designsFinished / peak) * 44);
+
+          return (
+            <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
+              <span
+                className={`num text-[11px] ${
+                  d.designsFinished > 0 ? 'font-semibold text-ink' : 'text-ink-3'
+                }`}
+              >
+                {/* ⚠️ না-দেখা দিনে সংখ্যা নয়, ড্যাশ — ০ একটা দাবি */}
+                {d.tracked ? d.designsFinished : '—'}
+              </span>
+
+              <div
+                title={`${formatDateShort(d.date)} · ${
+                  d.tracked
+                    ? `${d.designsFinished} finished`
+                    : 'not tracked yet'
+                }`}
+                className={
+                  d.tracked
+                    ? 'w-full rounded-[2px] bg-ok'
+                    : 'w-full rounded-[2px] border border-dotted border-line'
+                }
+                style={{ height: `${d.tracked ? Math.max(height, 2) : 8}px` }}
+              />
+
+              <span className="text-[10px] text-ink-3">{weekdayOf(d.date)}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-2 border-t border-line pt-2 text-[11px] text-ink-3">
+        <span className="num font-semibold text-ink">{total}</span> finished in
+        the last 7 days
+      </div>
+    </div>
+  );
+}
