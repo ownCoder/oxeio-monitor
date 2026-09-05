@@ -331,6 +331,23 @@ export class AgentController {
     const offer = await this.updates.offerFor(
       current ?? device.agentVersion ?? '0.0.0',
       device.machineGuid,
+      /**
+       * ⭐⭐⭐ **`device.id` ছাড়া "First to" কোনোদিন কাজ করেনি**
+       * *(৫ সেপ্টেম্বর ২০২৬)*।
+       *
+       * ⚠️⚠️ ঘরটা `offerFor()`-এ যোগ হয়েছিল ১ সেপ্টেম্বর, আর **heartbeat
+       * কলারটা** হালনাগাদ হয়েছিল — কিন্তু এই কলারটা হয়নি। ফলে
+       * `deviceId` এখানে `undefined`, `isPilot` চিরকাল `false`।
+       *
+       * ⚠️⚠️ ব্যর্থতাটা বিশেষভাবে বিভ্রান্তিকর ছিল, কারণ **অর্ধেক কাজ
+       * করত**: heartbeat (যে `device.id` পাঠায়) বেছে দেওয়া PC-কে
+       * `update_agent` কমান্ড পাঠাত, অর্থাৎ এজেন্ট জানত আপডেট আছে —
+       * তারপর সে এখানে এসে `204 No Content` পেত। কোনো এরর নয়, কোনো
+       * লগ নয়, শুধু একটা আপডেট যেটা কোনোদিন নামত না।
+       *
+       * ⭐ সেজন্যই OX-05 ০.৪.১০ আগে পাননি, যদিও ফিচারটা ওঁর জন্যই লেখা।
+       */
+      device.id,
     );
     if (!offer) {
       res.status(HttpStatus.NO_CONTENT);

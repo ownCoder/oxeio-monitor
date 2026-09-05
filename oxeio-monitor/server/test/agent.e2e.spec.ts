@@ -1053,4 +1053,65 @@ describe('auto-update (G34)', () => {
     ).expect(200);
     expect(res.body.version).toBe('1.10.0');
   });
+
+  /**
+   * ⭐⭐⭐ **"First to" — আর যে কারণে ওটা কোনোদিন কাজ করেনি**
+   * *(৫ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ `pilotDeviceId` ঘরটা `offerFor()`-এ যোগ হয়েছিল ১ সেপ্টেম্বর, আর
+   * **heartbeat কলারটা** `device.id` পাঠাত — কিন্তু **এই endpoint-টা
+   * পাঠাত না**। ফলে `isPilot` এখানে চিরকাল `false`।
+   *
+   * ⚠️⚠️ ব্যর্থতাটা বিশেষভাবে বিভ্রান্তিকর ছিল, কারণ **অর্ধেক কাজ করত**:
+   * heartbeat বেছে দেওয়া PC-কে `update_agent` কমান্ড পাঠাত (এজেন্ট জানত
+   * আপডেট আছে), তারপর সে এখানে এসে **২০৪** পেত। কোনো এরর নয়, কোনো লগ
+   * নয় — শুধু একটা আপডেট যেটা কোনোদিন নামত না।
+   *
+   * ⭐ ফিচারটা লেখাই হয়েছিল OX-05-এর জন্য (বালতি ৮৬), আর ঠিক সে-ই
+   * কোনোদিন সেটা পায়নি। এই প্রকল্পের চেনা ছাঁদ: **চুক্তি লেখা আছে,
+   * কলার লেখা হয়নি।**
+   */
+  it('⭐ বালতির বাইরে থাকা পাইলট PC তবু অফার পায়', async () => {
+    await h.prisma.agentVersion.create({
+      data: {
+        version: '9.9.9',
+        msiPath: 'agent/pilot.msi',
+        sha256: 'd'.repeat(64),
+        // ⚠️ canary ৭% — নিচের ডিভাইসটা এতে পড়ে কি না তার উপর ভরসা করা
+        //    হয় না; পাইলট বালতিকে **অগ্রাহ্য** করে, আর সেটাই দাবি।
+        rolloutStage: 'canary',
+        pilotDeviceId: device.deviceId,
+      },
+    });
+
+    const res = await asAgent(
+      h.http().get('/api/v1/agent/update?current=1.0.0'),
+      device.token,
+    ).expect(200);
+
+    expect(res.body.version).toBe('9.9.9');
+  });
+
+  /**
+   * ⚠️⚠️ **জরুরি ব্রেক পাইলটের উপরেও খাটে।** `halted` মানে বিল্ডটা মাঠে
+   * কিছু ভেঙেছে — তখন ঠিক সেই মেশিনটাতেই ওটা যেতে থাকা সবচেয়ে খারাপ,
+   * কারণ ওখানেই আমরা সবচেয়ে বেশি নজর রাখছি। ক্রমটাই এটা ঠিক করে
+   * (`isOfferedTo`-তে `percent <= 0` চেক পাইলটেরও আগে)।
+   */
+  it('⭐ `halted` হলে পাইলটও কিছু পায় না', async () => {
+    await h.prisma.agentVersion.create({
+      data: {
+        version: '9.9.9',
+        msiPath: 'agent/pilot.msi',
+        sha256: 'd'.repeat(64),
+        rolloutStage: 'halted',
+        pilotDeviceId: device.deviceId,
+      },
+    });
+
+    await asAgent(
+      h.http().get('/api/v1/agent/update?current=1.0.0'),
+      device.token,
+    ).expect(204);
+  });
 });
