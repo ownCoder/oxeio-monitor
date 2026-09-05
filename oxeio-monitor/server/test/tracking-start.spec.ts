@@ -7,6 +7,7 @@ import {
 import {
   elapsedWindow,
   elapsedWorkdays,
+  isObserved,
   proratedExpectedSec,
   rollupMonth,
   type ElapsedInput,
@@ -500,5 +501,103 @@ describe('একই ইনপুট → tray · Monthly · Live Board সবা�
 
     expect(oldTrayElapsed).toBe(4);
     expect(oldTrayElapsed).not.toBe(workdaysElapsed);
+  });
+});
+
+
+// ══════════════ ৬ · G111 — "দেখা হয়নি" আর "ঘাটতি নেই" আলাদা ══════════════
+
+/**
+ * ⭐⭐ **G111** — একই ০ দুটো সম্পূর্ণ বিপরীত কথা বলতে পারে।
+ *
+ * ⚠️⚠️ যাঁর একটাও **শেষ হয়ে যাওয়া** কর্মদিবস এখনো দেখা হয়নি, তাঁর জানালা
+ * খালি → প্রত্যাশা ০ → গতি ০। পর্দায় সেটা **হুবহু টার্গেট পূরণ করা মানুষের
+ * মতো** দেখায়। নতুন কর্মীর প্রথম সপ্তাহে বা কারো এজেন্ট বসাতে দেরি হলে ঠিক
+ * তখনই এটা ঘটে — আর তখন খবরটা "সব ঠিক আছে" বলে পড়া হয়।
+ */
+describe('isObserved — এক নিয়ম, তিন পর্দা', () => {
+  it('একটাও শেষ-হওয়া কর্মদিবস না দেখা হলে `false`', () => {
+    expect(isObserved({ workdaysElapsed: 0 })).toBe(false);
+  });
+
+  it('একটা দেখা হলেই `true` — "যথেষ্ট দেখা হয়েছে" কোনো ধারণা নেই', () => {
+    expect(isObserved({ workdaysElapsed: 1 })).toBe(true);
+  });
+
+  /**
+   * ⭐⭐ **এটাই আসল পাহারা।** ⚠️ পতাকাটা `daysWithWork` (কাজ করেছেন কি না)
+   * থেকে গুনলে যিনি দেখা-যাওয়া দিনে এক ঘণ্টাও কাজ করেননি তিনি "এখনো দেখা
+   * হয়নি" দেখাতেন — অর্থাৎ **সত্যিকারের ঘাটতিটাই ঢাকা পড়ত**, আর ত্রুটিটা
+   * ঠিক উল্টো দিকে গিয়ে আরও খারাপ হতো।
+   */
+  it('⭐ "দেখা হয়েছে" মানে "কাজ করেছেন" নয়', () => {
+    const numbers = rollupMonth({
+      workedSec: 0,
+      adjustmentSec: 0,
+      targetSec: 216 * HOUR,
+      expectedWorkdays: 27,
+      monthWorkdays: 27,
+      workdaysElapsed: 5,
+      daysWithWork: 0,
+    });
+
+    expect(numbers.daysWithWork).toBe(0);
+    expect(isObserved(numbers)).toBe(true);
+    // ⭐ আর তাই তাঁর ঘাটতিটা সত্যিকারের ঘাটতি, লুকানোর কিছু নেই
+    expect(numbers.paceSec).toBeLessThan(0);
+  });
+
+  /**
+   * ⭐⭐⭐ **এই ফাইলের G111-অংশের সবচেয়ে জরুরি টেস্ট।**
+   *
+   * ⚠️⚠️ দুজনের `paceSec` **হুবহু এক** (০), অথচ অবস্থা দুই মেরুর। পতাকাটা
+   * না থাকলে পর্দার কাছে এই দুটো অবস্থা সম্পূর্ণ অভিন্ন — আর তখন যাঁকে
+   * এখনো দেখাই হয়নি তিনিও "টার্গেট পূরণ" পড়তেন।
+   */
+  it('⭐ টার্গেট ঠিক পূরণ আর এখনো না-দেখা — গতি একই ০, অবস্থা আলাদা', () => {
+    const met = rollupMonth({
+      workedSec: 216 * HOUR,
+      adjustmentSec: 0,
+      targetSec: 216 * HOUR,
+      expectedWorkdays: 27,
+      monthWorkdays: 27,
+      workdaysElapsed: 27,
+      daysWithWork: 27,
+    });
+
+    const unseen = rollupMonth({
+      workedSec: 0,
+      adjustmentSec: 0,
+      targetSec: 216 * HOUR,
+      expectedWorkdays: 27,
+      monthWorkdays: 27,
+      // ⚠️ এজেন্ট আজই বসেছে — একটাও শেষ-হওয়া দিন নেই
+      workdaysElapsed: 0,
+      daysWithWork: 0,
+    });
+
+    expect(met.paceSec).toBe(0);
+    expect(unseen.paceSec).toBe(0);
+    expect(isObserved(met)).toBe(true);
+    expect(isObserved(unseen)).toBe(false);
+  });
+
+  /**
+   * ⭐ পতাকাটা যে জানালা থেকে প্রত্যাশা বেরোয় ঠিক সেখান থেকেই আসে —
+   * তাই "দেখা হয়েছে" আর "প্রত্যাশা আছে" কখনো দুই কথা বলতে পারে না।
+   */
+  it('⭐ জানালা খালি হলেই না-দেখা — দুটো এক সূত্রে বাঁধা', () => {
+    // ট্র্যাকিং আজই শুরু, তাই গতকাল পর্যন্ত কিছুই নেই
+    const input: ElapsedInput = { ...BASE, trackingStartedOn: day('2026-08-20') };
+
+    expect(elapsedWindow(input)).toBeNull();
+    expect(isObserved({ workdaysElapsed: elapsedWorkdays(input) })).toBe(false);
+    expect(
+      proratedExpectedSec({
+        targetSec: 216 * HOUR,
+        expectedWorkdays: 27,
+        workdaysElapsed: elapsedWorkdays(input),
+      }),
+    ).toBe(0);
   });
 });

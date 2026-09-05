@@ -4,7 +4,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { workDateOf } from '../src/agent/util/dhaka-time';
 import { SyntheticInputCheck } from '../src/alerts/synthetic-input.check';
-import { createHarness, resetDatabase, type Harness } from './setup/harness';
+import {
+  createHarness,
+  resetDatabase,
+  uniqueSuffix,
+  type Harness,
+  dhakaNoon,
+  realNow,
+} from './setup/harness';
 
 /**
  * **G46** — `synthetic_input` অ্যালার্ট সত্যিই ওঠে কি না।
@@ -19,8 +26,21 @@ let check: SyntheticInputCheck;
 let employeeId: number;
 let deviceId: number;
 
-const now = new Date();
-const workDate = workDateOf(now);
+/**
+ * ⭐⭐ **দুটো আলাদা "এখন", আর সেটা ইচ্ছাকৃত (G140)।**
+ *
+ * - `workDate` আসে `dhakaNoon()` থেকে — ফিক্সচারের কর্মদিবস, দুই সীমানা
+ *   থেকেই ১২ ঘণ্টা দূরে, তাই মধ্যরাতে দিন ঘুরে গিয়ে ভাঙে না।
+ * - `runOnce()` পায় **আসল ঘড়ি**, কারণ throttle মেলানো হয় অ্যালার্টের
+ *   `created_at`-এর সাথে — আর সেটা **ডাটাবেসের** `now()` থেকে আসে।
+ *
+ * ⚠️⚠️ দুটো এক করে দুপুর পাঠানো হয়েছিল, আর টেস্ট সাথে সাথেই ধরিয়ে দিল:
+ * ভোরে চালালে দুপুর আর DB-র `created_at`-এর ফারাক ৬ ঘণ্টার
+ * `THROTTLE_HOURS` ছাড়িয়ে যেত, তাই "দ্বিতীয়বার চালালে আর বসে না"
+ * দাবিটা ভাঙত। ⭐ অ্যাপের ঘড়ি আর ডাটাবেসের ঘড়ি এক না হলে পিন করা
+ * মুহূর্ত বসানো যায় না — এটাই `realNow()`-এর একমাত্র বৈধ কারণ।
+ */
+const workDate = workDateOf(dhakaNoon());
 
 /** ওই কর্মদিবসের ভেতরে একটা মুহূর্ত (ঢাকার ঘড়িতে) */
 const at = (hour: number, minute = 0): Date =>
@@ -109,7 +129,7 @@ beforeEach(async () => {
   await resetDatabase(h.prisma, h.app);
 
   const employee = await h.prisma.employee.create({
-    data: { empCode: `SI-${Date.now()}`, fullName: 'Belal Hossain' },
+    data: { empCode: `SI-${uniqueSuffix()}`, fullName: 'Belal Hossain' },
   });
   employeeId = employee.id;
   deviceId = await makeDevice('PC-SI');
@@ -124,7 +144,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(10), at(13), 98);
     await window(at(10), at(13), 'powershell.exe', 'Windows PowerShell');
 
-    expect(await check.runOnce(now)).toBe(1);
+    expect(await check.runOnce(realNow())).toBe(1);
 
     const [row] = await alerts();
     expect(row.employeeId).toBe(employeeId);
@@ -138,7 +158,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(9), at(12), 100);
     await window(at(9), at(12), 'powershell.exe', 'Windows PowerShell');
 
-    await check.runOnce(now);
+    await check.runOnce(realNow());
 
     const [row] = await alerts();
     expect(row.meta).toMatchObject({
@@ -159,7 +179,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(11, 10), at(12), 98);
     await window(at(10), at(12), 'powershell.exe', 'Windows PowerShell');
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
     expect(await alerts()).toHaveLength(0);
   });
 
@@ -168,7 +188,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await window(at(10), at(11, 30), 'chrome.exe', 'Inbox');
     await window(at(11, 30), at(13), 'chrome.exe', 'Docs');
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   it('হাত অসমান হলে অ্যালার্ট ওঠে না', async () => {
@@ -177,7 +197,7 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(11), at(13), 97);
     await window(at(10), at(13), 'illustrator.exe', 'poster.ai');
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   /**
@@ -194,18 +214,18 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(10, 50), at(11, 40), 98, second);
     await window(at(10, 50), at(11, 40), 'powershell.exe', 'Windows PowerShell', second);
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   /** ⚠️ `app_usage` না এলে সন্দেহ করা হয় না — না-জানা প্রমাণ নয় */
   it('foreground তথ্য না থাকলে অ্যালার্ট ওঠে না', async () => {
     await activeRun(at(10), at(13), 98);
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   it('কিছুই না থাকলে চুপচাপ শূন্য', async () => {
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   /**
@@ -216,8 +236,8 @@ describe('G46 — নকল ইনপুট ধরা', () => {
     await activeRun(at(10), at(13), 98);
     await window(at(10), at(13), 'powershell.exe', 'Windows PowerShell');
 
-    await check.runOnce(now);
-    await check.runOnce(now);
+    await check.runOnce(realNow());
+    await check.runOnce(realNow());
 
     expect(await alerts()).toHaveLength(1);
   });

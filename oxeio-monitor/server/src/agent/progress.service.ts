@@ -5,6 +5,8 @@ import {
   countLeaveWorkdays,
   countWorkdays,
   elapsedWorkdays,
+  isObserved,
+  unionSec,
 } from '../summary/summary.math';
 import { PrismaService } from '../prisma/prisma.service';
 import { trackedFromBy } from '../summary/tracking-start';
@@ -63,6 +65,21 @@ export interface EmployeeProgress {
    * সপ্তাহ কবে শুরু সেই নতুন ধারণা আমদানি করতে হতো।
    */
   week7TargetSec: number;
+
+  /**
+   * ⭐⭐ **G111** — তাঁর একটাও **শেষ হয়ে যাওয়া** কর্মদিবস এখনো দেখা হয়েছে
+   * কি না। `false` হলে উপরের `paceSec` ০, কিন্তু সেটা "টার্গেট পূরণ" নয় —
+   * "এখনো বলার মতো কিছু ঘটেনি"।
+   *
+   * ⚠️ এটা না পাঠালে tray-তে নতুন কর্মীর প্রথম দিনটা দেখতে হুবহু একজন
+   * এগিয়ে-থাকা মানুষের মতো — "০ ঘণ্টা পিছিয়ে"। ⭐ এজেন্ট এই পতাকা দেখেই
+   * গতির লেখাটা লুকিয়ে "Not observed yet" বসায়, নিজে থেকে `paceSec === 0`
+   * বিচার করে নয়; করলে টার্গেট ঠিক ছুঁয়ে ফেলা মানুষও ওই লেখাটা পেতেন।
+   *
+   * ⚠️ পুরোনো এজেন্ট ফিল্ডটা চেনে না, আর না চিনলে আগের মতোই আচরণ করে —
+   * তাই এটা যোগ করায় কিছু ভাঙে না।
+   */
+  observed: boolean;
 }
 
 /**
@@ -111,33 +128,72 @@ export class ProgressService {
     const holidayFrom = week7Start < monthStart ? week7Start : monthStart;
 
     const [
-      todayRow,
-      monthRow,
-      week7Row,
+      todaySpans,
+      monthPastRow,
+      week7PastRow,
       employee,
       adjustmentRow,
       holidayRows,
       leaveRows,
       firstSeen,
     ] = await Promise.all([
-        this.prisma.activitySegment.aggregate({
-          _sum: { durationSec: true },
+        /**
+         * ⭐⭐⭐ **G112 — এক সংজ্ঞা, দুটো উৎস।** সীমানাটা এখানে **লেখা**,
+         * কারণ পরের জন সবচেয়ে সহজে যেটা করবেন তা হলো দুটো যোগ করে ফেলা।
+         *
+         * ```
+         * শেষ হয়ে যাওয়া দিন  →  daily_summary.worked_sec   (rollup, ১৫ মিনিট)
+         * আজকের দিন          →  activity_segments-এর UNION  (লাইভ)
+         * ```
+         *
+         * ⚠️⚠️ **কেন কাঁচা যোগফল আর নয়:** আগে তিনটে সংখ্যাই ছিল
+         * `Σ duration_sec`, অর্থাৎ এজেন্টের **monotonic ঘড়ির যোগফল**।
+         * কিন্তু `daily_summary.worked_sec` হলো **দেয়ালঘড়ির UNION**
+         * (`summarizeDay`)। দুটো হুবহু মেলে না — ঘুম থেকে ওঠা, ঘড়ির
+         * সংশোধন, ছোট ফাঁক। ⭐ আর ফারাকটা সবচেয়ে বড় **দুই ডিভাইসওয়ালা**
+         * কর্মীর বেলায়: একসাথে দুই মেশিনে কাজ করলে ওই সময়টা যোগফলে
+         * **দুবার** গোনা হতো, UNION-এ একবার। ফলে তাঁর tray ড্যাশবোর্ডের
+         * চেয়ে বেশি ঘণ্টা দেখাত — G32-র `device_overlap` অ্যালার্ট ঠিক
+         * ওই ফারাকটাই মাপে।
+         *
+         * ⚠️ আজকের দিনটা rollup থেকে নেওয়া **যায় না**: ওটা ১৫ মিনিট
+         * পরপর চলে, তাই tray-র সংখ্যা ঘড়ির কাঁটার সাথে না নড়ে ধাপে ধাপে
+         * লাফাত — অথচ tray-র গোটা কাজই "এখন কত হলো" দেখানো।
+         *
+         * ⚠️ তাই আজকের দিনেও **UNION**, কাঁচা যোগফল নয়: উৎস দুটো, কিন্তু
+         * **সংজ্ঞা একটাই**। সংজ্ঞাটাও দুটো রাখলে সীমানা পেরোনোর সময়
+         * (মধ্যরাতে) সংখ্যাটা নিজে থেকেই এক লাফে বদলে যেত।
+         *
+         * ⚠️ **যে দামটা এতে দিতে হলো, সেটা জেনেই দেওয়া:** ঢাকার মধ্যরাত
+         * থেকে ০০:১৫ পর্যন্ত গতকালের সারিটা এখনো চূড়ান্ত নয় (day-close
+         * ০০:১৫-তে চলে, `day-close.job.ts`), তাই ওই পনেরো মিনিটে tray
+         * গতকালের শেষ কয়েক মিনিট বাদ দিতে পারে। আগে কাঁচা সেগমেন্ট
+         * যোগ করায় ওটা নিখুঁত ছিল। ⭐ তবু এটাই কাম্য: **ভুলটা এখন
+         * ড্যাশবোর্ডের সাথে অভিন্ন**, আর দুই পর্দায় এক সংখ্যা থাকাটা
+         * পনেরো মিনিটের নিখুঁততার চেয়ে দামি — এই ফিচারটার পুরো
+         * উদ্দেশ্যই আস্থা।
+         */
+        this.prisma.activitySegment.findMany({
           where: { employeeId, countsAsWork: true, workDate: today },
+          select: { startedAt: true, endedAt: true },
         }),
-        this.prisma.activitySegment.aggregate({
-          _sum: { durationSec: true },
+        /**
+         * ⚠️⚠️ `lt: today`, `lte` **নয়** — এই একটা অক্ষরই দ্বিগুণ গোনা
+         *    ঠেকায়। `lte` দিলে আজকের দিনটা rollup থেকেও আসত আর লাইভ
+         *    সেগমেন্ট থেকেও, অর্থাৎ সকালের কাজ দুবার।
+         */
+        this.prisma.dailySummary.aggregate({
+          _sum: { workedSec: true },
           where: {
             employeeId,
-            countsAsWork: true,
-            workDate: { gte: monthStart, lte: today },
+            workDate: { gte: monthStart, lt: today },
           },
         }),
-        this.prisma.activitySegment.aggregate({
-          _sum: { durationSec: true },
+        this.prisma.dailySummary.aggregate({
+          _sum: { workedSec: true },
           where: {
             employeeId,
-            countsAsWork: true,
-            workDate: { gte: week7Start, lte: today },
+            workDate: { gte: week7Start, lt: today },
           },
         }),
         this.prisma.employee.findUnique({
@@ -209,7 +265,16 @@ export class ProgressService {
         trackedFromBy(this.prisma, [employeeId]),
       ]);
 
-    const monthActiveSec = monthRow._sum.durationSec ?? 0;
+    /**
+     * ⭐ আজকের লাইভ সংখ্যা — **UNION**, কাঁচা যোগফল নয় (উপরের নোট দেখুন)।
+     *    দুই ডিভাইসে একসাথে কাজ করলে সময়টা একবারই গোনা হয়, ঠিক যেভাবে
+     *    `daily_summary.worked_sec` গোনে।
+     */
+    const todayActiveSec = unionSec(todaySpans);
+
+    // ⭐ G112 — শেষ হয়ে যাওয়া দিন rollup থেকে + আজকের দিন লাইভ
+    const monthActiveSec = (monthPastRow._sum.workedSec ?? 0) + todayActiveSec;
+    const week7ActiveSec = (week7PastRow._sum.workedSec ?? 0) + todayActiveSec;
     const monthlyTargetHours = Number(
       // পলিসি না থাকলে স্পেকের ডিফল্ট — শূন্য দিলে এজেন্টে ভাগ করতে গিয়ে
       // অসীম অগ্রগতি দেখাত
@@ -278,12 +343,12 @@ export class ProgressService {
     const todayIsWorkday = countWorkdays(today, today, off, holidays) > 0;
 
     return {
-      todayActiveSec: todayRow._sum.durationSec ?? 0,
+      todayActiveSec,
       monthActiveSec,
       // ⭐ G37 — এজেন্ট যা দেখাবে সেটা **তার** টার্গেট, ফ্ল্যাট ২০৮ নয়
       monthlyTargetHours: p.targetSec / 3600,
       dailyTargetSec: todayIsWorkday ? perWorkdayTargetSec : 0,
-      week7ActiveSec: week7Row._sum.durationSec ?? 0,
+      week7ActiveSec,
       /**
        * ⚠️ R2 — সাত দিনের টার্গেট থেকেও ছুটি বাদ। নইলে ছুটি কাটিয়ে ফেরা
        *    কেউ tray-তে "এই সপ্তাহে অনেক পিছিয়ে" দেখতেন — অথচ মাসিক
@@ -309,6 +374,8 @@ export class ProgressService {
         leaveWorkdays: p.leaveWorkdays,
         workdaysElapsed,
       }),
+      // ⭐ G111 — `paceSec`-এর ঠিক পাশে, কারণ এটা ওই সংখ্যাটা **পড়ার নিয়ম**
+      observed: isObserved({ workdaysElapsed }),
     };
   }
 }

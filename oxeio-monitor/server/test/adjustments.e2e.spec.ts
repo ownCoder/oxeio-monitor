@@ -14,6 +14,9 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   todayWindow,
+  dhakaNoon,
+  dhakaTodayIso,
+  realNow,
   type Harness,
 } from './setup/harness';
 
@@ -28,9 +31,8 @@ import {
 let h: Harness;
 let employeeId: number;
 
-/** ঢাকার আজকের তারিখ — ⚠️ UTC নয় (G62 · § ৩ঘ) */
-const todayDhaka = (): string =>
-  new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 10);
+/** ঢাকার আজকের তারিখ — ⚠️ UTC নয় (G62 · § ৩ঘ), আর হারনেস থেকে (G140) */
+const todayDhaka = (): string => dhakaTodayIso();
 
 beforeAll(async () => {
   h = await createHarness();
@@ -104,7 +106,7 @@ describe('ঘণ্টা ফেরত দেওয়া', () => {
      * `creditedSec` — ঠিক ৩৬০০। এটাই বাস্তবের ছবি: আসল কর্মীর সবসময়ই
      * আগের দিনের ট্র্যাকিং থাকে।
      */
-    const dhakaNow = new Date(Date.now() + 6 * 3600_000);
+    const dhakaNow = dhakaNoon();
     const monthStart = new Date(
       Date.UTC(dhakaNow.getUTCFullYear(), dhakaNow.getUTCMonth(), 1),
     );
@@ -200,7 +202,7 @@ describe('যা মেনে নেওয়া হয় না', () => {
 
   it('ভবিষ্যতের দিন → ৪০০', async () => {
     const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
-    const later = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const later = dhakaNoon(3).toISOString().slice(0, 10);
 
     const res = await s.http
       .post(`/api/v1/employees/${employeeId}/time-adjustments`)
@@ -405,7 +407,7 @@ describe('সেগমেন্টের সাথে মিলিয়ে', ()
       .http()
       .post('/api/v1/agent/segments')
       .set('Authorization', `Bearer ${device.token}`)
-      .set('X-Client-Time', new Date().toISOString())
+      .set('X-Client-Time', realNow().toISOString())
       .send({
         segments: [
           {

@@ -14,6 +14,8 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  uniqueSuffix,
+  realNow,
 } from './setup/harness';
 
 /**
@@ -67,7 +69,7 @@ async function staleCookie(user: {
   employeeId: number | null;
 }): Promise<string> {
   const key = new TextEncoder().encode(process.env.JWT_SECRET ?? '');
-  const tenMinutesAgo = Math.floor(Date.now() / 1000) - 10 * 60;
+  const tenMinutesAgo = Math.floor(realNow().getTime() / 1000) - 10 * 60;
 
   const token = await new SignJWT({
     email: user.email,
@@ -86,7 +88,7 @@ async function staleCookie(user: {
 
 async function staffWithLogin(code: string, role: 'employee' | 'manager') {
   const { employeeId } = await createEmployeeWithCode(h.prisma, code);
-  const email = `${code.toLowerCase()}-${Date.now()}@test.local`;
+  const email = `${code.toLowerCase()}-${uniqueSuffix()}@test.local`;
 
   const user = await h.prisma.user.create({
     data: {

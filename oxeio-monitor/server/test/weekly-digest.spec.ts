@@ -83,6 +83,8 @@ function att(over: Partial<AttendanceRow> = {}): AttendanceRow {
     date: TODAY_DATE,
     dayType: 'workday',
     status: 'worked',
+    // ⚠️ নমুনায় কেউ ছুটিতে নেই — এই ফিক্সচার G130 নিয়ে দাবি করে না
+    onLeave: false,
     workedHours: 8,
     idleHours: 0,
     adjustmentHours: 0,
@@ -972,6 +974,9 @@ const meta: ReportMeta = {
   // ⚠️ এই দুটো সাপ্তাহিক সারাংশ পড়ে না — শুধু `ReportMeta` পূরণ করতে
   expectedHours: {},
   approximateHolidayDates: [],
+  // ⚠️ নমুনায় কেউ 'না-দেখা' নয় — এই ফিক্সচার G110/G111 নিয়ে কোনো দাবি করে না
+  observed: {},
+  trackedFrom: {},
 };
 
 interface Stub {

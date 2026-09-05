@@ -194,6 +194,19 @@ export class AgentController {
     //    চেনে না, আর null বসিয়ে দিলে তার আপডেট অফারই বন্ধ হয়ে যেত (G59)।
     if (runningVersion && runningVersion !== device.agentVersion) {
       data.agentVersion = runningVersion;
+
+      /**
+       * ⭐⭐ **রোলআউট নিজে থেকে এগোনোর একমাত্র প্রমাণ** *(৫ সেপ্টেম্বর ২০২৬)*।
+       *
+       * ⚠️⚠️ সময়টা বসে **কেবল ভার্সন বদলালে** — প্রতি heartbeat-এ নয়।
+       * প্রতিবার বসালে ঘড়িটা রোজ শূন্য থেকে শুরু হতো, আর "ছ-ঘণ্টা ধরে
+       * টিকে আছে" শর্তটা **কোনোদিনই** সত্যি হতো না; রোলআউট চিরকাল
+       * canary-তেই আটকে থাকত, অর্থাৎ যে সমস্যাটা সারানো হচ্ছে সেটাই
+       * ফিরে আসত, কেবল আরও নীরবে।
+       *
+       * ⚠️ `if`-এর ভেতরে রাখাটা তাই ঘটনাচক্রে নয় — শর্তটাই সংজ্ঞা।
+       */
+      data.agentVersionSince = new Date();
     }
 
     await this.prisma.device.update({ where: { id: device.id }, data });

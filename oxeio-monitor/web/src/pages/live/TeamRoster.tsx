@@ -13,7 +13,13 @@ import type { GalleryItem } from '../../api/screenshots';
 import { getLatestShots, NO_SHOTS } from './latestShots';
 import { isWorking } from './onTheClock';
 import { DesignCell } from './DesignCell';
-import { designView, meterKind, restingStartsAt, rosterRows } from './roster';
+import {
+  dayDuty,
+  designView,
+  meterKind,
+  restingStartsAt,
+  rosterRows,
+} from './roster';
 import { ShotLightbox } from './ShotLightbox';
 
 /**
@@ -311,7 +317,16 @@ function CountsStrip({
  */
 function TodayCell({ card }: { card: LiveCard }) {
   const kind = meterKind(card);
-  const hasTarget = card.todayIsWorkday && card.dailyTargetSec > 0;
+  /**
+   * ⭐⭐ G130 — শর্তটা এখানে আর লেখা নেই (`roster.ts`-এর `dayDuty()`)।
+   *
+   * ⚠️⚠️ আগে এটা ছিল `todayIsWorkday && dailyTargetSec > 0`, আর
+   * `todayIsWorkday` **ব্যক্তিগত ছুটি চেনে না**। ফলে ছুটিতে থাকা কর্মীর
+   * ঘরে ফুটত "0h / 8h" আর একটা খালি মিটার — দেখতে হুবহু ফাঁকি দেওয়া
+   * মানুষের মতো, অথচ সংখ্যাগুলো তাঁকে অনেক আগেই ছাড় দিয়েছে।
+   */
+  const duty = dayDuty(card);
+  const hasTarget = duty === 'target';
 
   return (
     <div className="inline-block w-full max-w-[130px] text-right">
@@ -325,7 +340,16 @@ function TodayCell({ card }: { card: LiveCard }) {
           {kind === 'unknown' ? '—' : formatDuration(card.todayWorkedSec)}
         </span>
         <span className="num text-[11px] text-ink-3">
-          {hasTarget ? `/ ${targetText(card.dailyTargetSec)}` : 'day off'}
+          {/*
+            ⚠️ "day off" বলতে **গোটা অফিস বন্ধ** বোঝায়। ছুটিতে থাকা একজনের
+               বেলায় ওটা মিথ্যা, আর মিথ্যাটা তাঁর পক্ষেও নয় বিপক্ষেও নয় —
+               শুধু কারণটা ভুল বলে। তাই আলাদা কথা।
+          */}
+          {hasTarget
+            ? `/ ${targetText(card.dailyTargetSec)}`
+            : duty === 'leave'
+              ? 'on leave'
+              : 'day off'}
         </span>
       </div>
 

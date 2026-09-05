@@ -12,6 +12,7 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  uniqueSuffix,
 } from './setup/harness';
 import { resolveThrottle } from '../src/auth/login-throttle.config';
 
@@ -255,7 +256,7 @@ describe('POST /agent/enroll-login — রক্ষাকবচ', () => {
      * — তাই সাধারণ স্টাফ অ্যাকাউন্টটা তালাবন্ধ করে দিলে **পরের প্রতিটা
      * টেস্ট** ৪২৯ পেত। `auth.e2e.spec.ts`-ও ঠিক এই কৌশলেই চলে।
      */
-    const email = `locked-${Date.now()}@test.local`;
+    const email = `locked-${uniqueSuffix()}@test.local`;
     const password = 'another-password-123';
 
     await h.prisma.user.create({

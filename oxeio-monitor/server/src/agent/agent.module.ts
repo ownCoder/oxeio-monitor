@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { ActivityModule } from '../activity/activity.module';
+import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 
 import { AgentConfigService } from './agent-config.service';
@@ -11,6 +12,7 @@ import { DeviceRateLimitService } from './device-rate-limit.service';
 import { EnrollmentService } from './enrollment.service';
 import { IngestService } from './ingest.service';
 import { ProgressService } from './progress.service';
+import { RolloutAdvanceJob } from './rollout-advance.job';
 import { ScreenshotIngestService } from './screenshot-ingest.service';
 import { UpdateService } from './update.service';
 
@@ -18,11 +20,13 @@ import { UpdateService } from './update.service';
   // ⚠️ `AuthModule` শুধু `AuthService`-এর জন্য — স্টাফের লগইন দিয়ে
   //    enrollment (`/agent/enroll-login`)। পাসওয়ার্ড যাচাই, 2FA আর
   //    brute-force throttle সব ওখানেই, নকল করে লেখা হয়নি।
-  imports: [ActivityModule, AuthModule],
+  // ⭐ `AuditModule` — রোলআউট নিজে থেকে এগোলে খাতায় লেখা থাকতে হয়
+  imports: [ActivityModule, AuditModule, AuthModule],
   controllers: [AgentController],
   providers: [
     ProgressService,
     AgentConfigService,
+    RolloutAdvanceJob,
     ClockDriftService,
     DeviceAuthGuard,
     DeviceRateLimitService,

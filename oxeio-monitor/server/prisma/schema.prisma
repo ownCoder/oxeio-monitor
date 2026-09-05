@@ -334,6 +334,17 @@ model Device {
   machineGuid     String        @map("machine_guid")
   osVersion       String?       @map("os_version")
   agentVersion    String?       @map("agent_version")
+  /// ⭐⭐ **কবে থেকে এই ডিভাইস ওই ভার্সনটা চালাচ্ছে** *(৫ সেপ্টেম্বর ২০২৬)*।
+  ///
+  /// ⚠️⚠️ H04-এর রোলআউট নিজে থেকে এগোনোর (`canary → partial → all`)
+  /// একমাত্র প্রমাণ এটাই। `released_at` দিয়ে গোনা যেত না: ওটা বলে
+  /// **কবে প্রকাশ হয়েছে**, আর প্রশ্নটা হলো **কোনো আসল মেশিন কতক্ষণ ধরে
+  /// এটা চালিয়ে টিকে আছে**। প্রকাশের ছ-ঘণ্টা পর এগোলে canary-র পুরো
+  /// মানেই থাকত না — কেউ ইনস্টল না করলেও ধাপ বাড়ত।
+  ///
+  /// ⚠️ `null` মানে "জানি না" — ওই ডিভাইস কোনো প্রমাণ দেয় না। পুরোনো
+  /// সারিগুলো তাই খালি থাকে, আর পরের আপডেটেই ভরে যায়।
+  agentVersionSince DateTime?   @map("agent_version_since") @db.Timestamptz(3)
   /// device token-এর sha256 — plaintext কখনো জমা হয় না
   tokenHash       String        @map("token_hash")
   monitors        Int           @default(1)

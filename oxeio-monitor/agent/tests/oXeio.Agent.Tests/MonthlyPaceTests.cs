@@ -105,4 +105,62 @@ public class MonthlyPaceTests
     [InlineData(double.NaN)]
     public void লক্ষ্য_না_থাকলে_গতিও_নেই(double target) =>
         Assert.Null(MonthlyPace.Estimate(TimeSpan.FromHours(10), target, Dhaka(2026, 8, 10)));
+
+    // ══════════════ G111 — "এখনো দেখা হয়নি" সবার আগে ══════════════
+
+    /// <summary>
+    /// ⭐⭐⭐ <b>ক্রমটাই এই অংশের একমাত্র দাবি।</b>
+    ///
+    /// ⚠️⚠️ সার্ভার এই অবস্থায় <c>paceSec: 0</c> পাঠায়, তাই "0:00 ahead"
+    /// লেখা হতো — নতুন কর্মীর প্রথম দিনে একটা প্রশংসা, যেটার পেছনে একটাও
+    /// পর্যবেক্ষণ নেই।
+    /// </summary>
+    [Fact]
+    public void না_দেখা_হলে_সার্ভারের_শূন্যও_নয়()
+    {
+        Assert.Equal(
+            MonthlyPace.PaceView.NotObserved,
+            MonthlyPace.ViewFor(false, TimeSpan.Zero, TimeSpan.FromHours(-3)));
+    }
+
+    /// <summary>
+    /// ⭐⭐ <b>এটাই সবচেয়ে জরুরি টেস্ট।</b>
+    ///
+    /// ⚠️⚠️ শাখাটা আন্দাজের <b>পরে</b> বসালে এখানে <c>Estimated</c> ফিরত।
+    /// আর আন্দাজটা মাসের ১ তারিখ থেকে গোনে — অর্থাৎ ঠিক ওই না-দেখা
+    /// দিনগুলোকেই ঘাটতি বলে দেখাত, যেগুলোর জন্য সার্ভার ইচ্ছাকৃতভাবে কোনো
+    /// দাবি করেনি। একটা ভুল আশ্বাস সারাতে গিয়ে উল্টো দিকের ভুল অভিযোগ।
+    /// </summary>
+    [Fact]
+    public void না_দেখা_হলে_আন্দাজেও_ফেরা_যায_না()
+    {
+        Assert.Equal(
+            MonthlyPace.PaceView.NotObserved,
+            MonthlyPace.ViewFor(false, null, TimeSpan.FromHours(-94)));
+    }
+
+    /// <summary>⚠️ পুরোনো সার্ভার (<c>observed</c> নেই) → আচরণ অবিকল আগের মতো।</summary>
+    [Fact]
+    public void দেখা_হলে_সার্ভারের_সংখ্যাই()
+    {
+        Assert.Equal(
+            MonthlyPace.PaceView.Server,
+            MonthlyPace.ViewFor(true, TimeSpan.FromHours(-2), TimeSpan.FromHours(-9)));
+    }
+
+    /// <summary>সার্ভার চুপ, কিন্তু দেখা হয়েছে — তখনই কেবল আন্দাজ।</summary>
+    [Fact]
+    public void সার্ভার_না_বললে_আন্দাজ()
+    {
+        Assert.Equal(
+            MonthlyPace.PaceView.Estimated,
+            MonthlyPace.ViewFor(true, null, TimeSpan.FromHours(-9)));
+    }
+
+    /// <summary>লক্ষ্যই নেই — "0:00 hours ahead" অর্থহীন, লাইনটা বাদ।</summary>
+    [Fact]
+    public void কোনো_সংখ্যাই_না_থাকলে_লাইন_বাদ()
+    {
+        Assert.Equal(MonthlyPace.PaceView.None, MonthlyPace.ViewFor(true, null, null));
+    }
 }

@@ -112,4 +112,55 @@ public class HeartbeatProgressTests
 
         Assert.Equal(-26_640, response.Progress!.PaceSec);
     }
+
+    /// <summary>
+    /// ⭐⭐ <b>G111</b> — সার্ভার বলে দেয় pace-এর ০ কোন ধরনের ০।
+    ///
+    /// ⚠️⚠️ যাঁর একটাও শেষ-হওয়া কর্মদিবস দেখা হয়নি, তাঁর <c>paceSec</c> ঠিক
+    /// <c>0</c> আসে — আর ০ মানে "ঠিক লক্ষ্যে আছে"। পতাকাটা না পড়লে নতুন
+    /// কর্মীর প্রথম দিনে tray "0:00 ahead" লিখত।
+    /// </summary>
+    [Fact]
+    public void observed_মিথ্যা_এলে_পড়া_হয()
+    {
+        var response = Parse(
+            """
+            {
+              "progress": {
+                "todayActiveSec": 0,
+                "monthActiveSec": 0,
+                "monthlyTargetHours": 208,
+                "paceSec": 0,
+                "observed": false
+              }
+            }
+            """);
+
+        Assert.Equal(0, response.Progress!.PaceSec);
+        Assert.False(response.Progress.Observed);
+    }
+
+    /// <summary>
+    /// ⚠️⚠️ <b>পুরোনো সার্ভারে আচরণ অবিকল আগের মতো।</b> ফিল্ডটা না এলে
+    /// <c>null</c> — <c>false</c> নয়। <c>false</c> ধরে নিলে সার্ভার আপডেটের
+    /// আগে <b>প্রতিটা</b> tray "Not observed yet" লিখত, অথচ সবার হিসাবই
+    /// ঠিকঠাক চলছিল: একটা সত্যি বলতে গিয়ে সবার কাছে মিথ্যা।
+    /// </summary>
+    [Fact]
+    public void পুরোনো_সার্ভার_observed_না_পাঠালে_null()
+    {
+        var response = Parse(
+            """
+            {
+              "progress": {
+                "todayActiveSec": 0,
+                "monthActiveSec": 100,
+                "monthlyTargetHours": 208,
+                "paceSec": -3600
+              }
+            }
+            """);
+
+        Assert.Null(response.Progress!.Observed);
+    }
 }

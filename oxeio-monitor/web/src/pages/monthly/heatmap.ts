@@ -24,7 +24,21 @@ export type CellKind =
   /** `meta.to`-র পরের দিন — এখনো আসেনি */
   | 'future'
   /** ওই দিনে কর্মী এই অফিসে ছিলেন না (যোগ দেওয়ার আগে / ছেড়ে যাওয়ার পরে) */
-  | 'outside';
+  | 'outside'
+  /**
+   * ⭐⭐ **G110** — কর্মদিবস, কর্মকালের ভেতরে, কিন্তু **তাঁকে তখনো দেখা
+   * শুরু হয়নি** (`meta.trackedFrom`-এর আগে)।
+   *
+   * ⚠️⚠️ এই অবস্থাটা আলাদা করার আগে ওরা "কর্মদিবসে কিছুই হয়নি"-র লালচে
+   * ছোঁয়া পেত। ফলে একই পাতায় **সংখ্যাটা বলত "কোনো দাবি নেই"** (প্রত্যাশা
+   * ওই দিনগুলো ধরেই না) আর **ছবিটা বলত "ফাঁকি"** — আর মানুষ আগে ছবিটা
+   * দেখে। এই ইনস্টলেশনে এজেন্ট বসেছে ১৩ আগস্ট, তাই আগস্টের প্রতিটা পাতায়
+   * ১–১২ তারিখ লালচে ছিল।
+   *
+   * ⭐ Live Board-এর সাত-দিনের ফিতে G101-এ ঠিক এই কারণেই ডটেড রূপরেখা
+   * পেয়েছিল; Monthly বাদ পড়েছিল। চেহারাটা তাই ইচ্ছাকৃতভাবে **এক**।
+   */
+  | 'untracked';
 
 export interface DayCell {
   /** `YYYY-MM-DD` */
@@ -78,6 +92,18 @@ export interface EmployeeGridRow {
 
   /** কর্মকাল মাসের একাংশ হলে প্রথম ও শেষ কার্যকর দিন, নইলে `null` */
   partial: { from: string; to: string } | null;
+
+  /**
+   * ⭐⭐ **G111** — তাঁর একটাও **শেষ হয়ে যাওয়া** কর্মদিবস দেখা হয়েছে কি না।
+   *
+   * ⚠️⚠️ `false` হলে উপরের `expectedHours` ০, তাই `paceHours`-ও ০ — আর
+   * পর্দায় সেটা দেখতে **হুবহু টার্গেট পূরণ করা মানুষের মতো**। সারিটা তখন
+   * সংখ্যা নয়, একটা বাক্য দেখায়।
+   *
+   * ⚠️ সার্ভারের রায় (`meta.observed`), এখানে গোনা নয়: `expectedHours === 0`
+   * "সব দিন ছুটি ছিল"-ও হতে পারে, আর তখন কথাটা মিথ্যা হতো।
+   */
+  observed: boolean;
 }
 
 export interface MonthGrid {
@@ -96,6 +122,14 @@ export interface MonthGrid {
     monthTargetEstimated: boolean;
     /** যাঁরা `expected`-এর চেয়ে পিছিয়ে */
     behind: number;
+    /**
+     * ⭐⭐ **G111** — কতজনের হিসাব এখনো শুরুই হয়নি।
+     *
+     * ⚠️⚠️ উপরের `expectedHours` তাঁদের **ধরেই না**, তাই পাদটীকার
+     * যোগফলটা নীরবে কম দেখায় — দল যত পিছিয়ে, পাতাটা তার চেয়ে ভালো।
+     * সংখ্যাটা বাদ দেওয়া হয়নি, **বলা** হয়েছে।
+     */
+    notObserved: number;
   };
 }
 
@@ -145,6 +179,17 @@ export function buildMonthGrid(
     }
     const dailyTarget = dailyTargetHours > 0 ? dailyTargetHours : null;
 
+    /**
+     * ⭐ G110 — কবে থেকে তাঁকে দেখা শুরু। ⚠️ **শুধু ঘর আঁকার জন্য**;
+     * প্রত্যাশা এখনো সার্ভারের `expectedHours` থেকেই আসে। এই তারিখ দিয়ে
+     * যোগ করতে গেলে "আজকের দিন বাদ" নিয়মটাও এখানে লিখতে হতো, আর ঠিক
+     * সেভাবেই আগের বাগটা জন্মেছিল।
+     *
+     * ⚠️ `null` = তাঁকে **কখনোই** দেখা হয়নি, তাই মাসের সব কর্মদিবসই
+     *    না-দেখা। `undefined`-ও একই — meta-তে না থাকা মানে খবর নেই।
+     */
+    const seenFrom = report.meta.trackedFrom[employeeId] ?? null;
+
     const cells: DayCell[] = [];
     let creditedHours = 0;
     let workedHours = 0;
@@ -170,10 +215,26 @@ export function buildMonthGrid(
       if (row.workedHours > 0) daysWithWork += 1;
       if (row.dayType === 'weekly_off') weeklyOffWeekday ??= weekdayIndexOf(date);
 
+      /**
+       * ⭐⭐ **G110 — না-দেখা কর্মদিবস আর ফাঁকি দেওয়া কর্মদিবস এক নয়।**
+       *
+       * ⚠️ তিনটে শর্তই দরকার, আর প্রতিটার নিজের কারণ আছে:
+       *   ১· **কর্মদিবস** — ছুটির দিনের নিজের চেহারা আগে থেকেই ঠিক আছে,
+       *      ওটা বদলানোর কোনো কারণ নেই।
+       *   ২· **শূন্য ঘণ্টা** — owner সংশোধন দিয়ে না-দেখা দিনেও ঘণ্টা
+       *      বসাতে পারেন; বসালে দিনটা সত্যিই কিছু দেখিয়েছে, তখন ডটেড
+       *      ঘরে ঢেকে দিলে ওই ঘণ্টাগুলোই পর্দা থেকে উধাও হতো।
+       *   ৩· **ট্র্যাকিং-শুরুর আগে** — এটাই আসল প্রশ্ন।
+       */
+      const untracked =
+        row.dayType === 'workday' &&
+        row.creditedHours === 0 &&
+        (seenFrom === null || date < seenFrom);
+
       cells.push({
         date,
         day: dayNumber(date),
-        kind: 'day',
+        kind: untracked ? 'untracked' : 'day',
         dayType: row.dayType,
         workedHours: row.workedHours,
         adjustmentHours: row.adjustmentHours,
@@ -245,6 +306,12 @@ export function buildMonthGrid(
         firstDay && lastDay && (firstDay !== days[0] || lastDay < lastCovered)
           ? { from: firstDay, to: lastDay }
           : null,
+      /**
+       * ⚠️ `?? true` — meta-তে না থাকলে **"দেখা হয়েছে"** ধরা হয়, নইলে
+       *    পুরোনো একটা সার্ভারের সাথে গোটা পাতা "কারো হিসাব নেই" দেখাত।
+       *    সংখ্যাগুলো তখনো ঠিকই থাকত, শুধু ব্যাখ্যাটা মিথ্যা হতো।
+       */
+      observed: report.meta.observed[employeeId] ?? true,
     });
   }
 
@@ -334,6 +401,7 @@ function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
   let monthTargetKnown = false;
   let monthTargetEstimated = false;
   let behind = 0;
+  let notObserved = 0;
 
   for (const row of rows) {
     creditedHours += row.creditedHours;
@@ -342,6 +410,15 @@ function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
       targetHoursInRange += row.targetHoursInRange;
       monthTargetKnown = true;
       if (row.monthTargetEstimated) monthTargetEstimated = true;
+    }
+    /**
+     * ⚠️⚠️ **G111 — "পিছিয়ে" গোনার আগে "দেখা হয়েছে" কি না।** যাঁকে এখনো
+     * দেখাই হয়নি তাঁর `paceHours` ঠিক ০, তাই তিনি "পিছিয়ে" নন — কিন্তু
+     * "ঠিক আছেন"-ও নন। দুটো তালিকার কোনোটাতেই না রেখে আলাদা করে গোনা হয়।
+     */
+    if (!row.observed) {
+      notObserved += 1;
+      continue;
     }
     if (row.paceHours < -PACE_EPSILON) behind += 1;
   }
@@ -353,6 +430,7 @@ function totalsOf(rows: EmployeeGridRow[]): MonthGrid['totals'] {
     targetHoursInRange: monthTargetKnown ? targetHoursInRange : null,
     monthTargetEstimated,
     behind,
+    notObserved,
   };
 }
 

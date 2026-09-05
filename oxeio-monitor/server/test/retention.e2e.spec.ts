@@ -17,6 +17,7 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -60,7 +61,7 @@ async function makeShot(opts: {
    * ⭐ ধরা পড়েছে ঠিক তাই — রাত ১২:৩০-এ চালাতে গিয়ে। দিনের বেলা চালালে
    * চিরকাল সবুজ থাকত।
    */
-  const when = new Date(Date.now() - opts.daysAgo * 86_400_000);
+  const when = dhakaNoon(-opts.daysAgo);
   const day = workDateOf(when).toISOString().slice(0, 10);
   const uuid = randomUUID();
 
@@ -175,7 +176,7 @@ describe('retention জব — শরীরটা সত্যিই চলে',
   it('আগের অসম্পূর্ণ রানের বাকি কাজ শেষ করে (ফাইল নেই = সফল)', async () => {
     const half = await makeShot({
       daysAgo: 120,
-      deletedAt: new Date(),
+      deletedAt: dhakaNoon(),
       writeFiles: false,
     });
 

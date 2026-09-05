@@ -1,6 +1,6 @@
 import type { LiveCard } from '../../api/dashboard';
 import { DesignCell } from './DesignCell';
-import { designView } from './roster';
+import { dayDuty, designView } from './roster';
 import { ProgressBar } from '../../components/ProgressRing';
 import { StatusChip } from '../../components/StatusDot';
 import { PersonCell, Table, type Column } from '../../components/Table';
@@ -73,7 +73,19 @@ export function TeamTable({ cards }: { cards: LiveCard[] }) {
             {formatDuration(c.dailyTargetSec)}
           </span>
         ) : (
-          <span className="text-ink-3" title="Weekly off or holiday">
+          /*
+            ⭐ G130 — ড্যাশটা কেন, সেটা hover-এ বলা থাকে। ⚠️ আগে সবসময়
+               "Weekly off or holiday" লেখা থাকত, অথচ কারণটা ব্যক্তিগত
+               ছুটিও হতে পারে — আর তখন লেখাটা সরাসরি ভুল ছিল।
+          */
+          <span
+            className="text-ink-3"
+            title={
+              dayDuty(c) === 'leave'
+                ? 'On approved leave today'
+                : 'Weekly off or holiday'
+            }
+          >
             —
           </span>
         ),
@@ -218,7 +230,13 @@ function TodayBar({ card }: { card: LiveCard }) {
   );
 }
 
-/** আজ এই কর্মীর সত্যিই টার্গেট আছে কি না — ছুটির দিনে নেই */
+/**
+ * আজ এই কর্মীর সত্যিই টার্গেট আছে কি না — ছুটির দিনে নেই।
+ *
+ * ⚠️ নিয়মটা এখানে আর **লেখা নেই**, `roster.ts`-এর `dayDuty()`-তে। আগে
+ *    তিনটে পর্দায় তিনবার লেখা ছিল, আর G130-এর ব্যক্তিগত ছুটিটা তখন
+ *    একটাতে বসত আর দুটোতে বসত না।
+ */
 function hasTarget(card: LiveCard): boolean {
-  return card.todayIsWorkday && card.dailyTargetSec > 0;
+  return dayDuty(card) === 'target';
 }

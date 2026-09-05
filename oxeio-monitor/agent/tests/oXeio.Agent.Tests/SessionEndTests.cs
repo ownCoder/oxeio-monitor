@@ -48,14 +48,39 @@ public class SessionEndTests
                 1, Flags(Win32.ENDSESSION_CRITICAL | Win32.ENDSESSION_LOGOFF)));
 
     /// <summary>
-    /// ⚠️ Restart Manager অ্যাপটাকে বন্ধ করাচ্ছে (সাধারণত এজেন্ট-আপডেটের সময়) —
-    /// PC বন্ধ হচ্ছে না। এটাকে shutdown ধরলে প্রতিটা আপডেট একটা ভুয়া
-    /// "PC বন্ধ" রেকর্ড রেখে যেত, আর H04-এর প্রতিটা রাতের আপডেট সার্ভারে
-    /// পনেরোটা মিথ্যা শাটডাউন হয়ে বসত।
+    /// ⭐⭐⭐ <b>Restart Manager আমাদের বন্ধ করাচ্ছে — নিজের একটা নাম আছে</b>
+    /// <i>(৫ সেপ্টেম্বর ২০২৬)</i>।
+    ///
+    /// ⚠️ এটাকে <c>shutdown</c> ধরা যেত না: তাহলে প্রতিটা আপডেট একটা ভুয়া
+    /// "PC বন্ধ" রেকর্ড রেখে যেত, আর সার্ভারে বারোটা মিথ্যা শাটডাউন বসত।
+    ///
+    /// ⚠️⚠️ <b>কিন্তু আগে এখানে <c>null</c> ফিরত, আর সেটাই ছিল একটা নীরব
+    /// বাগ।</b> <c>null</c> মানে কোনো closing ইভেন্টই যায় না, অথচ
+    /// <c>agent_stop</c> ঠিকই যায় — আর সার্ভারের G02 একটা সঙ্গীহীন
+    /// <c>agent_stop</c>-কে <b>হস্তক্ষেপ</b> ধরে। ফলে প্রতিটা আপডেট একটা
+    /// মিথ্যা <c>agent_killed</c> অ্যালার্ট তুলত।
+    ///
+    /// ⭐ হাতে একটা-দুটো PC আপডেট করলে চোখে পড়ত না; রোলআউট নিজে থেকে
+    /// এগোতে শুরু করলে একসাথে ১২টা — আর তার পরেই কেউ আর অ্যালার্ট পড়ত না।
     /// </summary>
     [Fact]
-    public void শুধু_CLOSEAPP_কোনো_ইভেন্ট_নয়() =>
-        Assert.Null(SessionMonitor.InterpretEndSession(1, Flags(Win32.ENDSESSION_CLOSEAPP)));
+    public void শুধু_CLOSEAPP_মানে_আপডেট() =>
+        Assert.Equal(
+            AgentEventTypes.AgentUpdate,
+            SessionMonitor.InterpretEndSession(1, Flags(Win32.ENDSESSION_CLOSEAPP)));
+
+    /// <summary>
+    /// ⚠️⚠️ <b>CLOSEAPP-এর সাথে LOGOFF এলে ওটা সত্যিকারের logoff</b> — বিটগুলো
+    /// পরস্পর-বর্জক নয়। ⭐ ক্রমটা তাই গুরুত্বপূর্ণ: LOGOFF আগে দেখা হয়।
+    /// উল্টো হলে লগঅফের সময় Restart Manager জড়িত থাকলে সেটা "আপডেট" হয়ে
+    /// যেত, আর একটা আসল <c>logoff</c> ইভেন্ট হারাত।
+    /// </summary>
+    [Fact]
+    public void CLOSEAPP_আর_LOGOFF_একসাথে_হলে_logoff() =>
+        Assert.Equal(
+            AgentEventTypes.Logoff,
+            SessionMonitor.InterpretEndSession(
+                1, Flags(Win32.ENDSESSION_CLOSEAPP | Win32.ENDSESSION_LOGOFF)));
 
     /// <summary>
     /// wParam == FALSE মানে WM_QUERYENDSESSION-এ কেউ বাধা দিয়েছে — সেশন চলবে।
@@ -107,5 +132,13 @@ public class SessionEndTests
         Assert.Equal("logoff", AgentEventTypes.Logoff);
         Assert.Equal("shutdown", AgentEventTypes.Shutdown);
         Assert.Equal("agent_stop", AgentEventTypes.AgentStop);
+
+        /*
+         * ⚠️⚠️ এই স্ট্রিংটা সার্ভারের `alerts.rules.ts`-এর
+         * `CLEAN_STOP_CONTEXT`-এ **হুবহু** থাকতে হবে। এক অক্ষর আলাদা হলে
+         * জোড়া কখনো মিলত না, আর প্রতিটা আপডেট আবার মিথ্যা `agent_killed`
+         * অ্যালার্ট তুলত — কোনো এরর ছাড়াই।
+         */
+        Assert.Equal("agent_update", AgentEventTypes.AgentUpdate);
     }
 }

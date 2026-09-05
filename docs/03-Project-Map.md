@@ -275,7 +275,7 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১৪১৭টি টেস্ট, ৭৪টি ফাইল** *(২৩ আগস্ট মাপা, ১টি skipped)*
+│   └── test/                               ✅ Vitest + supertest — **১৬৪৫টি টেস্ট, ৮২টি ফাইল** *(৫ সেপ্টেম্বর মাপা, ১টি skipped)*
 │       #  ⚠️ ৪৪টি ফাইল DB ছাড়াই চলে; ২৩টি `*.e2e.spec.ts`
 │       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
@@ -283,13 +283,32 @@ oxeio-monitor/
 │       ├── holidays.spec.ts                ✅ ⭐ ৭৭ — তালিকা যাচাই · seed পরিকল্পনা ·
 │       │                                   #   "(সম্ভাব্য)" চিহ্নের দুই কপি এক আছে কি না
 │       ├── weekly-digest.spec.ts           ✅ ⭐ ৭৭ — R3-এর গণিত ও গ্রুপ-চ্যাট প্রহরী
-│       ├── tracking-start.spec.ts          ✅ ২৭ — `elapsedWindow()`: ট্র্যাকিং শুরুর
-│       │                                   #   আগের দিন কারো ব্যর্থতা নয়
+│       ├── tracking-start.spec.ts          ✅ ৩৩ — `elapsedWindow()`: ট্র্যাকিং শুরুর
+│       │                                   #   আগের দিন কারো ব্যর্থতা নয় · ⭐ G111:
+│       │                                   #   "দেখা হয়নি" আর "০ ঘাটতি" আলাদা
+│       ├── clock.spec.ts                   ✅ ⭐ ৬ — G140: স্পেকের ঘড়ি। `dhakaNoon()`
+│       │                                   #   ঢাকার দুই মধ্যরাত থেকেই ১১ঘ+ দূরে
+│       ├── reports.approximate-holidays.spec.ts ✅ ⭐⭐ ১২ — G108: অনিশ্চয়তা Excel-এর
+│       │                                   #   ভেতরে ও PDF-এ পৌঁছায়, আর দুটোর লেখা এক
+│       ├── on-leave-label.spec.ts          ✅ ⭐ ৭ — G130: "On leave" কাগজে ওঠে,
+│       │                                   #   আর `status`-এর ঘণ্টা ঢাকা পড়ে না
+│       ├── tray-credited.e2e.spec.ts       ✅ ⭐⭐ ৬ — G112: এক সংজ্ঞা, দুটো উৎস।
+│       │                                   #   দুই PC-র একই ৪ ঘণ্টা একবারই গোনা হয়
+│       ├── team-observed.e2e.spec.ts       ✅ ⭐ ৮ — G111 দলগত যোগফল কতজনের ·
+│       │                                   #   G130 কার্ডে "on leave"
+│       ├── rollout-advance.spec.ts         ✅ ⭐⭐ ১৯ — G141: ধাপ বাড়ানোর নিয়ম।
+│       │                                   #   ⚠️ আসল কাজ নতুন আচরণ নয়, পুরোনো
+│       │                                   #   নিরাপত্তা অক্ষত কি না দেখা
+│       ├── rollout-advance.e2e.spec.ts     ✅ ⭐⭐ ১২ — জোড়ার মুখ: কোয়েরি · কলাম ·
+│       │                                   #   অডিট। `halted` কখনো খোলে না
 │       ├── reports.target.spec.ts          ✅ ২৩ — রিপোর্টের দৈনিক টার্গেটও এখন
 │       │                                   #   পলিসির `expected_workdays` ভাগ করে
 │       ├── trend-expectation.spec.ts       ✅ ১৫ — ৭ দিনের ফিতের প্রত্যাশা এখন
 │       │                                   #   ক্যালেন্ডার দেখে, `daily_summary` সারি গুনে নয়
-│       └── setup/harness.ts  setup/global-setup.ts
+│       └── setup/harness.ts  setup/global-setup.ts  setup/clock.ts
+│                                           # ⭐ `clock.ts` আলাদা কেন: harness গোটা
+│                                           #   Nest + Postgres তোলে, অথচ খাঁটি
+│                                           #   স্পেকের ওটা লাগে না (G140)
 │
 ├── web/                                    # ── React 19 + Vite + Tailwind v4 ──
 │   ├── Dockerfile                          ✅ node build → Caddy। ⚠️ এটা না থাকায়
@@ -416,11 +435,14 @@ oxeio-monitor/
 │       ├── pages/employee/Adjustments.tsx  ✅ B14 · J08 — সংশোধনের তালিকা ও ফর্ম
 │       └── pages/MyDataPage.tsx            ✅ ⭐ J05 — tray-র "My data" এখানে নামে
 │           #  ⚠️ কোনো বোতাম নেই — একটা বসালেই approval workflow-র প্রথম ধাপ
-│   └── test/                               ✅ **১০৬টি, ৪ ফাইল**
+│   └── test/                               ✅ **১৩৭টি, ৬ ফাইল**
 │       ├── format.spec.ts                  ✅ ৬৪টি — ওয়েবের প্রথম টেস্ট
 │       ├── onTheClock.spec.ts              ✅ ৯টি — **Worklog**-এর দুই ট্যাব (`live/TeamCards.tsx`); বোর্ডের "Working now" টাইলও একই `isWorking()` ডাকে, তাই সংখ্যা দুটো কখনো আলাদা হয় না;
 │       │   #  ⚠️ কেউ যেন **কোনো ট্যাবেই না পড়ে নীরবে উধাও** হয়ে না যায়
-│       ├── roster.spec.ts                  ✅ ১২টি — সারির ক্রম **কখনো ঘণ্টা ধরে নয়** (লিডারবোর্ড হয়ে যেত)
+│       ├── roster.spec.ts                  ✅ ২৩টি — সারির ক্রম **কখনো ঘণ্টা ধরে নয়** (লিডারবোর্ড হয়ে যেত);
+│       │   #  ⭐ G130 — `dayDuty()`: ছুটির দিন আর অফিস-বন্ধ দিন দুটোতেই মিটার নেই, তবু কথা দুটো আলাদা
+│       ├── heatmap.spec.ts                 ✅ ⭐ ১১টি — G110 না-দেখা ঘর ডটেড · G111 "Not observed yet";
+│       │   #  ⚠️ `heatmap.ts`-এ এর আগে **একটাও টেস্ট ছিল না**, যদিও পাতাটার প্রায় সব নিয়ম ওখানেই
 │       └── fleet.spec.ts                   ✅ ২১টি — সবচেয়ে জরুরিটা *"০.৪.১০ ০.৪.৯-এর চেয়ে নতুন"*
 │       # ⚠️ `environment: 'node'`, jsdom নয় — এখানকার কিছুরই DOM লাগে না
 │       # ✅ ব্রাউজারে লগইন করে দেখা হয়েছে — ১১ আগস্ট মালিক ছ-টা পাতাই দুই থিমে ([09 § ৩ঈ](09-Build-Log.md)); ⚠️ বাকি কেবল স্বয়ংক্রিয় ব্রাউজার-টেস্ট

@@ -26,6 +26,7 @@ import {
 
 import { isWorkday, monthBoundsOf } from '../reports/reports.range';
 import { prorate } from '../summary/proration';
+import { isObserved } from '../summary/summary.math';
 import { designTargetOf } from '../summary/design.rules';
 import { trackedFromBy } from '../summary/tracking-start';
 
@@ -97,6 +98,23 @@ export interface LiveCard {
    * ⚠️ ছুটির দিনে "০ / ৮ ঘণ্টা" দেখানো অন্যায় — ওই দিনে কারো কিছু করার কথাই নয়।
    */
   todayIsWorkday: boolean;
+
+  /**
+   * ⭐⭐ **G130 (R2)** — আজ তিনি অনুমোদিত ছুটিতে কি না।
+   *
+   * ⚠️⚠️ ছুটি সংখ্যায় আগেই পৌঁছেছে (তাঁর টার্গেট কম, কেউ তাঁকে "পিছিয়ে"
+   * দেখায় না), কিন্তু কার্ডে **কিছুই লেখা ছিল না**। ফলে ছুটির দিনটা দেখতে
+   * হুবহু একটা অফলাইন কর্মীর মতো: ধূসর, শূন্য ঘণ্টা, কোনো heartbeat নেই।
+   * মালিক কার্ডটা দেখে ভাবতেন এজেন্ট বন্ধ, অথচ মানুষটা ছুটিতে।
+   *
+   * ⚠️ `todayIsWorkday`-র সাথে মেশানো হয়নি: ওটা **অফিসের** ক্যালেন্ডার
+   * (শুক্রবার · সরকারি ছুটি), আর এটা **ওই একজনের**। মিশিয়ে ফেললে
+   * "আজ ক-জন ছুটিতে" আর গোনা যেত না, আর ছুটির দিনের বার্তাটাও ভুল হতো।
+   *
+   * ⚠️ `leaves` টেবিল সরাসরি — কোনো কলামে লেখা হয় না, তাই ছুটি বাতিল
+   * করলে ব্যাজ পরের রিফ্রেশেই চলে যায়, rollup-এর অপেক্ষায় থাকে না।
+   */
+  onLeaveToday: boolean;
 
   /** মাসের হিসাব — এখন গৌণ, কিন্তু বেতনের ভিত্তি এটাই */
   monthWorkedSec: number;
@@ -194,6 +212,25 @@ export interface TrendMonth {
    * সমন্বয়টা একটা অদৃশ্য অনুমান হয়ে যেত।
    */
   trackedFrom: string | null;
+
+  /**
+   * ⭐⭐ **G111 — যোগফলটা আসলে কতজনের।**
+   *
+   * ⚠️⚠️ উপরের `expectedSec` হলো Σ `monthly_summary.expected_sec`। যাঁর
+   * একটাও শেষ-হওয়া কর্মদিবস এখনো দেখা হয়নি তাঁর ওই ঘর ০, তাই তাঁর
+   * **পুরো টার্গেটটাই যোগফল থেকে নীরবে বাদ** যায় — অর্থাৎ দল যত পিছিয়ে,
+   * বোর্ড তার চেয়ে **কম** দেখায়, আর ভুলটা সবসময় একই দিকে হেলে: সবকিছু
+   * আসলের চেয়ে ভালো দেখায়। নতুন কেউ যোগ দিলে বা কারো এজেন্ট বসাতে দেরি
+   * হলে ঠিক তখনই এটা ঘটে, আর তখনই কেউ খেয়াল করে না।
+   *
+   * ⭐ সংখ্যাটা বাদ দেওয়া হয়নি — **বলা** হয়েছে। যোগফলটা তখনো সৎ ("যাঁদের
+   * হিসাব আছে তাঁদের"), শুধু কার্ডে পাশে লেখা থাকে কতজন এর বাইরে।
+   * ওঁদের টার্গেট যোগ করে দিলে বোর্ড এমন ঘাটতির দাবি করত যেটা কেউ
+   * করেইনি — একটা মিথ্যা সারিয়ে ঠিক উল্টো মিথ্যা।
+   */
+  observedStaff: number;
+  /** ⚠️ ০ হলে পর্দায় কিছুই লেখা হয় না — নইলে প্রতিদিন একটা অর্থহীন লাইন */
+  notObservedStaff: number;
 }
 
 /** E01 — **আজীবন** সবচেয়ে বেশি ঘণ্টা যাঁদের */
@@ -605,6 +642,8 @@ export class DashboardService {
         todayWorkedSec: todaySec.get(e.id) ?? 0,
         dailyTargetSec: Math.round(target.dailyTargetSec),
         todayIsWorkday: isWorkday(today, rule),
+        // ⭐ G130 — ঠিক সেই `leaveBy` সেট, যেটা দিয়ে উপরে টার্গেট কমানো হয়
+        onLeaveToday: leaveBy.get(e.id)?.has(today.getTime()) ?? false,
         monthWorkedSec: monthSec.get(e.id) ?? 0,
         monthTargetSec: Math.round(target.targetSec),
         lastHeartbeatAt: latestHeartbeat(own),
@@ -756,6 +795,8 @@ export class DashboardService {
           expectedWorkdays: true,
           // ⭐ প্রত্যাশা আর এখানে গোনা হয় না — কেন, নিচের নোট দেখুন
           expectedSec: true,
+          // ⭐ G111 — যোগফলটা কাদের নিয়ে, সেটা বলার জন্য
+          workdaysElapsed: true,
         },
       }),
       /**
@@ -916,6 +957,12 @@ export class DashboardService {
     const creditedSec = monthRows.reduce((a, m) => a + m.creditedSec, 0);
 
     /**
+     * ⭐ G111 — নিয়মটা এখানে লেখা নেই, `isObserved()`-এ। tray-ও ঠিক ওটাই
+     * ডাকে, তাই বোর্ড আর tray কখনো দুই রকম গুনতে পারে না।
+     */
+    const observedStaff = monthRows.filter(isObserved).length;
+
+    /**
      * ⚠️ **সব মাস মিলিয়ে**, `yearMonth` ছাঁকা ছাড়া — উপরের `monthRows`
      *    চলতি মাসের, ওটা দিয়ে আজীবনের ক্রম বানানো যেত না।
      *
@@ -1014,6 +1061,8 @@ export class DashboardService {
         targetSec: monthRows.reduce((a, m) => a + m.targetSec, 0),
         expectedSec,
         paceSec: creditedSec - expectedSec,
+        observedStaff,
+        notObservedStaff: monthRows.length - observedStaff,
         trackedFrom: trackedFromMs
           ? formatWorkDate(new Date(trackedFromMs))
           : null,

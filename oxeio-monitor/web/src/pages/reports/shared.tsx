@@ -73,6 +73,36 @@ export function MetaNote({ meta }: { meta: ReportMeta }) {
           {meta.excludedEmployees.join(', ')}
         </Caveat>
       )}
+
+      {/*
+        ⭐⭐ G108 — সংখ্যাগুলো ভুল নয়, কিন্তু **অনিশ্চিত**, আর সেটাই এতদিন
+        অদৃশ্য ছিল। চান্দ্র ছুটির তারিখ চাঁদ দেখার পর নড়ে; নড়লে ওই মাসের
+        কর্মদিবস বদলায়, তার সাথে দৈনিক টার্গেটের হর আর পে-রোলের `d ÷ D`।
+
+        ⚠️⚠️ যে সময়ে এটা ধরা পড়ত সেটাই সবচেয়ে খারাপ সময়: ঘোষণা এসে তারিখ
+        সরার পর — অর্থাৎ সংখ্যাটা তখন ইতিমধ্যে ছাপা ও বিলি হয়ে গেছে।
+
+        ⚠️ তালিকাটা `meta` থেকেই, নতুন করে গোনা হয় না — গুনলে অনিশ্চয়তার
+        দ্বিতীয় সংজ্ঞা দাঁড়াত, আর একদিন পর্দা ও Excel দুই তালিকা দেখাত।
+      */}
+      {meta.approximateHolidayDates.length > 0 && (
+        <Caveat>
+          <span className="num">{meta.approximateHolidayDates.length}</span>{' '}
+          holiday date
+          {meta.approximateHolidayDates.length > 1 ? 's' : ''} in this range{' '}
+          {meta.approximateHolidayDates.length > 1 ? 'are' : 'is'} not final yet
+          (
+          {meta.approximateHolidayDates.map((d, i) => (
+            <span key={d}>
+              {i > 0 && ', '}
+              <b className="num">{formatDate(d)}</b>
+            </span>
+          ))}
+          ). Lunar dates move after the moon is sighted — if one moves, the
+          working days for that month change, and so do the target hours and the
+          payroll day fraction.
+        </Caveat>
+      )}
     </div>
   );
 }

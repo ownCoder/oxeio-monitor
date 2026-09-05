@@ -367,7 +367,28 @@ internal sealed class TodayForm : OwnerDrawnForm
             ? "Target met"
             : UiText.Duration(status.MonthlyRemaining) + " left";
 
-        if (pace is not { } value)
+        /*
+         * ⭐⭐ G111 — "এখনো দেখা হয়নি" আর "ঠিক লক্ষ্যে আছি" এক নয়।
+         *
+         * ⚠️⚠️ সার্ভার এই অবস্থায় pace ঠিক ০ পাঠায়, তাই নিচের শাখাটা
+         * "0:00 ahead" লিখত — নতুন কর্মীর প্রথম দিনে একটা প্রশংসা, যেটার
+         * পেছনে একটাও পর্যবেক্ষণ নেই।
+         *
+         * ⚠️⚠️ **শাখাটা `PaceOf`-এর আগে**, আর সেটাই আসল কথা: পরে বসালে
+         * আনুমানিক হিসাবটা (`MonthlyPace.Estimate`) আগেই চলে যেত, আর ওটা
+         * মাসের ১ তারিখ থেকে গোনে — অর্থাৎ ঠিক ওই না-দেখা দিনগুলোকেই
+         * ঘাটতি বলে দেখাত। একটা ভুল আশ্বাস সারাতে গিয়ে উল্টো দিকের একটা
+         * ভুল অভিযোগ।
+         */
+        var view = MonthlyPace.ViewFor(status.PaceObserved, status.Pace, pace);
+
+        if (view is MonthlyPace.PaceView.NotObserved)
+        {
+            stack.Legend(left, "Not observed yet", Theme.Ink3);
+            return;
+        }
+
+        if (view is MonthlyPace.PaceView.None || pace is not { } value)
         {
             stack.Legend(left, string.Empty, Theme.Ink3);
             return;
@@ -382,7 +403,7 @@ internal sealed class TodayForm : OwnerDrawnForm
 
         // ⚠️ সার্ভারের পাঠানো নয়, আমাদের আন্দাজ হলে সেটা লুকোনো যাবে না —
         //    শব্দটা ছুটির দিনের হিসাব নিয়ে আমাদের না-জানার স্বীকারোক্তি।
-        if (status.Pace is null) text += " (estimated)";
+        if (view is MonthlyPace.PaceView.Estimated) text += " (estimated)";
 
         // ⭐ পিছিয়ে থাকা **আম্বার**, লাল নয়। লাল এই জানালায় শুধু
         //    "ডেটা সার্ভারে পৌঁছাচ্ছে না"-র জন্য — সেটা সিস্টেমের ব্যর্থতা,

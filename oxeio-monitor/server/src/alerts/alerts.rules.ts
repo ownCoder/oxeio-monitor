@@ -341,8 +341,33 @@ export interface StopEvent {
   occurredAt: Date;
 }
 
-/** ⚠️ শুধু এই দুটোই "PC বন্ধ হচ্ছে" বোঝায় — agent_stop নিজে কিছুই বোঝায় না */
-const SHUTDOWN_CONTEXT: readonly string[] = ['logoff', 'shutdown'];
+/**
+ * ⭐⭐ **যেসব ইভেন্ট একটা `agent_stop`-কে "স্বাভাবিক" বলে ব্যাখ্যা করে।**
+ *
+ * ⚠️ `agent_stop` নিজে কিছুই বোঝায় না — দিনে দুবার সবার PC-তে এটা ঘটে,
+ * আবার কেউ Task Manager থেকে মেরে দিলেও ঠিক এটাই আসে। পার্থক্য করার
+ * একমাত্র সূত্র আশেপাশের এই ইভেন্টগুলো।
+ *
+ * ⚠️⚠️ **`agent_update` যোগ হয়েছে ৫ সেপ্টেম্বর ২০২৬** — আর সেটা নিছক
+ * একটা নাম যোগ করা নয়, একটা **নীরব মিথ্যা অ্যালার্ট** বন্ধ করা। এজেন্টের
+ * MSI আপডেট বসানোর সময় Windows-এর Restart Manager এজেন্টকে বন্ধ করায়
+ * (`ENDSESSION_CLOSEAPP`)। তখন `agent_stop` ঠিকই যেত, কিন্তু পাশে
+ * `logoff`/`shutdown` কিছুই থাকত না — কারণ PC বন্ধ হচ্ছিল না। ফলে
+ * **প্রতিটা আপডেট একটা `agent_killed` warning তুলত**।
+ *
+ * ⭐ হাতে একটা-দুটো PC আপডেট করলে সেটা চোখে পড়ত না। কিন্তু রোলআউট নিজে
+ * থেকে এগোতে শুরু করলে একসাথে ১২টা মিথ্যা অ্যালার্ট — আর তার পরেই কেউ
+ * আর অ্যালার্ট পড়ত না, অর্থাৎ G02 কার্যত অকেজো হয়ে যেত।
+ *
+ * ⚠️ **ছাড়টা সংকীর্ণ, আর সেটাই নকশা:** `agent_update` কেবল তখনই যায়
+ * যখন Windows নিজে আমাদের বন্ধ করাচ্ছে। কেউ প্রসেসটা মেরে দিলে ওটা যায়
+ * না, তাই আসল হস্তক্ষেপ আগের মতোই ধরা পড়ে।
+ */
+export const CLEAN_STOP_CONTEXT: readonly string[] = [
+  'logoff',
+  'shutdown',
+  'agent_update',
+];
 
 /**
  * ⭐ agent_stop একই সাথে সবচেয়ে সাধারণ আর সবচেয়ে সন্দেহজনক ইভেন্ট।
@@ -366,7 +391,7 @@ export function isTamperStop(
   const paired = sameDeviceEvents.some(
     (e) =>
       e.deviceId === stop.deviceId &&
-      SHUTDOWN_CONTEXT.includes(e.type) &&
+      CLEAN_STOP_CONTEXT.includes(e.type) &&
       Math.abs(e.occurredAt.getTime() - stop.occurredAt.getTime()) <= windowMs,
   );
 

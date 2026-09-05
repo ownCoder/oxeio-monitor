@@ -1897,6 +1897,10 @@ internal sealed class AgentHost : IAsyncDisposable
             //    "ঠিক লক্ষ্যে আছে" এক জিনিস নয় (AgentStatus.Pace দেখুন)।
             Pace = progress?.PaceSec is { } sec ? TimeSpan.FromSeconds(sec) : null,
 
+            // ⭐ G111 — উপরের ০ "ঠিক লক্ষ্যে" নাকি "এখনো দেখাই হয়নি"।
+            // ⚠️ `!= false` — সার্ভার না বললে (null) আগের মতোই আচরণ।
+            PaceObserved = progress?.Observed != false,
+
             // ⚠️ এখানেও null মানে "সার্ভার বলেনি"; Zero মানে "আজ ছুটি"।
             DailyTarget = progress?.DailyTargetSec is { } day
                 ? TimeSpan.FromSeconds(day)
@@ -2077,6 +2081,12 @@ internal sealed class AgentHost : IAsyncDisposable
 
             if (_closingEventsSent.Contains(AgentEventTypes.Logoff))
                 return AgentEventTypes.Logoff;
+
+            // ⭐ আপডেটের জন্য বন্ধ হওয়াটাও একটা **জানা** কারণ, "unknown" নয়।
+            //   ⚠️ কারণটা লেখা না থাকলে ইভেন্টের গায়ে চিরকাল "কে জানে কেন
+            //   বন্ধ হলো" বসে থাকত, অথচ আমরা ঠিকই জানতাম।
+            if (_closingEventsSent.Contains(AgentEventTypes.AgentUpdate))
+                return AgentEventTypes.AgentUpdate;
         }
 
         return "unknown";

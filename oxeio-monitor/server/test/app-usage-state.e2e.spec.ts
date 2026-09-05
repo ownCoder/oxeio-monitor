@@ -13,6 +13,7 @@ import {
   todayWindow,
   type EnrolledDevice,
   type Harness,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -129,7 +130,7 @@ describe('POST /agent/app-usage — segment state', () => {
      * কোনো ভুল নেই। ⭐ ইনজেস্ট নিজে `workDateOf()` দিয়েই দিন ঠিক করে,
      * তাই টেস্টেরও সেটাই ব্যবহার করা উচিত।
      */
-    const day = workDateOf(new Date()).toISOString().slice(0, 10);
+    const day = workDateOf(dhakaNoon()).toISOString().slice(0, 10);
     const top = await h.app
       .get(ActivityService)
       .top({ from: day, to: day, limit: 10 });

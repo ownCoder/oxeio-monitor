@@ -13,6 +13,7 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  uniqueSuffix,
 } from './setup/harness';
 
 /**
@@ -295,7 +296,7 @@ describe('GET /employees — সেটআপের অবস্থা', () => {
         hostname: 'OLD-DESKTOP',
         windowsUsername: 'someone',
         employeeId,
-        machineGuid: `mix-${Date.now()}`,
+        machineGuid: `mix-${uniqueSuffix()}`,
         tokenHash: 'not-a-real-token',
         status: 'revoked',
       },

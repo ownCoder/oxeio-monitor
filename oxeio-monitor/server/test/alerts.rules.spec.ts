@@ -502,6 +502,52 @@ describe('G02 — agent_stop স্বাভাবিক নাকি হস্�
     expect(tamperSeverity('uninstall')).toBe('critical');
     expect(tamperSeverity('agent_stop')).toBe('warning');
   });
+
+  /**
+   * ⭐⭐⭐ **এজেন্ট নিজের আপডেট বসানোও একটা স্বাভাবিক বন্ধ**
+   * *(৫ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **এতদিন এটা একটা নীরব মিথ্যা অ্যালার্ট ছিল।** MSI আপডেটের সময়
+   * Windows-এর Restart Manager এজেন্টকে বন্ধ করায় (`ENDSESSION_CLOSEAPP`)।
+   * তখন `agent_stop` ঠিকই যেত, কিন্তু পাশে `logoff`/`shutdown` কিছুই
+   * থাকত না — কারণ PC বন্ধ হচ্ছিল না। ফলে **প্রতিটা আপডেট একটা
+   * `agent_killed` warning তুলত**, অর্থাৎ কেউ আপডেট বসালেই তাকে
+   * হস্তক্ষেপকারী বলে দাগানো হতো।
+   *
+   * ⭐ হাতে একটা-দুটো PC আপডেট করলে সেটা চোখে পড়ত না। কিন্তু রোলআউট নিজে
+   * থেকে এগোতে শুরু করার পর একসাথে ১২টা মিথ্যা অ্যালার্ট — আর তার পরেই
+   * কেউ আর অ্যালার্ট পড়ত না, অর্থাৎ G02 কার্যত অকেজো হয়ে যেত।
+   */
+  it('⭐ পাশে agent_update থাকলে স্বাভাবিক — আপডেট হস্তক্ষেপ নয়', () => {
+    const context = [
+      stop({ type: 'agent_update', occurredAt: new Date(at.getTime() + 5_000) }),
+    ];
+    expect(isTamperStop(stop(), context)).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ **ছাড়টা সংকীর্ণ, আর সেটাই নকশা।** `agent_update` কেবল তখনই যায়
+   * যখন Windows নিজে আমাদের বন্ধ করাচ্ছে। কেউ Task Manager থেকে প্রসেসটা
+   * মেরে দিলে ওটা যায় না — তাই আসল হস্তক্ষেপ আগের মতোই ধরা পড়ে।
+   *
+   * ⭐ এই টেস্টটাই বলে দেয় ছাড়টা কতটুকু: একটা নাম যোগ করা হয়েছে,
+   *    পাহারাটা আলগা করা হয়নি।
+   */
+  it('⭐ আপডেট ছাড়া বন্ধ এখনো হস্তক্ষেপই', () => {
+    expect(isTamperStop(stop(), [])).toBe(true);
+  });
+
+  /** ⚠️ অন্য PC-র আপডেট এই PC-র agent_stop ব্যাখ্যা করে না */
+  it('অন্য ডিভাইসের agent_update কোনো ছাড় দেয় না', () => {
+    const context = [stop({ deviceId: 2, type: 'agent_update' })];
+    expect(isTamperStop(stop(), context)).toBe(true);
+  });
+
+  /** ⚠️ আনইনস্টলের কোনো ছাড় নেই — আপডেট পাশে থাকলেও */
+  it('আপডেটের পাশেও আনইনস্টল হস্তক্ষেপই', () => {
+    const context = [stop({ type: 'agent_update' })];
+    expect(isTamperStop(stop({ type: 'agent_uninstall' }), context)).toBe(true);
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════════════

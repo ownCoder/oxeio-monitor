@@ -1,4 +1,5 @@
 import { resolve, sep } from 'node:path';
+import { dhakaNoon } from './setup/clock';
 
 import { describe, expect, it } from 'vitest';
 
@@ -491,9 +492,9 @@ describe('retentionCutoff — K01-এর সবচেয়ে বিপজ্�
    * জব নীরবে আজকের ছবিসহ পুরো আর্কাইভ মুছে দিত — ফাইল ও সারি দুটোই।
    */
   it('শূন্য বা ঋণাত্মক দিনে থেমে যায়', () => {
-    expect(() => retentionCutoff(new Date(), 0)).toThrow(RangeError);
-    expect(() => retentionCutoff(new Date(), -1)).toThrow(RangeError);
-    expect(() => retentionCutoff(new Date(), Number.NaN)).toThrow(RangeError);
+    expect(() => retentionCutoff(dhakaNoon(), 0)).toThrow(RangeError);
+    expect(() => retentionCutoff(dhakaNoon(), -1)).toThrow(RangeError);
+    expect(() => retentionCutoff(dhakaNoon(), Number.NaN)).toThrow(RangeError);
   });
 });
 

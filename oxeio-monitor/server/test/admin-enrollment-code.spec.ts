@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { dhakaNoon } from './setup/clock';
 
 import { describe, expect, it } from 'vitest';
 
@@ -153,7 +154,7 @@ describe('enrollment code — মেয়াদ', () => {
   });
 
   it('মেয়াদ সবসময় ভবিষ্যতে', () => {
-    const now = new Date();
+    const now = dhakaNoon();
 
     expect(enrollmentCodeExpiry(now).getTime()).toBeGreaterThan(now.getTime());
   });

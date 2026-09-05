@@ -154,7 +154,7 @@ export function HeatGrid({
                     fullName={row.fullName}
                     note={
                       <>
-                        <Pace hours={row.paceHours} compact />
+                        <Pace hours={row.paceHours} compact observed={row.observed} />
                         {/*
                           ⚠️ এখানে `formatDateShort()` নয়। গোটা গ্রিডটাই এক
                              মাসের, তাই মাসের নাম বাড়তি — আর সরু কলামে
@@ -195,7 +195,7 @@ export function HeatGrid({
                   <Hours hours={row.expectedHours} tone="muted" />
                 </td>
                 <td className="px-3 py-1 text-right">
-                  <Pace hours={row.paceHours} />
+                  <Pace hours={row.paceHours} observed={row.observed} />
                 </td>
                 <td className="px-3 py-1 text-right">
                   <MonthTarget row={row} />
@@ -208,6 +208,19 @@ export function HeatGrid({
             <tr>
               <td className="sticky left-0 z-10 border-r border-line bg-paper px-3 py-2 text-[12px] text-ink-2">
                 Everyone
+                {/*
+                  ⭐⭐ G111 — যোগফলটা **কাদের নিয়ে**, সেটা যোগফলের পাশেই।
+                  ⚠️⚠️ যাঁদের এখনো দেখা হয়নি তাঁদের প্রত্যাশা ০, তাই তাঁদের
+                     পুরো টার্গেটটাই ডানের যোগফল থেকে নীরবে বাদ — অর্থাৎ দল
+                     যত পিছিয়ে, পাতাটা তার চেয়ে **ভালো** দেখায়। যোগ করে
+                     দেওয়া যেত না: তাতে এমন ঘাটতির দাবি হতো যেটা কেউ করেনি।
+                  ⚠️ ০ হলে লাইনটাই বসে না — নইলে রোজ একটা অর্থহীন বাক্য।
+                */}
+                {grid.totals.notObserved > 0 && (
+                  <div className="mt-0.5 text-[11px] font-normal text-ink-3">
+                    {grid.totals.notObserved} not observed yet
+                  </div>
+                )}
               </td>
               <td colSpan={grid.days.length} />
               <td className="px-3 py-2 pl-5 text-right">
@@ -261,6 +274,22 @@ function Cell({
     look = 'border border-dashed border-line';
   } else if (cell.kind === 'outside') {
     look = 'border border-dotted border-line/60 opacity-50';
+  } else if (cell.kind === 'untracked') {
+    /**
+     * ⭐⭐ **G110 — সেদিন আমরা দেখছিলামই না।**
+     *
+     * ⚠️⚠️ আগে এই ঘরগুলো নিচের `!off && !worked` শাখায় পড়ত, অর্থাৎ
+     * "কর্মদিবসে কিছুই হয়নি"-র লালচে ছোঁয়া পেত। ফলে একই পাতায় সংখ্যাটা
+     * বলত "কোনো দাবি নেই" আর ছবিটা বলত "ফাঁকি" — আর মানুষ আগে ছবিটা
+     * দেখে। এই ইনস্টলেশনে এজেন্ট বসেছে ১৩ আগস্ট, তাই আগস্টের প্রতিটা
+     * পাতায় ১–১২ তারিখ লালচে ছিল।
+     *
+     * ⭐ চেহারাটা `outside`-এর ডটেড রূপরেখা, তবে **ম্লান নয়** — Live
+     * Board-এর সাত-দিনের ফিতেয় G101 ঠিক এটাই ব্যবহার করে। দুই পর্দায় এক
+     * জিনিসের দুই চেহারা হলে মানুষকে দুবার শিখতে হতো।
+     * ⚠️ কোনো লাল নেই, কোনো র‍্যাম্প নেই — না-দেখা কোনো অভিযোগ নয়।
+     */
+    look = 'border border-dotted border-line';
   } else if (off && !worked) {
     // ⚠️ ছুটির দিনে ০ ঘণ্টা = ফাঁকি নয়। এখানে কোনো লাল নেই, কোনো র‍্যাম্প নেই।
     look = 'border border-line';
@@ -306,6 +335,12 @@ function cellLabel(cell: DayCell, fullName: string): string {
 
   if (cell.kind === 'future') return `${when} · day has not arrived yet`;
   if (cell.kind === 'outside') return `${when} · outside their time here`;
+  /**
+   * ⚠️ কথাটা "০ ঘণ্টা" নয়, **"গোনা হচ্ছিল না"** — ⭐ ফোনে হোভার নেই, তাই
+   * এই লেখাটাই অনেকের জন্য একমাত্র ব্যাখ্যা, আর ভুল পড়াটা এখানেই ঘটে।
+   */
+  if (cell.kind === 'untracked')
+    return `${when} · not being tracked yet — this day is not counted against them`;
 
   const type = cell.dayType ? DAY_TYPE_LABEL[cell.dayType] : '';
   const target =
@@ -401,7 +436,34 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
  * ⚠️ `credited − expected`, `worked − expected` নয় (§ ২.১-ঙ) — নইলে owner-এর
  *    দেওয়া সংশোধন এখানে উধাও হয়ে যেত আর ঠিক করা ঘাটতি আবার ঘাটতি দেখাত।
  */
-function Pace({ hours, compact = false }: { hours: number; compact?: boolean }) {
+function Pace({
+  hours,
+  compact = false,
+  observed = true,
+}: {
+  hours: number;
+  compact?: boolean;
+  /**
+   * ⭐⭐ **G111** — তাঁকে একটাও শেষ-হওয়া কর্মদিবসে দেখা হয়েছে কি না।
+   *
+   * ⚠️⚠️ না দেখা হলে `hours` ঠিক ০, আর নিচের শাখাটা তখন **"On track"**
+   * লিখত — অর্থাৎ পাতাটা এমন একটা আশ্বাস দিত যেটার পেছনে একটাও
+   * পর্যবেক্ষণ নেই। নতুন কর্মীর প্রথম সপ্তাহে বা কারো এজেন্ট বসাতে দেরি
+   * হলে ঠিক তখনই এটা ঘটে, আর তখনই আশ্বাসটা সবচেয়ে ক্ষতিকর।
+   */
+  observed?: boolean;
+}) {
+  if (!observed) {
+    return (
+      <span
+        className="text-ink-3"
+        title="No finished workday has been seen for them yet, so there is nothing to be on track with"
+      >
+        Not observed yet
+      </span>
+    );
+  }
+
   if (Math.abs(hours) <= PACE_EPSILON) {
     return <span className="num text-ink-3">On track</span>;
   }
@@ -502,6 +564,14 @@ function Legend() {
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] bg-ink/45 ring-1 ring-brand ring-inset" />
         Worked on a day off
+      </span>
+      {/*
+        ⭐ G110 — legend-এ সারিটা না থাকলে ঘরের চেহারাটা একটা ধাঁধা হয়ে
+        থাকত, আর মানুষ ধাঁধার সবচেয়ে খারাপ উত্তরটাই ধরে নেন।
+      */}
+      <span className="flex items-center gap-1.5">
+        <i className="size-3 rounded-[3px] border border-dotted border-line" />
+        Not tracked yet
       </span>
       <span className="flex items-center gap-1.5">
         <i className="size-3 rounded-[3px] border border-dashed border-line" />

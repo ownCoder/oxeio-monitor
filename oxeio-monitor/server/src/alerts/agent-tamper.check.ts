@@ -7,7 +7,12 @@ import {
   TAMPER_LOOKBACK_MIN,
   UNINSTALL_EVENT_TYPES,
 } from './alerts.constants';
-import { isTamperStop, tamperSeverity, type StopEvent } from './alerts.rules';
+import {
+  CLEAN_STOP_CONTEXT,
+  isTamperStop,
+  tamperSeverity,
+  type StopEvent,
+} from './alerts.rules';
 import { AlertsService, type RaiseInput } from './alerts.service';
 
 /** এক দফায় সর্বোচ্চ কত ইভেন্ট দেখা হবে — কিউ জমে গেলেও কুয়েরি ছোট থাকে */
@@ -76,8 +81,8 @@ export class AgentTamperCheck {
           : `Agent was stopped — ${host}`,
         detail: uninstall
           ? `Someone tried to remove the agent on ${host} (${t.type}).`
-          : `The agent stopped on ${host}, but there is no logoff/shutdown nearby — ` +
-            'so the agent was stopped while the PC stayed on.',
+          : `The agent stopped on ${host}, but there is no logoff, shutdown or ` +
+            'update nearby — so the agent was stopped while the PC stayed on.',
         meta: {
           eventType: t.type,
           occurredAt: t.occurredAt.toISOString(),
@@ -110,7 +115,14 @@ export class AgentTamperCheck {
     const rows = await this.prisma.event.findMany({
       where: {
         deviceId: { in: deviceIds },
-        type: { in: ['logoff', 'shutdown'] },
+        /**
+         * ⚠️⚠️ তালিকাটা এখানে **আর হাতে লেখা নেই**। আগে ছিল, আর সেটাই
+         * নিয়মটার দ্বিতীয় কপি হয়ে দাঁড়িয়েছিল: `isTamperStop()` একটা তালিকা
+         * দেখত, কোয়েরি আরেকটা। ⭐ `agent_update` যোগ করার সময় ঠিক এই
+         * ফাঁদটাই সামনে এল — নিয়মে যোগ করলেও কোয়েরি সারিটা **টেনেই আনত না**,
+         * তাই জোড়া কখনো মিলত না আর মিথ্যা অ্যালার্ট আগের মতোই উঠত।
+         */
+        type: { in: [...CLEAN_STOP_CONTEXT] },
         occurredAt: {
           gte: new Date(Math.min(...times) - pad),
           lte: new Date(Math.max(...times) + pad),

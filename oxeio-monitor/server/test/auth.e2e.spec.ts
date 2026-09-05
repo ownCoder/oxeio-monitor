@@ -10,6 +10,7 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  uniqueSuffix,
 } from './setup/harness';
 import { resolveThrottle } from '../src/auth/login-throttle.config';
 
@@ -292,7 +293,7 @@ describe('ব্রুট-ফোর্স (I11)', () => {
   });
 
   it.skipIf(!enabled)('সীমা ছাড়ালে 429', async () => {
-    const email = `attacker-${Date.now()}@test.local`;
+    const email = `attacker-${uniqueSuffix()}@test.local`;
     const codes: number[] = [];
 
     // সীমা পর্যন্ত সবগুলোই 401, তার পরেরটা 429
@@ -309,7 +310,7 @@ describe('ব্রুট-ফোর্স (I11)', () => {
   });
 
   it('আক্রমণের পরেও আসল অ্যাকাউন্ট খোলা থাকে', async () => {
-    const email = `attacker2-${Date.now()}@test.local`;
+    const email = `attacker2-${uniqueSuffix()}@test.local`;
     for (let i = 0; i <= maxFails; i++) {
       await h.http().post('/api/v1/auth/login').send({ email, password: 'x' });
     }

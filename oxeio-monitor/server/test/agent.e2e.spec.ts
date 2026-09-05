@@ -13,6 +13,8 @@ import {
   todayWindow,
   type EnrolledDevice,
   type Harness,
+  dhakaNoon,
+  realNow,
 } from './setup/harness';
 
 let h: Harness;
@@ -30,7 +32,7 @@ function asAgent<T extends { set(field: string, val: string): T }>(
 ): T {
   return req
     .set('Authorization', `Bearer ${token}`)
-    .set('X-Client-Time', iso(new Date()));
+    .set('X-Client-Time', iso(realNow()));
 }
 
 beforeAll(async () => {
@@ -242,7 +244,7 @@ describe('heartbeat', () => {
      * ঘরে, সার্ভার আজকের দিনটাকে কর্মদিবসই দেখত, আর টার্গেট ০-র বদলে
      * ২৮,৮০০ আসত। ঠিক ০০:২২-এ ধরা পড়েছে।
      */
-    const workDate = new Date(Date.now() + 6 * 3600_000);
+    const workDate = dhakaNoon();
     workDate.setUTCHours(0, 0, 0, 0);
 
     await h.prisma.holiday.create({
@@ -274,6 +276,67 @@ describe('heartbeat', () => {
       where: { id: device.deviceId },
     });
     expect(row.agentVersion).toBe('9.9.9');
+  });
+
+  /**
+   * ⭐⭐⭐ **রোলআউট নিজে থেকে এগোনোর একমাত্র প্রমাণ এখানেই বসে**
+   * *(৫ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ `agent_version_since` না বসলে `RolloutAdvanceJob` কোনোদিন কোনো
+   * প্রমাণ পেত না, আর রোলআউট **চিরকাল canary-তেই** আটকে থাকত — অর্থাৎ ঠিক
+   * যে সমস্যাটা সারানো হচ্ছে সেটাই ফিরে আসত, কেবল আরও নীরবে। কলামটা যোগ
+   * করা আর কলামটা **ভরা** — এই প্রকল্পে দুটোর মাঝখানেই দশবারের বেশি বাগ
+   * হয়েছে।
+   */
+  it('⭐ নতুন ভার্সন বসলে "কবে থেকে"-ও বসে', async () => {
+    /**
+     * ⚠️ `realNow()` — `dhakaNoon()` নয়, আর এটা G140-র ব্যতিক্রম নয়, তার
+     *    বৈধ ব্যবহার। সময়টা লেখে **সার্ভার**, তার নিজের ঘড়ি দিয়ে; তুলনাটাও
+     *    তাই আসল ঘড়ির সাপেক্ষেই হতে হয়। পিন করা দুপুর দিলে দিনে দুবার
+     *    ভুল ফল আসত।
+     */
+    const before = realNow();
+
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 10, agentVersion: '9.9.9' })
+      .expect(200);
+
+    const row = await h.prisma.device.findUniqueOrThrow({
+      where: { id: device.deviceId },
+    });
+
+    expect(row.agentVersionSince).not.toBeNull();
+    expect(row.agentVersionSince!.getTime()).toBeGreaterThanOrEqual(
+      before.getTime() - 1000,
+    );
+  });
+
+  /**
+   * ⭐⭐⭐ **সময়টা বসে কেবল ভার্সন বদলালে — প্রতি heartbeat-এ নয়।**
+   *
+   * ⚠️⚠️ এটাই এই ফিচারের সবচেয়ে সহজে ভুল হওয়া লাইন। প্রতিবার বসালে ঘড়িটা
+   * প্রতি ৩০ সেকেন্ডে শূন্য থেকে শুরু হতো, আর "ছ-ঘণ্টা ধরে টিকে আছে"
+   * শর্তটা **কোনোদিনই** সত্যি হতো না। ⭐ ব্যর্থতাটা হতো নীরব: কোনো এরর
+   * নেই, শুধু রোলআউট আর কখনো এগোত না।
+   */
+  it('⭐ একই ভার্সনে দ্বিতীয় heartbeat — ঘড়িটা নড়ে না', async () => {
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'active', activeSecToday: 10, agentVersion: '9.9.9' })
+      .expect(200);
+
+    const first = (
+      await h.prisma.device.findUniqueOrThrow({ where: { id: device.deviceId } })
+    ).agentVersionSince;
+
+    await asAgent(h.http().post('/api/v1/agent/heartbeat'), device.token)
+      .send({ state: 'idle', activeSecToday: 20, agentVersion: '9.9.9' })
+      .expect(200);
+
+    const second = (
+      await h.prisma.device.findUniqueOrThrow({ where: { id: device.deviceId } })
+    ).agentVersionSince;
+
+    expect(second).toEqual(first);
   });
 
   it('ভার্সন না পাঠালে আগেরটাই থাকে — মুছে যায় না', async () => {
@@ -596,7 +659,7 @@ describe('clock drift (§ ২)', () => {
 
     const row = await h.prisma.activitySegment.findFirstOrThrow();
     // সংশোধনের পর শেষ সময়টা "এখন"-এর কাছাকাছি হওয়ার কথা, ১০ মিনিট আগে নয়
-    const gapSec = Math.abs((Date.now() - row.endedAt.getTime()) / 1000);
+    const gapSec = Math.abs((realNow().getTime() - row.endedAt.getTime()) / 1000);
     expect(gapSec).toBeLessThan(60);
 
     const dev = await h.prisma.device.findFirstOrThrow({
@@ -647,7 +710,7 @@ describe('work session', () => {
     await asAgent(h.http().post('/api/v1/agent/events'), device.token)
       .send({
         events: [
-          { clientUuid: randomUUID(), type: 'logoff', occurredAt: iso(new Date()) },
+          { clientUuid: randomUUID(), type: 'logoff', occurredAt: iso(realNow()) },
         ],
       })
       .expect(200);
@@ -694,7 +757,7 @@ describe('work session', () => {
     await asAgent(h.http().post('/api/v1/agent/events'), device.token)
       .send({
         events: [
-          { clientUuid: randomUUID(), type: 'logoff', occurredAt: iso(new Date()) },
+          { clientUuid: randomUUID(), type: 'logoff', occurredAt: iso(realNow()) },
         ],
       })
       .expect(200);

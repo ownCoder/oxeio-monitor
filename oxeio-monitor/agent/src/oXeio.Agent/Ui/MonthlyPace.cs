@@ -93,4 +93,54 @@ internal static class MonthlyPace
 
         return count;
     }
+
+    /// <summary>জানালার নিচের লাইনে গতি নিয়ে কী লেখা হবে।</summary>
+    internal enum PaceView
+    {
+        /// <summary>⭐ G111 — সার্ভার বলেছে একটাও শেষ-হওয়া কর্মদিবস দেখা হয়নি।</summary>
+        NotObserved,
+
+        /// <summary>সার্ভারের পাঠানো সংখ্যা — ড্যাশবোর্ডের সংখ্যাটাই।</summary>
+        Server,
+
+        /// <summary>আমাদের নিজের আন্দাজ; লেবেলে "(estimated)" থাকতেই হবে।</summary>
+        Estimated,
+
+        /// <summary>লক্ষ্যই নেই — গতির কোনো মানে হয় না, লাইনটা বাদ।</summary>
+        None,
+    }
+
+    /// <summary>
+    /// ⭐⭐ <b>কোন কথাটা লেখা হবে — আর কোন ক্রমে সিদ্ধান্ত নেওয়া হবে।</b>
+    ///
+    /// ⚠️⚠️ <b>ক্রমটাই এখানে আসল জিনিস, আর সেজন্যই এটা খাঁটি ফাংশন।</b>
+    /// <see cref="PaceView.NotObserved"/> সবার আগে দেখতে হয়। পরে দেখলে
+    /// <see cref="Estimate"/> আগেই চলে যেত, আর ওই আন্দাজ মাসের ১ তারিখ থেকে
+    /// গোনে — অর্থাৎ ঠিক সেই না-দেখা দিনগুলোকেই ঘাটতি বলে দেখাত, যেগুলোর
+    /// জন্য সার্ভার ইচ্ছাকৃতভাবে কোনো দাবি করেনি। একটা ভুল আশ্বাস
+    /// ("0:00 ahead") সারাতে গিয়ে উল্টো দিকের একটা ভুল অভিযোগ।
+    ///
+    /// ⚠️ এটা <see cref="TodayForm"/>-এর ভেতরে <c>if</c>-এর সিঁড়ি হয়ে থাকতে
+    /// পারত, কিন্তু তাহলে ক্রমটার উপর <b>একটাও assertion</b> থাকত না —
+    /// WinForms-এর আঁকা কোড টেস্ট থেকে ছোঁয়া যায় না।
+    /// </summary>
+    /// <param name="paceObserved">
+    /// <see cref="oXeio.Core.Agent.AgentStatus.PaceObserved"/> — সার্ভার
+    /// না বললে <c>true</c>, অর্থাৎ পুরোনো সার্ভারে আচরণ অবিকল আগের মতো।
+    /// </param>
+    /// <param name="serverPace">সার্ভারের সংখ্যা, না পাঠালে <c>null</c>।</param>
+    /// <param name="estimate">আমাদের আন্দাজ (<see cref="Estimate"/>), না হলে <c>null</c>।</param>
+    internal static PaceView ViewFor(
+        bool paceObserved,
+        TimeSpan? serverPace,
+        TimeSpan? estimate)
+    {
+        // ⚠️⚠️ এই শাখাটা সরিয়ে নিচে বসালে G111 নীরবে ফিরে আসে
+        if (!paceObserved) return PaceView.NotObserved;
+
+        if (serverPace is not null) return PaceView.Server;
+        if (estimate is not null) return PaceView.Estimated;
+
+        return PaceView.None;
+    }
 }

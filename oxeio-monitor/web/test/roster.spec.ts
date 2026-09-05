@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { LiveCard } from '../src/api/dashboard';
-import {designView,
+import {
+  dayDuty,
+  designView,
   meterKind,
   restingStartsAt,
   rosterRows,
@@ -32,6 +34,8 @@ function card(over: Partial<LiveCard> = {}): LiveCard {
     todayWorkedSec: 3_600,
     dailyTargetSec: 28_800,
     todayIsWorkday: true,
+    // ⭐ G130 — ডিফল্টে কেউ ছুটিতে নেই; ছুটির দাবিগুলো নিজের describe-এ
+    onLeaveToday: false,
     monthWorkedSec: 72_000,
     monthTargetSec: 748_800,
     lastHeartbeatAt: '2026-08-18T04:11:00.000Z',
@@ -212,5 +216,68 @@ describe('designView — আজকের ডিজাইন', () => {
   it('ডিজাইন না করলে কিছুই নয়', () => {
     expect(designView(card({ staffType: 'researcher', designsFinished: 0 }))).toBeNull();
     expect(designView(card({ staffType: null, designsDone: 0 }))).toBeNull();
+  });
+});
+
+
+describe('G130 — আজ তার কী দায়িত্ব, আর না থাকলে কেন', () => {
+  it('সাধারণ কর্মদিবস — টার্গেট আছে', () => {
+    expect(dayDuty(card())).toBe('target');
+  });
+
+  /**
+   * ⭐⭐⭐ **এই describe-এর কারণ পুরোটাই এই একটা টেস্ট।**
+   *
+   * ⚠️⚠️ `todayIsWorkday` **অফিসের** ক্যালেন্ডার — শুক্রবার ও সরকারি ছুটি।
+   * ব্যক্তিগত ছুটি ওতে নেই, তাই ছুটিতে থাকা কর্মীর কার্ডে ফুটত
+   * **"0h / 8h" আর একটা খালি মিটার** — দেখতে হুবহু ফাঁকি দেওয়া মানুষের
+   * মতো। অথচ সংখ্যাগুলো (টার্গেট, প্রত্যাশা, pace) তাঁকে অনেক আগেই ছাড়
+   * দিয়েছে; শুধু **ছবিটা দেয়নি**।
+   */
+  it('⭐ কর্মদিবস, কিন্তু তিনি ছুটিতে — টার্গেট নেই, আর কারণটা "leave"', () => {
+    expect(dayDuty(card({ todayIsWorkday: true, onLeaveToday: true }))).toBe(
+      'leave',
+    );
+  });
+
+  /**
+   * ⚠️⚠️ **ক্রমটা ইচ্ছাকৃত।** কারো ছুটি যদি শুক্রবারে লেখা থাকে, কার্ডে
+   * তখনো "day off"-ই ঠিক: ওই দিনে **কারোরই** টার্গেট নেই, তাই একজনকে
+   * আলাদা করে চিহ্নিত করা অর্থহীন — আর "on leave" পড়ে কেউ ভাবতেন
+   * বাকিরা কাজ করছেন।
+   */
+  it('⭐ শুক্রবারে লেখা ছুটি — তবু "day off", "on leave" নয়', () => {
+    expect(dayDuty(card({ todayIsWorkday: false, onLeaveToday: true }))).toBe(
+      'off',
+    );
+  });
+
+  it('সরকারি ছুটি / সাপ্তাহিক ছুটি — "off"', () => {
+    expect(dayDuty(card({ todayIsWorkday: false }))).toBe('off');
+  });
+
+  /**
+   * ⚠️ টার্গেট ০ মানে ওই দিনে কিছু করার নেই — ছুটির দিনের মতোই। ⭐ শর্তটা
+   *    রাখা হয়েছে কারণ prorate করা কর্মীর (মাসের পরে যোগ) দৈনিক টার্গেট
+   *    ০ হতে পারে, আর তখন "0h / 0h" দেখানো অর্থহীন।
+   */
+  it('টার্গেট ০ হলে "off" — ছুটি লেখা থাকলেও', () => {
+    expect(dayDuty(card({ dailyTargetSec: 0, onLeaveToday: true }))).toBe('off');
+  });
+
+  /**
+   * ⭐⭐ **সমতাটাই আসল পাহারা।** ছুটির দিন আর সাপ্তাহিক ছুটি — দুটোতেই
+   * মিটার ওঠে না, অর্থাৎ `hasTarget` দুটোকে **এক** দেখে। তবু `dayDuty`
+   * দুটোকে আলাদা রাখে, কারণ পর্দার লেখাটা আলাদা। এক করে দিলে ছুটির দিনে
+   * কার্ড বলত "day off" — অর্থাৎ গোটা অফিস বন্ধ, একটা মিথ্যা সারাতে গিয়ে
+   * নতুন একটা মিথ্যা।
+   */
+  it('⭐ ছুটি আর সাপ্তাহিক ছুটি — দুটোতেই মিটার নেই, তবু কথা দুটো আলাদা', () => {
+    const onLeave = dayDuty(card({ onLeaveToday: true }));
+    const dayOff = dayDuty(card({ todayIsWorkday: false }));
+
+    expect(onLeave).not.toBe('target');
+    expect(dayOff).not.toBe('target');
+    expect(onLeave).not.toBe(dayOff);
   });
 });

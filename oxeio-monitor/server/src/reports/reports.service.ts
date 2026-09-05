@@ -20,7 +20,12 @@ import {
 import { workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { countLeaveWorkdays, elapsedWindow } from '../summary/summary.math';
+import {
+  countLeaveWorkdays,
+  elapsedWindow,
+  elapsedWorkdays,
+  isObserved,
+} from '../summary/summary.math';
 import { trackedFromBy } from '../summary/tracking-start';
 import type { ProductivityQuery, ReportRangeQuery, SummaryQuery } from './dto';
 import {
@@ -130,6 +135,10 @@ interface ReportContext {
    * `ReportMeta.targetHoursInRange`-এর নোটে।
    */
   targetHoursInRange: Record<number, number>;
+  /** ⭐ G111 — কর্মীপ্রতি: একটাও শেষ-হওয়া কর্মদিবস দেখা হয়েছে কি না */
+  observed: Record<number, boolean>;
+  /** ⭐ G110 — কর্মীপ্রতি ট্র্যাকিং-শুরুর দিন, **শুধু আঁকার জন্য** */
+  trackedFrom: Record<number, string | null>;
   /** ওই কর্মীর ওই দিনের টার্গেট, সেকেন্ডে (ছুটির দিনে ০) */
   targetSecOf(employee: ResolvedEmployee, date: Date): number;
   /**
@@ -142,6 +151,20 @@ interface ReportContext {
    *    বিপরীতে — না-দেখা দিন কারো ব্যর্থতা নয়।
    */
   expectedSecOf(employee: ResolvedEmployee, span: DateSpan): number;
+  /**
+   * ⭐⭐ **G130 (R2)** — ওই কর্মীর ওই দিনটা অনুমোদিত ছুটি কি না।
+   *
+   * ⚠️⚠️ সংখ্যায় ছুটি অনেক আগেই পৌঁছেছে (টার্গেট ০, প্রত্যাশা ০), কিন্তু
+   * **লেবেলে পৌঁছায়নি** — ফলে ছুটির দিনটা দেখতে হুবহু একটা শূন্য-ঘণ্টার
+   * কর্মদিবসের মতো। সংখ্যা মিথ্যা বলছিল না, কিন্তু **কারণটাও বলছিল না**,
+   * আর "ও ওই দিন কেন কাজ করেনি" প্রশ্নের উত্তর খুঁজতে Settings → Leave-এ
+   * যেতে হতো।
+   *
+   * ⚠️ ঠিক **সেই** `leaveBy` সেট থেকেই আসে যেটা দিয়ে টার্গেট ০ করা হয়েছে
+   * (`targetSecOf`) — এক সংজ্ঞা। আলাদা কোয়েরি করলে একদিন ব্যাজ থাকত অথচ
+   * টার্গেট কাটা যেত না, বা উল্টোটা।
+   */
+  onLeaveOn(employee: ResolvedEmployee, date: Date): boolean;
   ruleOf(employee: ResolvedEmployee): WorkdayRule;
   employedOn(employee: ResolvedEmployee, date: Date): boolean;
 }
@@ -268,6 +291,15 @@ export class ReportsService {
           department: employee.department,
           date: toIsoDate(date),
           dayType: dayTypeOf(date, rule),
+          /**
+           * ⭐⭐ **G130** — সংখ্যাটা আগেই ঠিক ছিল, এবার কারণটাও লেখা থাকে।
+           *
+           * ⚠️ `dayType`-এর ভেতরে ঢোকানো হয়নি ইচ্ছাকৃতভাবে: ছুটি একটা
+           * **কর্মদিবসেরই** ঘটনা, আর `dayType` বলে দিনটা অফিসের ক্যালেন্ডারে
+           * কী (কর্মদিবস · সাপ্তাহিক ছুটি · সরকারি ছুটি)। মিশিয়ে ফেললে
+           * "কজন কর্মদিবসে ছুটি নিলেন" আর গোনা যেত না।
+           */
+          onLeave: ctx.onLeaveOn(employee, date),
           // ⭐ ডেটা না থাকা আর কাজ না করা — রিপোর্টে দুটোই "কোনো কাজ নেই"।
           //    তবু সারিটা **থাকে**: অনুপস্থিতি বাদ দিয়ে দিলে সেটা রিপোর্টে
           //    "তথ্য নেই" নয়, একেবারে অদৃশ্য হয়ে যেত।
@@ -854,10 +886,18 @@ export class ReportsService {
      *    **বাড়ত** — অর্থাৎ ছুটি দিয়ে কর্মীর কোনো লাভই হতো না।
      *    কেন পলিসির ধ্রুবকই সঠিক, তা `dailyTargetSec()`-এর নোটে।
      */
+    /**
+     * ⭐ G130 — ব্যাজ আর টার্গেট-কাটা **একই সেট** পড়ে, তাই দুটো কখনো
+     *    আলাদা কথা বলতে পারে না। ⚠️ `leaves` টেবিল সরাসরি, কোনো কলামে
+     *    লেখা হয় না — ছুটি মুছে দিলে ব্যাজও সাথে সাথেই যায়।
+     */
+    const onLeaveOn = (employee: ResolvedEmployee, date: Date): boolean =>
+      leaveBy.get(employee.id)?.has(date.getTime()) ?? false;
+
     const targetSecOf = (employee: ResolvedEmployee, date: Date): number => {
       if (!isWorkday(date, ruleOf(employee))) return 0;
       // ⭐ R2 — ছুটির দিনে টার্গেট ০, ঠিক সাপ্তাহিক ছুটির দিনের মতোই
-      if (leaveBy.get(employee.id)?.has(date.getTime())) return 0;
+      if (onLeaveOn(employee, date)) return 0;
       return employee.dailyTargetSec;
     };
 
@@ -969,6 +1009,52 @@ export class ReportsService {
     }
 
     /**
+     * ⭐⭐ **G111 — উপরের ০ কোন ধরনের ০, সেটা এখানেই ঠিক হয়।**
+     *
+     * ⚠️⚠️ `expectedHours === 0` দুটো সম্পূর্ণ আলাদা কারণে হতে পারে:
+     * তাঁকে **এখনো একটা শেষ-হওয়া কর্মদিবসেও দেখা হয়নি**, নাকি দেখা
+     * হয়েছে কিন্তু ওই দিনগুলোয় তাঁর কোনো টার্গেটই ছিল না (সব ছুটি)।
+     * পর্দায় দুটোই "০ ঘাটতি" — অর্থাৎ টার্গেট পূরণের মতোই দেখায়।
+     *
+     * ⭐ পতাকাটা **`workdaysElapsed` থেকেই** আসে, `expectedHours` থেকে
+     * নয়। tray আর Live Board ঠিক এই একই সংখ্যা পড়ে (`isObserved`), তাই
+     * তিন পর্দা কখনো তিন রকম রায় দিতে পারে না।
+     *
+     * ⚠️ ছুটির দিন লব থেকে বাদ (`leaveBy`) — ঠিক যেভাবে প্রত্যাশা গোনার
+     * সময় বাদ যায়। না দিলে ছুটি কাটিয়ে ফেরা কেউ "দেখা হয়েছে" দেখাতেন
+     * অথচ তাঁর প্রত্যাশা ০ — আবার সেই দুই কথা।
+     */
+    const observed: Record<number, boolean> = {};
+    const trackedFromMeta: Record<number, string | null> = {};
+    for (const employee of employees) {
+      observed[employee.id] = isObserved({
+        workdaysElapsed: elapsedWorkdays(
+          {
+            periodStart: range.from,
+            periodEnd: range.to,
+            today,
+            joinedOn: employee.joinedOn,
+            leftOn: employee.leftOn,
+            // ⚠️⚠️ `?? today` — উপরের `windowBy`-র হুবহু একই ধার (G120)
+            trackingStartedOn: trackedFrom.get(employee.id) ?? today,
+            weeklyOffDay: employee.weeklyOffDay,
+            holidays,
+          },
+          leaveBy.get(employee.id),
+        ),
+      });
+
+      /**
+       * ⭐ G110 — **তারিখটা, নিয়মটা নয়।** পাতাটা এটা দিয়ে কেবল ঘর আঁকে
+       * ("এই দিনটায় আমরা দেখছিলামই না"); প্রত্যাশা এখনো `expectedHours`
+       * থেকেই আসে।
+       */
+      const seenFrom = trackedFrom.get(employee.id);
+      trackedFromMeta[employee.id] =
+        seenFrom === undefined ? null : toIsoDate(seenFrom);
+    }
+
+    /**
      * ⭐⭐ **এই পরিসরে তার মোট টার্গেট** — মালিকের নিয়ম *(২৩ আগস্ট ২০২৬)*:
      * *"daily 8 ghonta kore, without holiday and friday"*, আর
      * *"maser hisab na kore office day hisab koro"*।
@@ -1021,6 +1107,9 @@ export class ReportsService {
       excluded,
       expectedHours,
       targetHoursInRange,
+      observed,
+      trackedFrom: trackedFromMeta,
+      onLeaveOn,
       expectedSecOf,
       /**
        * ⭐⭐ **ঠিক সেই সারিগুলো**, যেগুলো দিয়ে উপরের `holidays` সেটটা — আর
@@ -1183,5 +1272,13 @@ function metaOf(ctx: ReportContext): ReportMeta {
     // ⭐⭐ "এ পর্যন্ত কত হওয়ার কথা ছিল" — জানালাটা `elapsedWindow()`-এর,
     //    অর্থাৎ tray ও Live Board-এর সাথে হুবহু একই সংজ্ঞা।
     expectedHours: ctx.expectedHours,
+
+    // ⭐⭐ G111 — উপরের ০ "টার্গেট পূরণ" নাকি "এখনো দেখাই হয়নি"।
+    //    সংখ্যা নয়, **অবস্থা** — নইলে পাতাটা নিজে অনুমান করত।
+    observed: ctx.observed,
+
+    // ⭐ G110 — কবে থেকে দেখা শুরু। ⚠️ **শুধু আঁকার জন্য**; এটা দিয়ে
+    //    প্রত্যাশা গুনবেন না, ঠিক ওভাবেই আগের বাগটা জন্মেছিল।
+    trackedFrom: ctx.trackedFrom,
   };
 }

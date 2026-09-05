@@ -375,6 +375,8 @@ internal static class SyncWire
         public int? DailyTargetSec { get; init; }
         public int? Week7ActiveSec { get; init; }
         public int? Week7TargetSec { get; init; }
+        /// <summary>⭐ G111 — দেখুন <see cref="EmployeeProgress.Observed"/></summary>
+        public bool? Observed { get; init; }
     }
 
     internal static HeartbeatResponse ToHeartbeatResponse(HeartbeatResponseDto dto)
@@ -422,6 +424,10 @@ internal static class SyncWire
             DailyTargetSec = dto.DailyTargetSec is { } d && d >= 0 ? d : null,
             Week7ActiveSec = dto.Week7ActiveSec is { } a && a >= 0 ? a : null,
             Week7TargetSec = dto.Week7TargetSec is { } w && w >= 0 ? w : null,
+
+            // ⚠️ null-ই রাখা হয় যদি সার্ভার না বলে — ⭐ পুরোনো সার্ভারের সাথে
+            //    আচরণ অবিকল আগের মতো থাকে (EmployeeProgress.Observed দেখুন)।
+            Observed = dto.Observed,
         };
     }
 }

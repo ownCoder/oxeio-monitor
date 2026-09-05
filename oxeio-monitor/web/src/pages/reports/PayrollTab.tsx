@@ -6,7 +6,12 @@ import { ProgressBar } from '../../components/ProgressRing';
 import { Caveat, Empty, ErrorBox, Loading } from '../../components/States';
 import { STAFF_TYPE_LABEL } from '../../api/admin';
 import { PersonCell, Table, type Column } from '../../components/Table';
-import { formatMonth, formatTaka, hoursToSeconds } from '../../lib/format';
+import {
+  formatDate,
+  formatMonth,
+  formatTaka,
+  hoursToSeconds,
+} from '../../lib/format';
 
 /**
  * F03 — মাসিক পে-রোল ঘণ্টা শিট। **owner-only**।
@@ -187,9 +192,9 @@ export function PayrollTab({ month }: { month: string }) {
 
       {/* ⭐ O4 — সার্ভারের `payroll.math.ts`-ও ঠিক এই কথাটাই বলে */}
       <Caveat>
-        No money is calculated for overtime — the rate is still undecided (open
-        question O4). “Payable” above is only the salary minus the shortfall
-        deduction.
+        No money is calculated for overtime — there is no separate overtime
+        rate (O4, settled 23 Aug). “Payable” above is only the salary minus the
+        shortfall deduction.
       </Caveat>
 
       {data.missingSalary.length > 0 && (
@@ -205,6 +210,43 @@ export function PayrollTab({ month }: { month: string }) {
           These <span className="num">{data.missingSummary.length}</span> have
           no figures for that month yet, so they are <b>not</b> in the table
           above: {data.missingSummary.join(', ')}
+        </Caveat>
+      )}
+
+      {/*
+        ⚠️⚠️ R21 — নিট শূন্যে থামা নীরবে ঘটতে দেওয়া যায় না। সার্ভার ঘরটা
+        বরাবরই পাঠাত, শুধু পর্দা পড়ত না।
+      */}
+      {data.depositExceedsPayable.length > 0 && (
+        <Caveat>
+          For these{' '}
+          <span className="num">{data.depositExceedsPayable.length}</span> the
+          security-money instalment is larger than what they earned this month,
+          so “Net payable” stops at zero and the full instalment could not be
+          taken: {data.depositExceedsPayable.join(', ')}
+        </Caveat>
+      )}
+
+      {/*
+        ⭐⭐ G108 — এই পাতার সংখ্যাগুলোই সবচেয়ে বেশি ক্ষতি করতে পারে, কারণ
+        এখানেই `d ÷ D` দিয়ে সত্যিই টাকা কাটা হয়। তারিখ নড়লে ছাপা হয়ে
+        যাওয়া শিটটাই ভুল হয়ে যায়।
+      */}
+      {data.approximateHolidayDates.length > 0 && (
+        <Caveat>
+          <span className="num">{data.approximateHolidayDates.length}</span>{' '}
+          holiday date
+          {data.approximateHolidayDates.length > 1 ? 's' : ''} in this month{' '}
+          {data.approximateHolidayDates.length > 1 ? 'are' : 'is'} not final yet
+          (
+          {data.approximateHolidayDates.map((d, i) => (
+            <span key={d}>
+              {i > 0 && ', '}
+              <b className="num">{formatDate(d)}</b>
+            </span>
+          ))}
+          ). If one moves, the working days for this month change — and the
+          day fraction these payables are built on changes with them.
         </Caveat>
       )}
     </>

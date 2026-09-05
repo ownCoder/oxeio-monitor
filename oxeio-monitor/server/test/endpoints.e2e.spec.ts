@@ -12,6 +12,8 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  dhakaNoon,
+  dhakaTodayIso,
 } from './setup/harness';
 
 /**
@@ -55,7 +57,7 @@ beforeEach(async () => {
   ({ deviceId } = await enrollDevice(h, code));
 });
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = dhakaTodayIso();
 const MONTH = TODAY.slice(0, 7);
 
 /** owner ও manager দুজনেই পড়তে পারবে (§ ৪.৩) */
@@ -244,7 +246,7 @@ describe('ফুল URL বা উইন্ডো টাইটেল কখন�
    * অ্যাক্টিভিটি রিপোর্টে সেটা ফেরত গেলে "কে কোন ফাইল খুলেছে" ফাঁস হতো।
    */
   it('activity রিপোর্টে windowTitle থাকে না', async () => {
-    const now = new Date();
+    const now = dhakaNoon();
     await h.prisma.appUsage.create({
       data: {
         employeeId,

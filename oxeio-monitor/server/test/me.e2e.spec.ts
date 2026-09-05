@@ -14,6 +14,7 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -31,7 +32,7 @@ let deviceId: number;
 const STAFF_EMAIL = 'rakib@test.local';
 const STAFF_PASSWORD = 'staff-password-123';
 
-const now = new Date();
+const now = dhakaNoon();
 const workDate = workDateOf(now);
 const MS_PER_DAY = 86_400_000;
 

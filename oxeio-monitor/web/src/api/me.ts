@@ -22,6 +22,15 @@ export interface MyProgress {
   dailyTargetSec: number;
   week7ActiveSec: number;
   week7TargetSec: number;
+  /**
+   * ⭐⭐ **G111** — তাঁর একটাও **শেষ হয়ে যাওয়া** কর্মদিবস দেখা হয়েছে কি না।
+   *
+   * ⚠️⚠️ `false` হলে `paceSec` ০, আর টাইলটা তখন **"Ahead 0s"** লিখত —
+   * অর্থাৎ প্রথম দিনেই একটা প্রশংসা, যেটার পেছনে একটাও পর্যবেক্ষণ নেই।
+   * ⚠️ `paceSec === 0` দেখে অনুমান করবেন না: টার্গেট ঠিক ছুঁয়ে ফেলা
+   * মানুষেরও ০, আর তাঁর প্রাপ্য কথাটা সম্পূর্ণ আলাদা।
+   */
+  observed: boolean;
 }
 
 export interface MySummary {

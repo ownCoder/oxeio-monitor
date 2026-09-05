@@ -9,6 +9,7 @@ import {
   OWNER_PASSWORD,
   resetDatabase,
   type Harness,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -24,7 +25,7 @@ let employeeId: number;
 
 const today = (): string => {
   // ঢাকার আজকের তারিখ (UTC+6, DST নেই)
-  const dhaka = new Date(Date.now() + 6 * 3600_000);
+  const dhaka = dhakaNoon();
   return dhaka.toISOString().slice(0, 10);
 };
 
@@ -86,7 +87,7 @@ describe('সই রেকর্ড করা (রোলআউটের শর�
   it('ভবিষ্যতের তারিখ নাকচ', async () => {
     const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
 
-    const soon = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const soon = dhakaNoon(3).toISOString().slice(0, 10);
 
     const res = await s.http
       .post(`/api/v1/employees/${employeeId}/policy-signed`)

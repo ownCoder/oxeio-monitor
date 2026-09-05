@@ -2,6 +2,7 @@ import type { LiveCard, LiveStatus } from '../../api/dashboard';
 import { ProgressBar } from '../../components/ProgressRing';
 import { StatusDot } from '../../components/StatusDot';
 import { formatDuration, pctOf } from '../../lib/format';
+import { dayDuty } from './roster';
 
 /**
  * E01 — বোর্ডের দুটো বার: **দল এখন কোন অবস্থায়**, আর **কে কোথায় দাঁড়িয়ে**।
@@ -228,7 +229,13 @@ export function TargetBars({ cards }: { cards: LiveCard[] }) {
   );
 }
 
-/** আজ এই কর্মীর সত্যিই টার্গেট আছে কি না — ছুটির দিনে নেই */
+/**
+ * আজ এই কর্মীর সত্যিই টার্গেট আছে কি না — ছুটির দিনে নেই।
+ *
+ * ⚠️ নিয়মটা এখানে আর **লেখা নেই**, `roster.ts`-এর `dayDuty()`-তে। আগে
+ *    তিনটে পর্দায় তিনবার লেখা ছিল, আর G130-এর ব্যক্তিগত ছুটিটা তখন
+ *    একটাতে বসত আর দুটোতে বসত না।
+ */
 function hasTarget(card: LiveCard): boolean {
-  return card.todayIsWorkday && card.dailyTargetSec > 0;
+  return dayDuty(card) === 'target';
 }

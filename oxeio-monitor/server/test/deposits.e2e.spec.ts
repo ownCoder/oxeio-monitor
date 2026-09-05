@@ -10,6 +10,7 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -34,7 +35,7 @@ afterAll(async () => {
 });
 
 /** ঢাকার চলতি মাস — টেস্টের প্রত্যাশাও এটার সাথে মেলে */
-const thisMonth = new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 7);
+const thisMonth = dhakaNoon().toISOString().slice(0, 7);
 
 beforeEach(async () => {
   await resetDatabase(h.prisma, h.app);

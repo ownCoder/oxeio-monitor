@@ -104,11 +104,26 @@ internal sealed class SessionMonitor : IDisposable
 
         if ((flags & Win32.ENDSESSION_LOGOFF) != 0) return AgentEventTypes.Logoff;
 
-        // ⚠️ শুধু CLOSEAPP মানে Restart Manager আমাদেরই বন্ধ করাচ্ছে (সাধারণত
-        //    আপডেট ইনস্টল করতে) — PC বন্ধ হচ্ছে না। এটাকে shutdown বললে
-        //    প্রতিটা এজেন্ট-আপডেট একটা ভুয়া "PC বন্ধ" রেকর্ড রেখে যেত।
-        //    এখানে null ফেরে, আর DisposeAsync-এর agent_stop-ই যথেষ্ট।
-        if ((flags & Win32.ENDSESSION_CLOSEAPP) != 0) return null;
+        /*
+         * ⚠️ শুধু CLOSEAPP মানে Restart Manager আমাদেরই বন্ধ করাচ্ছে (সাধারণত
+         *    আপডেট ইনস্টল করতে) — PC বন্ধ হচ্ছে না। এটাকে `shutdown` বলা
+         *    যায় না: বললে প্রতিটা এজেন্ট-আপডেট একটা ভুয়া "PC বন্ধ" রেকর্ড
+         *    রেখে যেত।
+         *
+         * ⚠️⚠️ **কিন্তু আগে এখানে `null` ফিরত, আর সেটাই ছিল একটা নীরব বাগ।**
+         *    `null` মানে কোনো closing ইভেন্টই যায় না, অথচ `agent_stop` ঠিকই
+         *    যায় — আর সার্ভারের G02 একটা সঙ্গীহীন `agent_stop`-কে
+         *    **হস্তক্ষেপ** ধরে (`alerts.rules.ts` → `isTamperStop`)। ফলে
+         *    প্রতিটা আপডেট একটা মিথ্যা `agent_killed` অ্যালার্ট তুলত।
+         *    ⭐ হাতে একটা-দুটো PC আপডেট করলে চোখে পড়ত না; রোলআউট নিজে
+         *    থেকে এগোতে শুরু করলে একসাথে ১২টা — আর তার পরেই কেউ আর
+         *    অ্যালার্ট পড়ত না।
+         *
+         * ⭐ এখন নিজের একটা নাম আছে (`agent_update`) — সত্যি কথাটাই বলা
+         *    হয়, আর সার্ভার সেটাকে `agent_stop`-এর বৈধ সঙ্গী ধরে।
+         */
+        if ((flags & Win32.ENDSESSION_CLOSEAPP) != 0)
+            return AgentEventTypes.AgentUpdate;
 
         // বাকি সব (0, ENDSESSION_CRITICAL) = PC বন্ধ বা রিস্টার্ট হচ্ছে
         return AgentEventTypes.Shutdown;

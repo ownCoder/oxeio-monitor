@@ -17,6 +17,7 @@ import {
   type SummaryReport,
   type SummaryRow,
   type UsageCategory,
+  approximateHolidayNote,
 } from './reports.types';
 
 /**
@@ -60,6 +61,19 @@ export function attendanceWorkbook(report: AttendanceReport): Promise<Buffer> {
     { header: 'Department', width: 18, value: (r) => r.department },
     { header: 'Date', width: 13, value: (r) => r.date },
     { header: 'Day type', width: 16, value: (r) => DAY_TYPE_LABEL[r.dayType] },
+    /**
+     * ⭐⭐ **G130** — কেন সেদিন কাজ হয়নি, সেটা কাগজেই লেখা থাকে।
+     *
+     * ⚠️⚠️ পাশের `Status` ঘরে তখন "No activity" — শুধু ওটা পড়ে যে কেউ
+     * ধরে নিতেন লোকটা আসেননি। ⭐ ছুটি সংখ্যাগুলো আগেই ঠিক করে দিয়েছে
+     * (টার্গেট ০), কিন্তু কাগজটা মিটিংয়ে যায় আর সেখানে সংখ্যা নয়, সারিটা
+     * পড়া হয়।
+     *
+     * ⚠️ **ছুটি না হলে ঘরটা খালি**, "No" নয় — ৩১ সারির কলামজুড়ে "No"
+     * লিখলে চোখ ওটা পড়াই বন্ধ করে দিত, আর তখন যে দু-একটা "Yes" আছে
+     * সেগুলোই হারাত।
+     */
+    { header: 'On leave', width: 10, value: (r) => (r.onLeave ? 'Yes' : null) },
     { header: 'Status', width: 16, value: (r) => DAY_STATUS_LABEL[r.status] },
     hours('Worked (hours)', (r: AttendanceRow) => r.workedHours),
     hours('Adjustment (hours)', (r: AttendanceRow) => r.adjustmentHours),
@@ -259,6 +273,21 @@ function infoRows(title: string, meta: ReportMeta): [string, string][] {
   if (meta.excludedEmployees.length > 0) {
     rows.push(['Excluded staff', meta.excludedEmployees.join(', ')]);
   }
+
+  /**
+   * ⭐⭐ G108 — অনিশ্চয়তাটা **ফাইলের ভেতরে** যায়, শুধু JSON-এ নয়।
+   *
+   * ⚠️⚠️ সংখ্যাগুলো ভুল নয়, কিন্তু ওরা একটা **অনুমানের উপর দাঁড়ানো** —
+   * আর সেটা এতদিন কেবল ছুটির *নামে* ছিল (`(সম্ভাব্য)`), রিপোর্টে নয়।
+   * যিনি শিটটা নামিয়ে অ্যাকাউন্টসে পাঠান তিনি জানতেনই না যে ওই মাসের
+   * কর্মদিবস — আর তাই `d ÷ D` — এখনো নড়তে পারে।
+   *
+   * ⚠️ সংখ্যাটা `meta` থেকেই আসে, নতুন করে গোনা হয় না: গুনলে অনিশ্চয়তার
+   * **দ্বিতীয় একটা সংজ্ঞা** দাঁড়াত, আর একদিন রিপোর্ট ও পে-রোল দুই তালিকা
+   * দেখাত।
+   */
+  const approx = approximateHolidayNote(meta.approximateHolidayDates);
+  if (approx !== null) rows.push(['Holiday dates not final', approx]);
 
   return rows;
 }

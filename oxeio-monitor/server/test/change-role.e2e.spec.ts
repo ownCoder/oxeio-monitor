@@ -12,6 +12,7 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  uniqueSuffix,
 } from './setup/harness';
 
 /**
@@ -41,7 +42,7 @@ beforeEach(async () => {
 
 async function staffWithLogin(code: string, role: 'employee' | 'manager' = 'employee') {
   const { employeeId } = await createEmployeeWithCode(h.prisma, code);
-  const email = `${code.toLowerCase()}-${Date.now()}@test.local`;
+  const email = `${code.toLowerCase()}-${uniqueSuffix()}@test.local`;
 
   const user = await h.prisma.user.create({
     data: {

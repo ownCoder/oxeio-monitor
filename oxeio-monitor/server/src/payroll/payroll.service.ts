@@ -6,6 +6,9 @@ import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { computePayroll, paisaToTaka, salaryForMonth } from './payroll.math';
 
+// G108 — অনিশ্চয়তার **এক** সংজ্ঞা, রিপোর্টের সাথে ভাগ করা
+import { approximateHolidayDates } from '../reports/reports.range';
+
 export interface PayrollRow {
   employeeId: number;
   empCode: string;
@@ -75,6 +78,23 @@ export interface PayrollSheet {
    * জমা দেখাত অথচ টাকাটা কোনোদিন কাটাই যেত না।
    */
   depositExceedsPayable: string[];
+
+  /**
+   * ⭐⭐ **G108** — এই মাসের **যেসব ছুটির তারিখ এখনো পাকা নয়**।
+   *
+   * ⚠️⚠️ কেন এটা পে-রোলে সবচেয়ে জরুরি: প্রতিটা সারির `payable` দাঁড়িয়ে
+   * আছে `d ÷ D`-এর উপর, আর `D` গোনা হয় **এই মাসের ছুটির তালিকা** ধরে।
+   * একটা চান্দ্র তারিখ নড়লে `D` বদলায়, অর্থাৎ **টাকা** বদলায় — আর
+   * সেটা ধরা পড়ত ঠিক তখন, যখন বেতন দিয়ে দেওয়া হয়ে গেছে।
+   *
+   * ⚠️ তালিকাটা বানানো হয় `reports.range.ts`-এর **সেই একই**
+   * `approximateHolidayDates()` দিয়ে, আলাদা কোনো কোয়েরি বা `LIKE` দিয়ে
+   * নয় — নইলে অনিশ্চয়তার দ্বিতীয় একটা সংজ্ঞা দাঁড়াত, আর একদিন রিপোর্ট
+   * ও পে-রোল দুই তালিকা দেখাত।
+   *
+   * ⚠️ খালি তালিকা মানে "এই মাসের সব তারিখ পাকা" — "ছুটি নেই" নয়।
+   */
+  approximateHolidayDates: string[];
 }
 
 const HOUR = 3600;
@@ -292,12 +312,28 @@ export class PayrollService {
       );
     }
 
+    /**
+     * ⭐ G108 — ঠিক এই মাসের ছুটির সারিগুলো, আর সিদ্ধান্তটা নেয় রিপোর্টের
+     * সাথে **একই ফাংশন**। ⚠️ চিহ্নটা ছুটির *নামে* থাকে (`(সম্ভাব্য)`),
+     * তাই এখানে `LIKE` লিখলে সেটাই হতো দ্বিতীয় সংজ্ঞা।
+     */
+    const monthEnd = new Date(
+      Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 0),
+    );
+    const holidayRows = await this.prisma.holiday.findMany({
+      where: { holidayDate: { gte: monthStart, lte: monthEnd } },
+      select: { holidayDate: true, name: true },
+    });
+
     return {
       yearMonth,
       rows,
       missingSalary,
       missingSummary,
       depositExceedsPayable,
+      approximateHolidayDates: approximateHolidayDates(
+        holidayRows.map((h) => ({ date: h.holidayDate, name: h.name })),
+      ),
     };
   }
 }

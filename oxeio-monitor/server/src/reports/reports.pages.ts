@@ -1,5 +1,6 @@
 import { buildPdf, tableOf, type PdfColumn, type PdfSpec } from './reports.pdf';
 import { hoursText, personLabel, toPdfText } from './reports.pdf.text';
+import { approximateHolidayNote } from './reports.types';
 import type {
   AttendanceReport,
   DayStatus,
@@ -136,7 +137,22 @@ export function attendanceLines(
     name: p.person(r.fullName, r.empCode),
     department: p.text(r.department),
     date: r.date,
-    dayType: DAY_TYPE_EN[r.dayType],
+    /**
+     * ⭐⭐ **G130** — ছুটির দিন কাগজে "On leave" বলেই ছাপা হয়।
+     *
+     * ⚠️⚠️ PDF-এ কলাম যোগ করার জায়গা নেই (A4-এ ইতিমধ্যেই নয়টা), তাই
+     * তথ্যটা **Day type** ঘরেই বসে। ছুটি একটা কর্মদিবসেরই ঘটনা, কিন্তু
+     * পাঠকের প্রশ্নটা হলো "ওই দিনটা ওর জন্য কী ছিল" — আর ওই দিনটা তাঁর
+     * জন্য ছুটিই ছিল।
+     *
+     * ⚠️ `status` ছোঁয়া হয়নি: কেউ ছুটির দিনেও কাজ করলে ওখানে "Worked"-ই
+     * থাকে, আর দুটো তথ্য পাশাপাশি পড়া যায়। `status`-এ বসালে ওই ঘণ্টাগুলো
+     * কাগজ থেকে উধাও হতো।
+     *
+     * ⚠️ JSON-এ ঘরদুটো আলাদাই থাকে (`onLeave`) — এই জোড়া লাগানো নিছক
+     * **ছাপার** সিদ্ধান্ত, তাই এখানে, `reports.service.ts`-এ নয়।
+     */
+    dayType: r.onLeave ? 'On leave' : DAY_TYPE_EN[r.dayType],
     status: DAY_STATUS_EN[r.status],
     worked: hoursText(r.workedHours),
     adjust: hoursText(r.adjustmentHours),
@@ -295,7 +311,17 @@ function letterhead(
  * থাকতে হয়। Excel-এ ওগুলো "Info" শিটে আছে, কিন্তু PDF-এ আলাদা শিট নেই;
  * বাদ দিলে কেউ "৩১ আগস্ট পর্যন্ত" ভেবে ১১ তারিখের ডেটা নিয়ে সিদ্ধান্ত নিতেন।
  */
-function notesFor(meta: ReportMeta, lossy: boolean, extra: string[]): string[] {
+/**
+ * ⚠️ `export` কেবল টেস্টের জন্য — বাইরে কেউ ডাকে না। কারণ: তৈরি PDF-এর
+ * ভেতরের লেখা pdfkit কম্প্রেস করে রাখে, তাই বাফার খুঁজে "নোটটা কাগজে
+ * উঠেছে কি না" যাচাই করা যায় না। রপ্তানি না করলে এই ফাংশনের উপর
+ * **একটাও assertion** থাকত না — আর নোট হারিয়ে গেলেও সব সবুজ থাকত।
+ */
+export function notesFor(
+  meta: ReportMeta,
+  lossy: boolean,
+  extra: string[],
+): string[] {
   const notes: string[] = [];
 
   if (meta.clampedToToday) {
@@ -312,6 +338,19 @@ function notesFor(meta: ReportMeta, lossy: boolean, extra: string[]): string[] {
         'These employees have no rows in this report.',
     );
   }
+
+  /**
+   * ⭐⭐ G108 — ছাপা কাগজেই অনিশ্চয়তাটা লেখা থাকে।
+   *
+   * ⚠️ কাগজটা মিটিংয়ে যায়, আর সেখানে JSON বা পর্দা কিছুই থাকে না। O4-এর
+   * ওভারটাইম-নোটটা ঠিক এই যুক্তিতেই PDF-এ বসানো হয়েছিল — নইলে কেউ
+   * নিজের মতো একটা হার বসিয়ে ফেলতেন।
+   *
+   * ⚠️ সংখ্যাটা `meta` থেকেই, নতুন করে গোনা হয় না — নইলে অনিশ্চয়তার
+   * দ্বিতীয় একটা সংজ্ঞা দাঁড়াত।
+   */
+  const approx = approximateHolidayNote(meta.approximateHolidayDates);
+  if (approx !== null) notes.push(approx);
 
   if (lossy) notes.push(LOSSY_NOTE);
 

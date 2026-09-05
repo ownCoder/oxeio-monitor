@@ -59,6 +59,20 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
     private TrayVisual? _shownVisual;
     private string? _shownText;
     private SyncHealth? _shownHealth;
+
+    /// <summary>
+    /// ⭐ কোন ভার্সনটার জন্য ইতিমধ্যে জানানো হয়েছে — ভার্সনপ্রতি একবার।
+    ///
+    /// ⚠️ <see cref="BalloonThrottle"/>-এর ঘণ্টাভিত্তিক থ্রটল এখানে যথেষ্ট নয়:
+    /// একটা যাচাই-হওয়া আপডেট দিনের পর দিন বসে থাকতে পারে (স্টাফ ইনস্টল না
+    /// করলে), আর তখন ঘণ্টায় একটা করে বেলুন মানে দিনে আটটা — তার পরেই
+    /// Windows-এ অ্যাপটা চুপ করিয়ে দেওয়া হতো, আর তখন সিঙ্ক-ব্যর্থতার
+    /// জরুরি বার্তাটাও হারাত।
+    ///
+    /// ⚠️ এজেন্ট রিস্টার্টে ঘরটা খালি হয়, অর্থাৎ পরদিন একটা মনে-করিয়ে-দেওয়া
+    /// যায়। সেটা ইচ্ছাকৃত — না বসানো আপডেট মনে করানোর মতোই জিনিস।
+    /// </summary>
+    private string? _notifiedUpdate;
     private TimeSpan? _lastSyncRequest;
     private TodayForm? _todayForm;
     private AboutForm? _aboutForm;
@@ -250,6 +264,7 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
 
         NotifyOnHealthChange(status);
         NotifyOnMonthlyTarget(status);
+        NotifyOnUpdateReady(status);
 
         _todayForm?.Apply(status);
     }
@@ -343,6 +358,48 @@ internal sealed class TrayIcon : IAgentStatusSink, IDisposable
         Balloon(
             MonthlyMilestone.EventClass,
             MonthlyMilestone.Text(status.MonthlyTargetHours),
+            ToolTipIcon.Info);
+    }
+
+    /// <summary>
+    /// ⭐⭐ <b>H04 — আপডেট তৈরি, স্টাফকে বলা হচ্ছে</b> <i>(৫ সেপ্টেম্বর ২০২৬)</i>।
+    ///
+    /// ⚠️⚠️ <b>এতদিন কিছুই বলা হতো না।</b> নতুন ভার্সন নীরবে নেমে যাচাই হয়ে
+    /// বসে থাকত, আর মেনুতে "Install update…" ফুটত — কিন্তু কেউ tray মেনু
+    /// না খুললে সেটা জানার কোনো উপায়ই ছিল না। সিঙ্ক ব্যর্থতা, বাতিল ডিভাইস,
+    /// মাসের লক্ষ্য — তিনটেরই বেলুন ছিল, আপডেটের ছিল না।
+    ///
+    /// ⭐ ফলে মালিককে প্রতিটা PC-তে হাতে গিয়ে বসাতে হতো, অথচ MSI-টা ওই
+    /// মেশিনেই যাচাই হয়ে পড়ে ছিল।
+    ///
+    /// ⚠️ কথাটা <b>কী করতে হবে</b> সেটাই বলে, শুধু "আপডেট আছে" নয় — মেনুটা
+    /// কোথায় সেটা না বললে বার্তাটা একটা প্রশ্ন হয়ে থাকত।
+    /// </summary>
+    private void NotifyOnUpdateReady(AgentStatus status)
+    {
+        var update = status.Update;
+
+        // ⚠️ কেবল Verified — নামানো বা যাচাই চলাকালীন নয়, ঠিক মেনুর শর্তেই।
+        //    আগে জানালে স্টাফ মেনু খুলে কিছুই পেতেন না।
+        if (update.Stage != UpdateStage.Verified) return;
+
+        var version = update.Version;
+        if (string.IsNullOrWhiteSpace(version)) return;
+
+        // ⚠️ ইনস্টলের পথ না থাকলে চুপ — নইলে বার্তাটা এমন কিছু করতে বলত
+        //    যেটা করার উপায় নেই
+        if (_options.InstallUpdate is null) return;
+
+        if (string.Equals(_notifiedUpdate, version, StringComparison.Ordinal)) return;
+
+        // ⭐ মনে রাখা হয় দেখানোর **আগে** — বেলুন নীরবে ব্যর্থ হতে পারে
+        //   (Focus Assist), আর সফলতার উপর স্মৃতি বসালে প্রতি রেন্ডারে আবার
+        //   চেষ্টা হতো (একই যুক্তি NotifyOnMonthlyTarget-এ)।
+        _notifiedUpdate = version;
+
+        Balloon(
+            "update_ready",
+            $"Update {version} is ready — right-click the oXeio tray icon and choose “Install update”.",
             ToolTipIcon.Info);
     }
 

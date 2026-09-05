@@ -4,7 +4,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { DeviceOverlapCheck } from '../src/alerts/device-overlap.check';
 import { workDateOf } from '../src/agent/util/dhaka-time';
-import { createHarness, resetDatabase, type Harness } from './setup/harness';
+import { createHarness, resetDatabase, type Harness,
+  dhakaNoon,
+  realNow,
+} from './setup/harness';
 
 /**
  * **G32** — `device_overlap` অ্যালার্ট সত্যিই ওঠে কি না।
@@ -19,8 +22,21 @@ let employeeId: number;
 let deviceA: number;
 let deviceB: number;
 
-const now = new Date();
-const workDate = workDateOf(now);
+/**
+ * ⭐⭐ **দুটো আলাদা "এখন", আর সেটা ইচ্ছাকৃত (G140)।**
+ *
+ * - `workDate` আসে `dhakaNoon()` থেকে — ফিক্সচারের কর্মদিবস, দুই সীমানা
+ *   থেকেই ১২ ঘণ্টা দূরে, তাই মধ্যরাতে দিন ঘুরে গিয়ে ভাঙে না।
+ * - `runOnce()` পায় **আসল ঘড়ি**, কারণ throttle মেলানো হয় অ্যালার্টের
+ *   `created_at`-এর সাথে — আর সেটা **ডাটাবেসের** `now()` থেকে আসে।
+ *
+ * ⚠️⚠️ দুটো এক করে দুপুর পাঠানো হয়েছিল, আর টেস্ট সাথে সাথেই ধরিয়ে দিল:
+ * ভোরে চালালে দুপুর আর DB-র `created_at`-এর ফারাক ৬ ঘণ্টার
+ * `THROTTLE_HOURS` ছাড়িয়ে যেত, তাই "দ্বিতীয়বার চালালে আর বসে না"
+ * দাবিটা ভাঙত। ⭐ অ্যাপের ঘড়ি আর ডাটাবেসের ঘড়ি এক না হলে পিন করা
+ * মুহূর্ত বসানো যায় না — এটাই `realNow()`-এর একমাত্র বৈধ কারণ।
+ */
+const workDate = workDateOf(dhakaNoon());
 
 /** ওই কর্মদিবসের ভেতরে একটা মুহূর্ত (ঢাকার ঘড়িতে ঘণ্টা + মিনিট) */
 const at = (hour: number, minute = 0): Date =>
@@ -91,7 +107,7 @@ describe('device_overlap — প্রযোজক', () => {
     await segment(deviceA, at(9), at(13));
     await segment(deviceB, at(12, 30), at(15));
 
-    expect(await check.runOnce(now)).toBe(1);
+    expect(await check.runOnce(realNow())).toBe(1);
 
     const [alert] = await alerts();
     expect(alert.severity).toBe('warning');
@@ -116,7 +132,7 @@ describe('device_overlap — প্রযোজক', () => {
     await segment(deviceA, at(12), at(15));
     await segment(deviceA, at(15), at(18));
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
     expect(await alerts()).toHaveLength(0);
   });
 
@@ -124,7 +140,7 @@ describe('device_overlap — প্রযোজক', () => {
     await segment(deviceA, at(9), at(13));
     await segment(deviceB, at(14), at(18));
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   /** ⚠️ ৫ মিনিট — ল্যাপটপ নিয়ে মিটিংয়ে যাওয়ার স্বাভাবিক ছবি */
@@ -132,7 +148,7 @@ describe('device_overlap — প্রযোজক', () => {
     await segment(deviceA, at(9), at(13, 5));
     await segment(deviceB, at(13), at(17));
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 
   /**
@@ -144,8 +160,8 @@ describe('device_overlap — প্রযোজক', () => {
     await segment(deviceA, at(9), at(13));
     await segment(deviceB, at(12), at(15));
 
-    expect(await check.runOnce(now)).toBe(1);
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(1);
+    expect(await check.runOnce(realNow())).toBe(0);
     expect(await alerts()).toHaveLength(1);
   });
 
@@ -177,6 +193,6 @@ describe('device_overlap — প্রযোজক', () => {
       },
     });
 
-    expect(await check.runOnce(now)).toBe(0);
+    expect(await check.runOnce(realNow())).toBe(0);
   });
 });

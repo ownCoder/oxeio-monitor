@@ -43,6 +43,9 @@ const meta: ReportMeta = {
   expectedHours: { 1: 64 },
   // ⚠️ এই নমুনা জগতে কোনো ছুটিই নেই, তাই খালি — "কোনো সম্ভাব্য তারিখ নেই"
   approximateHolidayDates: [],
+  // ⚠️ নমুনায় কেউ 'না-দেখা' নয় — এই ফিক্সচার G110/G111 নিয়ে কোনো দাবি করে না
+  observed: {},
+  trackedFrom: {},
 };
 
 const attendance: AttendanceReport = {
@@ -57,6 +60,8 @@ const attendance: AttendanceReport = {
       date: '2026-08-11',
       dayType: 'workday',
       status: 'worked',
+      // ⚠️ নমুনায় কেউ ছুটিতে নেই — এই ফিক্সচার G130 নিয়ে দাবি করে না
+      onLeave: false,
       workedHours: 7.5,
       idleHours: 0.5,
       adjustmentHours: 0,

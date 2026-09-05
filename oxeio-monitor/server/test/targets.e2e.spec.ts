@@ -14,6 +14,7 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  dhakaNoon,
 } from './setup/harness';
 
 /**
@@ -316,7 +317,7 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
     const closed = await targets.markStartedByJobNumbers(
       designer.id,
       [String(row.jobNumber)],
-      new Date(),
+      dhakaNoon(),
     );
 
     expect(closed).toBe(1);
@@ -346,7 +347,7 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
     const closed = await targets.markStartedByJobNumbers(
       other.id,
       [String(row.jobNumber)],
-      new Date(),
+      dhakaNoon(),
     );
 
     expect(closed).toBe(0);
@@ -365,7 +366,7 @@ describe('দিন শেষে পুলে ফেরত', () => {
     }).expect(201);
   }
 
-  const TODAY = new Date();
+  const TODAY = dhakaNoon();
   /** ⚠️ নতুন লাইন — সরাসরি লিখলে escaping-এ ভুল হয় */
   const BR = String.fromCharCode(10);
 
@@ -511,10 +512,10 @@ describe('শুরু হওয়া টার্গেট', () => {
     // ⭐ গতকাল শুরু হয়েছিল, আজ কেউ ফাইলটা খোলেনি
     await h.prisma.designTarget.update({
       where: { id: one.id },
-      data: { startedAt: new Date(Date.now() - 86_400_000) },
+      data: { startedAt: dhakaNoon(-1) },
     });
 
-    await targets.returnUnworked(workDateOf(new Date()));
+    await targets.returnUnworked(workDateOf(dhakaNoon()));
 
     const after = await h.prisma.designTarget.findUniqueOrThrow({
       where: { id: one.id },
@@ -633,7 +634,7 @@ describe('গবেষকের কিউ — আপলোড ও লাইভ�
     const row = await h.prisma.designTarget.findUniqueOrThrow({
       where: { asin: ASIN_OF(1) },
     });
-    await targetsOf().markUploaded(row.id, new Date());
+    await targetsOf().markUploaded(row.id, dhakaNoon());
 
     const [stats, toUpload, toLive] = await Promise.all([
       targetsOf().stats(),
@@ -653,7 +654,7 @@ describe('গবেষকের কিউ — আপলোড ও লাইভ�
     const row = await h.prisma.designTarget.findUniqueOrThrow({
       where: { asin: ASIN_OF(1) },
     });
-    await targetsOf().markUploaded(row.id, new Date());
+    await targetsOf().markUploaded(row.id, dhakaNoon());
 
     expect((await targetsOf().list({ stage: 'to_upload' })).total).toBe(0);
     expect((await targetsOf().list({ stage: 'to_live' })).total).toBe(1);
@@ -718,7 +719,7 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
   it('বানান ঠিক থাকলে কিউ ছাড়ে, ঠিক-করার কিউতে যায় না', async () => {
     const id = await finished(1);
 
-    await svc().markChecked(id, true, actorId, new Date());
+    await svc().markChecked(id, true, actorId, dhakaNoon());
 
     const stats = await svc().stats();
     expect(stats.toCheck).toBe(0);
@@ -736,7 +737,7 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
     const id = await finished(1);
     await finished(2);
 
-    await svc().markChecked(id, false, actorId, new Date());
+    await svc().markChecked(id, false, actorId, dhakaNoon());
 
     const [stats, toFix, toUpload] = await Promise.all([
       svc().stats(),
@@ -754,10 +755,10 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
 
   it('ঠিক করার পর আবার আপলোডের কিউতে ফেরে', async () => {
     const id = await finished(1);
-    await svc().markChecked(id, false, actorId, new Date());
+    await svc().markChecked(id, false, actorId, dhakaNoon());
     expect((await svc().stats()).toUpload).toBe(0);
 
-    await svc().markFixed(id, actorId, new Date());
+    await svc().markFixed(id, actorId, dhakaNoon());
 
     const stats = await svc().stats();
     expect(stats.toFix).toBe(0);
@@ -778,8 +779,8 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
       data: { assignedToId: designer.id },
     });
 
-    await svc().markChecked(id, false, actorId, new Date());
-    await svc().markFixed(id, actorId, new Date());
+    await svc().markChecked(id, false, actorId, dhakaNoon());
+    await svc().markFixed(id, actorId, dhakaNoon());
 
     const row = await h.prisma.designTarget.findUniqueOrThrow({ where: { id } });
     expect(row.assignedToId).toBe(designer.id);
@@ -803,15 +804,15 @@ describe('বানান-যাচাই — দেখা, ভুল পাও�
       where: { asin: ASIN_OF(1) },
     });
     await expect(
-      svc().markChecked(row.id, true, actorId, new Date()),
+      svc().markChecked(row.id, true, actorId, dhakaNoon()),
     ).rejects.toThrow();
   });
 
   it('ভুল না থাকলে "ঠিক করেছি" বলা যায় না', async () => {
     const id = await finished(1);
-    await svc().markChecked(id, true, actorId, new Date());
+    await svc().markChecked(id, true, actorId, dhakaNoon());
 
-    await expect(svc().markFixed(id, actorId, new Date())).rejects.toThrow();
+    await expect(svc().markFixed(id, actorId, dhakaNoon())).rejects.toThrow();
   });
 });
 
@@ -1037,7 +1038,7 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
       data: {
         status: 'assigned',
         assignedToId: designer.id,
-        assignedAt: new Date(),
+        assignedAt: dhakaNoon(),
       },
     });
 
@@ -1112,7 +1113,7 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
     await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
     await h.prisma.designTarget.update({
       where: { id },
-      data: { completedAt: new Date(Date.now() - 3 * 86_400_000) },
+      data: { completedAt: dhakaNoon(-3) },
     });
 
     await post(session, `/api/v1/me/targets/${id}/undone`, {}).expect(409);
@@ -1124,7 +1125,7 @@ describe('Complete ফিরিয়ে নেওয়া', () => {
     await post(session, `/api/v1/me/targets/${id}/done`, {}).expect(201);
     await h.prisma.designTarget.update({
       where: { id },
-      data: { completedAt: new Date(Date.now() - 3 * 86_400_000) },
+      data: { completedAt: dhakaNoon(-3) },
     });
 
     await post(owner, `/api/v1/design-targets/${id}/undone`, {}).expect(201);
@@ -1272,7 +1273,7 @@ describe('বণ্টন — ম্যানেজারও পান', () => {
       await h.prisma.designTarget.count({ where: { assignedToId: manager.id } }),
     ).toBe(30);
 
-    await svc().returnUnworked(workDateOf(new Date()));
+    await svc().returnUnworked(workDateOf(dhakaNoon()));
 
     expect(
       await h.prisma.designTarget.count({ where: { assignedToId: manager.id } }),
@@ -1293,10 +1294,10 @@ describe('বণ্টন — ম্যানেজারও পান', () => {
     });
     await h.prisma.designTarget.update({
       where: { id: one.id },
-      data: { startedAt: new Date() },
+      data: { startedAt: dhakaNoon() },
     });
 
-    await svc().returnUnworked(workDateOf(new Date()));
+    await svc().returnUnworked(workDateOf(dhakaNoon()));
 
     const still = await h.prisma.designTarget.findUniqueOrThrow({
       where: { id: one.id },
@@ -1396,7 +1397,7 @@ describe('মরা ASIN মুছে ফেলা', () => {
 
     await h.prisma.designTarget.update({
       where: { id: first },
-      data: { status: 'done', completedAt: new Date(), completedVia: 'manual' },
+      data: { status: 'done', completedAt: dhakaNoon(), completedVia: 'manual' },
     });
 
     const res = await post(owner, '/api/v1/design-targets/delete', {

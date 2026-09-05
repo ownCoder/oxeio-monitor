@@ -375,10 +375,33 @@ export function LiveBoardPage() {
                   ? 'attention'
                   : 'counted'
             }
+            /**
+             * ⭐⭐ **G111 — সংখ্যাটা কতজনের, সেটা সংখ্যাটার নিচেই।**
+             *
+             * ⚠️⚠️ উপরের pace হলো Σ credited − Σ expected। যাঁর একটাও
+             * শেষ-হওয়া কর্মদিবস দেখা হয়নি তাঁর `expected` ০, তাই তাঁর
+             * **পুরো টার্গেটটাই** হর থেকে নীরবে বাদ — অর্থাৎ **দল যত
+             * পিছিয়ে, বোর্ড তার চেয়ে কম দেখায়**, আর ভুলটা সবসময় একই
+             * দিকে হেলে। নতুন কেউ যোগ দিলে বা এজেন্ট বসাতে দেরি হলে ঠিক
+             * তখনই এটা ঘটে, আর তখনই কেউ খেয়াল করে না।
+             *
+             * ⚠️ ওঁদের টার্গেট যোগফলে ঢুকিয়ে দেওয়া হয়নি — তাতে বোর্ড এমন
+             * ঘাটতির দাবি করত যেটা কেউ করেইনি, অর্থাৎ একটা মিথ্যা সারিয়ে
+             * ঠিক উল্টো মিথ্যা।
+             */
             sub={
-              trend.data?.month.trackedFrom
-                ? `counted from ${formatDate(trend.data.month.trackedFrom)}`
-                : 'no finished day counted yet'
+              <>
+                {trend.data?.month.trackedFrom
+                  ? `counted from ${formatDate(trend.data.month.trackedFrom)}`
+                  : 'no finished day counted yet'}
+                {/* ⚠️ ০ হলে কিছুই নয় — নইলে রোজ একটা অর্থহীন লাইন */}
+                {(trend.data?.month.notObservedStaff ?? 0) > 0 && (
+                  <>
+                    {' · '}
+                    {trend.data!.month.notObservedStaff} not counted yet
+                  </>
+                )}
+              </>
             }
           />
 

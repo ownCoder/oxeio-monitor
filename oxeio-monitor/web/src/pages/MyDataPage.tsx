@@ -126,11 +126,26 @@ export function MyDataPage() {
               ⭐ পুরো পাতায় **একটাই** সম্ভাব্য লাল টাইল — পিছিয়ে থাকা।
               ⚠️ এগিয়ে থাকলে লাল নয়; সব টাইল লাল করলে লালের মানেই হারায়।
             */}
-            <Stat
-              label={p.paceSec < 0 ? 'Behind' : 'Ahead'}
-              value={formatSignedDuration(p.paceSec)}
-              tone={p.paceSec < 0 ? 'attention' : 'counted'}
-            />
+            {/*
+              ⭐⭐ **G111** — "এখনো দেখা হয়নি" আর "এগিয়ে আছি" এক নয়।
+              ⚠️⚠️ আগে এই টাইল নতুন কর্মীর প্রথম দিনে "Ahead 0s" দেখাত।
+                 সংখ্যাটা মিথ্যা ছিল না, বাক্যটা ছিল — কারণ তাঁর একটাও
+                 শেষ-হওয়া কর্মদিবস তখনো দেখা হয়নি।
+            */}
+            {p.observed ? (
+              <Stat
+                label={p.paceSec < 0 ? 'Behind' : 'Ahead'}
+                value={formatSignedDuration(p.paceSec)}
+                tone={p.paceSec < 0 ? 'attention' : 'counted'}
+              />
+            ) : (
+              <Stat
+                label="Pace"
+                value="Not observed yet"
+                tone="muted"
+                sub="no finished workday counted for you yet"
+              />
+            )}
           </StatRow>
 
           {/*

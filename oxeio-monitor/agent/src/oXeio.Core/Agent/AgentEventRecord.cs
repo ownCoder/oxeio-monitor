@@ -48,6 +48,29 @@ public static class AgentEventTypes
     /// </summary>
     public const string Shutdown = "shutdown";
 
+    /// <summary>
+    /// ⭐⭐ <b>Restart Manager আমাদের বন্ধ করাচ্ছে — সাধারণত আপডেট বসাতে।</b>
+    ///
+    /// ⚠️⚠️ এটা <b>সেশন শেষ নয়</b>, তাই <see cref="Shutdown"/> বলা যেত না —
+    /// বললে প্রতিটা আপডেট একটা ভুয়া "PC বন্ধ" রেকর্ড রেখে যেত।
+    ///
+    /// ⚠️⚠️ কিন্তু কিছুই না পাঠানোও ভুল ছিল, আর সেটাই এতদিন হতো। উপরের
+    /// <see cref="Shutdown"/>-এর নোট যে ফাঁদটার কথা বলে, আপডেট ঠিক সেই
+    /// ফাঁদেই পড়ত: <c>agent_stop</c> যেত, কিন্তু পাশে <c>logoff</c>/<c>shutdown</c>
+    /// কিছুই থাকত না — তাই সার্ভারের G02 প্রতিটা আপডেটকে <b>হস্তক্ষেপ</b>
+    /// ধরে <c>agent_killed</c> অ্যালার্ট তুলত। ⭐ হাতে গিয়ে একটা-দুটো PC
+    /// আপডেট করলে সেটা চোখে পড়ত না; রোলআউট চালু হলে একসাথে ১২টা।
+    ///
+    /// ⭐ সার্ভার এটাকে <c>agent_stop</c>-এর <b>বৈধ সঙ্গী</b> ধরে
+    /// (<c>alerts.rules.ts</c> → <c>CLEAN_STOP_CONTEXT</c>), ঠিক যেভাবে
+    /// <c>logoff</c>/<c>shutdown</c>-কে ধরে।
+    ///
+    /// ⚠️ কেউ এজেন্ট মেরে দিলে এই ইভেন্টটা যায় না — তাই আসল হস্তক্ষেপ
+    /// এখনো ধরা পড়ে। ছাড়টা শুধু ওই পথের, যেটা দিয়ে Windows নিজে আমাদের
+    /// বন্ধ করায়।
+    /// </summary>
+    public const string AgentUpdate = "agent_update";
+
     public const string Lock = "lock";
     public const string Unlock = "unlock";
     public const string Sleep = "sleep";

@@ -10,6 +10,7 @@ import {
   resetDatabase,
   type Harness,
   type Session,
+  uniqueSuffix,
 } from './setup/harness';
 
 /**
@@ -59,7 +60,7 @@ beforeEach(async () => {
   });
 
   const employee = await h.prisma.employee.create({
-    data: { empCode: `DS-${Date.now()}`, fullName: 'Belal Hossain' },
+    data: { empCode: `DS-${uniqueSuffix()}`, fullName: 'Belal Hossain' },
   });
   employeeId = employee.id;
 });

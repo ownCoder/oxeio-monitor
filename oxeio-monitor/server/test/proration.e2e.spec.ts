@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { APPROX_HOLIDAY_SUFFIX } from '../src/reports/reports.range';
 import { ReportsService } from '../src/reports/reports.service';
 import { SummaryService } from '../src/summary/summary.service';
 import {
@@ -510,5 +511,299 @@ describe('G120 — ট্র্যাকিং-শুরু: খালি সা
     await rollup();
 
     expect(await elapsed(id)).toBe(first);
+  });
+});
+
+/**
+ * ⭐⭐ **G108 — যে অনুমানের উপর `d ÷ D` দাঁড়ানো, সেটা পে-রোলের গায়েই লেখা
+ * থাকে** *(৪ সেপ্টেম্বর ২০২৬)*।
+ *
+ * চান্দ্র ছুটির তারিখ চাঁদ দেখার পর নড়ে। নড়লে ওই মাসের কর্মদিবস বদলায়,
+ * অর্থাৎ **হর D বদলায়** — আর তাতে প্রতিটা কর্মীর prorated বেতন বদলায়।
+ * এতদিন এই অনিশ্চয়তাটা কেবল ছুটির *নামে* ছিল (`(সম্ভাব্য)`); যিনি পে-রোল
+ * খুলে বেতন ছাড়তেন তিনি জানতেনই না সংখ্যাটা এখনো নড়তে পারে।
+ *
+ * ⚠️ এখানে e2e লাগে কারণ ঝুঁকিটা অঙ্কে নয়, **জোড়ার মুখে**: `sheet()`
+ * মাসের ছুটির সারিগুলো আদৌ পড়ে কি না, আর পড়ে সেটা রেসপন্সে তোলে কি না।
+ */
+describe('G108 — পে-রোল বলে দেয় কোন তারিখ এখনো পাকা নয়', () => {
+  const payrollBody = async () =>
+    (await owner.http.get(`/api/v1/payroll?month=${YEAR_MONTH}`).expect(200))
+      .body as { approximateHolidayDates: string[] };
+
+  /** ২৬ আগস্ট বুধবার — শুক্রবার নয়, তাই এটা সত্যিই একটা কর্মদিবস কাড়ে */
+  const addHoliday = (day: number, name: string) =>
+    h.prisma.holiday.create({ data: { holidayDate: utc(day), name } });
+
+  it('সম্ভাব্য ছুটি থাকলে তারিখটা রেসপন্সে ওঠে', async () => {
+    await makeEmployee({ empCode: 'G108-PAY' });
+    await addHoliday(26, `Eid-e-Miladunnabi${APPROX_HOLIDAY_SUFFIX}`);
+    await rollup();
+
+    expect((await payrollBody()).approximateHolidayDates).toEqual(['2026-08-26']);
+  });
+
+  it('পাকা ছুটি চুপ থাকে — সব ছুটি নিয়ে সতর্ক করলে সতর্কবার্তার দাম থাকত না', async () => {
+    await makeEmployee({ empCode: 'G108-FIXED' });
+    await addHoliday(26, 'National Day');
+    await rollup();
+
+    expect((await payrollBody()).approximateHolidayDates).toEqual([]);
+  });
+
+  it('কোনো ছুটিই না থাকলে খালি — `undefined` নয়', async () => {
+    // ⚠️ `undefined` হলে ওয়েবে `.length` পড়তে গিয়ে পাতাটাই ভাঙত, আর
+    //    ভাঙত ঠিক সেই মাসে যেটায় কোনো ছুটি নেই — অর্থাৎ পরীক্ষায় নয়।
+    await makeEmployee({ empCode: 'G108-NONE' });
+    await rollup();
+
+    expect((await payrollBody()).approximateHolidayDates).toEqual([]);
+  });
+
+  /**
+   * ⭐⭐ **সতর্কবার্তাটা সত্যিই ওই টাকাটার কথা বলছে কি না।**
+   *
+   * ⚠️ শুধু "তারিখটা তালিকায় আছে" দেখলে টেস্টটা সবুজ থাকত এমনকি যদি
+   * ছুটিটা হিসাবেই না ধরা হতো। তাই এখানে **একই মাসে** দুটো জিনিস একসাথে
+   * দেখা হয়: তারিখটা সতর্কবার্তায় উঠেছে, **আর** ওই তারিখটা সত্যিই একটা
+   * কর্মদিবস কেড়ে নিয়েছে (২৭ → ২৬), যার ফলে prorated ভিত্তি বদলেছে।
+   * এক সারি থেকেই দুটো আসছে — এটাই "এক সংখ্যা, এক সংজ্ঞা"।
+   */
+  it('⭐ যে ছুটির কথা সতর্কবার্তায়, সেই ছুটিই D কমায়', async () => {
+    await makeEmployee({ empCode: 'G108-D', monthlySalary: 20000 });
+    await addHoliday(26, `Eid-e-Miladunnabi${APPROX_HOLIDAY_SUFFIX}`);
+    await rollup();
+
+    const body = (await owner.http
+      .get(`/api/v1/payroll?month=${YEAR_MONTH}`)
+      .expect(200)).body as {
+      approximateHolidayDates: string[];
+      rows: { empCode: string; hourlyRate: string }[];
+    };
+
+    expect(body.approximateHolidayDates).toEqual(['2026-08-26']);
+
+    // ২৭ নয়, ২৬ কর্মদিবস → ২০০০০ ÷ (২৬ × ৮) = ৯৬.১৫ (২৭ হলে হতো ৯২.৫৯)
+    const row = body.rows.find((r) => r.empCode === 'G108-D')!;
+    expect(row.hourlyRate).toBe('96.15');
+  });
+
+  /**
+   * ⚠️ মাসের বাইরের ছুটি টানলে আগস্টের কাগজে সেপ্টেম্বরের অনিশ্চয়তা
+   * দেখাত — অথচ ওটা আগস্টের D-কে ছোঁয়ই না।
+   */
+  it('অন্য মাসের সম্ভাব্য ছুটি এই মাসের কাগজে আসে না', async () => {
+    await makeEmployee({ empCode: 'G108-OTHER' });
+    await h.prisma.holiday.create({
+      data: {
+        holidayDate: new Date(Date.UTC(2026, 8, 15)),
+        name: `Next month${APPROX_HOLIDAY_SUFFIX}`,
+      },
+    });
+    await rollup();
+
+    expect((await payrollBody()).approximateHolidayDates).toEqual([]);
+  });
+});
+
+/**
+ * ⭐⭐ **G110 · G111 — রিপোর্টের `meta` দুটো অবস্থা আলাদা করে বলে**
+ * *(৫ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ দুটোই এক জাতের ত্রুটি: **কোনো সংখ্যা ভুল নয়**, শুধু একটা অবস্থা
+ * অন্যটার ছদ্মবেশে যায়।
+ *   · G111 — যাঁকে এখনো একটা শেষ-হওয়া কর্মদিবসেও দেখা হয়নি, তাঁর প্রত্যাশা
+ *     ০, তাই ঘাটতিও ০ — পর্দায় হুবহু "টার্গেট পূরণ"-এর মতো।
+ *   · G110 — ট্র্যাকিং শুরুর আগের দিনগুলো হিটম্যাপে "কর্মদিবসে কিছুই
+ *     হয়নি"-র লালচে ছোঁয়া পেত।
+ *
+ * ⚠️ e2e লাগে কারণ ঝুঁকিটা অঙ্কে নয়, **জোড়ার মুখে** — `context()` ঘরদুটো
+ * ভরে কি না, আর `meta` সেগুলো তোলে কি না।
+ */
+describe('G110 · G111 — meta-তে "দেখা হয়েছে" ও "কবে থেকে"', () => {
+  const metaOf = async () =>
+    (await reports.attendance({ from: '2026-08-01', to: '2026-08-31' })).meta;
+
+  it('একটাও শেষ-হওয়া দিন দেখা হয়নি — `observed` মিথ্যা', async () => {
+    // ⚠️ কোনো সেশন নেই, তাই ট্র্যাকিং-শুরু = আজ (৩১ আগস্ট), আর জানালা খালি
+    const id = await makeEmployee({ empCode: 'G111-NEW' });
+    await rollup();
+
+    expect((await metaOf()).observed[id]).toBe(false);
+  });
+
+  it('শেষ-হওয়া দিন দেখা হয়েছে — `observed` সত্যি', async () => {
+    const id = await makeEmployee({ empCode: 'G111-SEEN' });
+    await seeSessions(id, [17, 18, 19]);
+    await rollup();
+
+    expect((await metaOf()).observed[id]).toBe(true);
+  });
+
+  /**
+   * ⭐⭐⭐ **এই ফাইলের G111-অংশের সবচেয়ে জরুরি টেস্ট — দুটো এক সূত্রে বাঁধা।**
+   *
+   * ⚠️⚠️ পতাকা আর প্রত্যাশা **কখনো দুই কথা বলতে পারে না**, আর সেটা কাকতালীয়
+   * নয়: দুটোই একই জানালা (`elapsedWindow`) থেকে বেরোয়। আলাদা কোনো কোয়েরি
+   * বা আলাদা নিয়মে গুনলে একদিন পাতাটা "এখনো দেখা হয়নি" লিখত অথচ পাশে
+   * ১২০ ঘণ্টার ঘাটতি দেখাত — অর্থাৎ একই সারি নিজের সাথেই বিরোধ করত।
+   *
+   * ⭐ ভবিষ্যতে কেউ পতাকাটা অন্য কোথাও থেকে (যেমন `daily_summary`-র সারি
+   * গুনে) বানাতে গেলে এই সমতাটাই ভাঙবে।
+   */
+  it('⭐ `observed` মিথ্যা ⟺ প্রত্যাশা ০ — দুটোই একই জানালার', async () => {
+    const seen = await makeEmployee({ empCode: 'G111-A' });
+    await seeSessions(seen, [17, 18]);
+
+    // এজেন্ট কোনোদিন কিছু পাঠায়নি
+    const unseen = await makeEmployee({ empCode: 'G111-B' });
+    await rollup();
+
+    const meta = await metaOf();
+
+    expect(meta.observed[seen]).toBe(true);
+    expect(meta.expectedHours[seen]).toBeGreaterThan(0);
+
+    expect(meta.observed[unseen]).toBe(false);
+    expect(meta.expectedHours[unseen]).toBe(0);
+
+    // ⚠️ কিন্তু টার্গেট দুজনেরই অটুট — জানালা টার্গেট ছোঁয় না, আর ঠিক
+    //    সেজন্যই না-দেখা মানুষের পুরো টার্গেটটা দলের যোগফল থেকে বাদ পড়ে।
+    expect(meta.targetHoursInRange[unseen]).toBe(216);
+  });
+
+  it('G110 — ট্র্যাকিং-শুরুর তারিখটা meta-তে যায়', async () => {
+    const id = await makeEmployee({ empCode: 'G110-DATE' });
+    await seeSessions(id, [13, 14, 17]);
+    await rollup();
+
+    // ⚠️ সবচেয়ে পুরোনো সেশনের দিন — ১৩ আগস্ট, ঠিক যেমন এই ইনস্টলেশনে হয়েছিল
+    expect((await metaOf()).trackedFrom[id]).toBe('2026-08-13');
+  });
+
+  it('G110 — কখনো কিছু পাঠায়নি হলে তারিখটা `null`', async () => {
+    // ⚠️ ০ বা আজকের তারিখ নয় — `null` মানে "খবর নেই", আর পাতাটা তখন
+    //    মাসের সব কর্মদিবসকেই না-দেখা আঁকে। আজকের তারিখ বসালে পাতাটা
+    //    দাবি করত আমরা আজ থেকে দেখছি, অথচ একটাও সেশন নেই।
+    const id = await makeEmployee({ empCode: 'G110-NEVER' });
+    await rollup();
+
+    expect((await metaOf()).trackedFrom[id]).toBeNull();
+  });
+
+  /**
+   * ⭐⭐ **তারিখটা প্রত্যাশা বদলায় না** — G110-র গোটা ঝুঁকিটাই এখানে।
+   *
+   * ⚠️⚠️ তারিখটা পাঠানোর একমাত্র উদ্দেশ্য **আঁকা**। কেউ যদি একদিন এটা
+   * দিয়ে আবার প্রত্যাশা গোনেন, তখন "আজকের দিন বাদ" নিয়মটাও দ্বিতীয়বার
+   * লেখা হবে — আর ঠিক ওভাবেই আগের বাগটা জন্মেছিল। এখানে দেখা হয়:
+   * তারিখ ও প্রত্যাশা দুটোই আছে, আর প্রত্যাশা **জানালার** সংখ্যা,
+   * তারিখ থেকে গোনা নয়।
+   */
+  it('⭐ ১৩ আগস্ট থেকে দেখা — প্রত্যাশা ১৩ তারিখ থেকে ৩০ পর্যন্ত, ১ থেকে নয়', async () => {
+    const id = await makeEmployee({ empCode: 'G110-EXP' });
+    await seeSessions(id, [13]);
+    await rollup();
+
+    const meta = await metaOf();
+
+    expect(meta.trackedFrom[id]).toBe('2026-08-13');
+    /**
+     * ১৩–৩১ আগস্টে কর্মদিবস ১৬ (শুক্রবার ১৪ · ২১ · ২৮ বাদ) × ৮ঘ = ১২৮।
+     *
+     * ⚠️ জানালার ডান প্রান্ত **গতকাল**, আর আগস্ট ২০২৬ এখন সম্পূর্ণ অতীত —
+     *    তাই মাসটা পুরোটাই ভেতরে পড়ে আর সংখ্যাটা আর কখনো নড়বে না
+     *    (G140: স্পেকের সংখ্যা ক্যালেন্ডারের সাথে বদলাতে পারে না)।
+     * ⭐ আসল দাবিটা সংখ্যাটা নয় — **১ আগস্ট থেকে গোনা হয়নি**: পুরো মাস
+     *    গুনলে হতো ২১৬, অর্থাৎ ৮৮ ঘণ্টার ভুতুড়ে ঘাটতি।
+     */
+    expect(meta.expectedHours[id]).toBe(128);
+    expect(meta.expectedHours[id]).toBeLessThan(216);
+    // ⚠️ পুরো মাসের টার্গেট অটুট — জানালা টার্গেট ছোঁয় না
+    expect(meta.targetHoursInRange[id]).toBe(216);
+  });
+});
+
+/**
+ * ⭐⭐ **G130 (R2) — ছুটি রিপোর্টের সারিতেও লেখা থাকে** *(৫ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ ছুটি সংখ্যায় অনেক আগেই পৌঁছেছে (উপরের `leave.spec.ts` ও এই ফাইলের
+ * টার্গেট-টেস্টগুলো দেখুন) — কেউ আর ছুটির জন্য "পিছিয়ে" দেখায় না। কিন্তু
+ * সারিটা দেখতে হুবহু **শূন্য-ঘণ্টার একটা কর্মদিবসের** মতো ছিল, আর কারণটা
+ * জানতে Settings → Leave-এ যেতে হতো।
+ *
+ * ⚠️ e2e লাগে কারণ ঝুঁকিটা **জোড়ার মুখে**: `context()` পতাকাটা ভরে কি না,
+ * আর সারিটা সেটা তোলে কি না।
+ */
+describe('G130 — রিপোর্টের সারিতে "On leave"', () => {
+  const rowsOf = async (empId: number) =>
+    (await reports.attendance({ from: '2026-08-01', to: '2026-08-31' })).rows
+      .filter((r) => r.employeeId === empId);
+
+  /** ২০ আগস্ট বৃহস্পতিবার — কর্মদিবস, তাই ছুটিটা সত্যিই একটা টার্গেট কাড়ে */
+  const takeLeave = (employeeId: number, day: number) =>
+    h.prisma.leave.create({
+      data: { employeeId, leaveDate: utc(day), createdBy: 'test@oxeio' },
+    });
+
+  it('ছুটির দিনের সারিতে পতাকা ওঠে, অন্য দিনে ওঠে না', async () => {
+    const id = await makeEmployee({ empCode: 'G130-ROW' });
+    await takeLeave(id, 20);
+    await rollup();
+
+    const rows = await rowsOf(id);
+    const onLeaveDay = rows.find((r) => r.date === '2026-08-20')!;
+    const normalDay = rows.find((r) => r.date === '2026-08-19')!;
+
+    expect(onLeaveDay.onLeave).toBe(true);
+    expect(normalDay.onLeave).toBe(false);
+  });
+
+  /**
+   * ⭐⭐ **এক সেট, দুই ব্যবহার — এটাই আসল পাহারা।**
+   *
+   * ⚠️⚠️ ব্যাজটা যদি আলাদা একটা কোয়েরি থেকে আসত, একদিন সারিতে "On leave"
+   * লেখা থাকত অথচ টার্গেট কাটা যেত না (বা উল্টোটা) — অর্থাৎ কাগজটা
+   * নিজের সাথেই বিরোধ করত। এখানে দেখা হয় দুটো **একই সারি** থেকে আসছে:
+   * পতাকা উঠেছে **আর** ওই দিনের টার্গেট ০।
+   */
+  it('⭐ যে দিনে পতাকা, সেই দিনেই টার্গেট ০', async () => {
+    const id = await makeEmployee({ empCode: 'G130-TARGET' });
+    await takeLeave(id, 20);
+    await rollup();
+
+    const rows = await rowsOf(id);
+
+    expect(rows.find((r) => r.date === '2026-08-20')).toMatchObject({
+      onLeave: true,
+      targetHours: 0,
+      dayType: 'workday',
+    });
+    // ⚠️ পাশের দিনটা অক্ষত — ছুটি ছড়িয়ে পড়েনি
+    expect(rows.find((r) => r.date === '2026-08-19')).toMatchObject({
+      onLeave: false,
+      targetHours: 8,
+    });
+  });
+
+  /**
+   * ⚠️ `daily_summary`-তে কিছু লেখা হয় না, `leaves` টেবিল সরাসরি পড়া হয় —
+   *    আর ওটাই ঠিক: ছুটি মুছে দিলে ব্যাজ **সাথে সাথেই** যায়, পরের
+   *    rollup-এর অপেক্ষায় থাকে না। rollup না চালিয়েই সেটা দেখা হচ্ছে।
+   */
+  it('⭐ ছুটি মুছে দিলে ব্যাজ সাথে সাথে যায় — rollup ছাড়াই', async () => {
+    const id = await makeEmployee({ empCode: 'G130-DELETE' });
+    const leave = await takeLeave(id, 20);
+    await rollup();
+
+    expect((await rowsOf(id)).find((r) => r.date === '2026-08-20')!.onLeave).toBe(
+      true,
+    );
+
+    await h.prisma.leave.delete({ where: { id: leave.id } });
+
+    expect((await rowsOf(id)).find((r) => r.date === '2026-08-20')!.onLeave).toBe(
+      false,
+    );
   });
 });
