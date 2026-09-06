@@ -8,11 +8,16 @@ import { AlertsService, type RaiseInput } from './alerts.service';
 /**
  * G06 — কেউ পুরো দিন কোনো কাজ করেনি।
  *
- * ⭐ severity ইচ্ছাকৃতভাবে `info`, `warning` নয়।
- * ছুটির কোনো আবেদন-অনুমোদনের ব্যবস্থা এই সিস্টেমে নেই (ADR-011d), তাই
- * "আজ কেউ আসেনি" কোনো **ত্রুটি** নয় — নিছক তথ্য। এটাকে warning বানালে
- * আসল ত্রুটির (এজেন্ট মরে যাওয়া, ডিস্ক ভরা) সাথে এক কাতারে পড়ত, আর তখন
- * warning শব্দটার মানেই হালকা হয়ে যেত।
+ * ⭐ severity ইচ্ছাকৃতভাবে `info`, `warning` নয়। *"আজ কেউ আসেনি"* কোনো
+ * **ত্রুটি** নয় — নিছক তথ্য। warning বানালে আসল ত্রুটির (এজেন্ট মরে যাওয়া,
+ * ডিস্ক ভরা) সাথে এক কাতারে পড়ত, আর তখন warning শব্দটার মানেই হালকা হয়ে যেত।
+ *
+ * ⚠️⚠️ **এখানে আগে লেখা ছিল "ছুটির কোনো ব্যবস্থা এই সিস্টেমে নেই
+ * (ADR-011d)" — আর সেটা এক মাস ধরে বাসি ছিল।** ছুটির খাতা এসেছে R2/G130-তে
+ * (৫ সেপ্টেম্বর), কিন্তু এই পরীক্ষাটা `leaves` টেবিলটা পড়তে শুরু করেছে
+ * ৬ সেপ্টেম্বরে (G157) — মাঝের দিনগুলোয় অনুমোদিত ছুটিতেও খবর যেত।
+ * ⭐ বাসি মন্তব্য নিছক অগোছালো নয়: ওটাই পরের পাঠককে ভুল জিনিস বিশ্বাস
+ * করিয়ে রেখেছিল।
  */
 @Injectable()
 export class NoActivityCheck {
@@ -29,7 +34,7 @@ export class NoActivityCheck {
 
     const workDate = workDateOf(now);
 
-    const [employees, holiday, worked] = await Promise.all([
+    const [employees, holiday, worked, leaves] = await Promise.all([
       this.prisma.employee.findMany({
         where: { status: 'active' },
         select: {
@@ -56,9 +61,22 @@ export class NoActivityCheck {
         where: { workDate, countsAsWork: true },
         _count: { _all: true },
       }),
+      /**
+       * ⭐⭐⭐ **আজ কে ছুটিতে** *(৬ সেপ্টেম্বর ২০২৬, G157)*।
+       *
+       * ⚠️⚠️ এই কোয়েরিটা **এক মাস ধরে অনুপস্থিত ছিল**। ছুটির খাতা এসেছে
+       * R2/G130-তে, কিন্তু অ্যালার্টের কোনো পরীক্ষা কোনোদিন `leaves`
+       * টেবিলটা পড়েনি — তাই অনুমোদিত ছুটির দিনেও *"আজ কেউ কাজ করেনি"*
+       * খবর যেত। মাঠে: ৩টা ছুটির দিনে ১১টা মিথ্যা অ্যালার্ট।
+       */
+      this.prisma.leave.findMany({
+        where: { leaveDate: workDate },
+        select: { employeeId: true },
+      }),
     ]);
 
     const workedBy = new Map(worked.map((w) => [w.employeeId, w._count._all]));
+    const onLeave = new Set(leaves.map((l) => l.employeeId));
 
     const inputs: RaiseInput[] = employees
       .filter((e) =>
@@ -66,6 +84,7 @@ export class NoActivityCheck {
           workedSegments: workedBy.get(e.id) ?? 0,
           weeklyOffDay: e.policy?.weeklyOffDay ?? null,
           isHoliday: holiday !== null,
+          onLeave: onLeave.has(e.id),
           joinedOn: e.joinedOn,
           leftOn: e.leftOn,
           now,

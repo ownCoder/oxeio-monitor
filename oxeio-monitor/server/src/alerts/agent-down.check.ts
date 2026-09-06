@@ -34,7 +34,7 @@ export class AgentDownCheck {
   async runOnce(now = new Date()): Promise<number> {
     const silenceFloor = new Date(now.getTime() - AGENT_SILENCE_MIN * 60_000);
 
-    const [devices, holiday, fallbackPolicy] = await Promise.all([
+    const [devices, holiday, fallbackPolicy, leaves] = await Promise.all([
       this.prisma.device.findMany({
         where: {
           // ⚠️ revoke করা ডিভাইস বাদ — ওগুলোর চুপ থাকাটাই তো উদ্দেশ্য
@@ -73,6 +73,18 @@ export class AgentDownCheck {
         where: { isActive: true },
         select: { officeFrom: true, officeTo: true, weeklyOffDay: true },
       }),
+      /**
+       * ⭐⭐⭐ **আজ কে ছুটিতে** *(৬ সেপ্টেম্বর ২০২৬, G157)*।
+       *
+       * ⚠️⚠️ এই কোয়েরিটা **এক মাস ধরে অনুপস্থিত ছিল**। ছুটির খাতা এসেছে
+       * R2/G130-তে, কিন্তু কোনো অ্যালার্ট-পরীক্ষা কোনোদিন `leaves` পড়েনি —
+       * তাই মালিকের অনুমোদন করা ছুটির দিনেও *"এজেন্ট চুপ"* খবর যেত।
+       * মাঠে: ৩টা ছুটির দিনে ১১টা মিথ্যা অ্যালার্ট, তার ৮টা এই ঘরানার।
+       */
+      this.prisma.leave.findMany({
+        where: { leaveDate: workDateOf(now) },
+        select: { employeeId: true },
+      }),
     ]);
 
     if (devices.length === 0) return 0;
@@ -88,16 +100,32 @@ export class AgentDownCheck {
      *    আগের মতোই লেখা থাকে, তাই সকালে অফিস খুললে যে PC তখনো চুপ, তার
      *    জন্য অ্যালার্ট ঠিকই উঠবে।
      */
-    const open = devices.filter((d) =>
-      isAgentWatchOpen({
-        now,
-        officeFrom: d.employee?.policy?.officeFrom ?? fallbackPolicy?.officeFrom ?? null,
-        officeTo: d.employee?.policy?.officeTo ?? fallbackPolicy?.officeTo ?? null,
-        weeklyOffDay:
-          d.employee?.policy?.weeklyOffDay ?? fallbackPolicy?.weeklyOffDay ?? null,
-        isHoliday: holiday !== null,
-      }),
-    );
+    /**
+     * ⚠️⚠️ **ছুটিতে থাকা কর্মীর PC চুপ থাকাই স্বাভাবিক** — ছাঁকনিটা এখানে,
+     * `isAgentWatchOpen()`-এ নয়। ⭐ ওই ফাংশনটা **অফিসের** প্রশ্নের উত্তর দেয়
+     * (*"এখন কি কাজের সময়?"*), আর ছুটি **একজনের** ব্যাপার। দুটো এক জায়গায়
+     * মিশিয়ে ফেললে একজনের ছুটি গোটা দলের পাহারা বন্ধ করে দিতে পারত।
+     */
+    const onLeave = new Set(leaves.map((l) => l.employeeId));
+
+    const open = devices
+      .filter((d) => d.employeeId === null || !onLeave.has(d.employeeId))
+      .filter((d) =>
+        isAgentWatchOpen({
+          now,
+          officeFrom:
+            d.employee?.policy?.officeFrom ??
+            fallbackPolicy?.officeFrom ??
+            null,
+          officeTo:
+            d.employee?.policy?.officeTo ?? fallbackPolicy?.officeTo ?? null,
+          weeklyOffDay:
+            d.employee?.policy?.weeklyOffDay ??
+            fallbackPolicy?.weeklyOffDay ??
+            null,
+          isHoliday: holiday !== null,
+        }),
+      );
 
     if (open.length === 0) {
       this.logger.debug(

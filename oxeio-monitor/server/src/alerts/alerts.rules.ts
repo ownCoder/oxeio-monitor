@@ -488,6 +488,13 @@ export interface NoActivityInput {
   weeklyOffDay: number | null;
   /** আজ ক্যালেন্ডারে ছুটি কি না */
   isHoliday: boolean;
+  /**
+   * ⭐ আজ **এই কর্মীর** অনুমোদিত ছুটি কি না *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️ `isHoliday`-র সাথে মেশানো নয়: ওটা **অফিসের** ক্যালেন্ডার, এটা
+   *    ওই একজনের — ঠিক `AttendanceRow.onLeave`-এর মতোই।
+   */
+  onLeave: boolean;
   joinedOn: Date | null;
   leftOn: Date | null;
   now: Date;
@@ -505,12 +512,25 @@ export interface NoActivityInput {
  *    ঘণ্টা পুরোপুরিই গোনা হয় (§ ২.১-খ, ছুটি কোনো ব্লক নয়)।
  */
 export function shouldFlagNoActivity(input: NoActivityInput): boolean {
-  const { workedSegments, weeklyOffDay, isHoliday, joinedOn, leftOn, now } =
+  const { workedSegments, weeklyOffDay, isHoliday, onLeave, joinedOn, leftOn, now } =
     input;
 
   if (workedSegments > 0) return false;
   if (!isNoActivityWindow(now)) return false;
   if (isHoliday) return false;
+  /**
+   * ⭐⭐⭐ **অনুমোদিত ছুটি** *(৬ সেপ্টেম্বর ২০২৬, G157)*।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** এই ফাইলের উপরের নোটে এতদিন লেখা ছিল
+   * *"ছুটির কোনো আবেদন-অনুমোদনের ব্যবস্থা এই সিস্টেমে নেই (ADR-011d)"* —
+   * আর সেটা **এক মাস ধরে বাসি**। ছুটির খাতা এসেছে R2/G130-তে, কিন্তু
+   * অ্যালার্টের কোনো পরীক্ষা কোনোদিন `leaves` টেবিলটা পড়েনি।
+   *
+   * ⚠️ মাঠে মেপে দেখা: মাত্র **৩টা** ছুটির দিনে **১১টা** মিথ্যা অ্যালার্ট
+   * (৮টা `agent_down` + ৩টা `no_activity_today`) — অর্থাৎ প্রতিটা ছুটির
+   * দিনেই মালিকের ইনবক্সে এমন খবর যেত যেটা তিনি নিজেই অনুমোদন করেছেন।
+   */
+  if (onLeave) return false;
   if (weeklyOffDay !== null && dhakaIsoWeekday(now) === weeklyOffDay) {
     return false;
   }

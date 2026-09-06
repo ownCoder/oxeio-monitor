@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { workDateOf } from '../src/agent/util/dhaka-time';
 import { AgentDownCheck } from '../src/alerts/agent-down.check';
 import { AlertsService } from '../src/alerts/alerts.service';
 import {
@@ -89,6 +90,57 @@ beforeEach(async () => {
     data: { empCode: 'OX-DOWN', fullName: 'Rakib Hasan', policyId: policy.id },
   });
   employeeId = emp.id;
+});
+
+/**
+ * ⭐⭐⭐ **ছুটিতে থাকা কর্মীর PC চুপ থাকলে অ্যালার্ট নয়** *(৬ সেপ্টেম্বর ২০২৬,
+ * G157)*।
+ *
+ * ⚠️⚠️ **যে ফাঁকটা এই describe-টা পাহারা দেয়:** ছুটির খাতা এসেছে R2/G130-তে
+ * (৫ সেপ্টেম্বর), কিন্তু **কোনো অ্যালার্ট-পরীক্ষা কোনোদিন `leaves` টেবিলটা
+ * পড়েনি**। ফলে মালিকের নিজের অনুমোদন করা ছুটির দিনেও *"এজেন্ট চুপ"* খবর
+ * যেত — অর্থাৎ সিস্টেম এমন কিছু নিয়ে নালিশ করত যেটা সে নিজেই জানত।
+ *
+ * ⚠️ মাঠে মেপে দেখা: মাত্র **৩টা** ছুটির দিনে **১১টা** মিথ্যা অ্যালার্ট
+ * (৮টা `agent_down` + ৩টা `no_activity_today`)।
+ */
+describe('G157 — ছুটির দিনে agent_down নয়', () => {
+  /** ⭐⭐⭐ এই describe-এর মূল টেস্ট */
+  it('⭐ ছুটিতে থাকলে চুপ PC-তেও অ্যালার্ট ওঠে না', async () => {
+    await seedDevice(before(30));
+    await h.prisma.leave.create({
+      data: { employeeId, leaveDate: workDateOf(NOW), createdBy: 'test' },
+    });
+
+    expect(await check.runOnce(NOW)).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ **দ্বিতীয় টেস্টটাই আসল পাহারা** — প্রথমটা একা থাকলে চেকটা
+   * সবসময় ০ ফেরত দিয়েও সবুজ থাকত।
+   */
+  it('⭐ ছুটি না থাকলে আগের মতোই অ্যালার্ট ওঠে', async () => {
+    await seedDevice(before(30));
+
+    expect(await check.runOnce(NOW)).toBe(1);
+  });
+
+  /**
+   * ⚠️ **অন্য কারো ছুটি এই PC-র পাহারা বন্ধ করে না** — ছুটি একজনের
+   *    ব্যাপার, অফিসের নয়। মিশিয়ে ফেললে একজনের ছুটি গোটা দলের পাহারা
+   *    নিভিয়ে দিত।
+   */
+  it('⭐ অন্য কর্মীর ছুটিতে পাহারা অটুট', async () => {
+    const other = await h.prisma.employee.create({
+      data: { empCode: 'OX-LV2', fullName: 'Onno Karmi' },
+    });
+    await seedDevice(before(30));
+    await h.prisma.leave.create({
+      data: { employeeId: other.id, leaveDate: workDateOf(NOW), createdBy: 'test' },
+    });
+
+    expect(await check.runOnce(NOW)).toBe(1);
+  });
 });
 
 describe('agent_down — ফিরে এলে নিজে বন্ধ', () => {
