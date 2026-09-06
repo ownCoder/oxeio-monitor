@@ -333,6 +333,14 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
 
   /** ⚠️ ছাঁকনি বা খোঁজা বদলালে পাতা ১-এ ফেরত — নইলে ৫ নম্বর পাতায় বসে
    *  থেকে "কিছু নেই" দেখা যেত, অথচ ফল আছে */
+  /**
+   * ⭐ লেখাটা কি একটা লিঙ্ক? — `/` বা `:` থাকলেই যথেষ্ট।
+   *
+   * ⚠️ নিখুঁত URL পার্সিং নয়, ইচ্ছাকৃতভাবে: কাজটা কেবল **ইঙ্গিত দেখানো**,
+   *    কিছু আটকানো নয়। ASIN বা Job নম্বরে এ দুটো অক্ষরের একটাও থাকে না।
+   */
+  const looksLikeUrl = /[/:]/.test(q);
+
   const change = (next: () => void) => {
     setPage(1);
     next();
@@ -470,13 +478,33 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
           <span className="ml-1 text-ink-3">{showFilters ? '▴' : '▾'}</span>
         </button>
 
+        {/*
+          ⭐⭐ **ASIN বা Job নম্বর** *(৬ সেপ্টেম্বর ২০২৬, মালিকের চাওয়া)*।
+             প্রতিটা সারির নিচে Job নম্বরটা লেখা থাকে, অথচ এতদিন ওটা দিয়ে
+             খোঁজা যেত না — একমাত্র পরিচয় ছিল ASIN।
+
+          ⚠️⚠️ **লিঙ্ক আর চলে না।** আগে পেস্ট করা URL থেকে ASIN বের করে
+             নেওয়া হতো; মালিক ওটা তুলে দিতে বলেছেন।
+        */}
         <input
           value={q}
           onChange={(e) => change(() => setQ(e.target.value))}
-          placeholder="Paste a link or ASIN…"
+          placeholder="ASIN or job no…"
           className="num ml-auto w-full max-w-[260px] rounded-md border border-line bg-paper px-2.5 py-1 text-[12.5px] text-ink"
         />
       </div>
+
+      {/*
+        ⚠️⚠️ লিঙ্ক পেস্ট করলে **বলে দেওয়া হয়**। নইলে ফলটা হতো একটা নীরব
+           খালি তালিকা, আর ব্যবহারকারী ভাবতেন ডিজাইনটা পুলে নেই — অথচ
+           আছে। এই অ্যাপে নীরব ভুল উত্তরই সবচেয়ে অপছন্দের ব্যর্থতা।
+      */}
+      {looksLikeUrl && (
+        <div className="px-4 pb-2 text-[12px] text-idle-ink">
+          Links are not searched any more — paste the <b>ASIN</b> or the{' '}
+          <b>job number</b> instead.
+        </div>
+      )}
 
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2">

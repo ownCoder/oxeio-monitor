@@ -83,7 +83,12 @@ class ListQueryDto {
   @IsOptional() @IsIn(['pool', 'assigned', 'done', 'skipped', 'deleted'])
   status?: DesignTargetStatus;
 
-  /** ⭐ URL বা ASIN — দুটোই চলে */
+  /**
+   * ⭐ **ASIN বা Job নম্বর** *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️ URL আর চলে না — মালিকের সিদ্ধান্ত। পর্দা লিঙ্ক পেস্ট করলে
+   *    সরাসরি বলে দেয়, নীরবে খালি তালিকা দেখায় না।
+   */
   @IsOptional() @IsString() @MaxLength(200)
   q?: string;
 

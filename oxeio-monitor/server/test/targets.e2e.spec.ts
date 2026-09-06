@@ -572,6 +572,118 @@ describe('কাজের নম্বর', () => {
  * ⭐ এই describe-টা সেই সীমার পাহারা: চিপের সংখ্যা আর তালিকার সংখ্যা
  * **এক** কি না, আর পুরোনো সারি সত্যিই বাদ পড়ে কি না।
  */
+/**
+ * ⭐⭐⭐ **Design Pool-এ খোঁজা — ASIN বা Job নম্বর** *(৬ সেপ্টেম্বর ২০২৬,
+ * মালিকের চাওয়া)*।
+ *
+ * ⚠️⚠️ **কেন দরকার হলো:** পর্দায় প্রতিটা সারির নিচে Job নম্বরটা বড় করে
+ * লেখা থাকে (`Job 1016878`), অথচ ওটা দিয়ে খোঁজার কোনো উপায় ছিল না —
+ * একমাত্র পরিচয় ছিল ASIN। অর্থাৎ পর্দা একটা নম্বর দেখাত যেটা দিয়ে
+ * কিছুই করা যেত না।
+ *
+ * ⚠️⚠️ **আর URL দিয়ে খোঁজা তুলে দেওয়া হয়েছে** — মালিকের সিদ্ধান্ত।
+ * আগে `asinOf()` দিয়ে লিঙ্ক থেকে ASIN বের করা হতো।
+ */
+describe('Design Pool-এ খোঁজা — ASIN বা Job নম্বর', () => {
+  /** তিনটে টার্গেট বসিয়ে তাদের ASIN ও Job নম্বর ফেরত দেয় */
+  async function seed() {
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await post(owner, '/api/v1/design-targets/bulk', {
+      text: [URL_OF(1), URL_OF(2), URL_OF(3)].join(String.fromCharCode(10)),
+    }).expect(201);
+
+    const rows = await h.prisma.designTarget.findMany({
+      select: { asin: true, jobNumber: true },
+      orderBy: { asin: 'asc' },
+    });
+
+    return { owner, rows };
+  }
+
+  const search = (session: Session, q: string) =>
+    session.http.get(`/api/v1/design-targets?q=${encodeURIComponent(q)}`);
+
+  it('ASIN দিয়ে খোঁজা যায়', async () => {
+    const { owner, rows } = await seed();
+
+    const res = await search(owner, rows[0].asin).expect(200);
+
+    expect(res.body.total).toBe(1);
+    expect(res.body.rows[0].asin).toBe(rows[0].asin);
+  });
+
+  /**
+   * ⭐⭐⭐ **এই describe-এর মূল টেস্ট** — এটাই নতুন ক্ষমতাটা।
+   *
+   * ⚠️ Job নম্বর মেলানো হয় **হুবহু**, `contains` দিয়ে নয় — কলামটা `Int`,
+   *    আর সংখ্যার আংশিক মিল মানুষের কাছে কোনো অর্থ বহন করে না।
+   */
+  it('⭐ Job নম্বর দিয়েও খোঁজা যায়', async () => {
+    const { owner, rows } = await seed();
+    const target = rows[1];
+
+    const res = await search(owner, String(target.jobNumber)).expect(200);
+
+    expect(res.body.total).toBe(1);
+    expect(res.body.rows[0].asin).toBe(target.asin);
+    expect(res.body.rows[0].jobNumber).toBe(target.jobNumber);
+  });
+
+  /**
+   * ⚠️⚠️ **অন্য কারো নম্বর দিলে অন্য কারো সারি** — নইলে টেস্টটা
+   * "যেকোনো একটা সারি ফিরছে" দেখেই সবুজ হয়ে যেত, আর খোঁজাটা আদৌ
+   * নম্বর ধরে হচ্ছে কি না বোঝা যেত না।
+   */
+  it('⭐ ভিন্ন Job নম্বর ভিন্ন সারি আনে', async () => {
+    const { owner, rows } = await seed();
+
+    const first = await search(owner, String(rows[0].jobNumber)).expect(200);
+    const last = await search(owner, String(rows[2].jobNumber)).expect(200);
+
+    expect(first.body.rows[0].asin).toBe(rows[0].asin);
+    expect(last.body.rows[0].asin).toBe(rows[2].asin);
+    expect(first.body.rows[0].asin).not.toBe(last.body.rows[0].asin);
+  });
+
+  /**
+   * ⚠️⚠️ **URL দিয়ে আর পাওয়া যায় না** — এটাই সিদ্ধান্তটার পাহারা।
+   * কেউ `asinOf()` ফিরিয়ে আনলে এই টেস্টটাই লাল হবে।
+   */
+  it('⭐ লিঙ্ক দিয়ে খোঁজা আর চলে না', async () => {
+    const { owner, rows } = await seed();
+
+    const res = await search(owner, URL_OF(1)).expect(200);
+
+    expect(res.body.total).toBe(0);
+    // ⚠️ অথচ ওই ASIN-টা টেবিলে আছেই — বাদ পড়ছে কেবল খোঁজার নিয়মে
+    expect(rows.some((r) => URL_OF(1).endsWith(r.asin))).toBe(true);
+  });
+
+  /**
+   * ⚠️ ছোট হাতে লিখলেও চলে — মানুষ ASIN কপি করে সব রকমভাবে।
+   */
+  it('ছোট হাতের ASIN-ও চলে', async () => {
+    const { owner, rows } = await seed();
+
+    const res = await search(owner, rows[0].asin.toLowerCase()).expect(200);
+
+    expect(res.body.total).toBe(1);
+  });
+
+  /**
+   * ⚠️⚠️ **`Int`-এর সীমার চেয়ে বড় সংখ্যা ৫০০ ছুড়ত।** `job_number`
+   * কলামটা `Int`, তাই ২,১৪৭,৪৮৩,৬৪৭-এর বড় কিছু Prisma-তে পাঠালে
+   * কোয়েরিই ভেঙে যেত — অথচ ব্যবহারকারী কেবল একটা লম্বা সংখ্যা লিখেছেন।
+   */
+  it('⭐ অতি-বড় সংখ্যাতেও ভেঙে পড়ে না', async () => {
+    const { owner } = await seed();
+
+    const res = await search(owner, '99999999999999').expect(200);
+
+    expect(res.body.total).toBe(0);
+  });
+});
+
 describe('গবেষকের কিউ — আপলোড ও লাইভের অপেক্ষায়', () => {
   const targetsOf = () => h.app.get(TargetsService);
 

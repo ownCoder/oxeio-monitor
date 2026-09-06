@@ -14,7 +14,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   allocationSizes,
   amazonUrl,
-  asinOf,
   canUseTargets,
   DESIGN_WORK_STAFF_TYPES,
   type DropReason,
@@ -94,6 +93,17 @@ export interface DeleteResult {
    */
   keptDone: number;
 }
+
+/**
+ * ⭐⭐ **Design Pool-এ খোঁজার শর্ত** *(৬ সেপ্টেম্বর ২০২৬)* — ASIN, নাকি
+ * Job নম্বর, নাকি দুটোই।
+ *
+ * ⚠️ শুধু-অঙ্ক লেখা হলে `OR` — কিছু ASIN পুরোপুরি সংখ্যায় হয়, আর তখন
+ *    কেবল Job নম্বর খুঁজলে ওই সারিটা নীরবে হারিয়ে যেত।
+ */
+type TargetSearchMatch =
+  | { asin: { contains: string } }
+  | { OR: [{ jobNumber: number }, { asin: { contains: string } }] };
 
 export interface TargetRow {
   id: number;
@@ -852,16 +862,26 @@ export class TargetsService {
   }
 
   /**
+   * ⭐ খোঁজার শর্তটার আকৃতি — `where`-এ ছড়িয়ে দেওয়া হয়।
+   *
+   * ⚠️ `OR` ঐচ্ছিক: শুধু-অঙ্ক লেখা হলে Job নম্বর **আর** ASIN দুটোই দেখা
+   *    হয়, নইলে কেবল ASIN।
+   */
+  /**
    * ⭐⭐ **পুরো তালিকা** *(২৩ আগস্ট, মালিকের চাওয়া)* — ছাঁকনি ও পাতা ভাগসহ।
    *
    * ⚠️⚠️ **পাতা ভাগ বাধ্যতামূলক, ঐচ্ছিক নয়:** টেবিলে **৩৯ হাজারের বেশি**
    * সারি। সব একসাথে পাঠালে উত্তরটা কয়েক MB হতো, আর ব্রাউজার ওই টেবিল
    * আঁকতে গিয়ে জমে যেত।
    *
-   * ⭐ `q` দিয়ে **URL বা ASIN** দুটোই খোঁজা যায় — গবেষক একটা লিঙ্ক
-   * পেস্ট করে দেখে নিতে পারেন এটা আগে হয়ে গেছে কি না, আর কে করেছিল।
-   * ⚠️ URL থেকে ASIN বের করতে `asinOf()`-ই ব্যবহার হয়, আলাদা কোনো
-   * পার্সিং নয় — নইলে খোঁজা আর জমা দেওয়া দু-রকম বুঝত।
+   * ⭐⭐ `q` দিয়ে **ASIN বা Job নম্বর** — দুটোই *(৬ সেপ্টেম্বর ২০২৬,
+   * মালিকের চাওয়া)*। পর্দায় প্রতিটা সারির নিচে Job নম্বরটা লেখা থাকে,
+   * অথচ ওটা দিয়ে খোঁজা যেত না — একমাত্র পরিচয় ছিল ASIN।
+   *
+   * ⚠️⚠️ **URL দিয়ে আর খোঁজা যায় না** — আগে `asinOf()` দিয়ে লিঙ্ক থেকে
+   * ASIN বের করা হতো, কিন্তু মালিক ওটা তুলে দিতে বলেছেন। ⭐ পর্দা তাই
+   * লিঙ্ক পেস্ট করলে **সরাসরি বলে দেয়**, নইলে ফলটা হতো একটা নীরব
+   * খালি তালিকা — এই অ্যাপে সবচেয়ে অপছন্দের ব্যর্থতা।
    */
   async list(query: {
     status?: DesignTargetStatus;
@@ -886,12 +906,31 @@ export class TargetsService {
   }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
     const page = Math.max(1, query.page ?? 1);
 
-    let asin: string | undefined;
-    if (query.q && query.q.trim().length > 0) {
-      const parsed = asinOf(query.q.trim());
-      // ⚠️ URL না হলে যা লেখা আছে সেটাই ASIN ধরে খোঁজা — লোকে
-      //    আংশিক আইডিও লেখে
-      asin = 'asin' in parsed ? parsed.asin : query.q.trim().toUpperCase();
+    /**
+     * ⭐⭐ **ASIN নাকি Job নম্বর** — পার্থক্যটা এক লাইনে: শুধু অঙ্ক হলে
+     * Job নম্বর, নইলে ASIN।
+     *
+     * ⚠️ তবু অঙ্ক হলে **দুটোই** দেখা হয় (`OR`)। কিছু ASIN পুরোপুরি
+     * সংখ্যায় হয় (পুরোনো ISBN-ধাঁচের), আর তখন কেবল Job নম্বর খুঁজলে
+     * ওই সারিটা কোনোদিন পাওয়া যেত না — নীরবে।
+     *
+     * ⚠️⚠️ `Number()` করার আগে **সীমা দেখা হয়**: `job_number` কলামটা
+     * `Int`, তাই ২,১৪৭,৪৮৩,৬৪৭-এর বড় কিছু পাঠালে Prisma ছুড়ত আর
+     * খোঁজাটা ৫০০ হয়ে ফিরত — অথচ ব্যবহারকারী শুধু একটা লম্বা সংখ্যা
+     * লিখেছেন।
+     */
+    const INT32_MAX = 2_147_483_647;
+    let match: TargetSearchMatch | undefined;
+
+    const term = query.q?.trim().toUpperCase();
+    if (term) {
+      const digits = /^\d+$/.test(term);
+      const jobNumber = digits ? Number(term) : NaN;
+
+      match =
+        digits && Number.isSafeInteger(jobNumber) && jobNumber <= INT32_MAX
+          ? { OR: [{ jobNumber }, { asin: { contains: term } }] }
+          : { asin: { contains: term } };
     }
 
     /**
@@ -977,7 +1016,7 @@ export class TargetsService {
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
-      ...(asin ? { asin: { contains: asin } } : {}),
+      ...(match ?? {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(query.addedById ? { addedById: query.addedById } : {}),
       ...(activity ? { lastActivityAt: activity } : {}),
