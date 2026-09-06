@@ -164,8 +164,8 @@ oxeio-monitor/
 │   │   ├── Package.wxs                     ✅ ডাবল-ক্লিক ইনস্টল · রেজিস্ট্রি · টাস্ক
 │   │   │   #    ⚠️ StartWatchdog — ইনস্টল শেষে চালুও করে (G78)
 │   │   └── build.ps1                       ✅ publish → wix build · ঠিকানা ডিফল্টেই বেক
-│   ├── tests/oXeio.Core.Tests/             ✅ ৩৮৩টি ইউনিট টেস্ট (net8.0)
-│   └── tests/oXeio.Agent.Tests/            ✅ ১১৬টি — Win32 মডিউলের জন্য (net8.0-windows)
+│   ├── tests/oXeio.Core.Tests/             ✅ ৪০০টি ইউনিট টেস্ট (net8.0)
+│   └── tests/oXeio.Agent.Tests/            ✅ ১৩০টি — Win32 মডিউলের জন্য (net8.0-windows)
 │       #  ⭐ `HeroSecondsTests` **সত্যিই এঁকে কালি গোনে** — "ছোট করেছি" আর
 │       #     "পর্দায় ঠিক বসেছে" এক কথা নয়, আর দ্বিতীয়টা কোনো কম্পাইলার ধরে না
 │
@@ -204,6 +204,13 @@ oxeio-monitor/
 │   │   ├── agent/                          ✅ ⭐ এজেন্ট → সার্ভার (৯টি endpoint)
 │   │   ├── alerts/                     ✅ G01–G08 · G32 overlap · ৬ ঘণ্টার throttle · SMTP + টেলিগ্রাম
 │   │   ├── dashboard/                  ✅ E01 Live Board · E04 টাইমলাইন · E05 ঘণ্টা
+│   │   │   #  ⭐ `dashboard.service.ts` — `TrendDay`-তে `designsFinished`
+│   │   │   #     *(৫ সেপ্টেম্বর)*। উৎস `design_targets.completed_at`,
+│   │   │   #     **`design_credits` নয়** — ওটা কতগুলো ফাইল *খোলা* হয়েছে
+│   │   │   #     বলত, আর মাঠে ঠিক ওটাই বিভ্রান্তি করেছিল (ADR-036/037)
+│   │   │   #  ⚠️⚠️ কোয়েরির সীমানা **হাতে গোনা** (`DHAKA_OFFSET_MS`) —
+│   │   │   #     `first`/`today` হলো **লেবেল** (UTC-মধ্যরাত), মুহূর্ত নয়;
+│   │   │   #     সোজা বসালে জানালাটা ৬ ঘণ্টা দেরিতে সরে যেত
 │   │   ├── digest/                     ✅ **তিনটে প্রেরক, এক মডিউল** — দৈনিক (F07) · সাপ্তাহিক (R3) · ঘণ্টার স্ন্যাপশট
 │   │   │   ├── digest.{job,math,service}.ts   ✅ F07 — রোজ সন্ধ্যা ৬:৩০
 │   │   │   ├── weekly.rules.ts                ✅ ⭐ R3 — সপ্তাহের গণিত, খাঁটি ফাংশন
@@ -275,9 +282,12 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১৬৫৯টি টেস্ট, ৮২টি ফাইল** *(৫ সেপ্টেম্বর মাপা, ১টি skipped)*
-│       #  ⚠️ ৪৪টি ফাইল DB ছাড়াই চলে; ২৩টি `*.e2e.spec.ts`
-│       #     (২৩০ টেস্ট) Postgres ছাড়া চলে না — [README § টেস্ট](../README.md)
+│   └── test/                               ✅ Vitest + supertest — **১৬৬৫টি টেস্ট, ৮৩টি ফাইল** *(৬ সেপ্টেম্বর মাপা, ১টি skipped)*
+│       #  ⚠️ ৫১টি ফাইল DB ছাড়াই চলে (**১১৮৮** টেস্ট, `npm run test:nodb`);
+│       #     ৩২টি `*.e2e.spec.ts` (**৪৭৭**) Postgres ছাড়া চলে না
+│       #     — [README § টেস্ট](../README.md)
+│       #  ⚠️⚠️ আগের সংখ্যাগুলো (৪৪ · ২৩ · ২৩০) অনেকদিন ধরে বাসি ছিল —
+│       #     ৬ সেপ্টেম্বরে গুনে মেলানো হলো, অনুমান করে নয়
 │       ├── *.e2e.spec.ts                   #   auth · agent · endpoints
 │       ├── *.math.spec.ts                  #   payroll · progress · summary · digest · …
 │       ├── holidays.spec.ts                ✅ ⭐ ৭৭ — তালিকা যাচাই · seed পরিকল্পনা ·
@@ -305,6 +315,13 @@ oxeio-monitor/
 │       │                                   #   পলিসির `expected_workdays` ভাগ করে
 │       ├── trend-expectation.spec.ts       ✅ ১৫ — ৭ দিনের ফিতের প্রত্যাশা এখন
 │       │                                   #   ক্যালেন্ডার দেখে, `daily_summary` সারি গুনে নয়
+│       ├── trend-designs.e2e.spec.ts       ✅ ⭐⭐ ৬ — ফিতের দৈনিক ডিজাইন-সংখ্যা।
+│       │                                   #   বেশিরভাগ টেস্টই ঢাকার মধ্যরাতের দুই পাশে
+│       │                                   #   ⚠️⚠️ বালতি `workDateOf()` ধরে, UTC ধরে নয় —
+│       │                                   #   UTC হলে মধ্যরাত–ভোর ৬টার কাজ আগের দিনে পড়ত।
+│       │                                   #   সাবোতাজে যাচাই: ২৩:৩০/০০:৩০ টেস্টটাই লাল হয়
+│       │                                   #   ⚠️ উৎস `design_targets.completed_at` (**শেষ**),
+│       │                                   #   `design_credits` (**খোলা**) নয় — ADR-037
 │       └── setup/harness.ts  setup/global-setup.ts  setup/clock.ts
 │                                           # ⭐ `clock.ts` আলাদা কেন: harness গোটা
 │                                           #   Nest + Postgres তোলে, অথচ খাঁটি
@@ -386,6 +403,13 @@ oxeio-monitor/
 │       ├── pages/LoginPage.tsx             ✅ + TOTP দ্বিতীয় ধাপ (I06)
 │       ├── pages/ChangePasswordPage.tsx    ✅ বাধ্যতামূলক প্রথম-বদল (G33)
 │       ├── pages/LiveBoardPage.tsx         ✅ ⭐ হোম — E01 টাইল · চার্ট · দলের টেবিল
+│       │   #  ⭐⭐ **"Designs Finished"** *(৫ সেপ্টেম্বর)* — শেষ ৭ দিনে রোজ
+│       │   #     কতগুলো ডিজাইন শেষ। কম্পোনেন্ট `DesignsThisWeek` এই ফাইলেরই
+│       │   #     শেষে। ⚠️ ইচ্ছাকৃতভাবে **"Where Today Went"-এর ঠিক উপরে**
+│       │   #     ⚠️ বারের উচ্চতা সবচেয়ে বড় দিনটার সাপেক্ষে — ধ্রুবক টার্গেট
+│       │   #     নেই, কারণ দৈনিক টার্গেট কর্মীভেদে আলাদা আর দলগত টার্গেট নেই
+│       │   #  ⚠️⚠️ ট্র্যাকিংয়ের আগের দিন ডটেড আউটলাইন + `—`, **০ নয়**
+│       │   #     (`TrendDay.tracked`) — G110/G111-এর হুবহু একই নিয়ম
 │       │   #  ⚠️⚠️ মানুষের **কার্ড এখানে আর নেই** — ১৭ আগস্ট `WorklogPage`-এ
 │       │   #     সরানো (09 § ৩ফ)। সাথে স্ক্রিনশটের লাইটবক্স আর
 │       │   #     `getLatestShots` polling-ও উঠেছে — ওটা ছবি না দেখিয়েও
