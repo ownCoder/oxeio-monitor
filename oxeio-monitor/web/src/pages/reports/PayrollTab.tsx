@@ -170,8 +170,48 @@ export function PayrollTab({ month }: { month: string }) {
       header: 'Payable',
       align: 'right',
       render: (row) => (
-        <span className="num font-semibold">{formatTaka(row.payable)}</span>
+        <span className="num">{formatTaka(row.payable)}</span>
       ),
+    },
+    {
+      /**
+       * ⭐⭐ **R21 — এই মাসের জামানতের কিস্তি**।
+       *
+       * ⚠️ `—` মানে এই মাসে কিস্তি নেই (খাতা শুরু হয়নি, বা নিষ্পত্তি
+       *    হয়ে গেছে)। ০ নয়, কারণ ৳০-র কিস্তি বলে কিছু নেই (G145)।
+       */
+      key: 'deposit',
+      header: 'Deposit',
+      align: 'right',
+      render: (row) =>
+        row.securityDeposit === null ? (
+          <span className="num text-ink-3">—</span>
+        ) : (
+          <span className="num text-brand-ink">
+            {formatTaka(row.securityDeposit)}
+          </span>
+        ),
+    },
+    {
+      /**
+       * ⭐⭐⭐ **হাতে যা যাবে** — শিটের শেষ কথা, তাই এটাই মোটা করে লেখা।
+       *
+       * ⚠️⚠️ **এই কলামটা ছ-দিন আগেও ছিল না**, অথচ সার্ভার সংখ্যাটা
+       * পাঠাচ্ছিল আর নিচের সতর্কবার্তাটা এর নাম ধরেই কথা বলত
+       * (*"Net payable stops at zero"*)। ফলে মালিক টাকা দিতেন
+       * `Payable` দেখে — জামানত না কেটেই।
+       *
+       * ⚠️ `null` = বেতন বসানো নেই, তাই নিট বের করা যায় না। শূন্য নয়।
+       */
+      key: 'net',
+      header: 'Net payable',
+      align: 'right',
+      render: (row) =>
+        row.netPayable === null ? (
+          <span className="text-[11.5px] text-ink-3">Not set</span>
+        ) : (
+          <span className="num font-semibold">{formatTaka(row.netPayable)}</span>
+        ),
     },
   ];
 
@@ -179,7 +219,7 @@ export function PayrollTab({ month }: { month: string }) {
     <>
       <Card
         title={`Payroll Hours · ${formatMonth(month)}`}
-        hint="Deduction = salary × shortfall ÷ target. Every view of this sheet is written to the audit log."
+        hint="Deduction = salary × shortfall ÷ target, and shortfall counts only the days we actually watched. Net payable = payable − deposit. Every view of this sheet is written to the audit log."
         padded={false}
       >
         <Table

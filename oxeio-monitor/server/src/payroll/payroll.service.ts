@@ -4,6 +4,7 @@ import { EmployeeStatus } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { DepositsService } from '../deposits/deposits.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { proratedExpectedSec } from '../summary/summary.math';
 import { computePayroll, paisaToTaka, salaryForMonth } from './payroll.math';
 
 // G108 — অনিশ্চয়তার **এক** সংজ্ঞা, রিপোর্টের সাথে ভাগ করা
@@ -24,6 +25,16 @@ export interface PayrollRow {
   /** null = এই কর্মীর বেতন বসানো নেই — শূন্য ধরা হয় না, আলাদা করে দেখানো হয় */
   monthlySalary: string | null;
   targetHours: string;
+  /**
+   * ⭐⭐⭐ **টার্গেটের যতটুকু সত্যিই দেখা হয়েছে** *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ কর্তন এই সংখ্যাটার সাপেক্ষে, `targetHours`-এর নয় — মালিকের
+   * সিদ্ধান্ত: *"না-দেখা দিনের জন্য কর্তন হবে না"*। দুটো আলাদা করে
+   * দেখানো হয় যাতে **কেন কম** প্রশ্নটার উত্তর শিটেই থাকে।
+   */
+  observedTargetHours: string;
+  /** ⭐ যতগুলো কর্মদিবসের সারি সত্যিই লেখা হয়েছিল *(৬ সেপ্টেম্বর)* */
+  observedWorkdays: number;
   /**
    * ⭐ **G37** — তার কর্মদিবস (d) ও মাসের কর্মদিবস (D)।
    *
@@ -225,16 +236,53 @@ export class PayrollService {
         })),
       );
 
+      /**
+       * ⭐⭐⭐ **টার্গেটের যতটুকু আমরা সত্যিই দেখেছি** *(৬ সেপ্টেম্বর ২০২৬,
+       * মালিকের সিদ্ধান্ত: "না-দেখা দিনের জন্য কর্তন হবে না")*।
+       *
+       * ⚠️⚠️ **যে বাগটা এটা সারায়:** ঘাটতি মাপা হতো পুরো `targetSec`-এর
+       * সাপেক্ষে, অথচ `creditedSec` আসে কেবল সেইসব দিন থেকে যেদিন সিস্টেম
+       * চলছিল। আগস্টে ট্র্যাকিং শুরু ১৩–১৫ তারিখে, তাই মাসের প্রায় অর্ধেক
+       * নীরবে ঘাটতি হয়ে যেত — ১২ জনের কর্তন দাঁড়াত **৳৭৯,৭৮৮**, যার
+       * **৳৬১,২৮০** এমন দিনের জন্য যেগুলো কেউ কোনোদিন দেখেনি।
+       *
+       * ⭐ হিসাবটা নতুন নয় — `proratedExpectedSec()` ইতিমধ্যেই "কতগুলো
+       * বিল-যোগ্য দিনের টার্গেট" বের করে। কেবল লবটা বদলেছে:
+       * `workdaysElapsed` (ক্যালেন্ডার) → `observedWorkdays` (যেসব দিনের
+       * সারি সত্যিই লেখা হয়েছিল)। ⚠️ দ্বিতীয় সংজ্ঞা লিখলে একদিন পে-রোল
+       * আর Monthly দুই সংখ্যা বলত।
+       */
+      const observedTargetSec = proratedExpectedSec({
+        targetSec: summary.targetSec,
+        expectedWorkdays: summary.expectedWorkdays,
+        leaveWorkdays: summary.leaveWorkdays,
+        workdaysElapsed: summary.observedWorkdays,
+      });
+
+      /**
+       * ⚠️⚠️ **শিটের ঘাটতির ঘরটাও একই সংখ্যা দেখায়** — নইলে পর্দায়
+       * "ঘাটতি ১২২ ঘণ্টা" লেখা থাকত অথচ কর্তন হতো ৩৪ ঘণ্টার, আর কেউ
+       * মেলাতে পারত না। ⭐ এটাই এই রেপোর সবচেয়ে চেনা পাপের উল্টো দিক:
+       * সংখ্যাটা এক জায়গায় সারিয়ে অন্য জায়গায় পুরোনো রেখে দেওয়া।
+       */
+      const shortfallSec = Math.max(
+        0,
+        Math.min(observedTargetSec, summary.targetSec) - summary.creditedSec,
+      );
+
       const base = {
         employeeId: e.id,
         empCode: e.empCode,
         fullName: e.fullName,
         staffType: e.staffType,
         targetHours: hours(summary.targetSec),
+        /** ⭐ ৬ সেপ্টেম্বর — যতটুকুর হিসাব সত্যিই চাওয়া হচ্ছে */
+        observedTargetHours: hours(observedTargetSec),
         workdays: summary.expectedWorkdays,
+        observedWorkdays: summary.observedWorkdays,
         monthWorkdays: summary.monthWorkdays,
         creditedHours: hours(summary.creditedSec),
-        shortfallHours: hours(Math.max(0, summary.targetSec - summary.creditedSec)),
+        shortfallHours: hours(shortfallSec),
         overtimeHours: hours(Math.max(0, summary.creditedSec - summary.targetSec)),
       };
 
@@ -262,6 +310,8 @@ export class PayrollService {
         monthlySalary: Number(salaryThatMonth),
         targetSec: summary.targetSec,
         creditedSec: summary.creditedSec,
+        // ⭐ ৬ সেপ্টেম্বর — কর্তন কেবল দেখা-দিনের সাপেক্ষে (উপরের নোট)
+        observedTargetSec,
         // ⭐ G37 — d ও D সারিতেই লেখা আছে, এখানে আবার গোনা হয় না।
         //    গুনলে ছুটির তালিকা বদলালে d আর D দুই আলাদা সময়ের হিসাব হতো।
         workdays: summary.expectedWorkdays,

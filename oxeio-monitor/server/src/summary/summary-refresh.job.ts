@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 
 import { JOB_TIMEZONE, RunLock, SCHEDULING_ENABLED } from './scheduling';
-import { SummaryService } from './summary.service';
+import { type DrainResult, SummaryService } from './summary.service';
 
 export interface SummaryRefreshResult {
   workDate: Date | null;
@@ -10,6 +10,11 @@ export interface SummaryRefreshResult {
   /** আগের রান তখনো চলছিল বলে এই ডাক ফিরে গেছে */
   skipped: boolean;
   ms: number;
+  /**
+   * ⭐ দেরিতে আসা কতগুলো পুরোনো দিন এই টিকে গোনা হলো *(৬ সেপ্টেম্বর ২০২৬)*।
+   * ⚠️ `skipped` হলে `null` — কিছুই চলেনি।
+   */
+  drained: DrainResult | null;
 }
 
 /**
@@ -61,19 +66,44 @@ export class SummaryRefreshJob {
   async runOnce(now: Date = new Date()): Promise<SummaryRefreshResult> {
     const startedAt = Date.now();
 
-    const result = await this.lock.run(() => this.summary.refreshToday(now));
+    /**
+     * ⚠️⚠️ **দুটো কাজ একই তালার ভেতরে** — আজকের দিন, তারপর দেরিতে আসা
+     * পুরোনো দিনগুলো। আলাদা তালা দিলে দুটো একসাথে চলতে পারত, আর তখন
+     * একই `monthly_summary` সারিতে দুজনে upsert করত।
+     *
+     * ⭐ ক্রমটাও ইচ্ছাকৃত: আজকেরটা আগে, কারণ পর্দায় সেটাই সবাই দেখছেন।
+     */
+    const result = await this.lock.run(async () => {
+      const today = await this.summary.refreshToday(now);
+      const drained = await this.summary.drainDirty(now);
+      return { today, drained };
+    });
 
     if (result === null) {
       this.logger.warn('Previous summary refresh still going — skipping this tick');
-      return { workDate: null, employees: 0, skipped: true, ms: 0 };
+      return { workDate: null, employees: 0, skipped: true, ms: 0, drained: null };
     }
 
+    const { today, drained } = result;
     const ms = Date.now() - startedAt;
     this.logger.log(
-      `summary refresh: ${result.workDate.toISOString().slice(0, 10)} · ` +
-        `${result.employees} staff · ${ms}ms`,
+      `summary refresh: ${today.workDate.toISOString().slice(0, 10)} · ` +
+        `${today.employees} staff · ${ms}ms` +
+        // ⚠️ পুরোনো দিন গোনা হলে **সবসময়** লগে ওঠে — নীরবে ইতিহাস
+        //    বদলানো ঠিক সেই জিনিস যেটা পরে কেউ ব্যাখ্যা করতে পারত না
+        (drained.refreshed > 0 || drained.closed > 0 || drained.pending > 0
+          ? ` · late days: ${drained.refreshed} recomputed` +
+            (drained.closed > 0 ? `, ${drained.closed} in a closed month` : '') +
+            (drained.pending > 0 ? `, ${drained.pending} still queued` : '')
+          : ''),
     );
 
-    return { workDate: result.workDate, employees: result.employees, skipped: false, ms };
+    return {
+      workDate: today.workDate,
+      employees: today.employees,
+      skipped: false,
+      ms,
+      drained,
+    };
   }
 }

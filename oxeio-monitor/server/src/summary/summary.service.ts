@@ -9,6 +9,7 @@ import { trackedFromBy } from './tracking-start';
 import { prorate } from './proration';
 import {
   elapsedWorkdays,
+  observedWorkdays,
   hoursToSec,
   isWorkday,
   monthBounds,
@@ -37,6 +38,24 @@ interface EmployeePolicy {
   /** G37 — `null` = আগে থেকেই আছে / এখনো আছে */
   joinedOn: Date | null;
   leftOn: Date | null;
+}
+
+/**
+ * ⭐ একটা টিকে সর্বোচ্চ কতগুলো পুরোনো দিন গোনা হবে।
+ *
+ * ⚠️ ১৪ — অর্থাৎ দু-সপ্তাহের ব্যাকলগ একটা টিকেই মিটে যায়, অথচ একটা টিক
+ *    ১৫ মিনিটের বাজেট ছাড়ায় না (একটা দিন গুনতে লাগে সেকেন্ডের ভগ্নাংশ)।
+ */
+export const DIRTY_PER_TICK = 14;
+
+/** ⭐ নিষ্কাশনের ফল — লগে ও টেস্টে দুটোতেই পড়া হয় */
+export interface DrainResult {
+  /** কতগুলো দিন সত্যিই আবার গোনা হলো */
+  refreshed: number;
+  /** বন্ধ মাসে পড়ায় বাদ (R1) — চিহ্ন তবু তোলা হয়েছে */
+  closed: number;
+  /** এখনো কিউতে বাকি — ছাদে আটকালে শূন্যের বেশি */
+  pending: number;
 }
 
 export interface RefreshResult {
@@ -68,6 +87,65 @@ export class SummaryService {
   /** ঢাকার আজকের কর্মদিবস — K06-এর প্রবেশপথ। */
   refreshToday(now: Date = new Date()): Promise<RefreshResult> {
     return this.refreshDate(workDateOf(now), now);
+  }
+
+  /**
+   * ⭐⭐⭐ **দেরিতে আসা দিনগুলো আবার গুনে নেওয়া** *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** rollup চলত কেবল **দুটো** দিনের উপর — আজ
+   * (K06) আর গতকাল (K05, ০০:১৫-তে **একবার**)। এর বাইরের কোনো দিনের
+   * সেগমেন্ট পরে এলে `daily_summary`-তে কোনোদিন উঠত না, আর সেখান থেকে
+   * মাসিক সারি ও বেতনের ঘাটতি। মাঠে মাপা ক্ষতি: **৩৯টা (কর্মী, দিন)
+   * জোড়া, ১৭.৭৮ ঘণ্টা**।
+   *
+   * ⚠️ **একবারে কতগুলো, তার ছাদ আছে** — একটা দিন গুনতে গোটা দলের সেগমেন্ট
+   * merge করতে হয়, আর জবটা চলে ১৫ মিনিট পরপর। ছাদ না থাকলে বড় ব্যাকলগে
+   * একটা টিক পরের টিককে ছাড়িয়ে যেত, আর `RunLock` ওগুলো একে একে বাদ দিত।
+   * ⭐ ছাদে আটকালে বাকিগুলো পরের টিকে আসে — কারণ চিহ্ন মোছা হয় **গোনার
+   * পরে**।
+   *
+   * ⚠️⚠️ **বন্ধ মাস ছোঁয়া হয় না** (R1)। ⭐ কিন্তু চিহ্নটা তবু **তুলে
+   * দেওয়া হয়** — নইলে ওই সারিটা চিরকাল কিউয়ের মাথায় বসে থাকত আর
+   * প্রতিটা টিকে একবার করে বৃথা চেষ্টা হতো।
+   */
+  async drainDirty(
+    now: Date = new Date(),
+    limit = DIRTY_PER_TICK,
+  ): Promise<DrainResult> {
+    const marks = await this.prisma.summaryDirty.findMany({
+      // ⚠️ পুরোনো আগে — নইলে ব্যাকলগ থাকলে সবচেয়ে পুরোনো দিনটা
+      //    চিরকাল অপেক্ষা করত
+      orderBy: { markedAt: 'asc' },
+      take: limit,
+      select: { workDate: true },
+    });
+
+    let refreshed = 0;
+    let closed = 0;
+
+    for (const mark of marks) {
+      const { yearMonth } = monthBounds(mark.workDate);
+      const shut = await this.prisma.monthClosure.findUnique({
+        where: { yearMonth },
+        select: { yearMonth: true },
+      });
+
+      if (shut === null) {
+        await this.refreshDate(mark.workDate, now);
+        refreshed += 1;
+      } else {
+        closed += 1;
+      }
+
+      // ⚠️ চিহ্ন মোছা হয় **গোনার পরে** — মাঝপথে থেমে গেলে দিনটা যেন
+      //    পরের টিকে আবার আসে
+      await this.prisma.summaryDirty.delete({
+        where: { workDate: mark.workDate },
+      });
+    }
+
+    const pending = await this.prisma.summaryDirty.count();
+    return { refreshed, closed, pending };
   }
 
   /**
@@ -370,6 +448,9 @@ export class SummaryService {
         where: { employeeId: { in: ids }, workDate: { gte: start, lte: end } },
         select: {
           employeeId: true,
+          // ⭐ ৬ সেপ্টেম্বর — কোন দিনগুলো সত্যিই **দেখা** হয়েছে, সেটা
+          //    জানতে সারির তারিখটাই একমাত্র সূত্র (`observedWorkdays`)
+          workDate: true,
           workedSec: true,
           adjustmentSec: true,
         },
@@ -513,6 +594,34 @@ export class SummaryService {
           weeklyOffDay: e.weeklyOffDay,
           holidays,
         }, leaveDates),
+        /**
+         * ⭐⭐⭐ **যতগুলো কর্মদিবস আমরা সত্যিই দেখেছি** *(৬ সেপ্টেম্বর
+         * ২০২৬, মালিকের সিদ্ধান্ত: "না-দেখা দিনের জন্য কর্তন হবে না")*।
+         *
+         * ⚠️⚠️ উপরের `workdaysElapsed` গোনে **ক্যালেন্ডার** কর্মদিবস, তাই
+         * সিস্টেম যেদিন একেবারেই চলেনি সেদিনও পুরো ৮ ঘণ্টার প্রত্যাশা
+         * হয়েই থাকত। মাঠে তার দাম: আগস্টে ট্র্যাকিং শুরু ১৩–১৫ তারিখে,
+         * অথচ বেতনের টার্গেট পুরো মাসের — ১২ জনের কর্তন দাঁড়াত ৳৭৯,৭৮৮,
+         * যার ৳৬১,২৮০ না-দেখা দিনের জন্য।
+         *
+         * ⭐ "দেখা" মানে ওই দিনের `daily_summary` সারিটা লেখা হয়েছিল।
+         * ⚠️ সারি **আছে অথচ ০ ঘণ্টা** মানে অনুপস্থিতি — সেটা ঘাটতিই
+         *    থাকে, নইলে উল্টো দিকের ভুল হতো।
+         */
+        observedWorkdays: observedWorkdays(
+          {
+            periodStart: start,
+            periodEnd: end,
+            today,
+            joinedOn: e.joinedOn,
+            leftOn: e.leftOn,
+            trackingStartedOn: firstSeen.get(e.id) ?? today,
+            weeklyOffDay: e.weeklyOffDay,
+            holidays,
+          },
+          new Set(rows.map((r) => r.workDate.getTime())),
+          leaveDates,
+        ),
         daysWithWork: rows.filter((r) => r.workedSec > 0).length,
       });
 

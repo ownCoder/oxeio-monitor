@@ -10,11 +10,140 @@ import {
 /** ২০৮ ঘণ্টা, সেকেন্ডে */
 const TARGET = 208 * 3600;
 
+/**
+ * ⭐⭐⭐ **না-দেখা দিনের জন্য কর্তন হয় না** *(৬ সেপ্টেম্বর ২০২৬, মালিকের
+ * সিদ্ধান্ত)*।
+ *
+ * ⚠️⚠️ **মাঠে ধরা পড়া বাগ:** ঘাটতি মাপা হতো পুরো `targetSec`-এর সাপেক্ষে,
+ * অথচ `creditedSec` আসে কেবল সেইসব দিন থেকে যেদিন সিস্টেম চলছিল। আগস্ট
+ * ২০২৬-এ ট্র্যাকিং শুরু হয় ১৩–১৫ তারিখে, অর্থাৎ মাসের প্রায় অর্ধেকটা
+ * কেউ দেখেনি — তবু ওই দিনগুলো ঘাটতি হয়ে বেতন থেকে কাটা যেত।
+ *
+ * মাঠে মাপা দাম: ১২ জনের কর্তন **৳৭৯,৭৮৮**, যার **৳৬১,২৮০** না-দেখা
+ * দিনের জন্য।
+ */
+describe('payroll — না-দেখা দিনের জন্য কর্তন নয়', () => {
+  /** ⭐⭐⭐ এই describe-এর মূল টেস্ট — আগস্টের আসল আকৃতিটাই */
+  it('⭐ অর্ধেক মাস ট্র্যাক না হলে কেবল দেখা-অংশের হিসাব চাওয়া হয়', () => {
+    const line = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      // ⚠️ ২০৮-এর মধ্যে কেবল ১১২ ঘণ্টা দেখা হয়েছে (১৪টা কর্মদিবস)
+      observedTargetSec: 112 * 3600,
+      creditedSec: 110 * 3600,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    // ঘাটতি ২ ঘণ্টা, ৯৮ ঘণ্টা নয়
+    expect(line.shortfallSec).toBe(2 * 3600);
+
+    // ⭐ হার এখনো পুরো মাসের: ১০০০০ ÷ ২০৮ = ৪৮.০৭৬৯…/ঘণ্টা
+    //   কর্তন = ১০০০০ × ৭২০০ ÷ ৭৪৮৮০০ ≈ ৯৬.১৫ টাকা
+    expect(paisaToTaka(line.deductionPaisa)).toBe('96.15');
+  });
+
+  /**
+   * ⚠️⚠️ **আগের আচরণটা কী ছিল, সেটাই এখানে লেখা** — যাতে কেউ ফিরিয়ে
+   * আনলে সংখ্যাটা চোখে পড়ে। একই কর্মী, একই কাজ, কিন্তু পুরো মাসের
+   * সাপেক্ষে মাপলে কর্তন **৪৭ গুণ** বেশি।
+   */
+  it('⭐ পুরো টার্গেটের সাপেক্ষে মাপলে কর্তনটা কত হতো', () => {
+    const old = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      observedTargetSec: TARGET, // ← পুরোনো আচরণ
+      creditedSec: 110 * 3600,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    expect(old.shortfallSec).toBe(98 * 3600);
+    expect(paisaToTaka(old.deductionPaisa)).toBe('4711.54');
+  });
+
+  /**
+   * ⚠️⚠️ **অনুপস্থিতি মকুব হয় না** — এটাই উল্টো দিকের পাহারা। দিনটা
+   * দেখা হয়েছে (সারি লেখা হয়েছিল), কেবল তিনি কাজ করেননি। এটা গুলিয়ে
+   * ফেললে যে-কেউ অফিসে না এসেও পুরো বেতন পেত।
+   */
+  it('⭐ দেখা-দিনে কাজ না করলে কর্তন হয়ই', () => {
+    const line = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      observedTargetSec: 112 * 3600,
+      creditedSec: 0,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    expect(line.shortfallSec).toBe(112 * 3600);
+    expect(line.deductionPaisa).toBeGreaterThan(0);
+  });
+
+  /**
+   * ⚠️ কিছুই দেখা না হলে কোনো ঘাটতিই নেই — মাসের মাঝপথে বসানো নতুন
+   *    কর্মীর প্রথম দিনগুলোয় ঠিক এটাই ঘটে।
+   */
+  it('⭐ কিছুই দেখা না হলে কর্তন শূন্য', () => {
+    const line = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      observedTargetSec: 0,
+      creditedSec: 0,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    expect(line.shortfallSec).toBe(0);
+    expect(line.deductionPaisa).toBe(0);
+    expect(paisaToTaka(line.payablePaisa)).toBe('10000.00');
+  });
+
+  /**
+   * ⚠️ **দেখা-অংশ টার্গেট ছাড়াতে পারে না** — গণনার কোনো ধারে ছাড়ালে
+   *    ঘাটতি বানিয়ে ফেলা হতো।
+   */
+  it('দেখা-অংশ টার্গেটের বেশি হলে টার্গেটেই আটকায়', () => {
+    const line = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      observedTargetSec: TARGET + 50 * 3600,
+      creditedSec: TARGET,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    expect(line.shortfallSec).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ **ওভারটাইম এখনো পুরো টার্গেটের সাপেক্ষে** — ইচ্ছাকৃত। নইলে
+   * অর্ধেক মাস ট্র্যাক না হওয়া কেউ কয়েক দিন কাজ করেই "ওভারটাইম"
+   * দেখাতেন, আর সংখ্যাটা অর্থহীন হয়ে যেত।
+   */
+  it('⭐ ওভারটাইম দেখা-অংশ নয়, পুরো টার্গেট ধরে', () => {
+    const line = computePayroll({
+      monthlySalary: 10000,
+      targetSec: TARGET,
+      observedTargetSec: 112 * 3600,
+      creditedSec: 120 * 3600,
+      workdays: 26,
+      monthWorkdays: 26,
+    });
+
+    // দেখা-অংশ ছাড়িয়েছে, কিন্তু মাসের টার্গেট নয় — তাই OT শূন্য
+    expect(line.overtimeSec).toBe(0);
+    expect(line.shortfallSec).toBe(0);
+  });
+});
+
 describe('payroll — ঘাটতিকে টাকায় রূপান্তর', () => {
   it('টার্গেট পূরণ হলে কিছুই কাটা যায় না', () => {
     const line = computePayroll({
       monthlySalary: 13000,
       targetSec: TARGET,
+      observedTargetSec: TARGET,
       creditedSec: TARGET,
       // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
       workdays: 26,
@@ -30,6 +159,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
     const line = computePayroll({
       monthlySalary: 13000,
       targetSec: TARGET,
+      observedTargetSec: TARGET,
       creditedSec: TARGET + 10 * 3600,
       // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
       workdays: 26,
@@ -46,6 +176,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
     const line = computePayroll({
       monthlySalary: 13000,
       targetSec: TARGET,
+      observedTargetSec: TARGET,
       creditedSec: TARGET - 20 * 3600,
       // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
       workdays: 26,
@@ -67,6 +198,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
     const line = computePayroll({
       monthlySalary: 10000,
       targetSec: TARGET,
+      observedTargetSec: TARGET,
       creditedSec: TARGET - 20 * 3600,
       // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
       workdays: 26,
@@ -83,6 +215,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
     const line = computePayroll({
       monthlySalary: 15000,
       targetSec: TARGET,
+      observedTargetSec: TARGET,
       creditedSec: 0,
       // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
       workdays: 26,
@@ -103,6 +236,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       computePayroll({
         monthlySalary: 13000,
         targetSec: 0,
+        observedTargetSec: 0,
         creditedSec: 0,
         workdays: 26,
         monthWorkdays: 26,
@@ -115,6 +249,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       computePayroll({
         monthlySalary: -1,
         targetSec: TARGET,
+        observedTargetSec: TARGET,
         creditedSec: 0,
         workdays: 26,
         monthWorkdays: 26,
@@ -129,6 +264,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
     const HALF = {
       monthlySalary: 20000,
       targetSec: 112 * 3600,
+      observedTargetSec: 112 * 3600,
       workdays: 14,
       monthWorkdays: 26,
     };
@@ -152,6 +288,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       const full = computePayroll({
         monthlySalary: 20000,
         targetSec: 208 * 3600,
+        observedTargetSec: 208 * 3600,
         creditedSec: 0,
         workdays: 26,
         monthWorkdays: 26,
@@ -172,6 +309,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       const line = computePayroll({
         monthlySalary: 20000,
         targetSec: 0,
+        observedTargetSec: 0,
         creditedSec: 0,
         workdays: 0,
         monthWorkdays: 26,
@@ -190,6 +328,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
       const line = computePayroll({
         monthlySalary: 20000,
         targetSec: 0,
+        observedTargetSec: 0,
         creditedSec: 0,
         workdays: 0,
         monthWorkdays: 0,
@@ -222,6 +361,7 @@ describe('payroll — ঘাটতিকে টাকায় রূপান�
         const line = computePayroll({
           monthlySalary: salary,
           targetSec: TARGET,
+          observedTargetSec: TARGET,
           creditedSec: workedHours * 3600,
           // ⚠️ পুরো মাস — G37-এর proration এখানে কিছু বদলায় না
           workdays: 26,

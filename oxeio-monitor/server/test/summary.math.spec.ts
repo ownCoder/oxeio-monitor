@@ -368,6 +368,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
     expectedWorkdays: 27,
     monthWorkdays: 27,
     workdaysElapsed: 10,
+    observedWorkdays: 10,
     daysWithWork: 10,
   };
 
@@ -384,6 +385,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
       ...base,
       workedSec: TARGET,
       workdaysElapsed: 27,
+      observedWorkdays: 27,
       daysWithWork: 27,
     });
 
@@ -416,7 +418,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
   });
 
   it('টার্গেট ছাড়িয়ে গেলে overtime, ঘাটতি শূন্য', () => {
-    const m = rollupMonth({ ...base, workedSec: TARGET + 10 * HOUR, workdaysElapsed: 27 });
+    const m = rollupMonth({ ...base, workedSec: TARGET + 10 * HOUR, workdaysElapsed: 27, observedWorkdays: 27 });
 
     expect(m.overtimeSec).toBe(10 * HOUR);
     expect(m.shortfallSec).toBe(0);
@@ -435,6 +437,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
       workedSec: 5 * HOUR,
       expectedWorkdays: 0,
       workdaysElapsed: 0,
+      observedWorkdays: 0,
     });
 
     expect(m.expectedSec).toBe(0);
@@ -450,7 +453,7 @@ describe('rollupMonth — মাসিক টার্গেট ও গতি', 
   });
 
   it('গত কর্মদিবস মোট কর্মদিবস ছাড়াতে পারে না', () => {
-    const m = rollupMonth({ ...base, workedSec: 0, workdaysElapsed: 40 });
+    const m = rollupMonth({ ...base, workedSec: 0, workdaysElapsed: 40, observedWorkdays: 40 });
 
     // expected কখনো পুরো টার্গেটের বেশি হবে না, নইলে মাস শেষে সবাই
     // হঠাৎ আরও পিছিয়ে যেত

@@ -543,6 +543,44 @@ export function elapsedWorkdays(
  * (`elapsedWorkdays`) আর tray-র সাত দিনের টার্গেট। আলাদা করে লেখা তিনটে
  * লুপ থেকে একটা ছেঁকে অন্যটা না ছাঁকা — ঠিক এই প্রকল্পের সবচেয়ে চেনা পাপ।
  */
+/**
+ * ⭐⭐⭐ **জানালার ভেতরে কত কর্মদিবস আমরা সত্যিই দেখেছি** *(৬ সেপ্টেম্বর
+ * ২০২৬, মালিকের সিদ্ধান্ত: "না-দেখা দিনের জন্য কর্তন হবে না")*।
+ *
+ * ⚠️⚠️ **কেন `elapsedWorkdays()` যথেষ্ট নয়:** ওটা জানালার **ক্যালেন্ডার**
+ * কর্মদিবস গোনে — অর্থাৎ যে দিন সার্ভার বা এজেন্ট একেবারেই চলেনি, সে
+ * দিনটাও পুরো ৮ ঘণ্টার প্রত্যাশা হয়েই থাকত। মাঠে তার দাম ছিল বিশাল:
+ * আগস্টে ট্র্যাকিং শুরু হয় ১৩–১৫ তারিখে, অথচ বেতনের টার্গেট বসত পুরো
+ * মাসের ২০৮ ঘণ্টা — ১২ জনের কর্তন দাঁড়াত **৳৭৯,৭৮৮**, যার **৳৬১,২৮০**
+ * এমন দিনের জন্য যেগুলো সিস্টেম কোনোদিন দেখেইনি।
+ *
+ * ⭐ "দেখা হয়েছে" মানে **ওই দিনের `daily_summary` সারিটা লেখা হয়েছিল**।
+ * `refreshDate()` প্রতিটি active কর্মীর সারি লেখে, ডেটা থাক বা না থাক —
+ * তাই সারির **অস্তিত্ব** মানে "সেদিন আমরা গুনছিলাম", আর সারির শূন্য
+ * ঘণ্টা মানে "গুনছিলাম, কিন্তু তিনি কাজ করেননি"। ⚠️⚠️ দুটোকে এক করে
+ * ফেললে অনুপস্থিতিও মকুব হয়ে যেত, আর সেটা উল্টো দিকের ভুল।
+ *
+ * ⚠️ ছুটি বাদ যায় এখানেও — ঠিক `elapsedWorkdays()`-এর মতোই, নইলে লব ও
+ * হর দুই আলাদা হিসাব হতো।
+ */
+export function observedWorkdays(
+  input: ElapsedInput,
+  observedDates: ReadonlySet<number>,
+  leaveDates?: ReadonlySet<number>,
+): number {
+  const window = elapsedWindow(input);
+  if (window === null) return 0;
+
+  let count = 0;
+  for (let t = window.from.getTime(); t <= window.to.getTime(); t += MS_PER_DAY) {
+    if (!observedDates.has(t)) continue;
+    if (!isWorkday(new Date(t), input.weeklyOffDay, input.holidays)) continue;
+    if (leaveDates?.has(t)) continue;
+    count += 1;
+  }
+  return count;
+}
+
 export function countLeaveWorkdays(
   leaveDates: ReadonlySet<number> | undefined,
   from: Date,
@@ -665,6 +703,11 @@ export interface MonthInput {
    * বানিয়ে নিলে Monthly পাতা আবার Live Board-এর সাথে অমিল দেখাত।
    */
   workdaysElapsed: number;
+  /**
+   * ⭐ যতগুলো কর্মদিবসের সারি সত্যিই লেখা হয়েছিল — বেতনের ঘাটতি এটার
+   * সাপেক্ষে মাপা হয় *(৬ সেপ্টেম্বর ২০২৬)*।
+   */
+  observedWorkdays: number;
   /** যত দিনে worked_sec > 0 */
   daysWithWork: number;
 }
@@ -680,6 +723,15 @@ export interface MonthNumbers {
   monthWorkdays: number;
   leaveWorkdays: number;
   workdaysElapsed: number;
+  /**
+   * ⭐⭐ **যতগুলো কর্মদিবস আমরা সত্যিই দেখেছি** *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ `workdaysElapsed`-এর সাথে পার্থক্যটাই গোটা কথা: ওটা **ক্যালেন্ডার**
+   * গোনে, এটা গোনে যেসব দিনের `daily_summary` সারি সত্যিই লেখা হয়েছিল।
+   * বেতনের ঘাটতি এখন **এটার** সাপেক্ষে মাপা হয়, নইলে সিস্টেম বন্ধ থাকার
+   * দিনগুলোও কর্মীর ঘাটতি হয়ে যেত।
+   */
+  observedWorkdays: number;
   daysWithWork: number;
   avgDailySec: number;
   overtimeSec: number;
@@ -710,6 +762,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     monthWorkdays,
     leaveWorkdays = 0,
     workdaysElapsed,
+    observedWorkdays,
     daysWithWork,
   } = input;
 
@@ -768,6 +821,7 @@ export function rollupMonth(input: MonthInput): MonthNumbers {
     monthWorkdays,
     leaveWorkdays,
     workdaysElapsed,
+    observedWorkdays,
     daysWithWork,
     // ⚠️ শূন্য দিয়ে ভাগ — কেউ সারা মাসে একদিনও কাজ না করলে Infinity বসত
     avgDailySec: daysWithWork > 0 ? Math.round(workedSec / daysWithWork) : 0,

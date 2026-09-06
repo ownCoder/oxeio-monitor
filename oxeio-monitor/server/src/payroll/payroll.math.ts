@@ -21,6 +21,26 @@ export interface PayrollInput {
   creditedSec: number;
 
   /**
+   * ⭐⭐⭐ **টার্গেটের যতটুকু আমরা সত্যিই দেখেছি** *(৬ সেপ্টেম্বর ২০২৬,
+   * মালিকের সিদ্ধান্ত: "না-দেখা দিনের জন্য কর্তন হবে না")*।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** ঘাটতি মাপা হতো পুরো `targetSec`-এর
+   * সাপেক্ষে, অথচ `creditedSec` আসে কেবল সেইসব দিন থেকে যেদিন সিস্টেম
+   * চলছিল। আগস্টে ট্র্যাকিং শুরু হয় ১৩–১৫ তারিখে, তাই মাসের প্রায়
+   * অর্ধেকটা নীরবে ঘাটতি হয়ে যেত — ১২ জনের কর্তন দাঁড়াত **৳৭৯,৭৮৮**,
+   * যার **৳৬১,২৮০** এমন দিনের জন্য যেগুলো কেউ কোনোদিন দেখেনি।
+   *
+   * ⚠️ **হার এতে বদলায় না।** ঘণ্টার হার এখনো `salary ÷ targetSec` —
+   * বেতনটা তো পুরো মাসের কাজের জন্যই। বদলায় কেবল **কতটুকুর হিসাব
+   * চাওয়া হচ্ছে**।
+   *
+   * ⚠️⚠️ **ঐচ্ছিক করা হয়নি, ইচ্ছাকৃতভাবে** — `workdays`-এর মতোই।
+   * ডিফল্ট বসালে নতুন কোনো কলার চুপচাপ পুরোনো (ভুল) আচরণে ফিরে যেত,
+   * আর ভুলটা ধরা পড়ত কারো বেতনের কাগজে।
+   */
+  observedTargetSec: number;
+
+  /**
    * **G37 · ADR-025** — তার কর্মদিবস (d) ও মাসের কর্মদিবস (D)।
    *
    * ⚠️⚠️ **ঐচ্ছিক করা হয়নি, ইচ্ছাকৃতভাবে।** ডিফল্ট বসালে নতুন কোনো কলার
@@ -72,7 +92,14 @@ export const PAYROLL_OVERTIME_NOTE =
  * কারো বেতন থেকে অসীম টাকা কাটার হিসাব দাঁড়াত।
  */
 export function computePayroll(input: PayrollInput): PayrollLine {
-  const { monthlySalary, targetSec, creditedSec, workdays, monthWorkdays } = input;
+  const {
+    monthlySalary,
+    targetSec,
+    creditedSec,
+    observedTargetSec,
+    workdays,
+    monthWorkdays,
+  } = input;
 
   if (!Number.isFinite(monthlySalary) || monthlySalary < 0) {
     throw new RangeError('Salary cannot be negative or undefined');
@@ -139,7 +166,23 @@ export function computePayroll(input: PayrollInput): PayrollLine {
   //    প্রতি ঘণ্টায় গুণ হয়ে মাসের শেষে কয়েক টাকার ভুল দাঁড়াত।
   const hourlyRatePaisa = Math.round(salaryPaisa / targetHours);
 
-  const deficitSec = Math.max(0, targetSec - creditedSec);
+  /**
+   * ⭐⭐⭐ **ঘাটতি মাপা হয় দেখা-অংশের সাপেক্ষে, পুরো টার্গেটের নয়**
+   * *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️ `Math.min` — দেখা-অংশ কখনো পুরো টার্গেট ছাড়াতে পারে না। ছাড়ালে
+   *    (গণনার কোনো ধারে) ঘাটতি বানিয়ে ফেলা হতো।
+   */
+  const billableSec = Math.min(observedTargetSec, targetSec);
+
+  const deficitSec = Math.max(0, billableSec - creditedSec);
+
+  /**
+   * ⚠️⚠️ **অতিরিক্ত ঘণ্টা এখনো পুরো টার্গেটের সাপেক্ষেই** — আর সেটা
+   * ইচ্ছাকৃত। "ওভারটাইম" মানে মাসের প্রাপ্য কাজের **বেশি** করা;
+   * দেখা-অংশের সাপেক্ষে মাপলে অর্ধেক মাস ট্র্যাক না হওয়া কেউ কয়েক দিন
+   * কাজ করেই "ওভারটাইম" দেখাতেন।
+   */
   const surplusSec = Math.max(0, creditedSec - targetSec);
 
   const deductionPaisa =

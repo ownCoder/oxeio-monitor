@@ -129,6 +129,10 @@ async function seeSessions(employeeId: number, days: number[]): Promise<void> {
   });
 }
 
+/** `from`..`to` (দুটোই ধরে) — দিনের তালিকা */
+const range = (from: number, to: number): number[] =>
+  Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
 const monthRow = (employeeId: number) =>
   h.prisma.monthlySummary.findUniqueOrThrow({
     where: { employeeId_yearMonth: { employeeId, yearMonth: YEAR_MONTH } },
@@ -259,9 +263,16 @@ describe('পে-রোল — বেতনও prorate হয়', () => {
     body.rows.find((r) => r.empCode === code) as unknown as Record<string, string>;
 
   /**
-   * ⚠️ একটাও ঘণ্টা কাজ না করলে **পুরো prorated বেতনটাই** কাটা যায়, তাই
-   * প্রদেয় ০। কর্তনের অঙ্কটাই তাই prorated ভিত্তিটা সরাসরি দেখায় —
-   * ২০,০০০ নয়, ৯,৬২৯.৬৩।
+   * ⭐ prorated ভিত্তি = বেতন × d ÷ D। ২০,০০০ × ১৩ ÷ ২৭ = **৯,৬২৯.৬৩**।
+   *
+   * ⚠️⚠️ **এই টেস্টের প্রত্যাশা ৬ সেপ্টেম্বর ২০২৬-এ বদলেছে**, আর বদলটা
+   * ইচ্ছাকৃত। আগে লেখা ছিল `deduction = ৯,৬২৯.৬৩` ও `payable = ০.০০` —
+   * অর্থাৎ যাঁর কোনো ডেটাই নেই, তাঁর **পুরো** prorated বেতন কেটে নেওয়া
+   * হতো। মালিকের সিদ্ধান্ত: *"না-দেখা দিনের জন্য কর্তন হবে না"*।
+   *
+   * ⭐ এই কর্মীর একটাও `daily_summary` সারি নেই (আজকের দিনটা জানালার
+   * বাইরে), তাই দেখা-অংশ ০ → ঘাটতিও ০ → কর্তন ০। **prorated ভিত্তিটা
+   * এখন `payable`-এই দেখা যায়** — আর সেটাই এই টেস্টের আসল কথা।
    */
   it('prorated ভিত্তি = বেতন × d ÷ D', async () => {
     await makeEmployee({ empCode: 'PR-PAY', joinedOn: utc(17), monthlySalary: 20000 });
@@ -269,9 +280,11 @@ describe('পে-রোল — বেতনও prorate হয়', () => {
 
     const row = rowFor((await payroll()).body, 'PR-PAY');
 
-    // ২০,০০০ × ১৩ ÷ ২৭ = ৯,৬২৯.৬৩
-    expect(row.deduction).toBe('9629.63');
-    expect(row.payable).toBe('0.00');
+    // ২০,০০০ × ১৩ ÷ ২৭ = ৯,৬২৯.৬৩ — এটাই তাঁর মাসের ভিত্তি
+    expect(row.payable).toBe('9629.63');
+    // ⚠️ কিছুই দেখা হয়নি, তাই দাবি করার মতো ঘাটতিও নেই
+    expect(row.deduction).toBe('0.00');
+    expect(row.observedTargetHours).toBe('0.00');
   });
 
   /**
@@ -362,6 +375,132 @@ describe('পে-রোল — বেতনও prorate হয়', () => {
  * মেলানো হয় — কেবল ধ্রুবক মেলালে দুটো আবার আলাদা হয়ে গেলেও টেস্ট সবুজ
  * থাকত, আর G117 নীরবে ফিরে আসত।
  */
+/**
+ * ⭐⭐⭐ **না-দেখা দিনের জন্য কর্তন হয় না** *(৬ সেপ্টেম্বর ২০২৬, মালিকের
+ * সিদ্ধান্ত)*।
+ *
+ * ⚠️⚠️ **মাঠে ধরা পড়া বাগ।** পে-রোল ঘাটতি মাপত পুরো `target_sec`-এর
+ * সাপেক্ষে, অথচ `credited_sec` আসে কেবল সেইসব দিন থেকে যেদিন সিস্টেম
+ * চলছিল। আগস্ট ২০২৬-এ ট্র্যাকিং শুরু হয় **১৩–১৫ তারিখে**, অর্থাৎ মাসের
+ * প্রায় অর্ধেকটা কেউ দেখেনি — তবু ওই দিনগুলো ঘাটতি হয়ে বেতন থেকে কাটা
+ * যেত। ১২ জনের কর্তন দাঁড়াত **৳৭৯,৭৮৮**, যার **৳৬১,২৮০** না-দেখা দিনের।
+ *
+ * ⚠️ **সঠিক সংখ্যাটা একই সারিতেই বসে ছিল** (`monthly_summary.expected_sec`,
+ * ১১২–১২০ ঘণ্টা) — পে-রোল কেবল ওটা পড়ত না।
+ *
+ * ⭐ এই describe-টা জোড়ার মুখ পাহারা দেয়: rollup সংখ্যাটা বসায় কি না,
+ * আর পে-রোল সেটা পড়ে কি না।
+ */
+describe('না-দেখা দিনের জন্য কর্তন নয়', () => {
+  const payroll = () =>
+    owner.http.get(`/api/v1/payroll?month=${YEAR_MONTH}`).expect(200);
+
+  const rowOf = async (code: string) =>
+    (await payroll()).body.rows.find(
+      (r: { empCode: string }) => r.empCode === code,
+    ) as Record<string, string | number>;
+
+  /**
+   * ⭐⭐⭐ **এই ফাইলের সবচেয়ে দামি টেস্ট** — আগস্টের আসল আকৃতিটাই।
+   *
+   * কর্মী পুরো মাস ছিলেন, কিন্তু আমরা দেখতে শুরু করেছি ১৩ তারিখ থেকে।
+   * ⚠️ ১৩–৩০ আগস্টে কর্মদিবস **১৫টা** (শুক্র ১৪ · ২১ · ২৮ বাদ), অথচ
+   * মাসের কর্মদিবস ২৭। তাই চাওয়া হয় ১২০ ঘণ্টার হিসাব, ২১৬-র নয়।
+   */
+  it('⭐ ১৩ তারিখ থেকে দেখা শুরু হলে ঘাটতি ১২০ ঘণ্টার, ২১৬-র নয়', async () => {
+    const id = await makeEmployee({ empCode: 'OB-HALF', monthlySalary: 20000 });
+    const days = range(13, 30);
+    await seeSessions(id, days);
+    await seeDays(id, days);
+    await rollup();
+
+    const month = await monthRow(id);
+    expect(month.targetSec).toBe(216 * 3600);
+    expect(month.observedWorkdays).toBe(15);
+
+    const row = await rowOf('OB-HALF');
+    expect(row.observedTargetHours).toBe('120.00');
+    expect(row.shortfallHours).toBe('120.00');
+
+    // ২০,০০০ × ১২০ ÷ ২১৬ = ১১,১১১.১১ — পুরো বেতন নয়
+    expect(row.deduction).toBe('11111.11');
+    expect(row.payable).toBe('8888.89');
+  });
+
+  /**
+   * ⚠️⚠️ **আগের আচরণটা কী ছিল** — যাতে কেউ ফিরিয়ে আনলে পার্থক্যটা চোখে
+   * পড়ে। একই কর্মী পুরো মাস দেখা হলে ঘাটতি ২১৬ ঘণ্টা, আর কর্তন **পুরো
+   * বেতন**।
+   */
+  it('⭐ পুরো মাস দেখা হলে অবশ্যই পুরো টার্গেটের হিসাব চাওয়া হয়', async () => {
+    const id = await makeEmployee({ empCode: 'OB-FULL', monthlySalary: 20000 });
+    const days = range(1, 30);
+    await seeSessions(id, days);
+    await seeDays(id, days);
+    await rollup();
+
+    expect((await monthRow(id)).observedWorkdays).toBe(26);
+
+    const row = await rowOf('OB-FULL');
+    // ১–৩০ আগস্টে কর্মদিবস ২৬ (শুক্র ৭ · ১৪ · ২১ · ২৮ বাদ); ৩১ আজকের দিন
+    expect(row.observedTargetHours).toBe('208.00');
+    expect(row.deduction).toBe('19259.26');
+  });
+
+  /**
+   * ⭐⭐⭐ **G109 — জানালার মাঝখানের ফাঁকও আর ঘাটতি নয়।**
+   *
+   * ⚠️⚠️ এটা এতদিন **ইচ্ছাকৃতভাবে খোলা** ছিল (মালিক ২৩ আগস্টে বাদ
+   * দিয়েছিলেন), কারণ `elapsedWorkdays()` জানালার কেবল **দুই প্রান্ত**
+   * ছাঁটত আর ভেতরের দিনগুলো ক্যালেন্ডার ধরে গুনত। এখন পে-রোলের পথে
+   * সেটাও বন্ধ: সারি না থাকা মানে ওই দিন আমরা গুনছিলাম না।
+   *
+   * ⚠️ **অন্য পর্দাগুলোয় G109 এখনো খোলা** — tray · Live Board · Monthly
+   *    এখনো `expected_sec` পড়ে, আর ওটা ক্যালেন্ডার ধরেই গোনা।
+   */
+  it('⭐ মাঝখানে সার্ভার বন্ধ থাকা দিনও আর ঘাটতি নয়', async () => {
+    const id = await makeEmployee({ empCode: 'OB-GAP', monthlySalary: 20000 });
+    // ⚠️ ১৭–২০ আগস্টের সারি নেই — চারটে দিনের তিনটে কর্মদিবস (২০ বৃহ.সহ)
+    const days = [...range(13, 16), ...range(21, 30)];
+    await seeSessions(id, days);
+    await seeDays(id, days);
+    await rollup();
+
+    const month = await monthRow(id);
+
+    // ১৩–৩০-এ কর্মদিবস ১৫, তার মধ্যে ১৭·১৮·১৯·২০ চারটেই কর্মদিবস → ১১
+    expect(month.observedWorkdays).toBe(11);
+    // ⚠️ ক্যালেন্ডার-ভিত্তিক সংখ্যাটা তবু ১৫-ই — দুটো আলাদা প্রশ্ন
+    expect(month.workdaysElapsed).toBe(15);
+
+    const row = await rowOf('OB-GAP');
+    expect(row.observedTargetHours).toBe('88.00');
+  });
+
+  /**
+   * ⭐⭐⭐ **R21 — জামানত ও নিট প্রদেয় সত্যিই তারে যায়।**
+   *
+   * ⚠️⚠️ সার্ভার এই দুটো প্রথম দিন থেকেই পাঠাত, কিন্তু **পর্দা ওগুলো
+   * ঘোষণাও করেনি** — তাই মালিক যে শিট দেখে টাকা দিতেন সেখানে gross
+   * লেখা থাকত। ⭐ এই টেস্টটা সার্ভারের দিকটা বাঁধে; পর্দার দিকটা
+   * `PayrollTab.tsx`-এর কলাম দুটো।
+   */
+  it('⭐ শিটের সারিতে জামানত ও নিট প্রদেয় দুটোই থাকে', async () => {
+    const id = await makeEmployee({ empCode: 'OB-DEP', monthlySalary: 20000 });
+    const days = range(1, 30);
+    await seeSessions(id, days);
+    await seeDays(id, days);
+    await rollup();
+
+    const row = await rowOf('OB-DEP');
+
+    expect(row).toHaveProperty('securityDeposit');
+    expect(row).toHaveProperty('netPayable');
+    // ⚠️ নিট = প্রদেয় − কিস্তি; কিস্তি না থাকলে দুটো সমান
+    expect(row.netPayable).toBe(row.payable);
+  });
+});
+
 describe('G117 — রিপোর্টের টার্গেট অফিস-ডে ধরে, ফ্ল্যাট ২০৮ নয়', () => {
   const monthTarget = async (employeeId: number): Promise<number> => {
     const r = await reports.attendance({ from: '2026-08-01', to: '2026-08-31' });

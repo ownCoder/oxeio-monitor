@@ -69,8 +69,11 @@ export async function resetDatabase(
    *
    * ⚠️⚠️ **যেসব টেবিলে employees-এর FK নেই, সেগুলোই আসল ঝুঁকি** —
    * CASCADE ওদের ছোঁয় না, তাই তালিকা থেকে বাদ পড়লে ওরা টেস্টের পর
-   * টেস্ট বেঁচে থাকে। এখন পর্যন্ত এমন দুটো: deposit_policy আর
-   * month_closures (একটা বন্ধ মাস পরের টেস্টে সম্পাদনা আটকে দিত)।
+   * টেস্ট বেঁচে থাকে। এখন পর্যন্ত এমন তিনটে: deposit_policy ·
+   * month_closures (একটা বন্ধ মাস পরের টেস্টে সম্পাদনা আটকে দিত) ·
+   * summary_dirty (⭐ ৬ সেপ্টেম্বর — ঠিক এই ফাঁদেই পা পড়েছিল: চাবিটা
+   * `work_date`, তাই এক টেস্টের চিহ্ন পরের টেস্টে রয়ে যেত আর গণনা
+   * মিলত না; ব্যর্থতাটা দেখাত যেন ingest ভুল দিন চিহ্নিত করছে)।
    *
    * মিলিয়ে দেখার উপায় — schema-র @@map-গুলোর সাথে এই তালিকা:
    *   grep -o '@@map("[a-z_]*")' prisma/schema.prisma
@@ -82,7 +85,7 @@ export async function resetDatabase(
       daily_summary, monthly_summary, users, employees, work_policies,
       app_categories, holidays, agent_versions, settings,
       deposit_policy, security_deposits, deposit_settlements,
-      leaves, month_closures
+      leaves, month_closures, summary_dirty
     RESTART IDENTITY CASCADE
   `);
 

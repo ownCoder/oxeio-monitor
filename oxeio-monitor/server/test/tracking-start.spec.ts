@@ -329,7 +329,7 @@ describe('১৪ আগস্ট ২০২৬ — ~৯৪ ঘণ্টার ভ
     });
 
   it('ট্র্যাকিং শুরুর আগে গুনলে ১২ কর্মদিবস, অর্থাৎ ৯৬ ঘণ্টার প্রত্যাশা', () => {
-    const before = rollupMonth({ ...monthBase, workdaysElapsed: elapsedOn(null) });
+    const before = rollupMonth({ ...monthBase, workdaysElapsed: elapsedOn(null), observedWorkdays: elapsedOn(null) });
 
     expect(elapsedOn(null)).toBe(12);
     expect(before.expectedSec).toBe(96 * HOUR);
@@ -345,6 +345,7 @@ describe('১৪ আগস্ট ২০২৬ — ~৯৪ ঘণ্টার ভ
     const after = rollupMonth({
       ...monthBase,
       workdaysElapsed: elapsedOn(started),
+      observedWorkdays: elapsedOn(started),
     });
 
     expect(elapsedOn(started)).toBe(1);
@@ -358,10 +359,11 @@ describe('১৪ আগস্ট ২০২৬ — ~৯৪ ঘণ্টার ভ
    * এই বদল কেবল pace/expected-কে ছোঁয়, কারো বেতনের অঙ্ক নয়।
    */
   it('টার্গেট ও ঘাটতি অপরিবর্তিত — কর্তনের হিসাব এই বদলের বাইরে', () => {
-    const before = rollupMonth({ ...monthBase, workdaysElapsed: elapsedOn(null) });
+    const before = rollupMonth({ ...monthBase, workdaysElapsed: elapsedOn(null), observedWorkdays: elapsedOn(null) });
     const after = rollupMonth({
       ...monthBase,
       workdaysElapsed: elapsedOn(day('2026-08-13')),
+      observedWorkdays: elapsedOn(day('2026-08-13')),
     });
 
     expect(after.targetSec).toBe(before.targetSec);
@@ -410,6 +412,7 @@ describe('একই ইনপুট → tray · Monthly · Live Board সবা�
     expectedWorkdays: EMPLOYEE_WORKDAYS,
     monthWorkdays: 27,
     workdaysElapsed,
+    observedWorkdays: workdaysElapsed,
     daysWithWork: 5,
   });
 
@@ -538,6 +541,7 @@ describe('isObserved — এক নিয়ম, তিন পর্দা', () 
       expectedWorkdays: 27,
       monthWorkdays: 27,
       workdaysElapsed: 5,
+      observedWorkdays: 5,
       daysWithWork: 0,
     });
 
@@ -562,6 +566,7 @@ describe('isObserved — এক নিয়ম, তিন পর্দা', () 
       expectedWorkdays: 27,
       monthWorkdays: 27,
       workdaysElapsed: 27,
+      observedWorkdays: 27,
       daysWithWork: 27,
     });
 
@@ -573,6 +578,7 @@ describe('isObserved — এক নিয়ম, তিন পর্দা', () 
       monthWorkdays: 27,
       // ⚠️ এজেন্ট আজই বসেছে — একটাও শেষ-হওয়া দিন নেই
       workdaysElapsed: 0,
+      observedWorkdays: 0,
       daysWithWork: 0,
     });
 

@@ -93,6 +93,7 @@ describe('rollupMonth — ছুটি', () => {
         monthWorkdays: 26,
         leaveWorkdays: 26,
         workdaysElapsed: 0,
+        observedWorkdays: 0,
         daysWithWork: 0,
       }),
     ).not.toThrow();
@@ -109,6 +110,7 @@ describe('rollupMonth — ছুটি', () => {
         monthWorkdays: 26,
         leaveWorkdays: 5,
         workdaysElapsed: 0,
+        observedWorkdays: 0,
         daysWithWork: 0,
       }),
     ).toThrow(RangeError);
@@ -123,6 +125,7 @@ describe('rollupMonth — ছুটি', () => {
       monthWorkdays: 26,
       leaveWorkdays: 26,
       workdaysElapsed: 0,
+      observedWorkdays: 0,
       daysWithWork: 0,
     });
 
@@ -214,6 +217,7 @@ describe('প্রত্যাশা — ছুটি লব ও হর দু�
       expectedWorkdays: 26,
       leaveWorkdays: 4,
       workdaysElapsed: 8,
+      observedWorkdays: 8,
     };
 
     const monthly = proratedExpectedSec({ targetSec: 22 * DAILY, ...shared });
