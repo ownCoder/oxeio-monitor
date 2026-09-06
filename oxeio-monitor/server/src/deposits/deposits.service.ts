@@ -238,8 +238,53 @@ export class DepositsService {
 
     if (rows.length === 0) return;
 
+    /**
+     * ⭐⭐⭐ **বন্ধ মাসে নতুন কিস্তি বসে না** *(৬ সেপ্টেম্বর ২০২৬, G158 · R1)*।
+     *
+     * ⚠️⚠️ **যে বাগটা এটা সারায়:** টাকার প্রতিটা পথ বন্ধ মাস ছুঁতে অস্বীকার
+     * করে — `correctInstalment()` · সময়-সংশোধন · ছুটি · rollup · বেতনের
+     * ইতিহাস — কেবল `ensureLedger()` করত না। অথচ এটাই সবচেয়ে বেশি চলে:
+     * Deposits পাতা · কর্মীর নিজের `/me/deposit` · **আর পে-রোল শিট নিজেই**।
+     *
+     * ⚠️ ফলে বন্ধ মাসে একটা ফাঁক থাকলে (দেরিতে যোগ দেওয়া কর্মী, নিয়ম
+     * সাময়িক বন্ধ করে আবার চালু, বা শুরুর মাস পিছিয়ে দেওয়া) পরের যেকোনো
+     * পাতা-লোডে ওই মাসে ৳৫০০ ঢুকে যেত — **কাগজ বেরিয়ে যাওয়ার পরে**। খাতা
+     * বলত টাকাটা কাটা হয়েছে, অথচ বেতনের কাগজে সেটা নেই।
+     *
+     * ⚠️⚠️ **ছুড়ে ফেলা হয় না, ছেঁকে বাদ দেওয়া হয়** — এটা প্রতিটা পাতা-লোডে
+     * চলে, তাই throw করলে Deposits পাতা · কর্মীর পোর্টাল · পে-রোল শিট
+     * তিনটেই একসাথে ভাঙত।
+     *
+     * ⚠️ **মাস ধরে ছাঁকা, রেঞ্জ ধরে নয়** — বন্ধ মাস অবিচ্ছিন্ন নয় (মাঝের
+     * মাস খোলা থাকতে পারে, আর `month-close` খুলেও দিতে পারে)। "সবচেয়ে নতুন
+     * বন্ধ মাস পর্যন্ত বাদ" নিয়মে ফাঁক মিস হতো আর পরের মাসগুলো চিরতরে
+     * আটকে যেত।
+     */
+    const months = [...new Set(rows.map((r) => r.yearMonth))];
+    const shut = new Set(
+      (
+        await this.prisma.monthClosure.findMany({
+          where: { yearMonth: { in: months } },
+          select: { yearMonth: true },
+        })
+      ).map((m) => m.yearMonth),
+    );
+
+    const open = rows.filter((r) => !shut.has(r.yearMonth));
+    const skipped = rows.length - open.length;
+
+    if (skipped > 0) {
+      // ⚠️ নীরবে বাদ দেওয়া হয় না — এই ফাঁকটা এত দিন টিকেই ছিল নীরবতার জোরে
+      this.logger.warn(
+        `জামানতের ${skipped}টা কিস্তি বসানো হলো না — বন্ধ মাস (${[...shut].join(', ')})। ` +
+          'দরকার হলে মাসটা আগে খুলুন।',
+      );
+    }
+
+    if (open.length === 0) return;
+
     const { count } = await this.prisma.securityDeposit.createMany({
-      data: rows,
+      data: open,
       skipDuplicates: true,
     });
 
@@ -314,8 +359,22 @@ export class DepositsService {
      */
     let removed = 0;
     if (yearMonth !== null) {
+      /**
+       * ⚠️⚠️ **বন্ধ মাসের সারি মোছাও যায় না** *(৬ সেপ্টেম্বর ২০২৬, G158)*।
+       *
+       * কেবল বসানোটা আটকালে অর্ধেক কাজ হতো: শুরুর মাস এগিয়ে দিলে এই
+       * `deleteMany` বন্ধ মাসের কিস্তিটাও মুছে ফেলত, আর কাগজে-লেখা টাকা
+       * খাতা থেকে উধাও হয়ে যেত। ⭐ R1-এর নিয়ম দু-দিকেই: বন্ধ মাস **নড়ে না**।
+       */
+      const closed = (
+        await this.prisma.monthClosure.findMany({ select: { yearMonth: true } })
+      ).map((m) => m.yearMonth);
+
       const gone = await this.prisma.securityDeposit.deleteMany({
-        where: { employeeId, yearMonth: { lt: yearMonth } },
+        where: {
+          employeeId,
+          yearMonth: { lt: yearMonth, ...(closed.length > 0 ? { notIn: closed } : {}) },
+        },
       });
       removed = gone.count;
     }

@@ -37,6 +37,13 @@ afterAll(async () => {
 /** ঢাকার চলতি মাস — টেস্টের প্রত্যাশাও এটার সাথে মেলে */
 const thisMonth = dhakaNoon().toISOString().slice(0, 7);
 
+/** '2026-09' → '2026-08' */
+function prevMonth(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 2, 1));
+  return d.toISOString().slice(0, 7);
+}
+
 beforeEach(async () => {
   await resetDatabase(h.prisma, h.app);
   owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
@@ -345,6 +352,97 @@ function nextMonthOf(ym: string): string {
  * সারিটা মুছে, তারপর নিয়মে ফিরিয়ে নতুন করে বসিয়ে), যেটা কেবল **শুরুর
  * দিকের** মাসে খাটে আর কোথাও লেখাও ছিল না।
  */
+/**
+ * ⭐⭐⭐ **বন্ধ মাসে খাতা নড়ে না — দু-দিকেই** *(৬ সেপ্টেম্বর ২০২৬, G158 · R1)*।
+ *
+ * ⚠️⚠️ **যে ফাঁকটা এই describe-টা পাহারা দেয়:** টাকার প্রতিটা পথ বন্ধ মাস
+ * ছুঁতে অস্বীকার করে — `correctInstalment()` · সময়-সংশোধন · ছুটি · rollup ·
+ * বেতনের ইতিহাস — কেবল `ensureLedger()` করত না। অথচ ওটাই সবচেয়ে বেশি চলে:
+ * Deposits পাতা · কর্মীর নিজের `/me/deposit` · **আর পে-রোল শিট নিজেই**।
+ *
+ * ⚠️ ফলে বন্ধ মাসে একটা ফাঁক থাকলে পরের যেকোনো পাতা-লোডে ওই মাসে ৳৫০০
+ * ঢুকে যেত — কাগজ বেরিয়ে যাওয়ার **পরে**। খাতা বলত টাকাটা কাটা হয়েছে,
+ * অথচ বেতনের কাগজে সেটা নেই।
+ */
+describe('বন্ধ মাসে খাতা নড়ে না', () => {
+  it('⭐ বন্ধ মাসে নতুন কিস্তি বসে না', async () => {
+    const staff = await addStaff('Bondho Mash');
+    await balances();
+
+    const months = (await owner.http
+      .get(`/api/v1/deposits/${staff.id}/months`)
+      .expect(200)).body.months as { yearMonth: string }[];
+    expect(months.length).toBeGreaterThan(0);
+
+    // ⚠️ সারিটা মুছে ফাঁক বানানো — ঠিক যেভাবে দেরিতে যোগ দেওয়া কর্মীর
+    //    ক্ষেত্রে ফাঁক তৈরি হয়
+    await h.prisma.securityDeposit.deleteMany({ where: { employeeId: staff.id } });
+    await h.prisma.monthClosure.create({
+      data: { yearMonth: thisMonth, closedBy: 'test' },
+    });
+
+    // পাতা-লোড → ensureLedger()
+    await balances();
+
+    const after = await h.prisma.securityDeposit.count({
+      where: { employeeId: staff.id, yearMonth: thisMonth },
+    });
+    expect(after).toBe(0);
+  });
+
+  /**
+   * ⚠️⚠️ **দ্বিতীয় টেস্টটাই আসল পাহারা** — প্রথমটা একা থাকলে
+   * `ensureLedger()` পুরোপুরি বন্ধ করে দিলেও সবুজ থাকত।
+   */
+  it('⭐ খোলা মাসে আগের মতোই বসে', async () => {
+    const staff = await addStaff('Khola Mash');
+    await balances();
+
+    await h.prisma.securityDeposit.deleteMany({ where: { employeeId: staff.id } });
+    await balances();
+
+    const after = await h.prisma.securityDeposit.count({
+      where: { employeeId: staff.id, yearMonth: thisMonth },
+    });
+    expect(after).toBe(1);
+  });
+
+  /**
+   * ⭐⭐ **উল্টো দিকটাও** — শুরুর মাস এগিয়ে দিলে বন্ধ মাসের সারিটা
+   * মুছে যায় না। ⚠️ কেবল বসানোটা আটকালে অর্ধেক কাজ হতো: কাগজে-লেখা
+   * টাকা খাতা থেকে উধাও হয়ে যেত।
+   */
+  it('⭐ শুরুর মাস এগোলেও বন্ধ মাসের সারি টেকে', async () => {
+    const staff = await addStaff('Bondho Mochha');
+    await balances();
+
+    /**
+     * ⚠️ আগের একটা মাসের কিস্তি হাতে বসানো — `addStaff()` কেবল চলতি মাসের
+     *    সারি বানায়, আর `setStartMonth()` ভবিষ্যতের মাস নেয় না, তাই মোছার
+     *    লক্ষ্য বানাতে হলে অতীতে একটা সারি লাগে।
+     */
+    const past = prevMonth(thisMonth);
+    await h.prisma.securityDeposit.create({
+      data: { employeeId: staff.id, yearMonth: past, amountPaisa: 50_000 },
+    });
+    await h.prisma.monthClosure.create({
+      data: { yearMonth: past, closedBy: 'test' },
+    });
+
+    // শুরুর মাস চলতি মাসে সরালে আগের সব মাস মোছার কথা
+    await owner.http
+      .patch(`/api/v1/deposits/${staff.id}/start`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ yearMonth: thisMonth })
+      .expect(200);
+
+    const kept = await h.prisma.securityDeposit.count({
+      where: { employeeId: staff.id, yearMonth: past },
+    });
+    expect(kept).toBe(1);
+  });
+});
+
 describe('কিস্তির অঙ্ক সংশোধন', () => {
   const correct = (
     employeeId: number,
