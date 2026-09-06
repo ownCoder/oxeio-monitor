@@ -52,16 +52,43 @@ public class ShutdownBudgetTests
             "EndSessionEnqueueWait must leave room for the send itself");
 
     /// <summary>
-    /// ⭐⭐ <c>DisposeAsync</c>-এর দুটো drain মিলে <c>Program.ShutdownBudget</c>
-    /// ছাড়াতে পারে না — এটাই সেই মন্তব্যে লেখা শর্ত, এখন পাহারায়।
+    /// ⚠️⚠️ <c>DisposeAsync</c>-এর যেটুকু কাজে <b>কোনো বাজেট নেই</b> —
+    /// <c>_stopping.CancelAsync()</c>, দুটো <c>CloseAll</c>, চারটে
+    /// <c>Dispose()</c>, আর <c>_outbox.DisposeAsync()</c>-এর SQLite
+    /// checkpoint। ⭐ সংখ্যাটা মাপা নয়, <b>জায়গা রাখা</b>: বাজেটওয়ালা
+    /// ধাপগুলো যেন ছাদটা <b>ছুঁয়ে</b> না ফেলে।
+    /// </summary>
+    private static readonly TimeSpan DisposeOverhead = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>
+    /// ⭐⭐⭐ <c>DisposeAsync</c>-এর <b>তিনটে</b> ধাপ মিলে
+    /// <c>Program.ShutdownBudget</c> ছাড়াতে পারে না।
+    ///
+    /// ⚠️⚠️ <b>এই টেস্টটাই আগে ভুল ছিল</b> <i>(৬ সেপ্টেম্বর ২০২৬, G161)</i>।
+    /// এটা যোগ করত কেবল <b>দুটো</b> drain (২ + ১.৫ = ৩.৫ ≤ ৪ — সবুজ), আর
+    /// তার আগে যে <see cref="AgentHost.StopEnqueueBudget"/> ধাপটা পরপর
+    /// চলে সেটা কোনো যোগফলেই ঢুকত না। আলাদা একটা টেস্ট তাকে একা মাপত
+    /// (<c>২ &lt; ৪</c> — সবুজ)। ফলে আসল যোগফল <b>৫.৫ &gt; ৪</b> হয়েও
+    /// সুইট সবুজ থাকত।
+    ///
+    /// ⚠️ এটাই এই ফাইলের নিজের ভূমিকায় বর্ণিত ব্যর্থতা — "শর্তটা মন্তব্যে
+    /// লেখা ছিল, পাহারা ছিল না" — শুধু এবার <b>পাহারাটাই</b> অসম্পূর্ণ ছিল।
+    /// ⭐ তাই এখন <b>একটাই</b> টেস্ট, আর তাতে তিনটে ধাপই আছে: ভবিষ্যতে
+    /// চতুর্থ ধাপ যোগ হলে সেটাও এখানেই বসবে।
     /// </summary>
     [Fact]
-    public void Dispose_এর_দুটো_drain_মিলে_শাটডাউন_বাজেটের_ভেতরে() =>
+    public void Dispose_এর_তিনটে_ধাপ_মিলে_শাটডাউন_বাজেটের_ভেতরে()
+    {
+        var sequential =
+            AgentHost.StopEnqueueBudget + AgentHost.GoodbyeBudget + AgentHost.FinalDrainBudget;
+
         Assert.True(
-            AgentHost.GoodbyeBudget + AgentHost.FinalDrainBudget
-                <= Program.ShutdownBudget,
-            $"goodbye ({AgentHost.GoodbyeBudget}) + final ({AgentHost.FinalDrainBudget}) " +
-            $"must fit inside ShutdownBudget ({Program.ShutdownBudget})");
+            sequential + DisposeOverhead <= Program.ShutdownBudget,
+            $"enqueue ({AgentHost.StopEnqueueBudget}) + goodbye ({AgentHost.GoodbyeBudget}) " +
+            $"+ final ({AgentHost.FinalDrainBudget}) = {sequential}; " +
+            $"বাজেটহীন কাজের জন্য {DisposeOverhead} রেখে " +
+            $"ShutdownBudget ({Program.ShutdownBudget})-এর ভেতরে থাকতে হবে");
+    }
 
     /// <summary>⚠️ আর গোটা DisposeAsync-ও Windows-এর সীমার নিচে।</summary>
     [Fact]
@@ -69,10 +96,17 @@ public class ShutdownBudgetTests
         Assert.True(Program.ShutdownBudget < WindowsKillTimeout);
 
     /// <summary>
-    /// ⚠️ <c>agent_stop</c> ডিস্কে লেখার অপেক্ষাও ওই ছাদের ভেতরে — নইলে
-    /// লেখা শেষ হওয়ার আগেই সময় ফুরাত আর drain খালি কিউ পেত।
+    /// ⭐ দুই শাটডাউন-পথ একই কাজে একই বাজেট নেয় <i>(G161)</i>।
+    ///
+    /// ⚠️ <c>WM_ENDSESSION</c>-এর পথ আর <c>DisposeAsync</c>-এর পথ — দুটোই
+    /// একটা SQLite INSERT-এর জন্য অপেক্ষা করে, তারপর একটা ছোট POST পাঠায়।
+    /// সংখ্যা দুরকম হলে একদিন একটা পথ ঠিক করা হতো আর অন্যটা বাসি থেকে
+    /// যেত — এই প্রকল্পে ঠিক সেটাই বারবার হয়েছে।
     /// </summary>
     [Fact]
-    public void লেখার_বাজেট_শাটডাউন_বাজেটের_ভেতরে() =>
-        Assert.True(AgentHost.StopEnqueueBudget < Program.ShutdownBudget);
+    public void দুই_শাটডাউন_পথ_একই_কাজে_একই_বাজেট_নেয়()
+    {
+        Assert.Equal(AgentHost.EndSessionEnqueueWait, AgentHost.StopEnqueueBudget);
+        Assert.Equal(AgentHost.EndSessionSendBudget, AgentHost.GoodbyeBudget);
+    }
 }

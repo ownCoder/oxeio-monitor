@@ -63,8 +63,23 @@ internal sealed class AgentHost : IAsyncDisposable
     /// বন্ধ হওয়ার সময় <c>agent_stop</c> ডিস্কে লিখতে সর্বোচ্চ যতক্ষণ অপেক্ষা।
     /// ⚠️ Windows-এর পুরো শাটডাউন বাজেট কয়েক সেকেন্ড, আর তার পরেও শেষ
     /// drain-এর জন্য সময় রাখতে হয়।
+    ///
+    /// ⚠️⚠️ <b>২ → ০.৫ সে.</b> <i>(৬ সেপ্টেম্বর ২০২৬, G161)</i>। এটা
+    /// <see cref="DisposeAsync"/>-এর <b>প্রথম</b> ধাপ, আর তিনটে ধাপ পরপর
+    /// চলে: ২ + ২ + ১.৫ = <b>৫.৫ সে.</b>, অথচ
+    /// <c>Program.ShutdownBudget</c> ৪। অর্থাৎ খারাপ দিনে শেষ full drain
+    /// <b>শুরুই হতো না</b> — ঠিক যে ফলটা ঠেকাতে ৪ সেপ্টেম্বর
+    /// <see cref="FinalDrainBudget"/> ৩ → ১.৫ করা হয়েছিল।
+    ///
+    /// ⭐ ০.৫ সে. অনুমান নয় — <see cref="EndSessionEnqueueWait"/> ঠিক
+    /// একই কাজের (একটা SQLite INSERT) জন্য এই সংখ্যাটাই ব্যবহার করে।
+    /// দুই শাটডাউন-পথ এখন একই কাজে একই বাজেট নেয়।
+    ///
+    /// ⚠️ ছাদে পৌঁছালেও ইভেন্টটা হারায় না: <c>EnqueueAsync</c> ব্যাকগ্রাউন্ডে
+    /// চলতেই থাকে (<c>WaitAsync</c> কেবল <b>অপেক্ষা</b> ছাড়ে, কাজটা নয়),
+    /// আর নিচের দুটো drain-এর ৩ সেকেন্ডে সে ডিস্কে বসার যথেষ্ট সময় পায়।
     /// </summary>
-    internal static readonly TimeSpan StopEnqueueBudget = TimeSpan.FromSeconds(2);
+    internal static readonly TimeSpan StopEnqueueBudget = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
     /// বন্ধ হওয়ার আগে শেষ drain-এ সর্বোচ্চ যতক্ষণ।
@@ -87,7 +102,12 @@ internal sealed class AgentHost : IAsyncDisposable
     /// সারিগুলো ছোট, জীবন্ত লিংকে অর্ধ সেকেন্ডেই যায়; মরা লিংকে এইটুকুতেই থেমে
     /// full drain-কে সময় ছাড়ে (মোট ছাদ <c>Program.ShutdownBudget</c> ৪ সে.)।
     /// </summary>
-    internal static readonly TimeSpan GoodbyeBudget = TimeSpan.FromSeconds(2);
+    /// ⚠️⚠️ <b>২ → ১.৫ সে.</b> <i>(৬ সেপ্টেম্বর ২০২৬, G161)</i> — উপরের
+    /// <see cref="StopEnqueueBudget"/>-এর একই কারণে। ⭐ এখানেও সংখ্যাটা
+    /// ধার করা: <see cref="EndSessionSendBudget"/> ঠিক এই কাজটার
+    /// (একটা ছোট POST) জন্য ১.৫ সে.-ই নেয়, আর BDIX-এ পিং ৫ ms — তাই এটা
+    /// দরকারের চেয়ে এখনো শতগুণ বেশি।
+    internal static readonly TimeSpan GoodbyeBudget = TimeSpan.FromMilliseconds(1500);
 
     /// <summary>
     /// ⭐⭐ <b>R29-B — <c>WM_ENDSESSION</c>-এই বিদায়ী ইভেন্ট পাঠানোর ছাদ।</b>
@@ -149,7 +169,34 @@ internal sealed class AgentHost : IAsyncDisposable
     private SyncWorker? _worker;
     private DeviceCredentials? _credentials;
     private TrayIcon? _tray;
-    private IdleStateMachine? _machine;
+    /// <summary>
+    /// ⚠️⚠️ <b>এই ঘরটা একাধিক থ্রেড ছোঁয়</b> <i>(G160, ৬ সেপ্টেম্বর ২০২৬)</i>।
+    /// ট্র্যাকার লেখে ও পড়ে, মেসেজ-পাম্প (<see cref="OnPower"/>) বদলায়,
+    /// থ্রেড পুল (<c>DisposeAsync</c>) বন্ধ করে।
+    ///
+    /// ⭐ <b>দুই স্তরের পাহারা</b>, আর দুটোই দরকার:
+    /// <list type="bullet">
+    ///   <item><see cref="IdleStateMachine"/> <b>নিজের ভেতরটা</b> নিজে
+    ///     পাহারা দেয় — একই অবজেক্টে দুই থ্রেড ঢুকলে;</item>
+    ///   <item><see cref="_machineGate"/> <b>রেফারেন্সটা</b> পাহারা দেয় —
+    ///     <see cref="ApplyIdleThreshold"/> পুরোনো অবজেক্ট ফেলে নতুন বসায়,
+    ///     আর ওই ফাঁকে <c>OnPower</c> এলে সে <b>ফেলে দেওয়া</b> অবজেক্টে
+    ///     সেগমেন্ট লিখত — যেটা নতুনটার প্রথম সেগমেন্টের সাথে ওভারল্যাপ করত।
+    ///     ভেতরের তালা ওই ফাঁকটা কোনোভাবেই ধরতে পারে না।</item>
+    /// </list>
+    /// </summary>
+    private volatile IdleStateMachine? _machine;
+
+    /// <summary>
+    /// ⭐ <see cref="_machine"/> রেফারেন্স পড়া-বদলানোর তালা <i>(G160)</i>।
+    ///
+    /// ⚠️⚠️ <b>এর ভেতরে কখনো <see cref="Record"/> ডাকা যাবে না</b> —
+    /// <c>Record</c> SQLite-এ লেখে, আর <c>OnPower</c> চলে মেসেজ-পাম্পে
+    /// যেখানে উইন্ডোজ ঘুমানোর আগে হাতে মোটে ~২ সেকেন্ড দেয়। তালার ভেতরে
+    /// ডিস্কে লিখলে ঠিক সেই স্টলটা হতো যেটা <c>MessageWindow</c>-র নিজের
+    /// মন্তব্যই বারণ করে। নিয়ম: <b>তালার ভেতরে বদলাও, বাইরে লেখো।</b>
+    /// </summary>
+    private readonly object _machineGate = new();
     private ScreenCaptureService? _capture;
     private SlotScheduler? _slots;
     private AppUsageService? _apps;
@@ -437,16 +484,37 @@ internal sealed class AgentHost : IAsyncDisposable
 
                 if (gap.Detected)
                 {
-                    Record(_machine!.OnSuspend(gap.SuspendedAt));
-                    Record(_machine!.OnResume(gap.ResumedAt));
+                    // ⚠️ G160 — বদল তালার ভেতরে, কিউয়ে পাঠানো বাইরে
+                    IReadOnlyList<ActivitySegment> slept, woke;
+                    lock (_machineGate)
+                    {
+                        slept = _machine!.OnSuspend(gap.SuspendedAt);
+                        woke = _machine!.OnResume(gap.ResumedAt);
+                    }
+
+                    Record(slept);
+                    Record(woke);
                 }
 
                 // ⭐ G46 — পর্দা জমে থাকলে ইনপুট টাইমারকে আর বিশ্বাস করা হয় না
-                var before = _machine!.State;
+                //
+                // ⚠️ ফিঙ্গারপ্রিন্ট মেলানোটা তালার **আগে** — ওটা পর্দা পড়ে,
+                //    আর তালার ভেতরে কোনো ভারী কাজ ঢোকানো মানেই মেসেজ-পাম্প
+                //    আটকে যাওয়ার ঝুঁকি (G160)।
+                var frozen = _screen.IsFrozen(now);
 
-                Record(_machine.Tick(
-                    now, sample.SinceLastInput, _sessionSuspended,
-                    screenFrozen: _screen.IsFrozen(now)));
+                SegmentState before, after;
+                IReadOnlyList<ActivitySegment> ticked;
+
+                lock (_machineGate)
+                {
+                    before = _machine!.State;
+                    ticked = _machine.Tick(
+                        now, sample.SinceLastInput, _sessionSuspended, frozen);
+                    after = _machine.State;
+                }
+
+                Record(ticked);
 
                 /**
                  * ⭐⭐ অবস্থা বদলালে সার্ভারকে <b>সাথে সাথে</b> জানানো।
@@ -456,7 +524,7 @@ internal sealed class AgentHost : IAsyncDisposable
                  * প্রকল্পের সবচেয়ে চেনা ভুল ("চুক্তি লেখা আছে, কলার লেখা
                  * হয়নি")। তাই নিয়ম আর কলার একসাথে লেখা হলো।
                  */
-                if (_machine.State != before) NudgeHeartbeat();
+                if (after != before) NudgeHeartbeat();
             }
             catch (Exception ex)
             {
@@ -1618,11 +1686,24 @@ internal sealed class AgentHost : IAsyncDisposable
     {
         if (!change.IdleThreshold || _machine is null) return;
 
-        var state = _machine.State;
+        /**
+         * ⚠️⚠️ <b>বন্ধ করা আর বদলি — একই তালায়</b> (G160)। আগে দুটো আলাদা
+         * ছিল, আর ঠিক মাঝখানে <c>OnPower</c> এলে সে <b>ফেলে দেওয়া</b>
+         * মেশিনে সেগমেন্ট খুলত। ওটা কোনোদিন কিউয়ে যেত না, অথচ নতুন
+         * মেশিনের প্রথম সেগমেন্টও <c>now</c> থেকেই শুরু — অর্থাৎ একই
+         * সময়ের দুটো সারি।
+         */
+        IReadOnlyList<ActivitySegment> closed;
 
-        Record(_machine.CloseAll(now));
-        _machine = new IdleStateMachine(
-            TimeSpan.FromSeconds(cfg.IdleThresholdSec), now, state);
+        lock (_machineGate)
+        {
+            var state = _machine.State;
+            closed = _machine.CloseAll(now);
+            _machine = new IdleStateMachine(
+                TimeSpan.FromSeconds(cfg.IdleThresholdSec), now, state);
+        }
+
+        Record(closed);
 
         changes.Add($"idle {old.IdleThresholdSec}s → {cfg.IdleThresholdSec}s");
     }
@@ -1705,7 +1786,7 @@ internal sealed class AgentHost : IAsyncDisposable
         if (_trackingStoppedForRevoke) return;
         _trackingStoppedForRevoke = true;
 
-        _machine?.CloseAll(now);
+        lock (_machineGate) _machine?.CloseAll(now);
 
         if (_apps is not null)
         {
@@ -1910,10 +1991,18 @@ internal sealed class AgentHost : IAsyncDisposable
         var counted = Interlocked.Read(ref _todayOffsetSec)
                       + Interlocked.Read(ref _activeTodaySec);
 
-        if (_machine is { State: SegmentState.Active } machine)
+        // ⚠️ G160 — স্টেট আর সময় **এক তালায়**। আলাদা পড়লে মাঝখানে
+        //    transition ঘটে যেতে পারত, আর তখন পুরোনো স্টেটের সাথে নতুন
+        //    `_openedAt` জোড়া লেগে আজকের হিসাব হঠাৎ কমে যেত।
+        if (_machine is { } machine)
         {
-            var openFor = _clock.Now - machine.OpenedAt;
-            if (openFor > TimeSpan.Zero) counted += (long)openFor.TotalSeconds;
+            var (state, openedAt) = machine.Peek();
+
+            if (state == SegmentState.Active)
+            {
+                var openFor = _clock.Now - openedAt;
+                if (openFor > TimeSpan.Zero) counted += (long)openFor.TotalSeconds;
+            }
         }
 
         // ⚠️ সার্ভারের সংখ্যা কখনো আমাদের চেয়ে বেশি হলে সেটাই — সে একাধিক
@@ -2155,25 +2244,48 @@ internal sealed class AgentHost : IAsyncDisposable
 
     public void OnPower(PowerSignal? signal)
     {
+        /**
+         * ⚠️⚠️ <b>এই মেথডটা UI (মেসেজ-পাম্প) থ্রেডে চলে</b>, ট্র্যাকার
+         * থ্রেডে নয় — <c>Program.OnMessage</c> সরাসরি ডাকে। এটাই ছিল
+         * G160-এর আসল রাস্তা: পর্দা ঘুমানোর মুহূর্তে এই থ্রেড আর ট্র্যাকার
+         * থ্রেড দুজনেই একই মেশিনে ঢুকত।
+         *
+         * ⚠️ <b>ইচ্ছাকৃতভাবে defer করা হয়নি।</b> <c>_pendingConfig</c>-এর
+         * মতো ফেলে রেখে ট্র্যাকারকে দিয়ে করানো এখানে ভুল হতো: আসল
+         * <c>PBT_APMSUSPEND</c>-এ PC ~২ সেকেন্ডেই ঘুমিয়ে যায়, ট্র্যাকার আর
+         * টিকই করে না — খোলা সেগমেন্টটা তখন জেগে ওঠার পরে বন্ধ হতো, আর
+         * ঘুমের পুরো সময়টা কাজ হিসেবে গোনা হতো। ঠিক <b>G3</b> বাগটা, যেটা
+         * ঠেকাতেই <see cref="IdleStateMachine.OnSuspend"/> লেখা হয়েছিল।
+         */
+        IReadOnlyList<ActivitySegment>? closed = null;
+
         if (signal is PowerSignal.Suspend or PowerSignal.DisplayOff)
         {
             // ঘুমাতে যাওয়ার আগে হাতে ~২ সেকেন্ড — শুধু সেগমেন্ট বন্ধ,
             // কোনো নেটওয়ার্ক কল নয়।
-            Record(_machine!.OnSuspend(_clock.Now));
+            lock (_machineGate) closed = _machine?.OnSuspend(_clock.Now);
             _sleep.Reset();
         }
         else if (signal == PowerSignal.Resume)
         {
-            Record(_machine!.OnResume(_clock.Now));
+            lock (_machineGate) closed = _machine?.OnResume(_clock.Now);
             _sleep.Reset();
         }
+
+        // ⚠️ তালার **বাইরে** — এটা SQLite-এ লেখে (উপরের `_machineGate` দেখুন)
+        if (closed is not null) Record(closed);
     }
 
     public async ValueTask DisposeAsync()
     {
         await _stopping.CancelAsync();
 
-        if (_machine is not null) Record(_machine.CloseAll(_clock.Now));
+        // ⚠️ G160 — `_stopping` বাতিল করা মানেই ট্র্যাকার থেমে গেছে নয়;
+        //    সে টোকেনটা দেখে কেবল `while`-এর মাথায়, তাই এই মুহূর্তে সে
+        //    টিকের মাঝপথে থাকতেই পারে।
+        IReadOnlyList<ActivitySegment>? lastSegments;
+        lock (_machineGate) lastSegments = _machine?.CloseAll(_clock.Now);
+        if (lastSegments is not null) Record(lastSegments);
         if (_apps is not null) RecordApps(_apps.CloseAll(_clock.Now));
 
         // ── G02: agent_stop ─────────────────────────────────────────────────

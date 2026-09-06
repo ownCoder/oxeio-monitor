@@ -40,6 +40,42 @@ public sealed class IdleStateMachine
     private readonly TimeSpan _maxSegment;
     private readonly Func<Guid> _newUuid;
 
+    /// <summary>
+    /// ⭐⭐⭐ <b>G160 — এই অবজেক্টটা একাধিক থ্রেড থেকে বদলায়</b>
+    /// <i>(৬ সেপ্টেম্বর ২০২৬)</i>।
+    ///
+    /// ⚠️⚠️ <b>যে বাগটা এটা সারায়:</b> <c>AgentHost</c>-এর মন্তব্যে লেখা ছিল
+    /// "<c>_machine</c> এই লুপের সম্পত্তি" — আর সেটা <b>সত্যি ছিল না</b>।
+    /// তিনটে থ্রেড এটাকে বদলাত:
+    /// <list type="number">
+    ///   <item><c>oXeio-tracker</c> — প্রতি সেকেন্ডে <see cref="Tick"/>;</item>
+    ///   <item><b>WinForms মেসেজ-পাম্প</b> — <c>WM_POWERBROADCAST</c> এলে
+    ///     <c>AgentHost.OnPower</c> সরাসরি <see cref="OnSuspend"/>/<see cref="OnResume"/>
+    ///     ডাকে, কোনো marshalling ছাড়াই;</item>
+    ///   <item><b>থ্রেড পুল</b> — <c>DisposeAsync</c> <see cref="CloseAll"/> ডাকে
+    ///     ঠিক যখন ট্র্যাকার হয়তো টিকের মাঝপথে।</item>
+    /// </list>
+    ///
+    /// ⚠️⚠️ <b>দুজন একসাথে <c>EmitAndReopen</c>-এ ঢুকলে কী হয়:</b> দুজনেই
+    /// <c>_state == Active, _openedAt == T0</c> পড়ে ফেলে, তারপর দুজনেই
+    /// <b>একই সময়টুকু</b> সেগমেন্ট বানায় — দুটো আলাদা <c>ClientUuid</c> নিয়ে।
+    /// সার্ভার কেবল <c>client_uuid</c> দেখে ডুপ্লিকেট ছাঁটে, ওভারল্যাপ দেখে
+    /// না — তাই <b>ওই সময়টা দুবার গোনা হয়, আর দুবার টাকাও হয়</b>।
+    ///
+    /// ⚠️ আরও বাজে দিকটা: <c>_state = next</c> আর <c>_openedAt = at</c>
+    /// দুটো আলাদা লেখা। একজনের <c>_openedAt</c> অন্যজনের <c>_state</c>-এর
+    /// সাথে জোড়া লেগে গেলে ঘুমিয়ে থাকা সময় <c>Active</c> হয়ে যেতে পারত।
+    ///
+    /// ⭐ তালাটা <b>এখানে</b>, <c>AgentHost</c>-এ নয় — নিয়মটা যে অবজেক্টের,
+    /// পাহারাও তারই। কলার বদলালে বা নতুন কলার এলে পাহারা আপনিই সাথে যায়।
+    ///
+    /// ⚠️ ভেতরে ধরে রাখার সময় মাইক্রোসেকেন্ডেরও কম — কোনো I/O নেই। এটা
+    /// জরুরি: <c>OnPower</c> চলে মেসেজ-পাম্পে, যেখানে উইন্ডোজ ঘুমাতে যাওয়ার
+    /// আগে হাতে মোটে ~২ সেকেন্ড দেয়। <b>সেগমেন্ট কিউয়ে পাঠানো
+    /// (<c>Record</c>) তালার বাইরে</b> — ওটা SQLite-এ লেখে।
+    /// </summary>
+    private readonly object _gate = new();
+
     private SegmentState _state;
     private DateTimeOffset _openedAt;
     private int _samples;
@@ -66,8 +102,20 @@ public sealed class IdleStateMachine
         _newUuid = newUuid ?? Guid.NewGuid;
     }
 
-    public SegmentState State => _state;
-    public DateTimeOffset OpenedAt => _openedAt;
+    public SegmentState State { get { lock (_gate) return _state; } }
+    public DateTimeOffset OpenedAt { get { lock (_gate) return _openedAt; } }
+
+    /// <summary>
+    /// ⭐ স্টেট আর "কখন খুলেছে" — <b>একসাথে, এক তালায়</b> <i>(G160)</i>।
+    ///
+    /// ⚠️ আলাদা করে দুটো property পড়লে মাঝখানে transition ঘটে যেতে পারে,
+    /// আর তখন একজনের স্টেটের সাথে অন্যজনের সময় জোড়া লাগে। tray-র
+    /// "আজ কত কাজ হলো" ঠিক ওই জোড়াটাই ব্যবহার করে।
+    /// </summary>
+    public (SegmentState State, DateTimeOffset OpenedAt) Peek()
+    {
+        lock (_gate) return (_state, _openedAt);
+    }
 
     /// <summary>প্রতি ১ সেকেন্ডে ডাকা হয়।</summary>
     /// <param name="now">monotonic ঘড়ির সময় (<see cref="MonotonicClock"/>)।</param>
@@ -85,6 +133,15 @@ public sealed class IdleStateMachine
     /// </param>
     /// <returns>এই টিকে যেসব সেগমেন্ট বন্ধ হলো।</returns>
     public IReadOnlyList<ActivitySegment> Tick(
+        DateTimeOffset now,
+        TimeSpan sinceLastInput,
+        bool locked,
+        bool screenFrozen)
+    {
+        lock (_gate) return TickCore(now, sinceLastInput, locked, screenFrozen);
+    }
+
+    private IReadOnlyList<ActivitySegment> TickCore(
         DateTimeOffset now,
         TimeSpan sinceLastInput,
         bool locked,
@@ -165,28 +222,40 @@ public sealed class IdleStateMachine
     /// </summary>
     public IReadOnlyList<ActivitySegment> OnSuspend(DateTimeOffset at)
     {
-        var closed = new List<ActivitySegment>();
-        Transition(closed, SegmentState.Locked, at);
-        return closed;
+        lock (_gate)
+        {
+            var closed = new List<ActivitySegment>();
+            Transition(closed, SegmentState.Locked, at);
+            return closed;
+        }
     }
 
     /// <summary>জেগে উঠল। ইনপুট না আসা পর্যন্ত IDLE, তাই ঘুমের সময় গোনা হয় না।</summary>
     public IReadOnlyList<ActivitySegment> OnResume(DateTimeOffset at)
     {
-        var closed = new List<ActivitySegment>();
-        // ঘুমের সময়টুকু LOCKED হিসেবে বন্ধ করে, নতুন দিন শুরু (মধ্যরাত পেরোলে ভাগ হবে)
-        EmitAndReopen(closed, SegmentState.Idle, at);
-        return closed;
+        lock (_gate)
+        {
+            var closed = new List<ActivitySegment>();
+            // ঘুমের সময়টুকু LOCKED হিসেবে বন্ধ করে, নতুন দিন শুরু (মধ্যরাত পেরোলে ভাগ হবে)
+            EmitAndReopen(closed, SegmentState.Idle, at);
+            return closed;
+        }
     }
 
     /// <summary>logoff / shutdown / এজেন্ট বন্ধ — শেষ সেগমেন্টটা বন্ধ করে দাও।</summary>
     public IReadOnlyList<ActivitySegment> CloseAll(DateTimeOffset at)
     {
-        var closed = new List<ActivitySegment>();
-        EmitSegment(closed, _state, _openedAt, at);
-        _openedAt = at;
-        ResetScore();
-        return closed;
+        lock (_gate)
+        {
+            var closed = new List<ActivitySegment>();
+            EmitSegment(closed, _state, _openedAt, at);
+
+            // ⚠️ পিছিয়ে যাওয়া ঘড়িতেও `_openedAt` পিছোয় না — নইলে পরের
+            //    সেগমেন্ট আগেরটার ভেতরে ঢুকে ওভারল্যাপ বানাত (G160)।
+            if (at > _openedAt) _openedAt = at;
+            ResetScore();
+            return closed;
+        }
     }
 
     // ── ভেতরের কাজ ──────────────────────────────────────────────────────────
