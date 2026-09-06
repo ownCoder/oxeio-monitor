@@ -75,3 +75,18 @@ export function getGallery(
 ): Promise<GalleryPage> {
   return api<GalleryPage>(`/screenshots${qs({ ...query })}`, { signal });
 }
+
+/**
+ * ⭐⭐⭐ **কর্মীপ্রতি আজকের সবচেয়ে নতুন ছবি** *(৬ সেপ্টেম্বর ২০২৬, G159)*।
+ *
+ * ⚠️⚠️ আগে এটা গ্যালারির **শেষ এক-দুটো পাতা** টেনে এনে অনুমান করা হতো, আর
+ * যাঁর শেষ ছবিটা ওই ৬০–১২০টার জানালার বাইরে তাঁর কার্ডে লেখা উঠত
+ * *"No screenshot yet today"* — অথচ ছবি ছিল।
+ */
+export function getLatestShotPerEmployee(
+  signal?: AbortSignal,
+): Promise<{ date: string; items: GalleryItem[] }> {
+  return api<{ date: string; items: GalleryItem[] }>('/screenshots/latest', {
+    signal,
+  });
+}

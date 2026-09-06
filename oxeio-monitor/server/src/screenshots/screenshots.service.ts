@@ -365,6 +365,110 @@ export class ScreenshotsService {
    *
    * ⚠️ কিছুই না দেখানো হলে (খালি পাতা) কিছু লেখা হয় না — কেউ কিছু দেখেনি।
    */
+  /**
+   * ⭐⭐⭐ **আজকের দিনে কর্মীপ্রতি সবচেয়ে নতুন ছবিটা** *(৬ সেপ্টেম্বর ২০২৬,
+   * G159)* — Live Board ও Worklog-এর কার্ডের জন্য।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** পর্দা এতদিন গ্যালারির **শেষ এক-দুটো পাতা**
+   * (৬০–১২০টা ছবি) টেনে এনে তার ভেতর থেকে কর্মীপ্রতি নতুনটা বাছত। যাঁর শেষ
+   * ছবিটা ওই জানালার বাইরে — যিনি আগে বেরিয়ে গেছেন, বা দল বড় — তাঁর কার্ডে
+   * লেখা উঠত *"No screenshot yet today"*। ⚠️ মাঠের হিসাব: ২৫ আগস্ট সন্ধ্যায়
+   * OX-05-এর **১১৪টা** ছবি ছিল, তবু কার্ড বলত একটাও নেই।
+   *
+   * ⭐ এখানে অনুমান নেই: প্রতি কর্মীর সর্বোচ্চ `capturedAt` বের করে ঠিক
+   * সেই সারিগুলোই আনা হয়।
+   *
+   * ⚠️ **অডিট আগের মতোই একটাই সারি** — কর্মীপ্রতি নয়। এই পথটা ঠিক আগের
+   * কলটারই বদলি, তাই *"কে আমার স্ক্রিনশট দেখল"* (I08) খাতাটা আগের মতোই
+   * থাকে; নইলে বোর্ড খোলামাত্র ১২টা সারি লিখে খাতাটা আবর্জনায় ভরে যেত।
+   */
+  async latestPerEmployee(
+    actor: SessionUser,
+    ip: string,
+  ): Promise<{ date: string; items: GalleryItem[] }> {
+    const workDate = workDateOf(new Date());
+
+    /**
+     * ⚠️ কর্মী নিজে ডাকলে কেবল নিজেরটা — গ্যালারির হুবহু একই নিয়ম।
+     *    এখানে আলাদা করে লিখলে একদিন একটা বদলাত আর অন্যটা নয়।
+     */
+    const mine = actor.role === 'employee' ? actor.employeeId : null;
+
+    const where = {
+      workDate,
+      deletedAt: null,
+      ...(mine === null ? {} : { employeeId: mine }),
+    };
+
+    // ⭐ ধাপ ১ — কর্মীপ্রতি সবচেয়ে নতুন মুহূর্তটা
+    const peaks = await this.prisma.screenshot.groupBy({
+      by: ['employeeId'],
+      where,
+      _max: { capturedAt: true },
+    });
+
+    if (peaks.length === 0) {
+      return { date: formatWorkDate(workDate), items: [] };
+    }
+
+    /**
+     * ⭐ ধাপ ২ — ঠিক ওই মুহূর্তগুলোর সারি।
+     *
+     * ⚠️ একই মুহূর্তে দুই মনিটরের দুটো ছবি থাকতে পারে, তাই এখান থেকে
+     *    একাধিক সারি আসতেই পারে — নিচের `reduce` কর্মীপ্রতি একটাই রাখে।
+     */
+    const moments = peaks
+      .map((p) => p._max.capturedAt)
+      .filter((d): d is Date => d !== null);
+
+    const rows = await this.prisma.screenshot.findMany({
+      where: { ...where, capturedAt: { in: moments } },
+      orderBy: [{ capturedAt: 'desc' }, { monitorIndex: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        employeeId: true,
+        capturedAt: true,
+        slotStart: true,
+        monitorIndex: true,
+        width: true,
+        height: true,
+        sizeBytes: true,
+        activeApp: true,
+        activeTitle: true,
+        employee: { select: { empCode: true, fullName: true } },
+      },
+    });
+
+    const newest = new Map<number, (typeof rows)[number]>();
+    for (const r of rows) {
+      const known = newest.get(r.employeeId);
+      if (!known || r.capturedAt > known.capturedAt) newest.set(r.employeeId, r);
+    }
+
+    const picked = [...newest.values()];
+
+    const items: GalleryItem[] = picked.map((r) => ({
+      id: r.id.toString(),
+      employeeId: r.employeeId,
+      empCode: r.employee.empCode,
+      fullName: r.employee.fullName,
+      capturedAt: r.capturedAt.toISOString(),
+      slotStart: r.slotStart.toISOString(),
+      monitorIndex: r.monitorIndex,
+      width: r.width,
+      height: r.height,
+      sizeBytes: r.sizeBytes,
+      activeApp: r.activeApp,
+      activeTitle: r.activeTitle,
+      thumbUrl: this.urls.urlFor(r.id, 'thumb', actor.userId),
+      fullUrl: this.urls.urlFor(r.id, 'full', actor.userId),
+    }));
+
+    await this.recordView(actor, ip, workDate, 1, mine, picked);
+
+    return { date: formatWorkDate(workDate), items };
+  }
+
   private async recordView(
     actor: SessionUser,
     ip: string,

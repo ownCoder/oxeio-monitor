@@ -16,6 +16,7 @@ import { GalleryQueryDto, ScreenshotFileQueryDto } from './dto';
 import {
   SCREENSHOT_MIME,
   ScreenshotsService,
+  type GalleryItem,
   type GalleryPage,
 } from './screenshots.service';
 
@@ -40,6 +41,26 @@ export class ScreenshotsController {
     @Query() query: GalleryQueryDto,
   ): Promise<GalleryPage> {
     return this.screenshots.gallery(actor, query, ip);
+  }
+
+  /**
+   * ⭐⭐⭐ **E03 — কর্মীপ্রতি আজকের সবচেয়ে নতুন ছবি** *(৬ সেপ্টেম্বর ২০২৬,
+   * G159)* — `GET /api/v1/screenshots/latest`।
+   *
+   * ⚠️⚠️ **কেন আলাদা রুট, গ্যালারিতে না ঢুকিয়ে:** বোর্ড এতদিন গ্যালারির
+   * **শেষ এক-দুটো পাতা** টেনে এনে ভেতর থেকে বাছত, আর যাঁর শেষ ছবিটা ওই
+   * ৬০–১২০টার জানালার বাইরে তাঁর কার্ডে লেখা উঠত *"No screenshot yet
+   * today"* — অথচ ছবি ছিল (মাঠে: OX-05-এর ১১৪টা)। পাতা ঘেঁটে অনুমান করাই
+   * ভুল পথ ছিল; প্রশ্নটার নিজের উত্তর দরকার।
+   *
+   * ⭐ অডিটে একটাই সারি, ঠিক আগের কলটার মতোই (I08)।
+   */
+  @Get('latest')
+  latest(
+    @CurrentUser() actor: SessionUser,
+    @Ip() ip: string,
+  ): Promise<{ date: string; items: GalleryItem[] }> {
+    return this.screenshots.latestPerEmployee(actor, ip);
   }
 
   /**
