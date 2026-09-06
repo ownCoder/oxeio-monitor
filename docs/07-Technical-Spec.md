@@ -477,7 +477,7 @@ CREATE TABLE daily_summary (
 --    দৈনিক কোনো টার্গেট নেই। সব টার্গেট-হিসাব monthly_summary-তে।
 ```
 
-**টেবিল সংখ্যা: ২৭** *(৬ সেপ্টেম্বর ২০২৬-এ `schema.prisma` গুনে মেলানো)*।
+**টেবিল সংখ্যা: ২৮** *(৬ সেপ্টেম্বর ২০২৬-এ `schema.prisma` গুনে মেলানো)*।
 ⚠️ উপরের § ২-এ `CREATE TABLE` লেখা আছে **১৯**টার — বাকিগুলো (ডিজাইন-পুলের
 `design_targets` · `design_credits`, বেতনের `salary_periods`, আর জামানতের
 তিনটে) স্কিমায় আছে কিন্তু এখানে কোনোদিন লেখা হয়নি। ⏳ যোগ করা বাকি;
@@ -1176,7 +1176,7 @@ oxeio-monitor/
 │  ├─ src/agent/                                      ✅ ২৭টি টেস্ট পাস
 │  ├─ src/{employees,devices,screenshots,timeline,    ⏳ পরের ধাপ
 │  │        monthly,adjustments,reports,alerts,admin,jobs}
-│  ├─ prisma/schema.prisma  (২৭ মডেল, timestamptz)    ✅
+│  ├─ prisma/schema.prisma  (২৮ মডেল, timestamptz)    ✅
 │  ├─ prisma/seed.ts  migrations/                     ✅
 │  └─ Dockerfile  tsconfig.build.json                 ✅
 ├─ web/                        # React 19 + Vite 7 + Tailwind 4

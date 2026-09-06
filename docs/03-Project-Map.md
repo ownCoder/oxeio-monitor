@@ -282,9 +282,9 @@ oxeio-monitor/
 │   │   #    টাইমলাইন ও live dashboard/-এ · মাসিক হিসাব summary/ ও payroll/-এ ·
 │   │   #    cron জব `*.job.ts` হয়ে summary/ · ops/ · digest/-এ
 │   ├── prisma/schema.prisma  migrations/  seed.ts   ✅
-│   └── test/                               ✅ Vitest + supertest — **১৬৬৫টি টেস্ট, ৮৩টি ফাইল** *(৬ সেপ্টেম্বর মাপা, ১টি skipped)*
+│   └── test/                               ✅ Vitest + supertest — **১৭০৮টি টেস্ট, ৮৫টি ফাইল** *(৬ সেপ্টেম্বর মাপা, ১টি skipped)*
 │       #  ⚠️ ৫১টি ফাইল DB ছাড়াই চলে (**১১৮৮** টেস্ট, `npm run test:nodb`);
-│       #     ৩২টি `*.e2e.spec.ts` (**৪৭৭**) Postgres ছাড়া চলে না
+│       #     ৩৪টি `*.e2e.spec.ts` (**৫২০**) Postgres ছাড়া চলে না
 │       #     — [README § টেস্ট](../README.md)
 │       #  ⚠️⚠️ আগের সংখ্যাগুলো (৪৪ · ২৩ · ২৩০) অনেকদিন ধরে বাসি ছিল —
 │       #     ৬ সেপ্টেম্বরে গুনে মেলানো হলো, অনুমান করে নয়
@@ -315,6 +315,12 @@ oxeio-monitor/
 │       │                                   #   পলিসির `expected_workdays` ভাগ করে
 │       ├── trend-expectation.spec.ts       ✅ ১৫ — ৭ দিনের ফিতের প্রত্যাশা এখন
 │       │                                   #   ক্যালেন্ডার দেখে, `daily_summary` সারি গুনে নয়
+│       ├── summary-late-days.e2e.spec.ts   ✅ ⭐⭐⭐ ১৫ — দেরিতে আসা ঘণ্টা আর হারায় না
+│       │                                   #   (G148) `summary_dirty` কিউ · নিষ্কাশন ·
+│       │                                   #   বন্ধ মাস · আর PC হাতবদলে সেশন (G153)
+│       ├── client-ip.e2e.spec.ts           ✅ ⭐⭐⭐ ৪ — প্রক্সির পেছনে আসল IP (G150)।
+│       │                                   #   ⚠️ ইউনিট টেস্ট এটা ধরতে পারত না —
+│       │                                   #   নিয়ম ঠিক ছিল, প্লাম্বিং ভুল
 │       ├── trend-designs.e2e.spec.ts       ✅ ⭐⭐ ৬ — ফিতের দৈনিক ডিজাইন-সংখ্যা।
 │       │                                   #   বেশিরভাগ টেস্টই ঢাকার মধ্যরাতের দুই পাশে
 │       │                                   #   ⚠️⚠️ বালতি `workDateOf()` ধরে, UTC ধরে নয় —
