@@ -117,9 +117,23 @@ export class IngestService {
     startedAt: Date,
     endedAt: Date,
   ): Promise<bigint> {
+    /**
+     * ⚠️⚠️ **`employeeId`-ও শর্তে, আর সেটাই এখানকার সবচেয়ে জরুরি লাইন**
+     * *(৬ সেপ্টেম্বর ২০২৬)*।
+     *
+     * আগে মেলানো হতো কেবল (ডিভাইস, তারিখ) ধরে। ফলে একটা PC দিনের
+     * মাঝখানে অন্য কর্মীকে দিলে নতুন কর্মীর সেগমেন্টগুলো **আগের কর্মীর**
+     * সেশনে গিয়ে বসত। কোনো এরর নয় — শুধু টাইমলাইনে একজনের কাজ অন্যজনের
+     * নামে, আর `trackedFromBy()` (যা `work_sessions` পড়ে) আসল কর্মীর
+     * ট্র্যাকিং-শুরু পিছিয়ে দিত।
+     *
+     * ⚠️ নিচের ৩ নম্বর শাখাটা ইচ্ছাকৃতভাবে কর্মী ধরে ছাঁকে **না** —
+     *    আগের দিনের খোলা সেশন বন্ধ করা ডিভাইসের কাজ, কর্মীর নয়।
+     */
+
     // ১· ওই তারিখেরই খোলা সেশন
     const open = await tx.workSession.findFirst({
-      where: { deviceId: device.id, workDate, endedAt: null },
+      where: { deviceId: device.id, employeeId, workDate, endedAt: null },
       orderBy: { startedAt: 'desc' },
     });
     if (open) {
@@ -129,7 +143,7 @@ export class IngestService {
 
     // ২· ওই তারিখের বন্ধ সেশন — backfill হলে সেটাতেই বসবে, নতুন সেশন নয়
     const closed = await tx.workSession.findFirst({
-      where: { deviceId: device.id, workDate },
+      where: { deviceId: device.id, employeeId, workDate },
       orderBy: { startedAt: 'desc' },
     });
     if (closed) {

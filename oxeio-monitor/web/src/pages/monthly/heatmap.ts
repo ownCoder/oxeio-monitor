@@ -48,6 +48,19 @@ export interface DayCell {
   kind: CellKind;
   /** `kind === 'day'` না হলে `null` */
   dayType: DayType | null;
+  /**
+   * ⭐⭐⭐ **ওই দিনটা তাঁর অনুমোদিত ছুটি ছিল কি না** *(৬ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** সার্ভার `onLeave` পাঠাত (G130, R2)
+   * কিন্তু হিটম্যাপ ঘরটা কোনোদিন পড়েনি। ছুটির দিনে `dayType` থাকে
+   * `workday` (ওটা **অফিসের** ক্যালেন্ডার, একজনের নয়) আর ঘণ্টা ০ —
+   * তাই ঘরটা পড়ত *"কর্মদিবসে কিছুই হয়নি"* শাখায়, আর অনুমোদিত ছুটি
+   * পর্দায় **লালচে ফাঁকির দাগ** পেত।
+   *
+   * ⚠️ `dayType`-এর সাথে মেশানো নয় — ওটা বলে দিনটা অফিসের ক্যালেন্ডারে
+   *    কী, এটা বলে **ওই একজনের** কী।
+   */
+  onLeave: boolean;
   workedHours: number;
   adjustmentHours: number;
   creditedHours: number;
@@ -236,6 +249,7 @@ export function buildMonthGrid(
         day: dayNumber(date),
         kind: untracked ? 'untracked' : 'day',
         dayType: row.dayType,
+        onLeave: row.onLeave,
         workedHours: row.workedHours,
         adjustmentHours: row.adjustmentHours,
         creditedHours: row.creditedHours,
@@ -360,6 +374,8 @@ function blankCell(date: string, kind: CellKind): DayCell {
     day: dayNumber(date),
     kind,
     dayType: null,
+    // ⚠️ ফাঁকা ঘর (ভবিষ্যৎ / কর্মকালের বাইরে) — ছুটির প্রশ্নই ওঠে না
+    onLeave: false,
     workedHours: 0,
     adjustmentHours: 0,
     creditedHours: 0,

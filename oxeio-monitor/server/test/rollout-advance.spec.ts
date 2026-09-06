@@ -174,6 +174,81 @@ describe('stageToAdvanceTo — জব কেবল সারি আনে, স�
  * পুরোনোটাকে ছোঁয়নি**। রোলআউট স্বয়ংক্রিয় করতে গিয়ে কেউ যদি একদিন
  * `isOfferedTo`-তে হাত দেন, ভাঙাটা এখানে ধরা পড়বে।
  */
+/**
+ * ⭐⭐⭐ **প্রতিটা ধাপের নিজের ছ-ঘণ্টা** *(৬ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এই describe-টা পাহারা দেয়:** soak মাপা হতো কেবল
+ * `versionSince` থেকে — ডিভাইসটা কবে বিল্ডটা বসিয়েছে। ঘড়িটা ধাপ বদলালে
+ * **রিসেট হতো না**, তাই canary-তে ছ-ঘণ্টা পার করা একটা মেশিন **পরের
+ * টিকেই** `partial → all`-ও করিয়ে দিত। ৫০% ধাপটা কার্যত এড়িয়ে যেত, আর
+ * "ধাপে ধাপে ছাড়া"র পুরো উদ্দেশ্যটাই ব্যর্থ হতো।
+ *
+ * ⭐ প্রতিটা ধাপে **নতুন মেশিন** যোগ হয়, আর ঝুঁকিটা ঠিক ওদের নিয়েই —
+ * তাই নতুন ধাপের জন্য নতুন করে অপেক্ষা করাটাই পুরো ব্যবস্থাটার মানে।
+ */
+describe('soak-ঘড়ি ধাপে ধাপে রিসেট হয়', () => {
+  /** ⭐⭐⭐ এই ফাইলের নতুন আচরণের মূল টেস্ট */
+  it('⭐ ধাপ এইমাত্র বদলালে পুরোনো মেশিনও আর প্রমাণ নয়', () => {
+    // মেশিনটা সাত ঘণ্টা ধরে চালাচ্ছে — আগের নিয়মে যথেষ্ট
+    const machine = healthy();
+
+    // কিন্তু ধাপটা বদলেছে এক ঘণ্টা আগে
+    expect(isProvenBy(machine, NOW, ROLLOUT_SOAK_HOURS, ROLLOUT_FRESH_MINUTES, hoursAgo(1))).toBe(
+      false,
+    );
+  });
+
+  it('⭐ নতুন ধাপে ছ-ঘণ্টা পার হলে আবার প্রমাণ', () => {
+    const machine = healthy({ versionSince: hoursAgo(20) });
+
+    expect(
+      isProvenBy(machine, NOW, ROLLOUT_SOAK_HOURS, ROLLOUT_FRESH_MINUTES, hoursAgo(ROLLOUT_SOAK_HOURS + 1)),
+    ).toBe(true);
+  });
+
+  /**
+   * ⚠️ ধাপ বদল **পুরোনো** হলে ঘড়িটা ডিভাইসের ইনস্টল-সময়েই থাকে — অর্থাৎ
+   *    সদ্য বসানো মেশিন তখনো প্রমাণ নয়। দুটোর মধ্যে যেটা পরে, সেটাই মেঝে।
+   */
+  it('⭐ ধাপ পুরোনো হলেও সদ্য বসানো মেশিন প্রমাণ নয়', () => {
+    const fresh = healthy({ versionSince: hoursAgo(1) });
+
+    expect(
+      isProvenBy(fresh, NOW, ROLLOUT_SOAK_HOURS, ROLLOUT_FRESH_MINUTES, hoursAgo(100)),
+    ).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ **`stageToAdvanceTo`-ও ঘড়িটা মানে** — নইলে খাঁটি নিয়মটা ঠিক
+   * থাকত আর জব তবু পুরোনো আচরণে এগোত। এই রেপোর চেনা পাপ।
+   */
+  it('⭐ ধাপ এইমাত্র বদলালে `stageToAdvanceTo` এগোয় না', () => {
+    const proofs = [healthy(), healthy()];
+
+    expect(
+      stageToAdvanceTo('partial', proofs, NOW, ROLLOUT_SOAK_HOURS, hoursAgo(1)),
+    ).toBeNull();
+  });
+
+  it('ধাপ যথেষ্ট পুরোনো হলে এগোয়', () => {
+    const proofs = [healthy()];
+
+    expect(
+      stageToAdvanceTo('partial', proofs, NOW, ROLLOUT_SOAK_HOURS, hoursAgo(ROLLOUT_SOAK_HOURS + 1)),
+    ).toBe('all');
+  });
+
+  /**
+   * ⚠️ ঘড়ি না জানলে (`null`) আগের আচরণ — পুরোনো সারিতে কলামটা খালি
+   *    থাকতে পারে, আর তখন রোলআউট আটকে যাওয়ার চেয়ে এগোনোই ভালো।
+   */
+  it('ঘড়ি অজানা হলে আগের আচরণ', () => {
+    expect(isProvenBy(healthy(), NOW, ROLLOUT_SOAK_HOURS, ROLLOUT_FRESH_MINUTES, null)).toBe(
+      true,
+    );
+  });
+});
+
 describe('বিলির নিয়ম অক্ষত — স্বয়ংক্রিয় করা কিছু বদলায়নি', () => {
   const GUID = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d';
 

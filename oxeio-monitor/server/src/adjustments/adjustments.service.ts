@@ -142,7 +142,7 @@ export class AdjustmentsService {
       },
     });
 
-    await this.refresh(workDate);
+    await this.refresh(workDate, employee.id);
 
     this.logger.log(
       `${employee.empCode} ${dto.workDate}: ${dto.deltaSec > 0 ? '+' : ''}${dto.deltaSec}s (${dto.cause})`,
@@ -208,7 +208,7 @@ export class AdjustmentsService {
       },
     });
 
-    await this.refresh(before.workDate);
+    await this.refresh(before.workDate, before.employeeId);
 
     return toView(row);
   }
@@ -296,9 +296,15 @@ export class AdjustmentsService {
     );
   }
 
-  private async refresh(workDate: Date): Promise<void> {
+  /**
+   * ⚠️⚠️ **`employeeId` আলাদা করে পাঠানো হয়, আর সেটাই এই মেথডের গোটা কথা**
+   * *(৬ সেপ্টেম্বর ২০২৬)*। rollup কেবল **active** কর্মীদের নিয়ে চলে, তাই
+   * নিষ্ক্রিয় কারো সংশোধন ডাটাবেসে বসেও `daily_summary`-তে পৌঁছাত না —
+   * পর্দায় দেখা যেত, বেতনে কিছুই বদলাত না, আর কোনো এরর উঠত না।
+   */
+  private async refresh(workDate: Date, employeeId: number): Promise<void> {
     try {
-      await this.summary.refreshDate(workDate);
+      await this.summary.refreshDate(workDate, undefined, [employeeId]);
     } catch (err) {
       this.logger.warn(
         `Could not refresh the summary for ${workDate.toISOString().slice(0, 10)} — the next rollup will: ${String(err)}`,

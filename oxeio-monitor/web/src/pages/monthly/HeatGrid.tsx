@@ -294,6 +294,22 @@ function Cell({
     // ⚠️ ছুটির দিনে ০ ঘণ্টা = ফাঁকি নয়। এখানে কোনো লাল নেই, কোনো র‍্যাম্প নেই।
     look = 'border border-line';
     style = OFF_PATTERN;
+  } else if (cell.onLeave && !worked) {
+    /**
+     * ⭐⭐⭐ **অনুমোদিত ছুটি** *(৬ সেপ্টেম্বর ২০২৬, G130-এর বাকি অংশ)*।
+     *
+     * ⚠️⚠️ এই শাখাটা **নিচের লাল শাখার আগে** থাকতেই হবে। ছুটির দিনে
+     * `dayType` থাকে `workday` (ওটা অফিসের ক্যালেন্ডার, একজনের নয়) আর
+     * ঘণ্টা ০ — তাই আগে ঘরটা *"কর্মদিবসে কিছুই হয়নি"* বলে **লালচে দাগ**
+     * পেত। সংখ্যা মিথ্যা বলছিল না (টার্গেট ০, কোনো ঘাটতি নয়), কিন্তু
+     * ছবিটা বলত "ফাঁকি" — আর মানুষ আগে ছবিটা দেখে।
+     *
+     * ⭐ চেহারাটা সাপ্তাহিক ছুটির ঘরের **কাছাকাছি, তবে এক নয়** — একই
+     * প্যাটার্ন, কিন্তু রূপরেখা ব্র্যান্ড-রঙের ম্লান আভায়। দুটো এক করে
+     * দিলে "অফিস বন্ধ" আর "ইনি ছুটিতে" আলাদা করা যেত না।
+     */
+    look = 'border border-brand/30';
+    style = OFF_PATTERN;
   } else if (!off && !worked) {
     // কর্মদিবসে কিছুই হয়নি — একমাত্র জায়গা যেখানে ঘরে লালের ছোঁয়া
     look = 'bg-brand-bg ring-1 ring-brand/25 ring-inset';
@@ -342,7 +358,15 @@ function cellLabel(cell: DayCell, fullName: string): string {
   if (cell.kind === 'untracked')
     return `${when} · not being tracked yet — this day is not counted against them`;
 
-  const type = cell.dayType ? DAY_TYPE_LABEL[cell.dayType] : '';
+  /**
+   * ⚠️⚠️ ফোনে হোভার নেই, তাই ছুটির কারণটা লেখাতেও থাকতে হয় — নইলে
+   *    ঘরের চেহারা বদলেও প্রশ্নটা থেকেই যেত: *"এই দিনটা আলাদা কেন"*।
+   */
+  const type = cell.onLeave
+    ? 'on approved leave'
+    : cell.dayType
+      ? DAY_TYPE_LABEL[cell.dayType]
+      : '';
   const target =
     cell.targetHours > 0
       ? `target ${formatHoursAsDuration(cell.targetHours)}`

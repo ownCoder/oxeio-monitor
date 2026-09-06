@@ -115,7 +115,19 @@ export class RolloutAdvanceJob {
       }));
 
       // ⭐ সিদ্ধান্তটা এখানে নেওয়া হয় না — `rollout.ts`-এর খাঁটি ফাংশনে
-      const to = stageToAdvanceTo(latest.rolloutStage, proofs, now);
+      /**
+       * ⭐⭐⭐ **ধাপ বদলের সময়টাও পাঠানো হয়** *(৬ সেপ্টেম্বর ২০২৬)* —
+       * soak-ঘড়ির মেঝে। ⚠️ না পাঠালে canary-তে ছ-ঘণ্টা পার করা একটা
+       * মেশিন পরের টিকেই `partial → all`-ও করিয়ে দিত, আর ৫০% ধাপটা
+       * কার্যত এড়িয়ে যেত।
+       */
+      const to = stageToAdvanceTo(
+        latest.rolloutStage,
+        proofs,
+        now,
+        ROLLOUT_SOAK_HOURS,
+        latest.stageChangedAt,
+      );
 
       if (to === null) {
         return { ...idle, version: latest.version, onVersion: devices.length };
@@ -123,7 +135,9 @@ export class RolloutAdvanceJob {
 
       const updated = await this.prisma.agentVersion.update({
         where: { version: latest.version },
-        data: { rolloutStage: to },
+        // ⚠️ ঘড়িটা **এখানেই** রিসেট হয় — নইলে পরের ধাপ আবার সাথে সাথে
+        //    এগিয়ে যেত, আর ধাপগুলো একটার পর একটা এক টিকেই পার হতো
+        data: { rolloutStage: to, stageChangedAt: now },
       });
 
       /**

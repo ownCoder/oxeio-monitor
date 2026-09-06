@@ -560,6 +560,27 @@ internal sealed class AgentHost : IAsyncDisposable
     private TimeSpan UntilNextScreenSample()
     {
         var now = _clock.Now;
+
+        /**
+         * ⚠️⚠️⚠️ <b>এই শাখাটাই একটা ১০০% CPU লুপ আটকায়</b> (৬ সেপ্টেম্বর ২০২৬)।
+         *
+         * <see cref="SampleScreen"/> ছাপ না নিতে পারলে <see cref="_screenSampledAt"/>
+         * <c>null</c>-ই থেকে যায়। আগে সেই অবস্থায় এখান থেকে <c>Zero</c> ফিরত,
+         * অর্থাৎ <see cref="CaptureLoopAsync"/>-এর <c>wait</c> শূন্য হয়ে যেত,
+         * <c>Task.Delay</c> বাদ পড়ত, স্লটের সময় হয়নি বলে <c>continue</c> —
+         * আর লুপটা একটা কোর পুরো দখল করে ঘুরতে থাকত।
+         *
+         * ⚠️ ঘটনাটা কল্পনা নয়, তিনটে সত্যিকারের অবস্থায় ঘটত, আর তিনটেই
+         * <b>প্রথম সফল ছাপের আগে</b>:
+         *   ১· সদ্য বসানো PC, এখনো enroll হয়নি
+         *   ২· অফিস-সময়ের বাইরে এজেন্ট চালু হলে (০৭:০০–২৩:০০-র বাইরে)
+         *   ৩· পর্দা লক থাকা অবস্থায় চালু হলে
+         *
+         * ⭐ সমাধান: করার কিছু না থাকলে <b>স্বাভাবিক ব্যবধানটাই</b> ঘুমানো।
+         * দেরি সর্বোচ্চ এক ব্যবধান, আর CPU শূন্য।
+         */
+        if (!CanSampleNow()) return ScreenSampling.Interval;
+
         if (_screenSampledAt is null) return TimeSpan.Zero;
 
         var every = _screen.IsFrozen(now)
@@ -570,16 +591,31 @@ internal sealed class AgentHost : IAsyncDisposable
         return due > TimeSpan.Zero ? due : TimeSpan.Zero;
     }
 
+    /**
+     * ছাপ নেওয়া এই মুহূর্তে আদৌ অনুমোদিত কি না।
+     *
+     * ⚠️ শর্তগুলো <see cref="SampleScreen"/>-এর সাথে <b>হুবহু এক</b>, আর
+     * দুটোই <see cref="ScreenSampling.Allowed"/> ডাকে — আলাদা করে লিখলে
+     * একদিন একটা বদলাত আর অন্যটা নয়, আর তখন লুপটা আবার ঘুরতে শুরু করত।
+     */
+    private bool CanSampleNow() =>
+        _capture is not null
+        && ScreenSampling.Allowed(
+            _credentials?.IsEnrolled == true,
+            _credentials?.IsRevoked == true,
+            _window.Allows(_clock.Now),
+            _sessionSuspended);
+
     private void SampleScreen(DateTimeOffset now)
     {
-        if (_capture is null) return;
+        // ⚠️ শর্তটা <see cref="CanSampleNow"/>-এর সাথে এক জায়গায় রাখা —
+        //    দুই জায়গায় লিখলে একদিন একটা বদলাত আর অন্যটা নয়, আর তখন
+        //    ক্যাপচার-লুপ আবার ১০০% CPU-তে ঘুরত।
+        if (!CanSampleNow()) return;
 
-        if (!ScreenSampling.Allowed(
-                _credentials?.IsEnrolled == true,
-                _credentials?.IsRevoked == true,
-                _window.Allows(now),
-                _sessionSuspended))
-            return;
+        // ⚠️ উপরের শর্তেই ধরা পড়ে, কিন্তু কম্পাইলার সেটা দেখতে পায় না —
+        //    আর `_capture!` লিখলে ভবিষ্যতে সত্যিকারের null-ও চাপা পড়ত।
+        if (_capture is null) return;
 
         if (!ScreenSampling.Due(now, _screenSampledAt, _screen.IsFrozen(now))) return;
 
@@ -901,6 +937,31 @@ internal sealed class AgentHost : IAsyncDisposable
                 _log.Warn(
                     $"Outbox trimmed ({why}): {plan.ExpiredRowIds.Count} past the age limit, " +
                     $"{plan.OverBudgetRowIds.Count} over the disk budget");
+            }
+
+            /**
+             * ⭐⭐⭐ <b>অনাথ ফাইল ঝাড়ু</b> (৬ সেপ্টেম্বর ২০২৬)।
+             *
+             * ⚠️⚠️ <see cref="SqliteOutboxStore.SweepOrphanFilesAsync"/> লেখা
+             * ছিল, তার নিজের টেস্টও ছিল — কিন্তু <b>কেউ ওটা কোনোদিন
+             * ডাকেনি</b>। এই রেপোর সবচেয়ে চেনা পাপ: চুক্তি লেখা আছে,
+             * কলার লেখা হয়নি (G141 · G144 · G146)।
+             *
+             * ⚠️ ফলটা নীরব: অনাথ <c>.webp</c> <b>কোনো বাজেটের হিসাবে ধরা
+             * পড়ে না</b> (বাজেট সারি ধরে গোনে, ফাইল ধরে নয়), তাই ফুটোটা
+             * মাসের পর মাস চলতে পারত আর ডিস্ক ভরে যাওয়ার আগে কেউ টের পেত না।
+             *
+             * ⭐ এখানেই ডাকা হয়, কারণ এটা ইতিমধ্যেই ঘণ্টায় একবারের
+             * রক্ষণাবেক্ষণের পথ — আলাদা টাইমার বসালে সেটাও একদিন কেউ
+             * ডাকতে ভুলে যেত।
+             *
+             * ⚠️ এক ঘণ্টার grace রাখা হয় (ডিফল্ট): ক্যাপচার আগে ফাইল লেখে,
+             * তারপর Enqueue করে — ওই ফাঁকে ঝাড়ু দিলে সদ্য তোলা ছবিটাই মুছত।
+             */
+            var orphans = await _outbox.SweepOrphanFilesAsync(_clock.Now, ct: ct);
+            if (orphans > 0)
+            {
+                _log.Warn($"Outbox swept ({why}): {orphans} orphan file(s) with no row");
             }
         }
         catch (Exception ex)

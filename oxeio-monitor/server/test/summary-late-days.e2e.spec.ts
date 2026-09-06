@@ -290,3 +290,51 @@ describe('K06 — জব থেকে নিষ্কাশন', () => {
     expect(await workedOn(0)).toBe(seconds);
   });
 });
+
+/**
+ * ⭐⭐⭐ **PC হাতবদল হলে সেশনও বদলায়** *(৬ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এই describe-টা পাহারা দেয়:** `resolveSession()` সেশন
+ * মেলাত কেবল **(ডিভাইস, তারিখ)** ধরে, কর্মী ধরে নয়। ফলে একটা PC দিনের
+ * মাঝখানে অন্য কর্মীকে দিলে নতুন কর্মীর সেগমেন্টগুলো **আগের কর্মীর**
+ * সেশনে গিয়ে বসত।
+ *
+ * ⚠️ ফলটা দুই দিকেই খারাপ: টাইমলাইনে একজনের কাজ অন্যজনের নামে, আর
+ * `trackedFromBy()` (যা `work_sessions` পড়ে) আসল কর্মীর ট্র্যাকিং-শুরু
+ * পিছিয়ে দিত — অর্থাৎ তার প্রত্যাশার জানালাও ভুল হতো।
+ */
+describe('PC হাতবদল — সেশন কর্মী ধরেও মেলে', () => {
+  it('⭐ ডিভাইস অন্য কর্মীকে দিলে নতুন সেশন খোলে', async () => {
+    await upload(0, 600);
+
+    const first = await h.prisma.workSession.findFirstOrThrow();
+
+    // ⚠️ একই ডিভাইস, একই দিন — কেবল কর্মী বদলে গেছে
+    const other = await h.prisma.employee.create({
+      data: { empCode: 'OX-SWAP', fullName: 'Notun Karmi' },
+    });
+    await h.prisma.device.update({
+      where: { id: first.deviceId },
+      data: { employeeId: other.id },
+    });
+
+    await upload(0, 600);
+
+    const sessions = await h.prisma.workSession.findMany({
+      orderBy: { id: 'asc' },
+      select: { employeeId: true },
+    });
+
+    expect(sessions).toHaveLength(2);
+    expect(sessions[0].employeeId).not.toBe(sessions[1].employeeId);
+    expect(sessions[1].employeeId).toBe(other.id);
+  });
+
+  /** ⚠️ একই কর্মী হলে আগের মতোই একটাই সেশন — নতুন শর্তটা যেন বেশি না কাটে */
+  it('একই কর্মীর দ্বিতীয় আপলোডে নতুন সেশন খোলে না', async () => {
+    await upload(0, 600);
+    await upload(0, 600);
+
+    expect(await h.prisma.workSession.count()).toBe(1);
+  });
+});

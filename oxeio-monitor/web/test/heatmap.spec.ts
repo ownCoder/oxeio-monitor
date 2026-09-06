@@ -104,6 +104,61 @@ function wholeRange(): AttendanceRow[] {
 const cellOn = (grid: ReturnType<typeof buildMonthGrid>, date: string) =>
   grid.rows[0].cells.find((c) => c.date === date)!;
 
+/**
+ * ⭐⭐⭐ **G130-এর বাকি অংশ — অনুমোদিত ছুটি হিটম্যাপেও** *(৬ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে ফাঁকটা এই describe-টা পাহারা দেয়:** সার্ভার `onLeave` পাঠাত
+ * (G130, ৫ সেপ্টেম্বর), রিপোর্টের সারিতে *"On leave"* লেখাও উঠত — কিন্তু
+ * `buildMonthGrid()` ঘরটা **কোনোদিন কপি করেনি**, তাই হিটম্যাপ ওটা জানতেই
+ * পারত না। ছুটির দিনে `dayType` থাকে `workday` (ওটা **অফিসের** ক্যালেন্ডার,
+ * একজনের নয়) আর ঘণ্টা ০ — ফলে ঘরটা *"কর্মদিবসে কিছুই হয়নি"* বলে **লালচে
+ * ফাঁকির দাগ** পেত।
+ *
+ * ⭐ ঠিক G110-র মতোই: সংখ্যা মিথ্যা বলছিল না, ছবিটা বলছিল।
+ */
+describe('G130 — অনুমোদিত ছুটির দিন হিটম্যাপে', () => {
+  /** ⭐⭐⭐ এটাই আসল পাহারা — ঘরটা সত্যিই সারি থেকে ঘরে পৌঁছায় কি না */
+  it('⭐ ছুটির দিনের ঘরে `onLeave` পৌঁছায়', () => {
+    const rows = wholeRange().map((r) =>
+      r.date === '2026-08-18' ? { ...r, onLeave: true, targetHours: 0 } : r,
+    );
+
+    const grid = buildMonthGrid(report(rows), MONTH);
+
+    expect(cellOn(grid, '2026-08-18').onLeave).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **দ্বিতীয় টেস্টটা ছাড়া প্রথমটা একা যথেষ্ট নয়** — সবসময় `true`
+   * ফেরত দিলেও ওটা সবুজ থাকত। বাকি দিনগুলো `false` কি না, সেটাই প্রমাণ
+   * করে সংখ্যাটা সত্যিই সারি থেকে আসছে।
+   */
+  it('⭐ ছুটি নয় এমন দিনে `onLeave` মিথ্যা', () => {
+    const rows = wholeRange().map((r) =>
+      r.date === '2026-08-18' ? { ...r, onLeave: true, targetHours: 0 } : r,
+    );
+
+    const grid = buildMonthGrid(report(rows), MONTH);
+
+    expect(cellOn(grid, '2026-08-17').onLeave).toBe(false);
+    expect(cellOn(grid, '2026-08-19').onLeave).toBe(false);
+  });
+
+  /**
+   * ⚠️ ছুটির দিনটা `untracked` হয়ে যায় না — ট্র্যাকিং চলছিল, শুধু তিনি
+   *    ছুটিতে ছিলেন। দুটো গুলিয়ে গেলে ঘরটা আবার ভুল কথা বলত।
+   */
+  it('ছুটির দিন `untracked` নয়, সাধারণ দিন', () => {
+    const rows = wholeRange().map((r) =>
+      r.date === '2026-08-18' ? { ...r, onLeave: true, targetHours: 0 } : r,
+    );
+
+    expect(cellOn(buildMonthGrid(report(rows), MONTH), '2026-08-18').kind).toBe(
+      'day',
+    );
+  });
+});
+
 describe('G110 — ট্র্যাকিং শুরুর আগের দিন', () => {
   it('আগের কর্মদিবস `untracked`, পরেরটা সাধারণ `day`', () => {
     const grid = buildMonthGrid(report(wholeRange()), MONTH);

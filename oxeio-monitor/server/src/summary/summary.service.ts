@@ -159,8 +159,22 @@ export class SummaryService {
   async refreshDate(
     workDate: Date,
     now: Date = new Date(),
+    /**
+     * ⭐⭐⭐ **যাঁরা active নন, তবু এবার গুনতে হবে** *(৬ সেপ্টেম্বর ২০২৬)*।
+     *
+     * ⚠️⚠️ **যে বাগটা এটা সারায়:** নিষ্ক্রিয় কর্মীর জন্য সময়-সংশোধন
+     * ডাটাবেসে বসত, পর্দায় দেখাও যেত, কিন্তু rollup কেবল **active**
+     * কর্মীদের নিয়ে চলে — তাই সংখ্যাটা `daily_summary`-তে কোনোদিন
+     * পৌঁছাত না, আর বেতনেও নয়। কোনো এরর নয়, শুধু একটা সংশোধন যা
+     * কিছুই বদলাত না।
+     *
+     * ⚠️ চলে যাওয়া কর্মীর **শেষ মাসের** হিসাব ঠিক করা একটা বৈধ কাজ
+     *    (চূড়ান্ত পাওনা মেটানোর আগে), তাই পথটা বন্ধ করা হয়নি — কেবল
+     *    ওই একজনকে এই রানে যোগ করা হয়।
+     */
+    also: readonly number[] = [],
   ): Promise<RefreshResult> {
-    const employees = await this.activeEmployees();
+    const employees = await this.activeEmployees(also);
     if (employees.length === 0) {
       return { workDate, employees: 0 };
     }
@@ -660,9 +674,18 @@ export class SummaryService {
    * পুরোনো rollup সারি থেকে যায় (রিপোর্টের জন্য দরকার), কিন্তু নতুন করে
    * হিসাব হয় না — তাঁর তো আর ডেটাই আসছে না।
    */
-  private async activeEmployees(): Promise<EmployeePolicy[]> {
+  private async activeEmployees(
+    also: readonly number[] = [],
+  ): Promise<EmployeePolicy[]> {
     const rows = await this.prisma.employee.findMany({
-      where: { status: 'active' },
+      /**
+       * ⚠️ `also` খালি হলে শর্তটা হুবহু আগের মতোই — `OR`-এর দ্বিতীয়
+       *    শাখা তখন `id in []`, যা কাউকেই মেলায় না।
+       */
+      where:
+        also.length === 0
+          ? { status: 'active' }
+          : { OR: [{ status: 'active' }, { id: { in: [...also] } }] },
       select: {
         id: true,
         joinedOn: true,

@@ -245,6 +245,13 @@ export class AgentVersionsService {
       where: { version },
       data: {
         rolloutStage: dto.rolloutStage,
+        /**
+         * ⚠️⚠️ **হাতে বদলালেও ঘড়িটা রিসেট হয়** *(৬ সেপ্টেম্বর ২০২৬)*।
+         * নইলে মালিক canary → partial করার সাথে সাথেই জব পরের টিকে
+         * `all` করে দিত — কারণ প্রমাণ-দেওয়া মেশিনটা তো অনেক আগেই
+         * ছ-ঘণ্টা পার করে ফেলেছে। ধাপে ধাপে ছাড়ার মানেই থাকত না।
+         */
+        stageChangedAt: new Date(),
         ...(dto.isMandatory === undefined ? {} : { isMandatory: dto.isMandatory }),
         /**
          * ⚠️⚠️ **`undefined` আর `null` এক নয়।** ঘরটা না পাঠালে যা ছিল তাই

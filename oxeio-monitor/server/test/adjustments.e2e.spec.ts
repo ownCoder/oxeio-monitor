@@ -386,6 +386,60 @@ describe('অডিট', () => {
   });
 });
 
+/**
+ * ⭐⭐⭐ **নিষ্ক্রিয় কর্মীর সংশোধনও খাতায় পৌঁছায়** *(৬ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এই describe-টা পাহারা দেয়:** rollup (`refreshDate`) কেবল
+ * **active** কর্মীদের নিয়ে চলে। তাই চলে যাওয়া কারো জন্য সংশোধন বসালে সারিটা
+ * `time_adjustments`-এ ঢুকত, পর্দায় দেখাও যেত, কিন্তু `daily_summary`-তে
+ * **কোনোদিন পৌঁছাত না** — আর সেখান থেকে মাসিক সারি ও চূড়ান্ত পাওনায়ও নয়।
+ * কোনো এরর নেই, শুধু একটা সংশোধন যা কিছুই বদলাত না।
+ *
+ * ⭐ চলে যাওয়া কর্মীর **শেষ মাসের** হিসাব ঠিক করা একটা বৈধ কাজ (পাওনা
+ * মেটানোর আগে), তাই পথটা বন্ধ করা হয়নি — কেবল ওই একজনকে ওই রানে যোগ করা হয়।
+ */
+describe('নিষ্ক্রিয় কর্মীর সংশোধন', () => {
+  const creditedOf = async (id: number) =>
+    (
+      await h.prisma.dailySummary.findFirst({
+        where: { employeeId: id },
+        select: { creditedSec: true },
+      })
+    )?.creditedSec ?? null;
+
+  /** ⭐⭐⭐ এই describe-এর মূল টেস্ট */
+  it('⭐ চলে যাওয়া কর্মীর সংশোধনও `daily_summary`-তে ওঠে', async () => {
+    await h.prisma.employee.update({
+      where: { id: employeeId },
+      // ⚠️ `new Date()` নয় — ফিক্সচারের মুহূর্ত সবসময় হারনেসের ঘড়ি থেকে (G140)
+      data: { status: 'inactive', leftOn: dhakaNoon() },
+    });
+
+    const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await s.http
+      .post(`/api/v1/employees/${employeeId}/time-adjustments`)
+      .set('X-CSRF-Token', s.csrf)
+      .send(body({ deltaSec: 3600 }))
+      .expect(201);
+
+    expect(await creditedOf(employeeId)).toBe(3600);
+  });
+
+  /**
+   * ⚠️ active কর্মীর আচরণ বদলায়নি — নতুন শর্তটা যেন পুরোনো পথটা না ভাঙে।
+   */
+  it('active কর্মীর আচরণ আগের মতোই', async () => {
+    const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await s.http
+      .post(`/api/v1/employees/${employeeId}/time-adjustments`)
+      .set('X-CSRF-Token', s.csrf)
+      .send(body({ deltaSec: 1800 }))
+      .expect(201);
+
+    expect(await creditedOf(employeeId)).toBe(1800);
+  });
+});
+
 describe('সেগমেন্টের সাথে মিলিয়ে', () => {
   /**
    * ⭐ `credited = worked + adjustment` — payroll ও pace দুটোই এই যোগের

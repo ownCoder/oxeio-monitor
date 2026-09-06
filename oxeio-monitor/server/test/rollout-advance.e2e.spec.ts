@@ -46,10 +46,19 @@ beforeEach(async () => {
  */
 const ago = (ms: number) => new Date(realNow().getTime() - ms);
 
+/**
+ * ⚠️⚠️ **ডিফল্ট প্রকাশ-সময় অতীতে** *(৬ সেপ্টেম্বর ২০২৬)*, `realNow()` নয়।
+ *
+ * soak-ঘড়ির মেঝে এখন `stage_changed_at` (নিচে), তাই "এইমাত্র প্রকাশিত"
+ * ভার্সন কখনো এগোয় না — আর সেটাই সঠিক। কিন্তু বাস্তবে একটা ডিভাইস ছ-ঘণ্টা
+ * ধরে যে বিল্ড চালাচ্ছে, সেটা অন্তত ছ-ঘণ্টা আগেই প্রকাশিত হয়েছিল।
+ * ⭐ তাই ফিক্সচারের ডিফল্টটাও সেই বাস্তবতাই ধরে; ধাপ সদ্য বদলেছে এমন
+ * কেসের জন্য কলার নিজেই `realNow()` পাঠাতে পারে।
+ */
 async function publish(
   version: string,
   stage: 'canary' | 'partial' | 'all' | 'halted',
-  releasedAt = realNow(),
+  releasedAt = new Date(realNow().getTime() - (ROLLOUT_SOAK_HOURS + 2) * 3600_000),
 ): Promise<void> {
   await h.prisma.agentVersion.create({
     data: {
@@ -58,6 +67,15 @@ async function publish(
       sha256: 'a'.repeat(64),
       rolloutStage: stage,
       releasedAt,
+      /**
+       * ⭐⭐ **soak-ঘড়ির মেঝেটাও `releasedAt`-এ** *(৬ সেপ্টেম্বর ২০২৬)*।
+       *
+       * ⚠️⚠️ ডিফল্ট `now()` — অর্থাৎ সারি বানানোর **আসল** মুহূর্ত। ফিক্সচার
+       * `releasedAt` অতীতে বসায় আর জব চালায় ভবিষ্যতের `now` দিয়ে, তাই মেঝেটা
+       * না বসালে প্রতিটা টেস্টে ধাপ মনে হতো "এইমাত্র বদলেছে" আর জব কখনো
+       * এগোত না। ⭐ প্রকাশও একটা ধাপ-বদল, তাই দুটো এক হওয়াই সঠিক।
+       */
+      stageChangedAt: releasedAt,
     },
   });
 }
