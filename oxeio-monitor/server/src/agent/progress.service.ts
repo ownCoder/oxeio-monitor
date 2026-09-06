@@ -24,6 +24,31 @@ export interface EmployeeProgress {
   todayActiveSec: number;
   /** চলতি মাসে (ঢাকার) গোনা সেকেন্ড */
   monthActiveSec: number;
+
+  /**
+   * ⭐⭐⭐ **মাসের credited — worked + সংশোধন** *(৬ সেপ্টেম্বর ২০২৬, G162)*।
+   *
+   * ⚠️⚠️ **যে বাগটা এটা সারায়:** My data পাতার নিচের সারিতে
+   * *"This month so far"* সংখ্যাটা **ব্রাউজারে যোগ করা** হতো — আর তিনটে
+   * কারণে সেটা উপরের *"This month"* টাইলের সাথে মিলত না:
+   * <ol>
+   *   <li>জানালা আলাদা — তালিকাটা **রোলিং ৩০ দিনের**, তাই মাসের ৩১
+   *       তারিখে ১ তারিখটা কখনো আসতই না (বছরে সাত দিন);</li>
+   *   <li>রাশি আলাদা — নিচেরটা `credited` (সংশোধনসহ), উপরেরটা
+   *       `worked` (সংশোধন ছাড়া)। একটাও সংশোধন হলেই দুটো আলাদা হতো;</li>
+   *   <li>সংজ্ঞা আলাদা — নিচেরটা কাঁচা `duration_sec`-এর যোগ, উপরেরটা
+   *       UNION। দুই PC-তে একসাথে কাজ করলে নিচেরটা **দুবার** গুনত।</li>
+   * </ol>
+   *
+   * ⭐ তাই সংখ্যাটা আর ব্রাউজারে বানানো হয় না — সার্ভার যেটা দিয়ে
+   * `paceSec` কষে, পর্দাও ঠিক সেটাই দেখায়। এক মাস, এক সংখ্যা।
+   *
+   * ⚠️ `monthActiveSec` **বদলানো হয়নি**, ইচ্ছাকৃতভাবে: ওটা এজেন্টের
+   * তারের চুক্তি (`AgentHost.ActiveThisMonth`), আর § ২.১-ঙ (G35) বলে
+   * দেখানো ঘণ্টা `worked`-এ থাকবে, কেবল pace `credited`-এ। দুটো আলাদা
+   * প্রশ্ন, তাই দুটো আলাদা ঘর।
+   */
+  monthCreditedSec: number;
   /** ওই কর্মীর work policy থেকে — হার্ডকোড ২০৮ নয় */
   monthlyTargetHours: number;
   /**
@@ -274,6 +299,9 @@ export class ProgressService {
 
     // ⭐ G112 — শেষ হয়ে যাওয়া দিন rollup থেকে + আজকের দিন লাইভ
     const monthActiveSec = (monthPastRow._sum.workedSec ?? 0) + todayActiveSec;
+
+    // ⭐ G162 — এক জায়গায় কষা, দুই জায়গায় ব্যবহৃত (pace আর My data-র নিচের সারি)
+    const monthCreditedSec = monthActiveSec + (adjustmentRow._sum.deltaSec ?? 0);
     const week7ActiveSec = (week7PastRow._sum.workedSec ?? 0) + todayActiveSec;
     const monthlyTargetHours = Number(
       // পলিসি না থাকলে স্পেকের ডিফল্ট — শূন্য দিলে এজেন্টে ভাগ করতে গিয়ে
@@ -345,6 +373,7 @@ export class ProgressService {
     return {
       todayActiveSec,
       monthActiveSec,
+      monthCreditedSec,
       // ⭐ G37 — এজেন্ট যা দেখাবে সেটা **তার** টার্গেট, ফ্ল্যাট ২০৮ নয়
       monthlyTargetHours: p.targetSec / 3600,
       dailyTargetSec: todayIsWorkday ? perWorkdayTargetSec : 0,
@@ -368,7 +397,7 @@ export class ProgressService {
          * দেখত, অথচ ড্যাশবোর্ড তাকে এগিয়ে দেখাত — দুটো সংখ্যা দুই কথা
          * বললেই আস্থা শেষ, আর এই ফিচারটার উদ্দেশ্যই আস্থা।
          */
-        creditedSec: monthActiveSec + (adjustmentRow._sum.deltaSec ?? 0),
+        creditedSec: monthCreditedSec,
         monthlyTargetHours: p.targetSec / 3600,
         expectedWorkdays,
         leaveWorkdays: p.leaveWorkdays,

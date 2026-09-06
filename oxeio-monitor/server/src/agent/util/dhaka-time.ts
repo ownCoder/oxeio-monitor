@@ -25,10 +25,22 @@ export function workDateOf(instant: Date): Date {
   );
 }
 
+/**
+ * ⭐⭐⭐ **ওই instant-এর ঢাকা-দিনটা যে মুহূর্তে শুরু হয়েছে** *(G166)*।
+ *
+ * ⚠️⚠️ <b>`workDateOf()` নয়।</b> ওটা একটা **লেবেল** — ঢাকার দিনটাকে
+ * UTC-মধ্যরাত হিসেবে লেখা। ওই মানটাকে সরাসরি মুহূর্ত ধরে ব্যবহার করলে
+ * সীমানাটা **৬ ঘণ্টা দেরিতে** বসে, অর্থাৎ ঢাকার ভোর ৬টায়। এই প্রকল্পে
+ * এই একটা ভুলই সবচেয়ে বেশিবার হয়েছে, তাই সংখ্যাটা আর কোথাও হাতে কষা
+ * হয় না — সবাই এখান থেকে নেয়।
+ */
+export function localMidnightOf(instant: Date): Date {
+  return new Date(workDateOf(instant).getTime() - OFFSET_MS);
+}
+
 /** ওই instant-এর ঠিক পরের **স্থানীয়** মধ্যরাত, UTC instant হিসেবে (§ ২.১-ক) */
 export function nextLocalMidnight(instant: Date): Date {
-  const localMidnightUtc = workDateOf(instant).getTime() - OFFSET_MS;
-  return new Date(localMidnightUtc + DAY_MS);
+  return new Date(localMidnightOf(instant).getTime() + DAY_MS);
 }
 
 /**

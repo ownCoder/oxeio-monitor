@@ -829,26 +829,64 @@ export class TargetsService {
    */
   async markStartedByJobNumbers(
     employeeId: number,
-    numbers: readonly string[],
-    now: Date,
+    /**
+     * ⭐⭐⭐ **নম্বর → সেদিন সবচেয়ে আগে যে মুহূর্তে ফাইলটা খোলা দেখা গেছে**
+     * *(৬ সেপ্টেম্বর ২০২৬, G163)*।
+     *
+     * ⚠️⚠️ আগে এটা ছিল `numbers: string[]` আর একটা `now: Date` — আর
+     * কলার ওই `now`-এর জায়গায় **কর্মদিবসের লেবেল** পাঠাত। লেবেলটা
+     * UTC-মধ্যরাত, অর্থাৎ **ঢাকার ভোর ৬টা**, তাই প্রতিটা টার্গেটের
+     * "কাজ শুরু" ওই এক মুহূর্তেই বসত। মাঠে ৭১১টার ৭১১টা — একটাই সময়,
+     * আর প্রত্যেকটাই তার নিজের `assigned_at`-এর আগে (বণ্টন সকাল ৮টায়)।
+     *
+     * ⭐ এখন ঘরটা একটা `Map` — অর্থাৎ **প্রতিটা নম্বরের নিজের মুহূর্ত
+     * ছাড়া ডাকাই যায় না**। একটা সাধারণ `Date` ঘর রাখলে কেউ আবার
+     * লেবেল পাঠাত, আর কম্পাইলার চুপ থাকত।
+     */
+    startedAt: ReadonlyMap<string, Date>,
   ): Promise<number> {
-    const ids = numbers
-      .map((n) => Number.parseInt(n, 10))
-      .filter((n) => Number.isSafeInteger(n));
-    if (ids.length === 0) return 0;
+    if (startedAt.size === 0) return 0;
+
+    const at = new Map<number, Date>();
+    for (const [raw, when] of startedAt) {
+      const n = Number.parseInt(raw, 10);
+      if (Number.isSafeInteger(n)) at.set(n, when);
+    }
+    if (at.size === 0) return 0;
 
     try {
-      const { count } = await this.prisma.designTarget.updateMany({
+      /**
+       * ⚠️ আগে একটাই `updateMany` ছিল, কারণ সবার সময় এক ছিল। এখন
+       * প্রতিটার নিজের সময়, তাই আগে দেখা হয় **কারা এখনো অচিহ্নিত** —
+       * সাধারণত দিনে ০–৪টা। বাকি নম্বরগুলোয় কোনো কুয়েরিই যায় না।
+       */
+      const pending = await this.prisma.designTarget.findMany({
         where: {
-          jobNumber: { in: ids },
+          jobNumber: { in: [...at.keys()] },
           assignedToId: employeeId,
           status: DesignTargetStatus.assigned,
           // ⚠️ যেটায় আগেই চিহ্ন বসেছে সেটা আবার ছোঁয়া হয় না — নইলে
           //    "কবে শুরু" রোজ আজকের তারিখে সরে যেত
           startedAt: null,
         },
-        data: { startedAt: now },
+        select: { id: true, jobNumber: true },
       });
+
+      let count = 0;
+
+      for (const row of pending) {
+        const when = row.jobNumber === null ? undefined : at.get(row.jobNumber);
+        if (when === undefined) continue;
+
+        // ⚠️ `startedAt: null` শর্তটা এখানেও — উপরের পড়া আর এই লেখার
+        //    মাঝে অন্য একটা রান চিহ্ন বসিয়ে ফেলতে পারে
+        const { count: n } = await this.prisma.designTarget.updateMany({
+          where: { id: row.id, startedAt: null },
+          data: { startedAt: when },
+        });
+
+        count += n;
+      }
 
       return count;
     } catch (err) {

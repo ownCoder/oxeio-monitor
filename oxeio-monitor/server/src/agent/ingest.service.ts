@@ -222,6 +222,42 @@ export class IngestService {
       const rows: Prisma.ActivitySegmentCreateManyInput[] = [];
       const sessionByDate = new Map<number, bigint>();
 
+      /**
+       * ⭐⭐⭐ **আগে খাম মাপা, তারপর সেশন** *(৬ সেপ্টেম্বর ২০২৬, G164)*।
+       *
+       * ⚠️⚠️ **যে বাগটা এটা সারায়:** আগে সেশনটা ব্যাচের **প্রথম** খণ্ডের
+       * সময় নিয়ে তৈরি/চওড়া হতো, আর বাকি খণ্ডগুলো memo-হিটে সোজা ওই
+       * সেশনে বসত — `widen()` তাদের দেখতই না। ফলে সেশনের নিজের সীমা তার
+       * ভেতরের সেগমেন্টগুলোকে আর ধরে রাখত না, অথচ `widen()`-এর মন্তব্যেই
+       * লেখা আছে ঠিক সেটাই তার কাজ।
+       *
+       * ⚠️ মাঠে মাপা: ২২৬টা সেশনের **৭টা** ভাঙা — ৫২টা সেগমেন্ট,
+       * **২৪.৪৭ ঘণ্টা** নিজের সেশনের বাইরে। সবচেয়ে বড়টা ৬ ঘণ্টা (রাতের
+       * লক-সেগমেন্ট), আরেকটায় সেশন শুরু হয়েছে তার নিজের প্রথম
+       * সেগমেন্টের **৮ ঘণ্টা ৩৪ মিনিট পরে**।
+       *
+       * ⚠️ কেন এলোমেলো ক্রমে আসে: এজেন্ট প্রতিটা বন্ধ সেগমেন্ট
+       * fire-and-forget কিউয়ে ফেলে (`AgentHost.Record`), তাই একই মুহূর্তে
+       * বন্ধ হওয়া ছোট idle সারিটা লম্বা lock সারিটাকে হারিয়ে দিতে পারে।
+       *
+       * ⭐ **memo সরানো হয়নি** — সরালে ৫০০ সেগমেন্টের ব্যাচে ৫০০ বার
+       * `resolveSession` চলত (প্রতিবার ১–৩টা findFirst) একই ট্রানজেকশনের
+       * ভেতরে। খরচ আগের মতোই: তারিখপ্রতি একবার।
+       */
+      type PreparedPart = {
+        workDate: Date;
+        part: Span;
+        clientUuid: string;
+        state: SegmentDto['state'];
+        inputScore: number | null;
+      };
+
+      const prepared: PreparedPart[] = [];
+      const bounds = new Map<
+        number,
+        { workDate: Date; startedAt: Date; endedAt: Date }
+      >();
+
       for (const seg of segments) {
         const corrected: Span = {
           startedAt: this.clock.correct(seg.startedAt, drift),
@@ -236,34 +272,66 @@ export class IngestService {
           const workDate = workDateOf(part.startedAt);
           const key = workDate.getTime();
 
-          let sessionId = sessionByDate.get(key);
-          if (sessionId === undefined) {
-            sessionId = await this.resolveSession(
-              tx,
-              device,
-              employeeId,
+          prepared.push({
+            workDate,
+            part,
+            clientUuid: deriveUuid(seg.clientUuid as string, i),
+            state: seg.state,
+            inputScore: seg.inputScore ?? null,
+          });
+
+          const known = bounds.get(key);
+          if (known === undefined) {
+            bounds.set(key, {
               workDate,
-              part.startedAt,
-              part.endedAt,
-            );
-            sessionByDate.set(key, sessionId);
+              startedAt: part.startedAt,
+              endedAt: part.endedAt,
+            });
+            continue;
           }
 
-          rows.push({
-            sessionId,
-            employeeId,
-            deviceId: device.id,
-            clientUuid: deriveUuid(seg.clientUuid as string, i),
-            workDate,
-            state: seg.state,
-            startedAt: part.startedAt,
-            endedAt: part.endedAt,
-            durationSec: part.durationSec,
-            inputScore: seg.inputScore ?? null,
-            // § ২.১ — শুধু ACTIVE গোনা হয়, আর কিছু নয়
-            countsAsWork: seg.state === 'active',
-          });
+          if (part.startedAt < known.startedAt) known.startedAt = part.startedAt;
+          if (part.endedAt > known.endedAt) known.endedAt = part.endedAt;
         }
+      }
+
+      /**
+       * ⚠️⚠️ **পুরোনো তারিখ আগে** — `resolveSession()`-এর ৩ নম্বর শাখা
+       * আগের দিনের খোলা সেশনকে **তার নিজের** মধ্যরাতে বন্ধ করে। উল্টো
+       * ক্রমে চললে নতুন দিনের সেশন আগে তৈরি হতো, আর পুরোনো দিনটা তখন
+       * ওই শাখার `workDate: { lt: … }` শর্তে আর পড়ত না।
+       */
+      for (const key of [...bounds.keys()].sort((a, b) => a - b)) {
+        const envelope = bounds.get(key)!;
+
+        sessionByDate.set(
+          key,
+          await this.resolveSession(
+            tx,
+            device,
+            employeeId,
+            envelope.workDate,
+            envelope.startedAt,
+            envelope.endedAt,
+          ),
+        );
+      }
+
+      for (const p of prepared) {
+        rows.push({
+          sessionId: sessionByDate.get(p.workDate.getTime())!,
+          employeeId,
+          deviceId: device.id,
+          clientUuid: p.clientUuid,
+          workDate: p.workDate,
+          state: p.state,
+          startedAt: p.part.startedAt,
+          endedAt: p.part.endedAt,
+          durationSec: p.part.durationSec,
+          inputScore: p.inputScore,
+          // § ২.১ — শুধু ACTIVE গোনা হয়, আর কিছু নয়
+          countsAsWork: p.state === 'active',
+        });
       }
 
       const res = await tx.activitySegment.createMany({
@@ -510,9 +578,40 @@ export class IngestService {
     const at = closing.occurredAt as Date;
     const workDate = workDateOf(at);
 
-    // ওই দিনের সেশন — ইভেন্টের সময়েই বন্ধ
+    /**
+     * ওই দিনের সেশন — ইভেন্টের সময়েই বন্ধ।
+     *
+     * ⭐⭐⭐ **কিন্তু নিজের শুরুর আগে নয়** *(৬ সেপ্টেম্বর ২০২৬, G165)*।
+     *
+     * ⚠️⚠️ **যে বাগটা এটা সারায়:** বিদায়ী ইভেন্ট আউটবক্সে আটকে গেলে
+     * (রিবুটের পর নেট আসার আগে প্রথম চেষ্টা ব্যর্থ) `SyncWorker` পরের
+     * চক্রে **সেগমেন্ট আগে** পাঠায়, ইভেন্ট পরে। তখন দিনের সেশনটা
+     * রিবুট-পরবর্তী সময়ে তৈরি হয়ে গেছে, আর তার পরে আসা **পুরোনো**
+     * shutdown ইভেন্টটা তাকে **তার নিজের শুরুর আগে** বন্ধ করে দিত —
+     * অর্থাৎ `ended_at < started_at`, ঋণাত্মক দৈর্ঘ্যের সেশন।
+     *
+     * ⚠️ মাঠে এখনো ঘটেনি, তবে ২৪ আগস্ট ৩ মিনিট ৩০ সেকেন্ডের ব্যবধানে
+     * ফসকেছে (ডিভাইস ২৫: ইভেন্ট ০৯:৫৯:১৪, সেশন শুরু ১০:০১:৩৮ — দুটো
+     * ব্যাচের ক্রম উল্টো হলেই −১৪৪ সেকেন্ডের সেশন)। আর দেরিতে আসা
+     * বিদায়ী ইভেন্ট বিরল নয়: ৩ সপ্তাহে ৩৬৪টার মধ্যে **৫০টা** এক
+     * মিনিটেরও বেশি দেরিতে, সর্বোচ্চ ৫০ মিনিট।
+     *
+     * ⚠️ **ক্ল্যাম্প করা হয় না, বাদ দেওয়া হয়।** `max(at, startedAt)`
+     * বসালে এখনো চলতে থাকা সেশনের গায়ে শূন্য-দৈর্ঘ্য আর একটা মিথ্যা
+     * `end_reason: shutdown` বসত। খোলা থাকাটা হারানো নয় — ০০:১৫-র
+     * দিন-ক্লোজ তাকে তার নিজের মধ্যরাতে `day_rollover` দিয়ে বন্ধ করে।
+     *
+     * ⚠️ তুলনাটা **মুহূর্তে-মুহূর্তে** (`startedAt` বনাম `at`), লেবেলে নয় —
+     * `workDate`-এর সাথে মেলালে ওটা ঢাকার ভোর ৬টা হিসেবে পড়ত, আর তখন
+     * প্রায় প্রতিটা বৈধ বন্ধ করাও বাদ পড়ত।
+     */
     await this.prisma.workSession.updateMany({
-      where: { deviceId: device.id, workDate, endedAt: null },
+      where: {
+        deviceId: device.id,
+        workDate,
+        endedAt: null,
+        startedAt: { lte: at },
+      },
       data: {
         endedAt: at,
         endReason: closing.type === 'logoff' ? 'logoff' : 'shutdown',

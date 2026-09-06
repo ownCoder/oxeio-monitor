@@ -14,7 +14,6 @@ import {
   formatDate,
   formatDateShort,
   formatSignedDuration,
-  monthStartOf,
   shiftWorkDate,
   todayInDhaka,
   weekdayOf,
@@ -314,7 +313,9 @@ export function MyDataPage() {
             {days.loading && <Loading />}
             {days.error && <ErrorBox error={days.error} retry={days.reload} />}
             {days.data?.length === 0 && <Empty title="Nothing recorded yet" />}
-            {days.data && days.data.length > 0 && <DayTable rows={days.data} />}
+            {days.data && days.data.length > 0 && (
+              <DayTable rows={days.data} monthCreditedSec={p?.monthCreditedSec} />
+            )}
           </Card>
 
           {/*
@@ -363,9 +364,29 @@ function Row({ term, children }: { term: string; children: React.ReactNode }) {
   );
 }
 
-function DayTable({ rows }: { rows: MyDay[] }) {
-  const monthStart = monthStartOf(todayInDhaka());
-
+/**
+ * ⚠️⚠️ **নিচের যোগফলটা এখানে কষা হয় না** *(৬ সেপ্টেম্বর ২০২৬, G162)*।
+ *
+ * আগে হতো — `rows.filter(...).reduce(...)` — আর তাতে তিনটে আলাদা কারণে
+ * উপরের *"This month"* টাইলের সাথে মিলত না: তালিকাটা রোলিং ৩০ দিনের
+ * (৩১ তারিখে ১ তারিখটা আসতই না), সংশোধন কেবল নিচেরটায় ঢুকত, আর দুই
+ * PC-তে একসাথে কাজ করলে নিচেরটা সময়টা দুবার গুনত।
+ *
+ * ⭐ এখন সংখ্যাটা সার্ভারের — ঠিক যেটা দিয়ে সে pace কষে।
+ *
+ * ⚠️ তাই এটা **উপরের সারিগুলোর যোগফল নয়**, মাসের যোগফল। মাসের ৩১
+ * তারিখে তালিকা শুরু হয় ২ তারিখ থেকে, অথচ সংখ্যাটা ১ তারিখও ধরে —
+ * এটাই চাওয়া, আর লেবেলটাও তাই *"This month"* বলে, "Total" নয়।
+ */
+function DayTable({ rows, monthCreditedSec }: {
+  rows: MyDay[];
+  /**
+   * ⚠️ **`undefined` মানে "জানি না", ০ নয়।** উপরের সারাংশ কলটা আলাদা —
+   *    সেটা ব্যর্থ হলেও এই তালিকাটা আসতে পারে। তখন ০ লিখলে পর্দা বলত
+   *    "এ মাসে কিছুই করোনি", অথচ সত্যিটা "সংখ্যাটা আনা যায়নি"।
+   */
+  monthCreditedSec: number | undefined;
+}) {
   return (
     <Table
       rows={rows}
@@ -428,13 +449,21 @@ function DayTable({ rows }: { rows: MyDay[] }) {
         <tr>
           <td className="px-3 py-2 text-[12.5px] text-ink-3">
             This month so far
+            {/* ⚠️ কোন কলামের যোগফল সেটা লেখা থাকে — নইলে পাঠক
+                "Worked"-এর যোগফল ভেবে মেলাতে বসতেন (G162) */}
+            <span className="text-ink-3/70"> · counted</span>
           </td>
           <td colSpan={3} className="px-3 py-2 text-right">
-            <Duration
-              seconds={rows
-                .filter((r) => r.workDate >= monthStart)
-                .reduce((sum, r) => sum + r.creditedSec, 0)}
-            />
+            {monthCreditedSec === undefined ? (
+              <span
+                className="text-ink-3"
+                title="Could not load this month's total"
+              >
+                —
+              </span>
+            ) : (
+              <Duration seconds={monthCreditedSec} />
+            )}
           </td>
           <td />
         </tr>

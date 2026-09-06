@@ -4,6 +4,7 @@ import {
   createWorkPolicy,
   deactivateWorkPolicy,
   listWorkPolicies,
+  reactivateWorkPolicy,
   updateWorkPolicy,
   type WorkPolicyBody,
   type WorkPolicyView,
@@ -85,6 +86,7 @@ function WorkPoliciesSection() {
   const [editing, setEditing] = useState<WorkPolicyView | null>(null);
   const [creating, setCreating] = useState(false);
   const [closing, setClosing] = useState<WorkPolicyView | null>(null);
+  const [reopening, setReopening] = useState<WorkPolicyView | null>(null);
 
   const rows = policies.data?.rows ?? [];
 
@@ -192,7 +194,7 @@ function WorkPoliciesSection() {
       render: (policy) => (
         <RowActions>
           <MiniButton onClick={() => setEditing(policy)}>Edit</MiniButton>
-          {policy.isActive && (
+          {policy.isActive ? (
             <MiniButton
               tone="danger"
               onClick={() => setClosing(policy)}
@@ -204,6 +206,17 @@ function WorkPoliciesSection() {
             >
               Close
             </MiniButton>
+          ) : (
+            /**
+             * ⚠️⚠️ **ফেরার পথটা এখানেই** *(G167)*। আগে এই শাখাটা খালি
+             * ছিল — বন্ধ পলিসির সারিতে কেবল "Edit", আর Edit ফর্ম
+             * `isActive` পাঠায়ই না। অর্থাৎ ভুল করে Close চাপলে ওয়েব
+             * থেকে ফেরার কোনো উপায় ছিল না, যদিও সার্ভারে endpoint-টা
+             * G85 থেকেই বসে আছে।
+             *
+             * ⚠️ `danger` নয় — খোলার দিকটা নিরাপদ দিক।
+             */
+            <MiniButton onClick={() => setReopening(policy)}>Reopen</MiniButton>
           )}
         </RowActions>
       ),
@@ -278,6 +291,17 @@ function WorkPoliciesSection() {
             setCreating(false);
             setEditing(null);
             policies.reload();
+          }}
+        />
+      )}
+
+      {reopening && (
+        <ReopenPolicyDialog
+          policy={reopening}
+          onClose={() => setReopening(null)}
+          onDone={() => {
+            setReopening(null);
+            void policies.reload();
           }}
         />
       )}
@@ -493,6 +517,45 @@ function PolicyForm({
         <ServerError error={error} />
       </div>
     </Modal>
+  );
+}
+
+/**
+ * ⭐ বন্ধ পলিসি আবার খোলা *(G167)* — `ClosePolicyDialog`-এর জোড়া।
+ *
+ * ⚠️ এখানে `employeeCount`-এর সতর্কবার্তা **নেই**, ইচ্ছাকৃতভাবে। বন্ধ
+ * করার পথে ওটা আসল বাধা (লোক থাকলে সার্ভার ফিরিয়ে দেয়), কিন্তু খোলার
+ * পথে সার্ভারের একমাত্র শর্ত আলাদা: *"এটা তো এখনই খোলা"* (409)।
+ * বন্ধ পলিসিতে কর্মী থাকা বৈধ, তাই ওই সংখ্যাটা এখানে ভয় দেখানো ছাড়া
+ * কিছুই করত না।
+ */
+function ReopenPolicyDialog({
+  policy,
+  onClose,
+  onDone,
+}: {
+  policy: WorkPolicyView;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { busy, error, run } = useMutation();
+
+  return (
+    <ConfirmDialog
+      title={`Reopen "${policy.name}"?`}
+      intro="New staff can be put on this policy again. Nothing about past months changes."
+      confirmLabel="Reopen"
+      tone="primary"
+      busy={busy}
+      error={error}
+      onClose={onClose}
+      onConfirm={() =>
+        run(async () => {
+          await reactivateWorkPolicy(policy.id);
+          onDone();
+        })
+      }
+    />
   );
 }
 

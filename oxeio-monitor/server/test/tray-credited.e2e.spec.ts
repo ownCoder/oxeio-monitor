@@ -8,6 +8,7 @@ import { SummaryService } from '../src/summary/summary.service';
 import {
   createHarness,
   dhakaNoon,
+  OWNER_EMAIL,
   resetDatabase,
   type Harness,
 } from './setup/harness';
@@ -277,5 +278,158 @@ describe('G112 — শেষ হয়ে যাওয়া দিন rollup �
     expect(rows).toHaveLength(0);
 
     expect((await trayOf(id)).monthActiveSec).toBe(0);
+  });
+});
+
+
+/**
+ * ⭐⭐⭐ **G162 — এক মাস, এক সংখ্যা** *(৬ সেপ্টেম্বর ২০২৬)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এই ব্লকটা পাহারা দেয়:** My data পাতার নিচের সারিতে
+ * *"This month so far"* সংখ্যাটা **ব্রাউজারে যোগ করা** হতো — তালিকার
+ * সারিগুলোর `creditedSec` মিলিয়ে। উপরের *"This month"* টাইল আসত
+ * সার্ভারের `monthActiveSec` থেকে। একই পর্দায় দুটো সংখ্যা, আর তিনটে
+ * আলাদা কারণে তারা মিলত না:
+ *
+ * ১· **জানালা** — তালিকাটা রোলিং ৩০ দিনের, তাই মাসের ৩১ তারিখে ১
+ *    তারিখটা আনাই হতো না। বছরে সাত দিন, নীরবে, প্রায় এক কর্মদিবস কম।
+ * ২· **রাশি** — নিচেরটা `credited` (সংশোধনসহ), উপরেরটা `worked`।
+ *    একটাও সংশোধন হলেই ফারাক ঠিক সংশোধনের সমান।
+ * ৩· **সংজ্ঞা** — নিচেরটা কাঁচা `duration_sec`-এর যোগ, উপরেরটা UNION।
+ *    দুই PC-তে একসাথে কাজ করলে নিচেরটা সময়টা দুবার গুনত (G112-রই ফাঁক,
+ *    কেবল অন্য পাতায়)।
+ *
+ * ⭐ তাই সংখ্যাটা আর ব্রাউজারে বানানো হয় না — সার্ভার যেটা দিয়ে `paceSec`
+ * কষে, `monthCreditedSec` হয়ে পর্দাও ঠিক সেটাই দেখায়।
+ */
+describe('G162 — মাসের credited সংখ্যাটা সার্ভারেরই', () => {
+  /** owner-এর ইউজার আইডি — সংশোধনের সারি লিখতে লাগে */
+  const ownerId = async () =>
+    (await h.prisma.user.findFirstOrThrow({ where: { email: OWNER_EMAIL } })).id;
+
+  async function adjust(employeeId: number, workDate: Date, deltaSec: number) {
+    await h.prisma.timeAdjustment.create({
+      data: {
+        employeeId,
+        workDate,
+        deltaSec,
+        cause: 'agent_down',
+        reason: 'G162 test',
+        createdById: await ownerId(),
+      },
+    });
+  }
+
+  /**
+   * ⭐⭐⭐ **এই ব্লকের মূল টেস্ট** — সংশোধন `monthCreditedSec`-এ ঢোকে,
+   * `monthActiveSec`-এ নয়।
+   *
+   * ⚠️ দুটোই দরকার, আর দুটো আলাদাই থাকবে: টাইল ও tray দেখায় **কত কাজ
+   *    হয়েছে**, আর নিচের যোগফল দেখায় **কত গোনা হয়েছে**। আগের বাগটা
+   *    ছিল একটাকে অন্যটার জায়গায় বসিয়ে ফেলা, দুটো থাকা নয়।
+   */
+  it('⭐ সংশোধন credited-এ ঢোকে, worked-এ নয়', async () => {
+    const id = await makeEmployee('G162-ADJ');
+    const a = await makeDevice(id, 'adj');
+    const day = today();
+
+    await addSegment({ employeeId: id, deviceId: a, workDate: day, hour: 10, hours: 5 });
+    await adjust(id, day, 2 * HOUR);
+
+    const tray = await trayOf(id);
+
+    expect(tray.monthActiveSec).toBe(5 * HOUR);
+    expect(tray.monthCreditedSec).toBe(7 * HOUR);
+  });
+
+  /** ⚠️ বাতিল করা সংশোধন ঘণ্টা ফেরত দেয় না — `/me/days`-এর একই নিয়ম */
+  it('বাতিল করা সংশোধন গোনা হয় না', async () => {
+    const id = await makeEmployee('G162-REVOKED');
+    const a = await makeDevice(id, 'rev');
+    const day = today();
+
+    await addSegment({ employeeId: id, deviceId: a, workDate: day, hour: 10, hours: 4 });
+    await adjust(id, day, 3 * HOUR);
+    await h.prisma.timeAdjustment.updateMany({
+      data: { revokedAt: dhakaNoon(), revokeReason: 'G162 test' },
+    });
+
+    expect((await trayOf(id)).monthCreditedSec).toBe(4 * HOUR);
+  });
+
+  /**
+   * ⚠️⚠️ **সংশোধন না থাকলে দুটো সংখ্যা হুবহু এক** — মাঠে আজ ঠিক এই
+   * অবস্থাটাই (`time_adjustments` খালি), তাই বাগটা এতদিন **দেখা যায়নি**।
+   * ⭐ এই টেস্টটা সেই নীরবতাটাকেই লিখে রাখে: মিল থাকাটা কাকতালীয় নয়।
+   */
+  it('সংশোধন না থাকলে credited আর worked এক', async () => {
+    const id = await makeEmployee('G162-NOADJ');
+    const a = await makeDevice(id, 'plain');
+
+    await addSegment({
+      employeeId: id,
+      deviceId: a,
+      workDate: today(),
+      hour: 9,
+      hours: 6,
+    });
+
+    const tray = await trayOf(id);
+
+    expect(tray.monthCreditedSec).toBe(tray.monthActiveSec);
+    expect(tray.monthCreditedSec).toBe(6 * HOUR);
+  });
+
+  /**
+   * ⚠️⚠️ **দুই PC-র ওভারল্যাপ credited-এও একবারই।** পুরোনো ব্রাউজার-যোগফল
+   * কাঁচা `duration_sec` মেলাত, তাই এই কর্মীর নিচের সংখ্যাটা উপরের
+   * টাইলের **দ্বিগুণ** দেখাত — আর দুটোই একই পর্দায়।
+   */
+  it('⭐ দুই PC-তে একই ৪ ঘণ্টা — credited-ও ৪, ৮ নয়', async () => {
+    const id = await makeEmployee('G162-OVERLAP');
+    const a = await makeDevice(id, 'ov-a');
+    const b = await makeDevice(id, 'ov-b');
+    const day = today();
+
+    await addSegment({ employeeId: id, deviceId: a, workDate: day, hour: 10, hours: 4 });
+    await addSegment({ employeeId: id, deviceId: b, workDate: day, hour: 10, hours: 4 });
+
+    expect((await trayOf(id)).monthCreditedSec).toBe(4 * HOUR);
+  });
+
+  /**
+   * ⭐⭐ **মাসের ১ তারিখটাও ধরা পড়ে।** পুরোনো নিয়মে তালিকা আসত
+   * `today − 29` থেকে, তাই ৩১ তারিখে ১ তারিখটা কোনো সারিতেই থাকত না —
+   * অথচ মাসের যোগফলে সেটা থাকার কথা।
+   *
+   * ⚠️ এখানে ৩১ তারিখ পিন করা হয়নি (G140): মাসের **প্রথম** দিনে ঘণ্টা
+   *    বসিয়ে দেখা হয় সেটা যোগফলে আছে কি না — জানালা যত ছোটই হোক।
+   */
+  it('⭐ মাসের প্রথম দিনের ঘণ্টাও যোগফলে থাকে', async () => {
+    const id = await makeEmployee('G162-FIRSTDAY');
+    const a = await makeDevice(id, 'first');
+    const day = today();
+    const firstOfMonth = new Date(
+      Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1),
+    );
+
+    if (firstOfMonth.getTime() === day.getTime()) {
+      // ⚠️ আজই ১ তারিখ হলে "আগের দিন" বলে কিছু নেই — তখন আজকেরটাই যথেষ্ট
+      await addSegment({ employeeId: id, deviceId: a, workDate: day, hour: 10, hours: 3 });
+      expect((await trayOf(id)).monthCreditedSec).toBe(3 * HOUR);
+      return;
+    }
+
+    await addSegment({
+      employeeId: id,
+      deviceId: a,
+      workDate: firstOfMonth,
+      hour: 10,
+      hours: 3,
+    });
+    await summary.refreshDate(firstOfMonth, dhakaNoon());
+    await addSegment({ employeeId: id, deviceId: a, workDate: day, hour: 10, hours: 1 });
+
+    expect((await trayOf(id)).monthCreditedSec).toBe(4 * HOUR);
   });
 });

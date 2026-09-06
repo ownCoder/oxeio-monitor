@@ -127,22 +127,44 @@ export function keepKnownLongIds(
 }
 
 /**
- * একদিনের সব শিরোনাম থেকে **অনন্য** ডিজাইন-নম্বরের সেট।
+ * একদিনের সব শিরোনাম থেকে **অনন্য** ডিজাইন-নম্বর, আর প্রতিটার পাশে
+ * **সেদিন সবচেয়ে আগে যে মুহূর্তে সেটা পর্দায় দেখা গেছে**।
  *
  * ⚠️ একই ডিজাইনে সারাদিনে বহুবার ফেরা হয় (মাঠে ৩৮৭৩টা সারিতে ১৫৫৩টা
  * আলাদা শিরোনাম), তাই সারি গুনলে সংখ্যাটা অর্থহীন হতো।
+ *
+ * ⭐⭐⭐ **মুহূর্তটা এখানেই বেরোয়** *(৬ সেপ্টেম্বর ২০২৬, G163)*।
+ *
+ * ⚠️⚠️ আগে এই ফাংশনটা কেবল একটা `Set` ফেরত দিত, আর কলার তখন
+ * `design_targets.started_at`-এ **কর্মদিবসের লেবেলটা** বসিয়ে দিত —
+ * অর্থাৎ প্রতিটা টার্গেটের "কাজ শুরু" হয়ে যেত ঢাকার সকাল ৬টা।
+ * মাঠে **৭১১টার ৭১১টাই** ওই এক মুহূর্তে বসে ছিল, আর প্রত্যেকটাই তার
+ * নিজের `assigned_at`-এর **আগে** (বণ্টন হয় সকাল ৮টায়)।
+ *
+ * ⭐ উত্তরটা অনুমান করার দরকারই ছিল না — `app_usage.started_at` ঠিক
+ * ওই মুহূর্তটাই ধরে রাখে: শিরোনামে নম্বরটা প্রথম যখন দেখা গেল।
+ * ⚠️ আর এটা <b>ব্যাকফিলেও</b> ঠিক থাকে: পুরোনো দিন নতুন করে হিসাব
+ * করালেও সংখ্যাটা ওই দিনেরই, "আজ"-এর নয়।
  */
-export function designIdsInDay(
-  rows: readonly { processName: string; windowTitle: string | null }[],
-): Set<string> {
-  const ids = new Set<string>();
+export function designFirstSeenInDay(
+  rows: readonly {
+    processName: string;
+    windowTitle: string | null;
+    startedAt: Date;
+  }[],
+): Map<string, Date> {
+  const first = new Map<string, Date>();
 
   for (const row of rows) {
     const id = designIdOf(row.processName, row.windowTitle);
-    if (id !== null) ids.add(id);
+    if (id === null) continue;
+
+    // ⚠️ সবচেয়ে **আগের** মুহূর্তটা — সারিগুলো কোনো ক্রমেই আসতে পারে
+    const known = first.get(id);
+    if (known === undefined || row.startedAt < known) first.set(id, row.startedAt);
   }
 
-  return ids;
+  return first;
 }
 
 /**

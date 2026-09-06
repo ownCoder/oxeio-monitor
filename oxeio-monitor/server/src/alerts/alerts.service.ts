@@ -12,7 +12,7 @@ import type { ListAlertsDto } from './alerts.dto';
 import {
   dedupeKey,
   suppressFlood,
-  throttleFloor,
+  alertFloor,
   type AlertKey,
 } from './alerts.rules';
 
@@ -110,8 +110,24 @@ export class AlertsService {
     if (inputs.length === 0) return 0;
 
     const types = [...new Set(inputs.map((i) => i.type))];
+
+    /**
+     * ⚠️⚠️ **কুয়েরির মেঝেটাও পিছোতে হয়** *(৬ সেপ্টেম্বর ২০২৬, G166)*।
+     *
+     * `suppressFlood()`-কে বড় জানালা দিলেই হতো না: পুরোনো সারিটা এই
+     * কুয়েরিতেই না উঠলে `lastRaisedByKey`-তে সে থাকত না, আর নিয়মটা
+     * "আগে কিছু ছিল না" ধরে নিয়ে অ্যালার্টটা বসিয়ে দিত। ছাঁকনিটা
+     * নীরবে কিছুই করত না।
+     *
+     * ⭐ সবচেয়ে পুরোনো মেঝেটাই নেওয়া হয় — প্রতিটা প্রার্থীকে পরে তার
+     * **নিজের** ধরনের মেঝের সাথে মেলানো হয় (`isThrottledFor`)।
+     */
+    const floor = types
+      .map((type) => alertFloor(type, now))
+      .reduce((a, b) => (a.getTime() < b.getTime() ? a : b));
+
     const recent = await this.prisma.alert.findMany({
-      where: { type: { in: types }, createdAt: { gte: throttleFloor(now) } },
+      where: { type: { in: types }, createdAt: { gte: floor } },
       select: {
         type: true,
         deviceId: true,

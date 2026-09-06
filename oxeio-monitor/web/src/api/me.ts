@@ -15,6 +15,14 @@ import { api } from './client';
 export interface MyProgress {
   todayActiveSec: number;
   monthActiveSec: number;
+  /**
+   * ⭐ মাসের **গোনা** ঘণ্টা — `monthActiveSec` + সংশোধন *(G162)*।
+   *
+   * ⚠️ `monthActiveSec`-এর সাথে গুলিয়ে ফেলবেন না: টাইলে **worked**
+   *    দেখানো হয় (এজেন্টের tray-ও তাই দেখায়), আর তালিকার নিচের
+   *    যোগফলে **credited** — দুটো আলাদা প্রশ্ন।
+   */
+  monthCreditedSec: number;
   monthlyTargetHours: number;
   /** + = এগিয়ে · − = পিছিয়ে (সেকেন্ডে) */
   paceSec: number;

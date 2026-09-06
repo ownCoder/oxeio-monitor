@@ -7,7 +7,11 @@
  * যেত না, অথচ ভুল হলে ফল ভয়াবহ — হয় বন্যা, নয় নীরবতা।
  */
 
-import { dhakaPathParts, workDateOf } from '../agent/util/dhaka-time';
+import {
+  dhakaPathParts,
+  localMidnightOf,
+  workDateOf,
+} from '../agent/util/dhaka-time';
 import {
   AGENT_SILENCE_MIN,
   OFFICE_OPEN_GRACE_MIN,
@@ -54,6 +58,58 @@ export function throttleFloor(now: Date, windowHours = THROTTLE_HOURS): Date {
 }
 
 /**
+ * ⭐⭐⭐ **যেসব অ্যালার্ট গোটা দিনটার কথা বলে** *(৬ সেপ্টেম্বর ২০২৬, G166)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এটা সারায়:** এই দুটো পরীক্ষা **প্রতি ঘণ্টায়** চলে আর
+ * প্রতিবার **গোটা ঢাকা-দিনের** সেগমেন্ট পড়ে। শর্তটা একবার সত্যি হলে
+ * দিনের বাকি প্রতিটা টিকেও সত্যি — কারণ পুরোনো সারিগুলো মুছে যায় না।
+ * অথচ throttle-এর জানালা মোটে ৬ ঘণ্টা, আর key-তে দিনটা নেই। ফলে **একই
+ * ঘটনার জন্য দিনে ৩–৪টা** অ্যালার্ট, প্রত্যেকটার শিরোনাম-বিবরণ-meta
+ * অক্ষরে অক্ষরে এক, আর প্রত্যেকটা আলাদা ইমেইল।
+ *
+ * ⚠️ এটা অনুমান নয় — একই পথে চলা `agent_down` মাঠে ঠিক এটাই করছে:
+ * ২২ আগস্ট **১৩টা** (ডিভাইস, কর্মী) জোড়ার প্রত্যেকটা ঠিক **৪বার**
+ * অ্যালার্ট পেয়েছে, ৬ ঘণ্টা পরপর (০০:১৭ · ০৬:১৯ · ১২:২০ · ১৮:২০)।
+ *
+ * ⚠️⚠️ **`agent_down` এই তালিকায় নেই, ইচ্ছাকৃতভাবে।** ওটা দিনের কথা
+ * বলে না — বলে *"এই মুহূর্তে PC-টা চুপ"*। তিন দিন ধরে বন্ধ থাকা PC-র
+ * জন্য রোজ মনে করিয়ে দেওয়াটাই চাওয়া (alerts.rules.ts-এর নিজের নোট:
+ * এখানে নীরবতার চেয়ে শব্দ ভালো)। `no_activity_today`-ও নেই — তার
+ * ৪ ঘণ্টার জানালা ইতিমধ্যেই দিনে একটার বেশি অসম্ভব করে রেখেছে।
+ */
+export const DAY_SCOPED_TYPES: ReadonlySet<AlertType> = new Set<AlertType>([
+  'device_overlap',
+  'synthetic_input',
+]);
+
+/**
+ * ওই ধরনের অ্যালার্টের জন্য throttle জানালা কোথা থেকে শুরু *(G166)*।
+ *
+ * ⭐ দিনভিত্তিক ধরনের জন্য **দুটোর মধ্যে যেটা আগের** — ঢাকার আজকের
+ * দিনের শুরু, নাকি ৬ ঘণ্টা আগে। দুটোই দরকার:
+ * <ul>
+ *   <li>দিনের শুরু <b>ছাড়া</b> একই দিনে বারবার অ্যালার্ট হতো;</li>
+ *   <li>৬ ঘণ্টা <b>ছাড়া</b> রাত ১২টার পরপরই জানালাটা মিনিটখানেকে নেমে
+ *       আসত, আর গতরাতের অ্যালার্টের পুনরাবৃত্তি আটকাত না।</li>
+ * </ul>
+ *
+ * ⚠️ পরের দিন চুপ করানো হয় **না** — নতুন ঢাকা-দিন মানে নতুন ঘটনা,
+ *    তাই মেঝেটা দিনের সাথে সাথে এগিয়ে যায়।
+ */
+export function alertFloor(
+  type: AlertType,
+  now: Date,
+  windowHours = THROTTLE_HOURS,
+): Date {
+  const rolling = throttleFloor(now, windowHours);
+  if (!DAY_SCOPED_TYPES.has(type)) return rolling;
+
+  // ⚠️ `localMidnightOf` — লেবেল নয়, আসল মুহূর্ত (dhaka-time.ts দেখুন)
+  const dayStart = localMidnightOf(now);
+  return dayStart.getTime() < rolling.getTime() ? dayStart : rolling;
+}
+
+/**
  * আগেরটা এখনো "টাটকা" কি না।
  *
  * ⚠️ ভবিষ্যতের সময়ও throttled ধরা হয় (`>` তুলনা) — সার্ভারের ঘড়ি পিছিয়ে
@@ -66,6 +122,20 @@ export function isThrottled(
 ): boolean {
   if (!lastRaisedAt) return false;
   return lastRaisedAt.getTime() > throttleFloor(now, windowHours).getTime();
+}
+
+/**
+ * ⭐ ধরন-সচেতন সংস্করণ *(G166)* — দিনভিত্তিক অ্যালার্টে জানালাটা
+ * ঢাকার আজকের দিনের শুরু পর্যন্ত পিছিয়ে যায়।
+ */
+export function isThrottledFor(
+  type: AlertType,
+  lastRaisedAt: Date | null | undefined,
+  now: Date,
+  windowHours = THROTTLE_HOURS,
+): boolean {
+  if (!lastRaisedAt) return false;
+  return lastRaisedAt.getTime() > alertFloor(type, now, windowHours).getTime();
 }
 
 /** কখন আবার একই অ্যালার্ট দেওয়া যাবে — ড্যাশবোর্ডে দেখানোর জন্য */
@@ -97,7 +167,10 @@ export function suppressFlood<T extends AlertKey>(
   for (const candidate of candidates) {
     const key = dedupeKey(candidate);
     if (seen.has(key)) continue;
-    if (isThrottled(lastRaisedByKey.get(key), now, windowHours)) continue;
+    // ⭐ G166 — দিনভিত্তিক ধরনের মেঝে আলাদা (`alertFloor`)
+    if (isThrottledFor(candidate.type, lastRaisedByKey.get(key), now, windowHours)) {
+      continue;
+    }
     seen.add(key);
     kept.push(candidate);
   }

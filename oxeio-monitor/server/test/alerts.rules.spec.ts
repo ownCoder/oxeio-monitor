@@ -20,6 +20,9 @@ import {
   isOfficeOpen,
   isTamperStop,
   isThrottled,
+  isThrottledFor,
+  alertFloor,
+  DAY_SCOPED_TYPES,
   isWithinStartupGrace,
   nextAllowedAt,
   recoveredAlertIds,
@@ -94,6 +97,94 @@ describe('throttle — একই ডিভাইসের একই কারণ
     expect(nextAllowedAt(now).getTime() - now.getTime()).toBe(
       THROTTLE_HOURS * HOUR,
     );
+  });
+});
+
+/**
+ * ⭐⭐⭐ **দিনভিত্তিক অ্যালার্ট — দিনে একটাই** *(৬ সেপ্টেম্বর ২০২৬, G166)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এই ব্লকটা পাহারা দেয়:** `device_overlap` ও
+ * `synthetic_input` — দুটোই গোটা ঢাকা-দিনের কথা বলে, দুটোই চলে **প্রতি
+ * ঘণ্টায়**, আর দুটোই প্রতিবার গোটা দিনের সেগমেন্ট আবার পড়ে। শর্তটা
+ * একবার সত্যি হলে দিনের বাকি সব টিকেও সত্যি, অথচ throttle-এর জানালা
+ * মোটে ৬ ঘণ্টা আর key-তে দিনটা নেই। ফল: **একই ঘটনার জন্য দিনে ৩–৪টা**
+ * অভিন্ন অ্যালার্ট, প্রত্যেকটা আলাদা ইমেইল।
+ *
+ * ⚠️ মাঠের প্রমাণ একই পথে চলা `agent_down`-এ: ২২ আগস্ট **১৩টা**
+ * (ডিভাইস, কর্মী) জোড়ার প্রত্যেকটা ঠিক **৪বার**, ৬ ঘণ্টা পরপর।
+ */
+describe('G166 — দিনভিত্তিক অ্যালার্ট দিনে একবারই', () => {
+  /** ⚠️ ঢাকার দুপুর ২টা = UTC ০৮:০০ */
+  const noon = new Date('2026-09-07T08:00:00Z');
+  /** ওই ঢাকা-দিনের শুরু = UTC আগের দিন ১৮:০০ */
+  const dayStart = new Date('2026-09-06T18:00:00Z');
+
+  it('ধরনগুলো ঠিক এই দুটোই', () => {
+    expect([...DAY_SCOPED_TYPES].sort()).toEqual([
+      'device_overlap',
+      'synthetic_input',
+    ]);
+  });
+
+  /**
+   * ⚠️⚠️ **এটাই সেই ভুলটার পাহারা যেটা এই প্রকল্পে সবচেয়ে বেশিবার
+   * হয়েছে।** `workDateOf()` একটা **লেবেল** — UTC-মধ্যরাত। ওটাকে মুহূর্ত
+   * ধরলে সীমানা বসত ঢাকার **ভোর ৬টায়**, আর মাঝরাত–ভোর ৬টার মধ্যে ওঠা
+   * অ্যালার্টের পুনরাবৃত্তি ঠিক আগের মতোই বেরিয়ে যেত।
+   */
+  it('⭐ মেঝেটা ঢাকার মধ্যরাত, ভোর ৬টা নয়', () => {
+    expect(alertFloor('device_overlap', noon).toISOString()).toBe(
+      dayStart.toISOString(),
+    );
+  });
+
+  it('⭐ ১৯ ঘণ্টা আগের অ্যালার্টও একই দিনের হলে আটকায়', () => {
+    // ঢাকার ভোর ১টা — ৬ ঘণ্টার জানালার অনেক বাইরে, তবু একই দিন
+    const earlier = new Date('2026-09-06T19:00:00Z');
+
+    expect(isThrottled(earlier, noon)).toBe(false);
+    expect(isThrottledFor('device_overlap', earlier, noon)).toBe(true);
+    expect(isThrottledFor('synthetic_input', earlier, noon)).toBe(true);
+  });
+
+  /** ⚠️ চিরকাল চুপ নয় — নতুন ঢাকা-দিন মানে নতুন ঘটনা */
+  it('⭐ আগের দিনের অ্যালার্ট আজকেরটাকে আটকায় না', () => {
+    // গতকাল ঢাকার রাত ১১টা
+    const lastNight = new Date('2026-09-06T17:00:00Z');
+
+    expect(isThrottledFor('device_overlap', lastNight, noon)).toBe(false);
+  });
+
+  /**
+   * ⚠️⚠️ **মধ্যরাতের ঠিক পরে জানালাটা ছোট হয়ে যায় না।** দিনের শুরু
+   * তখন মাত্র কয়েক মিনিট আগে, তাই কেবল সেটাই ব্যবহার করলে রাত ১১:৫৯-এর
+   * অ্যালার্টের পুনরাবৃত্তি ১২:০১-এ বেরিয়ে যেত। মেঝে সবসময় **দুটোর
+   * মধ্যে যেটা আগের**।
+   */
+  it('⭐ মধ্যরাতের পরপরও ৬ ঘণ্টার জানালা টিকে থাকে', () => {
+    // ঢাকার রাত ১২:১০
+    const justAfter = new Date('2026-09-06T18:10:00Z');
+    // ঢাকার আগের রাত ১১:৫০
+    const justBefore = new Date('2026-09-06T17:50:00Z');
+
+    expect(alertFloor('device_overlap', justAfter).getTime()).toBe(
+      throttleFloor(justAfter).getTime(),
+    );
+    expect(isThrottledFor('device_overlap', justBefore, justAfter)).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **`agent_down` ইচ্ছাকৃতভাবে বাইরে।** ওটা দিনের কথা বলে না —
+   * বলে *"এই মুহূর্তে PC-টা চুপ"*। তিন দিন বন্ধ থাকা PC-র জন্য রোজ
+   * মনে করিয়ে দেওয়াটাই চাওয়া। এখানে নীরবতার চেয়ে শব্দ ভালো।
+   */
+  it('⭐ agent_down-এর জানালা আগের মতোই ৬ ঘণ্টা', () => {
+    const earlier = new Date('2026-09-06T19:00:00Z');
+
+    expect(alertFloor('agent_down', noon).getTime()).toBe(
+      throttleFloor(noon).getTime(),
+    );
+    expect(isThrottledFor('agent_down', earlier, noon)).toBe(false);
   });
 });
 

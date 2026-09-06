@@ -4,7 +4,7 @@ import { SegmentState, type Prisma } from '@prisma/client';
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { TargetsService } from '../targets/targets.service';
-import { designIdsInDay, keepKnownLongIds, KNOWN_JOB_FROM } from './design.rules';
+import { designFirstSeenInDay, keepKnownLongIds, KNOWN_JOB_FROM } from './design.rules';
 import { trackedFromBy } from './tracking-start';
 import { prorate } from './proration';
 import {
@@ -239,7 +239,17 @@ export class SummaryService {
           employeeId: { in: ids },
           processName: { in: ['Illustrator.exe', 'Photoshop.exe'] },
         },
-        select: { employeeId: true, processName: true, windowTitle: true },
+        /**
+         * ⚠️ `startedAt`-ও আসে *(G163)* — টার্গেটে "কাজ শুরু" চিহ্নটা ঠিক
+         *    এই মুহূর্তটাই। আগে আনা হতো না, তাই কলার বাধ্য হয়ে কর্মদিবসের
+         *    লেবেলটা বসাত, আর সবার "শুরু" হয়ে যেত ভোর ৬টা।
+         */
+        select: {
+          employeeId: true,
+          processName: true,
+          windowTitle: true,
+          startedAt: true,
+        },
       }),
     ]);
 
@@ -330,7 +340,12 @@ export class SummaryService {
    * ঘণ্টার সারাংশ আটকে যাওয়া চলবে না।
    */
   private async claimDesigns(
-    titles: readonly { employeeId: number; processName: string; windowTitle: string | null }[],
+    titles: readonly {
+      employeeId: number;
+      processName: string;
+      windowTitle: string | null;
+      startedAt: Date;
+    }[],
     workDate: Date,
   ): Promise<Map<number, number>> {
     const counts = new Map<number, number>();
@@ -340,8 +355,11 @@ export class SummaryService {
 
     try {
       for (const [employeeId, rows] of byEmployee) {
-        const raw = designIdsInDay(rows);
-        if (raw.size === 0) continue;
+        // ⭐ G163 — নম্বরের সাথে "কখন প্রথম দেখা গেল" মুহূর্তটাও
+        const firstSeen = designFirstSeenInDay(rows);
+        if (firstSeen.size === 0) continue;
+
+        const raw = new Set(firstSeen.keys());
 
         /**
          * ⭐⭐ **সাত অঙ্ক বা বেশি হলে নম্বরটা সত্যিই বরাদ্দ করা হতে হবে**
@@ -393,7 +411,15 @@ export class SummaryService {
          *
          * ⚠️ একই `ids` সেট — দুবার শিরোনাম পড়া হয় না।
          */
-        await this.targets.markStartedByJobNumbers(employeeId, [...ids], workDate);
+        /**
+         * ⚠️⚠️ **কর্মদিবসের লেবেল নয়, আসল মুহূর্ত** *(G163)*। এখানে আগে
+         * `workDate` যেত — অর্থাৎ ঢাকার ভোর ৬টা — আর MyTargets-এ জব
+         * খোলামাত্র লেখা উঠত *"Started 5 hours ago"*।
+         */
+        await this.targets.markStartedByJobNumbers(
+          employeeId,
+          new Map([...ids].map((id) => [id, firstSeen.get(id)!])),
+        );
       }
 
       // ⚠️ দাবি করার **পরে** গোনা হয়, আগে নয় — নইলে আজ প্রথমবার দেখা

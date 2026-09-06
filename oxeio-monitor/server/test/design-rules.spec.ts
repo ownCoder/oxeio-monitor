@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   KNOWN_JOB_FROM,
   designIdOf,
-  designIdsInDay,
+  designFirstSeenInDay,
   designTargetOf,
   designView,
   hasDesignTarget,
@@ -113,25 +113,46 @@ describe('designIdOf — শিরোনাম থেকে নম্বর', ()
   });
 });
 
-describe('designIdsInDay — অনন্য নম্বর', () => {
+describe('designFirstSeenInDay — অনন্য নম্বর ও প্রথম মুহূর্ত', () => {
+  const AT = (h: number, m = 0) => new Date(Date.UTC(2026, 8, 6, h, m));
+
   /**
    * ⚠️⚠️ একই ডিজাইনে সারাদিনে বহুবার ফেরা হয় — মাঠে ৩৮৭৩টা সারিতে
    * ১৫৫৩টা আলাদা শিরোনাম। সারি গুনলে সংখ্যাটা অর্থহীন হতো।
    */
   it('একই নম্বর বহুবার এলেও একবার', () => {
     const rows = [
-      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai @ 54 %' },
-      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai @ 120 %' },
-      { processName: 'Illustrator.exe', windowTitle: '37904-B.ai' },
-      { processName: 'chrome.exe', windowTitle: '37905-C — Google Chrome' },
-      { processName: 'Illustrator.exe', windowTitle: 'Untitled-3*' },
+      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai @ 54 %', startedAt: AT(5) },
+      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai @ 120 %', startedAt: AT(6) },
+      { processName: 'Illustrator.exe', windowTitle: '37904-B.ai', startedAt: AT(7) },
+      { processName: 'chrome.exe', windowTitle: '37905-C — Google Chrome', startedAt: AT(8) },
+      { processName: 'Illustrator.exe', windowTitle: 'Untitled-3*', startedAt: AT(9) },
     ];
 
-    expect([...designIdsInDay(rows)].sort()).toEqual(['37904', '37933']);
+    expect([...designFirstSeenInDay(rows).keys()].sort()).toEqual([
+      '37904',
+      '37933',
+    ]);
   });
 
-  it('কিছু না থাকলে খালি সেট', () => {
-    expect(designIdsInDay([]).size).toBe(0);
+  /**
+   * ⭐⭐⭐ **সবচেয়ে আগের মুহূর্তটাই টেকে, শেষেরটা নয়** *(G163)*।
+   *
+   * ⚠️ সারিগুলো যেকোনো ক্রমে আসতে পারে, তাই এখানে দেরিরটা **আগে**
+   *    বসানো হয়েছে — সরল "শেষেরটা রাখো" লেখা থাকলে এটা লাল হতো।
+   */
+  it('⭐ একই নম্বরের একাধিক সারিতে সবচেয়ে আগের মুহূর্ত', () => {
+    const rows = [
+      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai', startedAt: AT(14) },
+      { processName: 'Illustrator.exe', windowTitle: '37933-A.ai @ 54 %', startedAt: AT(9, 12) },
+      { processName: 'Illustrator.exe', windowTitle: '37933-B.ai', startedAt: AT(11) },
+    ];
+
+    expect(designFirstSeenInDay(rows).get('37933')).toEqual(AT(9, 12));
+  });
+
+  it('কিছু না থাকলে খালি', () => {
+    expect(designFirstSeenInDay([]).size).toBe(0);
   });
 });
 

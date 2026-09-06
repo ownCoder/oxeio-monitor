@@ -314,18 +314,27 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
     await targets.distribute();
 
     const row = await h.prisma.designTarget.findFirstOrThrow();
+    const seenAt = new Date(dhakaNoon().getTime() + 37 * 60_000);
     const closed = await targets.markStartedByJobNumbers(
       designer.id,
-      [String(row.jobNumber)],
-      dhakaNoon(),
+      new Map([[String(row.jobNumber), seenAt]]),
     );
 
     expect(closed).toBe(1);
     const after = await h.prisma.designTarget.findFirstOrThrow();
     // ⭐ এখনো ডিজাইনারের হাতেই — শেষ বলেন তিনি নিজে
     expect(after.status).toBe('assigned');
-    expect(after.startedAt).not.toBeNull();
     expect(after.completedAt).toBeNull();
+
+    /**
+     * ⭐⭐⭐ **যে মুহূর্তটা দেওয়া হয়েছে, ঠিক সেটাই বসে** *(G163)*।
+     *
+     * ⚠️⚠️ আগে এখানে কেবল `not.toBeNull()` লেখা ছিল — আর ওই দুর্বল
+     * দাবিটাই বাগটাকে বছরভর লুকিয়ে রেখেছিল: কলার কর্মদিবসের **লেবেল**
+     * পাঠাত (ঢাকার ভোর ৬টা), টেস্ট তবু সবুজ থাকত। মাঠে ৭১১টার ৭১১টাই
+     * ওই এক মুহূর্তে বসে ছিল।
+     */
+    expect(after.startedAt?.toISOString()).toBe(seenAt.toISOString());
   });
 
   /**
@@ -346,8 +355,7 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
     //    চেষ্টা করছেন OX-D2
     const closed = await targets.markStartedByJobNumbers(
       other.id,
-      [String(row.jobNumber)],
-      dhakaNoon(),
+      new Map([[String(row.jobNumber), dhakaNoon()]]),
     );
 
     expect(closed).toBe(0);

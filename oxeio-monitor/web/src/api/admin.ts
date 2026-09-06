@@ -344,6 +344,25 @@ export function deactivateWorkPolicy(id: number): Promise<WorkPolicyView> {
   });
 }
 
+/**
+ * ⭐⭐⭐ **বন্ধ করা পলিসি আবার খোলা** *(৬ সেপ্টেম্বর ২০২৬, G167)*।
+ *
+ * ⚠️⚠️ **যে বাগটা এটা সারায়:** সার্ভারে `POST /work-policies/:id/reactivate`
+ * ছিল **G85 থেকেই** — কন্ট্রোলার, সার্ভিস, অডিট-সারি, পাঁচটা ইউনিট টেস্ট,
+ * সব। কেবল **কেউ ওটা ডাকত না**। ওয়েবে এই ফাংশনটাই লেখা হয়নি, আর
+ * PoliciesTab-এ `!isActive` শাখায় কোনো বোতামও ছিল না।
+ *
+ * ⚠️ ফলে ভুল করে Close চাপলে ফেরার পথ ছিল কেবল দুটো — `curl`, বা কাঁচা
+ * SQL। ঠিক যে দুটো জিনিস দূর করতেই G85 লেখা হয়েছিল।
+ *
+ * ⭐ এই প্রকল্পের চেনা ভুলটাই আবার: **"চুক্তি লেখা আছে, কলার লেখা হয়নি।"**
+ */
+export function reactivateWorkPolicy(id: number): Promise<WorkPolicyView> {
+  return api<WorkPolicyView>(`/work-policies/${id}/reactivate`, {
+    method: 'POST',
+  });
+}
+
 // ── ছুটি (owner-only) ───────────────────────────────────────────────────────
 
 export interface HolidayView {
