@@ -65,10 +65,33 @@ export class DeviceAuthGuard implements CanActivate {
     req.device = device;
     req.drift = drift;
 
-    // last_seen_at → "এজেন্ট ১০ মিনিট চুপ" অ্যালার্ট এর উপরেই দাঁড়ানো (G01)
+    /**
+     * last_seen_at → "এজেন্ট ১০ মিনিট চুপ" অ্যালার্ট এর উপরেই দাঁড়ানো (G01)
+     *
+     * ⭐⭐⭐ **`last_drift_sec`-ও এখানেই** *(৭ সেপ্টেম্বর ২০২৬, G170)*।
+     *
+     * ⚠️⚠️ **যে বাগটা এটা সারায়:** ঘরটা লিখত কেবল `ClockDriftService.record()`,
+     * আর সে শুরুতেই `if (drift.level === 'none') return;` বলে ফিরে যায়।
+     * ফলে একবার বড় একটা মান বসলে সেটা **আর কোনোদিন মুছত না** — ঘড়ি ঠিক
+     * হয়ে যাওয়ার পরেও।
+     *
+     * ⚠️ মাঠে দেখা (৭ সেপ্টেম্বর): OX-13-এর ঘড়ি সকালে ১৫ ঘণ্টা পিছিয়ে
+     * ছিল, Windows কয়েক মিনিটে সেটা মিলিয়ে নেয় — কিন্তু ফ্লিট-তালিকা
+     * তারপরও **৫৪,২২৩ সেকেন্ড** দেখাচ্ছিল। পর্দার সংখ্যাটা সত্যি ছিল না,
+     * আর কোনো এররও ছিল না।
+     *
+     * ⭐ **বাড়তি কোনো round-trip নেই** — এই UPDATE-টা এমনিতেই প্রতিটা
+     * রিকোয়েস্টে চলে। ⚠️ আর মানটা **বদলালে তবেই** SET-এ ঢোকে, ঠিক
+     * `lastState`/`agentVersion`-এর মতোই (G59-এর একই শিক্ষা)।
+     */
     await this.prisma.device.update({
       where: { id: device.id },
-      data: { lastSeenAt: new Date() },
+      data: {
+        lastSeenAt: new Date(),
+        ...(drift.seconds === device.lastDriftSec
+          ? {}
+          : { lastDriftSec: drift.seconds }),
+      },
     });
 
     // drift থাকলে ডিভাইসে লিখে রাখা, বেশি হলে অ্যালার্ট (§ ২)

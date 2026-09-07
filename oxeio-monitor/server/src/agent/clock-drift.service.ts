@@ -6,6 +6,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export const DRIFT_IGNORE_SEC = 5;
 export const DRIFT_ALERT_SEC = 300;
 
+/**
+ * ⭐ advisory lock-এর namespace *(G169)* — যেকোনো ধ্রুবক সংখ্যা, কেবল
+ * অন্য কোনো lock-এর সাথে সংঘর্ষ না করলেই হলো। দ্বিতীয় ঘরটা `deviceId`,
+ * তাই দুটো **আলাদা** PC একে অন্যকে আটকায় না।
+ */
+const CLOCK_DRIFT_LOCK = 8_413_001;
+
 export interface Drift {
   /** server_time − client_time · ধনাত্মক = PC-র ঘড়ি পিছিয়ে */
   seconds: number;
@@ -56,49 +63,94 @@ export class ClockDriftService {
 
     const abs = Math.abs(drift.seconds);
 
-    // "শুধু আগেরটার চেয়ে বড় হলে বসাও" — Prisma-র API-তে সরাসরি নেই, তাই raw
+    /**
+     * ⚠️ **`last_drift_sec` এখানে আর লেখা হয় না** *(৭ সেপ্টেম্বর ২০২৬, G170)*।
+     * ওটা এখন `DeviceAuthGuard`-এর `last_seen_at` UPDATE-এর সাথে যায়, কারণ
+     * এই মেথডটা `level === 'none'`-এ ফিরে যায় — অর্থাৎ ঘড়ি **ঠিক হয়ে গেলে**
+     * সংখ্যাটা কোনোদিন শূন্যে ফিরত না।
+     *
+     * ⭐ এখানে থাকে কেবল `max_drift_sec` — "সবচেয়ে খারাপ কতটা হয়েছিল",
+     * আর সেটা সংজ্ঞা অনুযায়ীই কমে না।
+     *
+     * ⚠️ শর্তে `max_drift_sec < abs` — নইলে প্রতিটা রিকোয়েস্টে একটা
+     * অর্থহীন লেখা হতো।
+     */
     await this.prisma.$executeRaw`
       UPDATE devices
-         SET last_drift_sec = ${drift.seconds},
-             max_drift_sec  = GREATEST(max_drift_sec, ${abs})
-       WHERE id = ${deviceId}`;
+         SET max_drift_sec = ${abs}
+       WHERE id = ${deviceId} AND max_drift_sec < ${abs}`;
 
     if (drift.level !== 'alert') return;
 
-    // ⚠️ এজেন্ট প্রতি মিনিটেই ডেটা পাঠায় — প্রতিবার অ্যালার্ট বানালে
-    // ঘড়ি ভুল থাকা একটা PC দিনে হাজারখানেক অ্যালার্ট তৈরি করত।
-    // ৬ ঘণ্টায় একটাই, আর সেটা acknowledge না করা পর্যন্ত আর নয়।
-    const recent = await this.prisma.alert.findFirst({
-      where: {
-        type: 'clock_drift',
-        deviceId,
-        acknowledgedAt: null,
-        // ⚠️ "এখনো খোলা" = unacked **এবং** unresolved। আগেরটা বন্ধ হয়ে থাকলে
-        //    নতুন drift সত্যিই নতুন খবর — চাপা দেওয়া উচিত নয়।
-        resolvedAt: null,
-        createdAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
-      },
-      select: { id: true },
-    });
-    if (recent) return;
+    /**
+     * ⚠️ এজেন্ট প্রতি মিনিটেই ডেটা পাঠায় — প্রতিবার অ্যালার্ট বানালে
+     * ঘড়ি ভুল থাকা একটা PC দিনে হাজারখানেক অ্যালার্ট তৈরি করত।
+     * ৬ ঘণ্টায় একটাই, আর সেটা acknowledge না করা পর্যন্ত আর নয়।
+     *
+     * ⭐⭐⭐ **কিন্তু "দেখো, তারপর বসাও" একটা দৌড়** *(৭ সেপ্টেম্বর ২০২৬, G169)*।
+     *
+     * ⚠️⚠️ এই মেথডটা ডাকা হয় `DeviceAuthGuard` থেকে — অর্থাৎ **প্রতিটা
+     * রিকোয়েস্টে**, heartbeat-এ নয়। চালু হওয়ার মুহূর্তে এজেন্ট একসাথে
+     * কয়েকটা কল পাঠায় (সেগমেন্ট · ইভেন্ট · অ্যাপ-ব্যবহার · ছবি), আর
+     * দুটো কল একই সাথে `findFirst` চালিয়ে **দুজনেই "কিছু নেই" দেখে**
+     * দুটো অ্যালার্ট বানিয়ে ফেলত।
+     *
+     * ⚠️ মাঠে ধরা (৭ সেপ্টেম্বর, OX-13): দুটো অভিন্ন *"PC clock is wrong"*,
+     * **৯ মিলিসেকেন্ডের ব্যবধানে** (০৯:১৭:০০.১৮০ আর .১৮৯), একই `driftSec`।
+     * মালিক সেটা দেখেই বলেছিলেন *"ami eta chai na"*।
+     *
+     * ⭐ **advisory lock, নতুন কলাম বা index নয়।** partial unique index-ও
+     * কাজ করত, কিন্তু Prisma সেটা চেনে না (WHERE-সহ index তার schema-য়
+     * প্রকাশ করা যায় না) — তাই পরের `migrate` প্রতিবার drift দেখাত।
+     * ⚠️ `pg_advisory_xact_lock` ট্রানজেকশন শেষে **নিজেই** ছাড়ে, তাই
+     * ভুলে আটকে থাকার পথ নেই।
+     */
+    const created = await this.prisma.$transaction(async (tx) => {
+      /**
+       * ⚠️⚠️ **তিনটে খুঁটিনাটি, আর তিনটেই না মানলে চলে না:**
+       * · `$queryRaw`, `$executeRaw` নয় — এটা `SELECT`, count-ফেরত DML নয়;
+       * · `::int` cast — নইলে Postgres bind-parameter-এর ধরন ঠিক করতে পারে না;
+       * · `::text` — ফাংশনটা `void` ফেরায়, আর Prisma `void` কলাম পড়তে পারে না
+       *   (*"Failed to deserialize column of type 'void'"*)।
+       */
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(${CLOCK_DRIFT_LOCK}::int, ${deviceId}::int)::text AS locked`;
 
-    this.logger.warn(
-      `device ${deviceId} clock is off by ${drift.seconds}s — raising an alert`,
-    );
+      const recent = await tx.alert.findFirst({
+        where: {
+          type: 'clock_drift',
+          deviceId,
+          acknowledgedAt: null,
+          // ⚠️ "এখনো খোলা" = unacked **এবং** unresolved। আগেরটা বন্ধ হয়ে থাকলে
+          //    নতুন drift সত্যিই নতুন খবর — চাপা দেওয়া উচিত নয়।
+          resolvedAt: null,
+          createdAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) },
+        },
+        select: { id: true },
+      });
+      if (recent) return false;
 
-    await this.prisma.alert.create({
-      data: {
-        type: 'clock_drift',
-        severity: 'warning',
-        deviceId,
-        employeeId,
-        title: 'PC clock is wrong',
-        detail:
-          `${Math.round(abs / 60)} minutes off from the server. ` +
-          'Turn on Windows time sync (w32time) on that PC.',
-        meta: { driftSec: drift.seconds },
-        channelsSent: [],
-      },
+      await tx.alert.create({
+        data: {
+          type: 'clock_drift',
+          severity: 'warning',
+          deviceId,
+          employeeId,
+          title: 'PC clock is wrong',
+          detail:
+            `${Math.round(abs / 60)} minutes off from the server. ` +
+            'Turn on Windows time sync (w32time) on that PC.',
+          meta: { driftSec: drift.seconds },
+          channelsSent: [],
+        },
+      });
+
+      return true;
     });
+
+    if (created) {
+      this.logger.warn(
+        `device ${deviceId} clock is off by ${drift.seconds}s — raising an alert`,
+      );
+    }
   }
 }
