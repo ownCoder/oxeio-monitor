@@ -4,8 +4,11 @@ import { join, resolve } from 'node:path';
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { isOfferedTo } from '../src/agent/rollout';
+import { UpdateService } from '../src/agent/update.service';
 import {
   createHarness,
+  dhakaNoon,
   loginReady,
   MANAGER_EMAIL,
   MANAGER_PASSWORD,
@@ -261,5 +264,193 @@ describe('GET /agent-versions', () => {
 
     expect(res.body[0].fileMissing).toBe(true);
     expect(res.body[0].sizeBytes).toBeNull();
+  });
+});
+
+
+/**
+ * ⭐⭐⭐ **canary-র বালতি খালি হলে ভার্সনটা চিরকাল আটকে থাকত**
+ * *(৭ সেপ্টেম্বর ২০২৬, G168)*।
+ *
+ * ⚠️⚠️ নিয়মটার ইউনিট টেস্ট আছে `rollout.spec.ts`-এ। **এই ব্লকটা কলারের**,
+ * আর সেটাই এখানে বেশি জরুরি: এই রেপোতে *"চুক্তি লেখা আছে, কলার লেখা
+ * হয়নি"* ভুলটা **দশবার** হয়েছে (G141 · G144 · G146 · G149 · G156 ·
+ * G159 · G167)। নিয়ম সবুজ অথচ কেউ ডাকে না — সেটাই এখানকার চেনা পাপ।
+ */
+describe('G168 — প্রকাশের সময় pilot আপনিই বসে', () => {
+  /** ওই মেশিনগুলোর কেউই canary-তে পড়ে না, এমন একটা ভার্সন */
+  const emptyCanaryVersion = (guids: readonly string[]): string => {
+    for (let i = 0; i < 500; i += 1) {
+      const v = `9.0.${i}`;
+      if (guids.every((g) => !isOfferedTo('canary', g, v))) return v;
+    }
+    throw new Error('no version with an empty canary bucket');
+  };
+
+  const filledCanaryVersion = (guids: readonly string[]): string => {
+    for (let i = 0; i < 500; i += 1) {
+      const v = `9.0.${i}`;
+      if (guids.some((g) => isOfferedTo('canary', g, v))) return v;
+    }
+    throw new Error('no version with a filled canary bucket');
+  };
+
+  async function makeDevice(
+    tag: string,
+    status: 'active' | 'revoked' = 'active',
+  ): Promise<{ id: number; machineGuid: string }> {
+    const machineGuid = `guid-${tag}`;
+    const d = await h.prisma.device.create({
+      data: {
+        hostname: `PC-${tag}`,
+        windowsUsername: tag,
+        machineGuid,
+        tokenHash: randomUUID(),
+        status,
+        // ⚠️ G140 — স্পেকে `new Date()` নয়; হারনেসের ঘড়ি
+        lastSeenAt: dhakaNoon(),
+      },
+    });
+    return { id: d.id, machineGuid };
+  }
+
+  const fleet = async () => [
+    await makeDevice('a'),
+    await makeDevice('b'),
+    await makeDevice('c'),
+  ];
+
+  /** ⭐⭐⭐ এই ব্লকের মূল টেস্ট */
+  it('⭐ বালতি খালি হলে প্রকাশেই একজন pilot বসে', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion(devices.map((d) => d.machineGuid));
+    const res = await publish({ version, msiPath: rel }).expect(201);
+
+    expect(res.body.pilotDeviceId).not.toBeNull();
+    expect(devices.some((d) => d.id === res.body.pilotDeviceId)).toBe(true);
+  });
+
+  /** ⚠️ কেউ এমনিতেই পড়লে হস্তক্ষেপ নয় */
+  it('⭐ কেউ বালতিতে পড়লে pilot বসে না', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = filledCanaryVersion(devices.map((d) => d.machineGuid));
+    const res = await publish({ version, msiPath: rel }).expect(201);
+
+    expect(res.body.pilotDeviceId).toBeNull();
+  });
+
+  /** ⚠️ `all`-এ সবাই এমনিতেই পাচ্ছে — pilot অর্থহীন */
+  it('all-এ প্রকাশ করলে pilot বসে না', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion(devices.map((d) => d.machineGuid));
+    const res = await publish({
+      version,
+      msiPath: rel,
+      rolloutStage: 'all',
+    }).expect(201);
+
+    expect(res.body.pilotDeviceId).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ **বাতিল করা PC গিনিপিগ হতে পারে না** — সে তো আপডেটই পায় না
+   * (`isOfferedTo`-র আগেই `update.service` তাকে ছেঁকে দেয়), তাই তার
+   * কাছ থেকে কোনো প্রমাণ আসবে না আর অচলাবস্থাটা রয়েই যেত।
+   */
+  it('⭐ বাতিল করা PC pilot হয় না', async () => {
+    const revoked = await makeDevice('rev', 'revoked');
+    const alive = await makeDevice('live');
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion([revoked.machineGuid, alive.machineGuid]);
+    const res = await publish({ version, msiPath: rel }).expect(201);
+
+    expect(res.body.pilotDeviceId).toBe(alive.id);
+  });
+
+  /**
+   * ⚠️⚠️ **হাতে ধাপ বদলালেও একই ফাঁদ** — মালিক `all` থেকে `canary`-তে
+   * নামালে বালতি আবার খালি হতে পারে।
+   */
+  it('⭐ হাতে canary-তে নামালেও pilot বসে', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion(devices.map((d) => d.machineGuid));
+    await publish({ version, msiPath: rel, rolloutStage: 'all' }).expect(201);
+
+    const res = await owner.http
+      .post(`/api/v1/agent-versions/${version}/stage`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ rolloutStage: 'canary' })
+      .expect(200);
+
+    expect(res.body.pilotDeviceId).not.toBeNull();
+    expect(devices.some((d) => d.id === res.body.pilotDeviceId)).toBe(true);
+  });
+
+  /**
+   * ⚠️⚠️ **মালিকের বাছাই কখনো বদলানো হয় না।** তিনি একটা মেশিন বেছে
+   * দিলে সেটাই থাকে — নিজে থেকে বসানোটা কেবল **ফাঁকা ঘর** ভরার জন্য।
+   */
+  it('⭐ মালিকের বেছে দেওয়া pilot চাপা পড়ে না', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion(devices.map((d) => d.machineGuid));
+    await publish({ version, msiPath: rel, rolloutStage: 'all' }).expect(201);
+
+    const chosen = devices[devices.length - 1];
+
+    const res = await owner.http
+      .post(`/api/v1/agent-versions/${version}/stage`)
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ rolloutStage: 'canary', pilotDeviceId: chosen.id })
+      .expect(200);
+
+    expect(res.body.pilotDeviceId).toBe(chosen.id);
+  });
+
+  /**
+   * ⭐⭐⭐ **আসল দাবিটা এটাই** — pilot বসেছে কি না তা নয়, **অফারটা
+   * সত্যিই যাচ্ছে** কি না। বালতি খালি ছিল, তবু এখন একজন অফার পান।
+   *
+   * ⚠️ এই টেস্টটা না থাকলে pilot কলামে একটা সংখ্যা বসেই সন্তুষ্ট থাকা
+   *    যেত, অথচ `UpdateService` সেটা পড়ে কি না কেউ যাচাই করত না।
+   */
+  it('⭐⭐ এবং সেই মেশিনটা সত্যিই আপডেটের অফার পায়', async () => {
+    const devices = await fleet();
+    const rel = `updates/${randomUUID()}.msi`;
+    await putMsi(rel);
+
+    const version = emptyCanaryVersion(devices.map((d) => d.machineGuid));
+    const res = await publish({ version, msiPath: rel }).expect(201);
+
+    const pilot = devices.find((d) => d.id === res.body.pilotDeviceId)!;
+    const updates = h.app.get(UpdateService);
+
+    // ⚠️ pilot — অফার পান
+    expect(
+      await updates.offerFor('0.0.1', pilot.machineGuid, pilot.id),
+    ).not.toBeNull();
+
+    // ⚠️ বাকিরা — এখনো নয়, কারণ ধাপটা এখনো canary
+    for (const other of devices.filter((d) => d.id !== pilot.id)) {
+      expect(
+        await updates.offerFor('0.0.1', other.machineGuid, other.id),
+      ).toBeNull();
+    }
   });
 });

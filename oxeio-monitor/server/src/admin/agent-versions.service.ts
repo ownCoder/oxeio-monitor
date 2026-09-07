@@ -13,7 +13,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { RolloutStage } from '@prisma/client';
 
-import { isNewer } from '../agent/rollout';
+import { isNewer, pilotNeededFor } from '../agent/rollout';
 import { AuditService } from '../audit/audit.service';
 import { storageRoot } from '../common/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -180,17 +180,29 @@ export class AgentVersionsService {
       );
     }
 
+    // ⭐ ডিফল্ট `canary` — schema-র ডিফল্টও তাই। একবারে সবাইকে দেওয়া
+    //    সিদ্ধান্তটা আলাদা করে নিতে হয় (`stage` বদলে), আর সেটাই ঠিক:
+    //    খারাপ বিল্ড গেলে ফেরার পথ নেই (G69)।
+    const stage = dto.rolloutStage ?? RolloutStage.canary;
+
+    /**
+     * ⭐⭐⭐ **G168 — বালতি খালি হলে ভার্সনটা চিরকাল আটকে থাকত।**
+     *
+     * ⚠️ সিদ্ধান্তটা **তৈরির আগেই** নেওয়া হয়, তাই সারিটা প্রথম থেকেই
+     * পাইলট নিয়ে জন্মায় — দু-ধাপে করলে মাঝখানে একটা heartbeat এসে
+     * অফার-বিহীন উত্তর পেয়ে যেত।
+     */
+    const autoPilot = await this.autoPilotFor(stage, dto.version, new Date());
+
     const row = await this.prisma.agentVersion.create({
       data: {
         version: dto.version,
         msiPath: dto.msiPath,
         sha256,
         releaseNotes: dto.releaseNotes ?? null,
-        // ⭐ ডিফল্ট `canary` — schema-র ডিফল্টও তাই। একবারে সবাইকে দেওয়া
-        //    সিদ্ধান্তটা আলাদা করে নিতে হয় (`stage` বদলে), আর সেটাই ঠিক:
-        //    খারাপ বিল্ড গেলে ফেরার পথ নেই (G69)।
-        rolloutStage: dto.rolloutStage ?? RolloutStage.canary,
+        rolloutStage: stage,
         isMandatory: dto.isMandatory ?? false,
+        pilotDeviceId: autoPilot,
       },
     });
 
@@ -200,12 +212,27 @@ export class AgentVersionsService {
       targetType: 'agent_version',
       targetId: row.version,
       ipAddress: ip,
-      meta: { sha256, stage: row.rolloutStage, sizeBytes: file.size },
+      // ⚠️ `autoPilot` অডিটেও যায় — একটা মেশিনকে গিনিপিগ বানানো একটা
+      //    সিদ্ধান্ত, আর নীরব সিদ্ধান্ত এই সিস্টেমে রাখা হয় না
+      meta: {
+        sha256,
+        stage: row.rolloutStage,
+        sizeBytes: file.size,
+        autoPilotDeviceId: autoPilot,
+      },
     });
 
     this.logger.warn(
       `agent ${row.version} published · ${row.rolloutStage} · ${file.size} bytes`,
     );
+
+    if (autoPilot !== null) {
+      this.logger.warn(
+        `agent ${row.version}: no device fell in the ${row.rolloutStage} bucket, ` +
+          `so device #${autoPilot} was picked as pilot — otherwise the rollout ` +
+          'could never gather proof and would stay at this stage forever (G168)',
+      );
+    }
 
     return {
       version: row.version,
@@ -241,10 +268,28 @@ export class AgentVersionsService {
     });
     if (!row) throw new NotFoundException('No such version');
 
+    /**
+     * ⚠️⚠️ **হাতে ধাপ বদলালেও একই ফাঁদ** *(G168)*। মালিক `all` থেকে
+     * `canary`-তে নামালে বালতিটা আবার খালি হতে পারে, আর তখন ভার্সনটা
+     * ওখানেই আটকে যেত।
+     *
+     * ⭐ কেবল তখনই বসে যখন **পাইলট নেই আর মালিক নতুন কোনো পাইলটও দেননি** —
+     * তাঁর বাছাই কখনো বদলানো হয় না।
+     */
+    const keepsPilot =
+      dto.pilotDeviceId !== undefined
+        ? dto.pilotDeviceId !== null
+        : row.pilotDeviceId !== null;
+
+    const autoPilot = keepsPilot
+      ? null
+      : await this.autoPilotFor(dto.rolloutStage, version, new Date());
+
     const updated = await this.prisma.agentVersion.update({
       where: { version },
       data: {
         rolloutStage: dto.rolloutStage,
+        ...(autoPilot === null ? {} : { pilotDeviceId: autoPilot }),
         /**
          * ⚠️⚠️ **হাতে বদলালেও ঘড়িটা রিসেট হয়** *(৬ সেপ্টেম্বর ২০২৬)*।
          * নইলে মালিক canary → partial করার সাথে সাথেই জব পরের টিকে
@@ -272,7 +317,11 @@ export class AgentVersionsService {
       ipAddress: ip,
       // ⚠️ আগে ও পরে দুটোই — "কে কখন সবাইকে দিয়ে দিল" প্রশ্নের উত্তর
       //    এই একটা সারিতেই থাকা দরকার
-      meta: { from: row.rolloutStage, to: updated.rolloutStage },
+      meta: {
+        from: row.rolloutStage,
+        to: updated.rolloutStage,
+        ...(autoPilot === null ? {} : { autoPilotDeviceId: autoPilot }),
+      },
     });
 
     this.logger.warn(
@@ -305,6 +354,30 @@ export class AgentVersionsService {
    * `C:\Windows\...` বসিয়ে দিতে পারতেন, আর সেটা ধরা পড়ত ডাউনলোডের সময়
    * "File path is outside storage" দিয়ে — বিলি করার অনেক পরে।
    */
+  /**
+   * ⭐⭐⭐ **বালতি খালি হলে একজনকে বেছে নেওয়া** *(৭ সেপ্টেম্বর ২০২৬, G168)*।
+   *
+   * ⚠️⚠️ নিয়মটা এখানে নেই — `rollout.ts`-এর খাঁটি `pilotNeededFor()`-এ
+   * (এই ফাইলে কেবল সারি আনা আর লেখা)। ⭐ কারণ ওটাই এই মডিউলের ছাঁদ:
+   * সিদ্ধান্ত পরীক্ষা করা যায় ডাটাবেস ছাড়াই।
+   *
+   * ⚠️ `null` ফেরা মানে **কিছু করার নেই** — হয় কেউ একজন এমনিতেই বালতিতে
+   * পড়েছে, নয় ধাপটা `halted`/`all`, নয় একটাও ডিভাইস নেই।
+   */
+  private async autoPilotFor(
+    stage: RolloutStage,
+    version: string,
+    now: Date,
+  ): Promise<number | null> {
+    const devices = await this.prisma.device.findMany({
+      // ⚠️ `active` only — বাতিল করা PC আপডেট পায় না, তাই সে গিনিপিগও নয়
+      where: { status: 'active' },
+      select: { id: true, machineGuid: true, lastSeenAt: true },
+    });
+
+    return pilotNeededFor(stage, devices, version, now);
+  }
+
   private async statMsi(
     msiPath: string,
   ): Promise<{ abs: string; size: number } | null> {
