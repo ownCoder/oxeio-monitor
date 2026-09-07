@@ -27,7 +27,6 @@ import {
   weekdayOf,
 } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
-import { OpenAlerts } from './live/OpenAlerts';
 import { TopApps } from './live/TopApps';
 import { StatusStrip } from './live/TeamBars';
 import { TeamTable } from './live/TeamTable';
@@ -632,21 +631,20 @@ export function LiveBoardPage() {
               </div>
             )}
           </Card>
-          {isOwner && (
-            <Card
-              title="Needs Attention"
-              hint="Not acknowledged yet"
-              padded={false}
-            >
-              {alerts.data ? (
-                <OpenAlerts page={alerts.data} />
-              ) : (
-                <div className="px-4 py-8">
-                  <div className="h-24 rounded bg-line/40" />
-                </div>
-              )}
-            </Card>
-          )}
+          {/*
+            ⛔ **"Needs Attention" কার্ডটা সরানো হয়েছে** *(৭ সেপ্টেম্বর ২০২৬,
+               মালিকের সিদ্ধান্ত)* — তিনি বোর্ডে খোলা অ্যালার্টের তালিকা
+               চান না।
+
+            ⭐ **তবু অ্যালার্ট অদৃশ্য হয়নি:** উপরের KPI সারিতে
+               *"Open alerts"* টাইলটা থেকেই যাচ্ছে — সংখ্যা, রং, আর
+               সবচেয়ে নতুন খবরের শিরোনাম। ⚠️ ওটাও তুলে নিলে খোলা
+               অ্যালার্টের কোনো চিহ্নই বোর্ডে থাকত না, আর মালিক Alerts
+               পাতায় নিজে না গেলে কোনোদিন জানতেন না।
+
+            ⚠️ `alerts` ফেচটা তাই **রাখা হয়েছে** — ওই টাইলটা ওটার উপরেই
+               দাঁড়ানো (উপরে দেখুন)।
+          */}
           {/*
             ⭐⭐ **সবচেয়ে কম ঘণ্টা** *(মালিকের চাওয়া, ৩০ আগস্ট ২০২৬)* —
                `Top Performers`-এর উল্টো পিঠ, কিন্তু **এখানে**, নিচের সারিতে
