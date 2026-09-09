@@ -135,9 +135,23 @@ class ListQueryDto {
    *    নয়, **তারিখ** — আর সেটা ইচ্ছাকৃত, নইলে সারিটা `done` থেকে সরে
    *    গিয়ে সব "কতগুলো ডিজাইন হয়েছে" গণনা নীরবে কমে যেত।
    */
+  /**
+   * ⚠️ `no_file` বাকিগুলোর মতো **ধাপ নয়** *(৯ সেপ্টেম্বর ২০২৬)* — কাজের
+   * শেকলে ওর কোনো ঘর নেই। এটা একটা **প্রশ্ন**: "শেষ বলা হয়েছে, অথচ
+   * ফাইলটা কখনো খোলা হয়নি এমন কোনগুলো?"
+   *
+   * ⭐ তবু একই ঘরেই বসেছে, কারণ ছাঁকনি-খোঁজা-পাতা সবই হুবহু এক — আলাদা
+   * endpoint বানালে ওই তিনটে জিনিস দ্বিতীয়বার লিখতে হতো।
+   */
   @IsOptional()
-  @IsIn(['to_check', 'to_fix', 'to_upload', 'to_live', 'to_review'])
-  stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
+  @IsIn(['to_check', 'to_fix', 'to_upload', 'to_live', 'to_review', 'no_file'])
+  stage?:
+    | 'to_check'
+    | 'to_fix'
+    | 'to_upload'
+    | 'to_live'
+    | 'to_review'
+    | 'no_file';
 }
 
 class UpdateTargetDto {

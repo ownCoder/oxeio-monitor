@@ -192,6 +192,20 @@ export interface TargetRow {
   startedAt: string | null;
   completedAt: string | null;
   completedVia: string | null;
+
+  /**
+   * ⭐⭐ **ওই জব-নম্বরের ফাইল ডিজাইন-অ্যাপে মোট কত সেকেন্ড ছিল**
+   * *(৯ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **তিনটে অবস্থা, দুটো নয়:**
+   * `> 0` মাপা হয়েছে · `0` **শেষ বলা হয়েছে, অথচ কখনো খোলা হয়নি** ·
+   * `null` বলার মতো কিছু নেই — হয় ওই সময়ের শিরোনাম জমা নেই
+   * (`TargetPage.traceSince`), নয় সারিটা এখনো শেষ বলা হয়নি।
+   *
+   * ⚠️ `0` আর `null` এক করে দেখানো যাবে না: একটা মাপ, অন্যটা অজ্ঞতা।
+   */
+  fileSec: number | null;
+
   /**
    * ⭐ কে "শেষ" বলেছেন *(২৩ আগস্ট)*।
    *
@@ -239,6 +253,15 @@ export interface TargetPage {
   total: number;
   page: number;
   pages: number;
+
+  /**
+   * ⭐⭐ **কোন দিন (`YYYY-MM-DD`) থেকে জানালার শিরোনাম জমা আছে** —
+   * `fileSec === null` কেন, তার উত্তর।
+   *
+   * ⚠️ সার্ভার এটা **ডেটা থেকে** বের করে, ধ্রুবক নয় — তাই পর্দায়
+   * তারিখটা হাতে লেখা যাবে না।
+   */
+  traceSince: string | null;
 }
 
 /**
@@ -265,7 +288,14 @@ export function listTargets(
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
     /** ⚠️ `to_review` যোগ হয়েছে ৩১ আগস্ট — বাদ-যাওয়া, অথচ কেউ দেখেননি */
-    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
+    /** ⚠️ `no_file` ধাপ নয়, প্রশ্ন — শেষ বলা, অথচ ফাইল খোলা হয়নি (৯ সেপ্টেম্বর) */
+    stage?:
+      | 'to_check'
+      | 'to_fix'
+      | 'to_upload'
+      | 'to_live'
+      | 'to_review'
+      | 'no_file';
   },
   signal?: AbortSignal,
 ): Promise<TargetPage> {

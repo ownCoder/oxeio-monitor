@@ -11,12 +11,14 @@ import { DesignTargetStatus, Prisma, UserRole } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { FileTraceService } from './file-trace.service';
 import {
   allocationSizes,
   amazonUrl,
   canUseTargets,
   DESIGN_WORK_STAFF_TYPES,
   type DropReason,
+  fileSecOf,
   parseBulk,
   POOL_PER_DESIGNER,
   UPLOAD_QUEUE_FROM,
@@ -34,6 +36,13 @@ import {
 const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
 const nextDay = (day: string): Date =>
   new Date(dhakaStart(day).getTime() + 86_400_000);
+
+/**
+ * ⭐ দুটো `'YYYY-MM-DD'`-র মধ্যে পরেরটা।
+ *
+ * ⚠️ লেখার তুলনাই যথেষ্ট — ISO তারিখে অক্ষরের ক্রম আর সময়ের ক্রম এক।
+ */
+const laterDay = (a: string, b: string): string => (a >= b ? a : b);
 
 /**
  * ⭐ ওই মুহূর্তটা **ঢাকার কোন দিনে** পড়ে — `'YYYY-MM-DD'`।
@@ -118,6 +127,21 @@ export interface TargetRow {
   startedAt: string | null;
   completedAt: string | null;
   completedVia: string | null;
+
+  /**
+   * ⭐⭐ **ওই জব-নম্বরের ফাইল ডিজাইন-অ্যাপে মোট কত সেকেন্ড পর্দায় ছিল**
+   * *(৯ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **তিনটে অবস্থা** — `> 0` মাপা হয়েছে · `0` **শেষ বলা হয়েছে
+   * অথচ কখনো খোলা হয়নি** · `null` বলার মতো কিছু নেই। মাঝেরটা কেবল
+   * শেষ-বলা সারিতেই বসে: হাতে থাকা কাজের ফাইল এখনো খোলা না হওয়া
+   * স্বাভাবিক, আর সেখানে `no trace` লেখা মানে **অভিযোগ সেখানে যেখানে
+   * কোনো দাবিই করা হয়নি**। নিয়মটা [`fileSecOf`](./targets.rules.ts)-এ।
+   *
+   * ⚠️ এটা "কাজ হয়েছে কি না" নয় — সেভ না করা বা নাম বদলানো ফাইল
+   * এখানে ধরা পড়ে না। সংখ্যাটা **প্রসঙ্গ, রায় নয়**।
+   */
+  fileSec: number | null;
   /** পুরোনো Excel-এর কাঁচা লেখা — "Hafiz-24-05-2026" */
   sourceNote: string | null;
 
@@ -207,6 +231,7 @@ export class TargetsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly trace: FileTraceService,
   ) {}
 
   /**
@@ -940,8 +965,22 @@ export class TargetsService {
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
     to?: string;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
-    stage?: 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
-  }): Promise<{ rows: TargetRow[]; total: number; page: number; pages: number }> {
+    /** ⚠️ `no_file` ধাপ নয়, একটা **প্রশ্ন** — ৯ সেপ্টেম্বর ২০২৬ */
+    stage?:
+      | 'to_check'
+      | 'to_fix'
+      | 'to_upload'
+      | 'to_live'
+      | 'to_review'
+      | 'no_file';
+  }): Promise<{
+    rows: TargetRow[];
+    total: number;
+    page: number;
+    pages: number;
+    /** ⭐ কোন দিন থেকে শিরোনাম জমা আছে — `fileSec === null` কেন, তার উত্তর */
+    traceSince: string | null;
+  }> {
     const page = Math.max(1, query.page ?? 1);
 
     /**
@@ -1003,8 +1042,52 @@ export class TargetsService {
      *    পুরোনো ২৭ হাজার ইমপোর্ট-করা সারি বাদ না দিলে কিউটা পাহাড় হতো।
      *    `to_live`-এ ওই সমস্যা নেই, কারণ Uploaded চাপা সারিই মাত্র একটা।
      */
+    /**
+     * ⭐⭐ **কোন দিন থেকে শিরোনাম জমা আছে** *(৯ সেপ্টেম্বর ২০২৬)* —
+     * "ফাইলের চিহ্ন নেই" বলার অধিকার এই তারিখটার পর থেকেই।
+     *
+     * ⚠️ প্রতিটা পাতায় একবার ডাকা হয়; ধ্রুবক বসানো হয়নি ইচ্ছাকৃতভাবে,
+     * কারণ কোনোদিন পুরোনো সারি ছাঁটা শুরু হলে সীমানাটা নিজে থেকেই
+     * এগোবে — কারো মনে রাখতে হবে না।
+     */
+    const traceSince = await this.trace.since();
+    const since = traceSince === null ? null : dhakaStart(traceSince);
+
+    /**
+     * ⚠️ গোটা তালিকাটা কেবল **এই একটা ধাপের** জন্য আনা হয় — প্রশ্নটা
+     * উল্টো দিকের ("কোনগুলো কখনো আসেনি"), আর সেটা `notIn` ছাড়া লেখা যায় না।
+     */
+    const seenJobs =
+      query.stage === 'no_file' ? await this.trace.seenJobNumbers() : [];
+
     const stage =
-      query.stage === 'to_check'
+      /**
+       * ⭐⭐⭐ **শেষ বলা হয়েছে, অথচ ফাইলটা কখনো খোলা হয়নি**
+       * *(মালিকের চাওয়া, ৯ সেপ্টেম্বর ২০২৬: "kha banao")*।
+       *
+       * ⚠️⚠️ **এটা অ্যালার্ট নয়, আর সেটাই মালিকের শর্ত ছিল** — *"নীরব
+       * তালিকা"*। কারণ চিহ্ন না থাকার নির্দোষ ব্যাখ্যা অনেক: ফাইলটা সেভ
+       * করা হয়নি (মাঠে একজন গোটা দিন `Untitled-20*`-এ কাজ করেন), নামের
+       * সামনে নম্বর বসানো হয়নি, বা কাজটা অন্য অ্যাপে হয়েছে। ⭐ তাই
+       * তালিকাটা একটা **প্রশ্ন**, অভিযোগ নয়।
+       *
+       * ⚠️⚠️ দুটো সীমা **একসাথে** খাটে, আর দুটোরই আলাদা কারণ:
+       *   · `UPLOAD_QUEUE_FROM` — পুরোনো ২৭ হাজার ইমপোর্ট করা সারি বাদ
+       *   · `traceSince` — এর আগে আমরা শিরোনাম **দেখতামই না**
+       * পরেরটা যেটা, সেটাই ধরা হয়।
+       */
+      query.stage === 'no_file'
+        ? traceSince === null
+          ? // ⚠️ একটাও শিরোনাম জমা নেই — তখন কারো নামে কিছু বলার অধিকার নেই
+            { id: { in: [] as number[] } }
+          : {
+              completedAt: {
+                not: null,
+                gte: dhakaStart(laterDay(UPLOAD_QUEUE_FROM, traceSince)),
+              },
+              jobNumber: { not: null, notIn: seenJobs },
+            }
+        : query.stage === 'to_check'
         ? {
             completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
             checkedAt: null,
@@ -1115,7 +1198,16 @@ export class TargetsService {
       }),
     ]);
 
+    /**
+     * ⭐ কেবল **পর্দায় থাকা** সারিগুলোর জন্য — ৫০টা নম্বর, ৫০টা
+     * ইনডেক্স-লুকআপ। গোটা টেবিল কখনো পড়া হয় না।
+     */
+    const seconds = await this.trace.secondsFor(
+      rows.map((r) => r.jobNumber).filter((n): n is number => n !== null),
+    );
+
     return {
+      traceSince,
       rows: rows.map((r) => ({
         id: r.id,
         asin: r.asin,
@@ -1127,6 +1219,7 @@ export class TargetsService {
         startedAt: r.startedAt?.toISOString() ?? null,
         completedAt: r.completedAt?.toISOString() ?? null,
         completedVia: r.completedVia,
+        fileSec: fileSecOf(r, seconds, since),
         completedBy: r.completedBy,
         addedBy: r.addedBy,
         addedAt: r.addedAt.toISOString(),

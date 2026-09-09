@@ -24,7 +24,7 @@ import { Card } from '../components/Card';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
 import { Table, type Column } from '../components/Table';
-import { formatDateTime } from '../lib/format';
+import { formatDate, formatDateTime, formatDuration } from '../lib/format';
 import {
   Chip,
   MiniButton,
@@ -33,6 +33,14 @@ import {
   ServerError,
   useMutation,
 } from './settings/ui';
+import {
+  dropdownValueOf,
+  FILTERS,
+  stageOf,
+  STATUS_OPTIONS,
+  type FilterKey,
+  type Stage,
+} from './targets/filters';
 import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 
 /**
@@ -60,88 +68,6 @@ export function AllTargetsPage() {
   );
 }
 
-type Stage = 'to_check' | 'to_fix' | 'to_upload' | 'to_live' | 'to_review';
-type FilterKey = TargetStatus | 'all' | Stage;
-
-/**
- * ⭐⭐ **প্রথম দুটো গবেষকের রোজকার কিউ** *(২৪ আগস্ট ২০২৬)*।
- *
- * ⚠️⚠️ ক্রমটা ইচ্ছাকৃত — কাজের দুটো সবার আগে, তদারকির ছাঁকনিগুলো পরে।
- * Uploaded ও Live বোতাম দুটো প্রতিটা সারিতে **আগে থেকেই ছিল**, আর অনুমতিও
- * গবেষকের ছিল; যা ছিল না তা হলো *"কোনগুলো"* — ৩৯ হাজার সারির স্তূপ থেকে
- * আজকের কাজটা আলাদা করার উপায়। ⭐ ফলে ২৭,৬৩২টার মধ্যে বোতামটা চাপা
- * পড়েছিল **মাত্র ১ বার**।
- *
- * ⚠️ এগুলো `status` নয়, **ধাপ** — `uploadedAt`/`liveAt` তারিখ, অবস্থা নয়
- * (নইলে সারিটা `done` থেকে সরে গিয়ে সব গণনা নীরবে কমে যেত)।
- */
-/** ⭐ চিপটা ধাপ না অবস্থা — এক জায়গায় ঠিক হয়, দুই জায়গায় নয় */
-const stageOf = (key: FilterKey): Stage | undefined =>
-  key === 'to_check' ||
-  key === 'to_fix' ||
-  key === 'to_upload' ||
-  key === 'to_live' ||
-  key === 'to_review'
-    ? key
-    : undefined;
-
-/**
- * ⭐⭐ **চিপে কেবল কাজের কিউ** *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট:
- * "khubi gatharing lagoche dekhote")*।
- *
- * ⚠️⚠️ আগে এখানে নয়টা চিপ ছিল — চারটে কিউ আর পাঁচটা **অবস্থা**
- * (All · Waiting · In hand · Done · Skipped)। কিন্তু অবস্থাগুলো
- * পরস্পরের **বিকল্প**: একসাথে কখনো দুটো বাছা যায় না। ⭐ যা থেকে
- * একটাই বাছা যায়, সেটা চিপের সারি নয়, ড্রপডাউন
- * (`STATUS_OPTIONS`) — আর তাতে পাঁচটা কন্ট্রোল একটায় নামে।
- *
- * ⚠️ কিউ চারটে চিপই থাকল, কারণ **ওগুলোয় সংখ্যা আছে** — আর সংখ্যাটাই
- * ক্লিক করার আগে বলে দেয় আজ কাজ আছে কি না। ড্রপডাউনে ঢুকিয়ে দিলে
- * সংখ্যাটা দেখতে হলে খুলতে হতো, আর তখন কেউ খুলতই না।
- */
-const FILTERS: { key: FilterKey; label: string; stage: Stage }[] = [
-  { key: 'to_check', label: 'To check', stage: 'to_check' },
-  { key: 'to_fix', label: 'To fix', stage: 'to_fix' },
-  { key: 'to_upload', label: 'To upload', stage: 'to_upload' },
-  { key: 'to_live', label: 'To make live', stage: 'to_live' },
-];
-
-/**
- * ⚠️⚠️ **`to_review` এখানে নেই — ওটার নিজের পাতা** *(মালিকের নির্দেশ,
- * ৩১ আগস্ট ২০২৬: "side bar e design pool er niche review name ekta page
- * koro")*।
- *
- * ⭐ চিপটা একদিনের জন্য এখানে ছিল, তারপর সরে গেছে — আর নকল নয়, **সরানো**।
- * উপরের চারটে গবেষকের রোজকার কাজ; বাদ-যাওয়া ডিজাইন দেখা মালিক ও
- * ম্যানেজারের কাজ, অর্থাৎ অন্য মানুষ, অন্য ছন্দ। ⚠️ দুই জায়গায় একই কিউ
- * রাখলে দুটো দরজা হতো, আর ২৫ আগস্টের ছাঁটাইয়ের গোটা কথাই ছিল এই পাতায়
- * **কম** জিনিস রাখা।
-
-/**
- * ⭐ অবস্থার ড্রপডাউন — চিপ থেকে নামিয়ে আনা পাঁচটা।
- *
- * ⚠️ `done_today` আসল কোনো অবস্থা **নয়** — এটা একটা শর্টকাট যা
- * `filter='done'` + আজকের দুটো তারিখ একসাথে বসায়। আগে এটা একটা আলাদা
- * বোতাম ছিল ("Completed today"), আর সেটা ভুল করে Complete চাপা কাজ
- * খুঁজে বের করার সবচেয়ে ছোট পথ — তাই তুলে দেওয়া হয়নি, সরানো হয়েছে।
- */
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all', label: 'All targets' },
-  { value: 'pool', label: 'Waiting' },
-  { value: 'assigned', label: 'In hand' },
-  { value: 'done', label: 'Done' },
-  { value: 'done_today', label: 'Done · today' },
-  { value: 'skipped', label: 'Skipped' },
-  /**
-   * ⭐⭐ **মরা লিঙ্কগুলো** *(২৯ আগস্ট ২০২৬)* — Amazon-এ পাতাই নেই।
-   *
-   * ⚠️⚠️ এটা না থাকলে মোছা সারিগুলো **কোথাও দেখা যেত না**, অথচ ওরা
-   * টেবিলে বসে আছে। ⭐ আর তখন "কতগুলো লিঙ্ক মরে গেছে" প্রশ্নটার উত্তর
-   * দেওয়ার পথই থাকত না — অথচ ওই সংখ্যাটাই বলে দেয় গবেষকের তালিকাটা
-   * কতটা বাসি।
-   */
-  { value: 'deleted', label: 'Deleted' },
-];
 
 /**
  * ⭐⭐ **পুরো তালিকা** *(২৩ আগস্ট, মালিকের চাওয়া)*।
@@ -278,12 +204,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
    * না। মনে রাখলে মালিক হাতে তারিখ বদলানোর পরেও ড্রপডাউন "আজ" বলত।
    */
   const today = dhakaToday();
-  const statusValue =
-    stageOf(filter) !== undefined
-      ? 'all'
-      : filter === 'done' && from === today && to === today
-        ? 'done_today'
-        : filter;
+  const statusValue = dropdownValueOf(filter, from, to, today);
 
   const rows = data.data?.rows ?? [];
   /** ⚠️ খালি পাতায় `every()` সত্যি বলে — তাই সংখ্যাটাও দেখা হয় */
@@ -584,6 +505,37 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
         <ServerError error={edit.error} />
       </div>
 
+      {/*
+        ⭐⭐⭐ **তালিকাটা কী বলে, আর কী বলে না** *(৯ সেপ্টেম্বর ২০২৬)*।
+
+        ⚠️⚠️ এই লেখাটা ঐচ্ছিক নয়। একটা "প্রমাণ নেই" তালিকা ব্যাখ্যা ছাড়া
+           পড়লে ওটা একটা **অভিযোগপত্র**, অথচ চিহ্ন না থাকার সবচেয়ে সাধারণ
+           কারণ নির্দোষ: মাঠে একজন গোটা দিন `Untitled-20*`-এ কাজ করেন,
+           কখনো সেভ করেন না — তাঁর ৮০% কাজেরই কোনো চিহ্ন নেই, অথচ কাজটা
+           হয়েছে। ⭐ সংখ্যাটা ভুল নয়, ওটার **মানেটা** সহজে ভুল পড়া যায়।
+      */}
+      {filter === 'no_file' && (
+        <div className="px-4 pb-1">
+          <Notice>
+            These were marked <b>done</b>, but no file whose name starts with
+            that job number was ever open in Illustrator or Photoshop.{' '}
+            <b>That is a question, not a verdict</b> — a file saved without the
+            job number in its name, or never saved at all, leaves no trace
+            either.
+            {data.data?.traceSince ? (
+              <>
+                {' '}
+                Window titles are kept from{' '}
+                <span className="num">
+                  {formatDate(data.data.traceSince)}
+                </span>{' '}
+                onward, so nothing older is listed.
+              </>
+            ) : null}
+          </Notice>
+        </div>
+      )}
+
       {data.loading && !data.data && <Loading />}
       {data.error && <ErrorBox error={data.error} retry={data.reload} />}
 
@@ -761,6 +713,25 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                   </span>
                 ),
               },
+              /**
+               * ⭐⭐⭐ **দাবির পাশে মাপ** *(মালিকের চাওয়া, ৯ সেপ্টেম্বর
+               * ২০২৬: "ka banao")*।
+               *
+               * ⚠️⚠️ **কেন কলামটা দরকার হলো।** "শেষ" চিহ্নটা কর্মীর
+               * নিজের ক্লিক — কেউ যাচাই করে না। ৮ সেপ্টেম্বরে একজনের
+               * ৩২টা "শেষ" নিয়ে প্রশ্ন উঠলে উত্তর দিতে ডাটাবেসে হাতে
+               * কোয়েরি লিখতে হয়েছিল, কারণ পর্দায় দাবিটা ছিল, দাবির
+               * পাশে কিছু ছিল না।
+               *
+               * ⭐ নতুন কিছু জমা করতে হয়নি — এজেন্ট শিরোনাম আগে থেকেই
+               * রাখে, আর ফাইলের নাম শুরু হয় জব-নম্বরে।
+               */
+              {
+                key: 'file',
+                header: 'File',
+                className: 'hidden sm:table-cell',
+                render: (r) => <FileCell sec={r.fileSec} />,
+              },
               {
                 key: 'people',
                 header: 'People',
@@ -930,6 +901,57 @@ function StatusChip({ row }: { row: TargetRow }) {
  * এখন **কবে এসেছে** সেটা বসে — ওটাই ওই সারির একমাত্র খবর, আর ঘরটা
  * খালি রাখার চেয়ে সত্যি কথা বলা ভালো।
  */
+/**
+ * ⭐⭐ **ফাইলের চিহ্ন — তিনটে অবস্থা, তিন রকম লেখা** *(৯ সেপ্টেম্বর ২০২৬)*।
+ *
+ * | মান | পর্দায় | মানে |
+ * |---|---|---|
+ * | `null` | `—` | ⚠️ বলার মতো কিছু নেই — হয় তখনকার শিরোনাম জমা নেই, নয় সারিটা এখনো শেষ বলা হয়নি |
+ * | `0` | `no trace` | **শেষ বলা হয়েছে**, অথচ কখনো খোলা হয়নি |
+ * | `> 0` | `18m` / `45s` | এতক্ষণ পর্দায় ছিল |
+ *
+ * ⚠️⚠️ **`formatDuration()` এখানে একা যথেষ্ট নয়, আর কারণটা সূক্ষ্ম:**
+ * ওটা ২০ সেকেন্ডকে `0m` লেখে, আর `0m` দেখতে হুবহু "কখনো খোলা হয়নি"-র
+ * মতো। অথচ এই কলামে ঠিক ওই পার্থক্যটাই সবচেয়ে দরকারি খবর — ২০ সেকেন্ড
+ * মানে ফাইলটা খোলা হয়েছিল, আর শূন্য মানে হয়নি। ⭐ তাই এক মিনিটের নিচে
+ * সেকেন্ডেই লেখা হয়।
+ *
+ * ⚠️ `0`-র রংটা **সতর্কতার নয়** — ধূসর। লাল করলে তালিকাটা অভিযোগ হয়ে
+ * যেত, অথচ সেভ না করা ফাইলও ঠিক এই ঘরেই পড়ে।
+ */
+function FileCell({ sec }: { sec: number | null }) {
+  if (sec === null) {
+    return (
+      <span
+        className="num text-[12px] text-ink-3"
+        title="Nothing to say yet — either this is not marked done, or no window titles were kept from back then"
+      >
+        —
+      </span>
+    );
+  }
+
+  if (sec === 0) {
+    return (
+      <span
+        className="text-[11.5px] text-ink-3 italic"
+        title="Marked done, but no file starting with this job number was ever open in Illustrator or Photoshop. A file saved under another name leaves no trace either."
+      >
+        no trace
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="num whitespace-nowrap text-[12px] text-ink-2"
+      title="How long a file starting with this job number was on screen in Illustrator or Photoshop"
+    >
+      {sec < 60 ? `${sec}s` : formatDuration(sec)}
+    </span>
+  );
+}
+
 function WhenCell({ row }: { row: TargetRow }) {
   const when =
     row.completedAt ?? row.startedAt ?? row.assignedAt ?? row.addedAt;
