@@ -67,33 +67,49 @@ export class FileTraceService {
   }
 
   /**
-   * ⭐⭐ **কখনো পর্দায় এসেছে এমন সব জব-নম্বর।**
+   * ⭐⭐⭐ **শেষ বলা হয়েছে, অথচ ওই নম্বরের ফাইল কোনোদিন খোলা হয়নি** —
+   * `from`-এর পর থেকে, জব-নম্বরের তালিকা।
    *
-   * ⚠️ গোটা তালিকাটা একবারে আনা হয় (আজ ~২,৮০০টা) — কারণ প্রশ্নটা
-   * উল্টো দিকের: *"কোনগুলো কখনো আসেনি"*, আর সেটা `NOT IN` ছাড়া
-   * Prisma-য় লেখা যায় না। ⭐ সংখ্যাটা বছরে হাজার দুয়েক বাড়ে, তাই
-   * অনেক দিন এভাবেই চলবে।
+   * ⚠️⚠️ **প্রশ্নটা `design_targets` থেকে জিজ্ঞেস করা হয়, `app_usage`
+   * থেকে নয় — আর এই দিকটাই গোটা খরচের পার্থক্য** *(৯ সেপ্টেম্বর ২০২৬,
+   * প্রোডাকশনে মাপা)*।
    *
-   * ⚠️ ছয় অঙ্ক বা তার কম **এখানেও থাকে**: `keepKnownLongIds` কেবল
-   * ক্রেডিট বসানোর সময় লম্বা নম্বর ছাঁকে, আর এখানে খোঁজা হচ্ছে
-   * `design_targets.job_number` ধরে — যা সংজ্ঞা অনুযায়ীই "জানা নম্বর"।
+   * | কোন দিক থেকে | কী ঘটে | সময় |
+   * |---|---|---|
+   * | `app_usage` → সব নম্বর, তারপর `NOT IN` | ১৪,২২৫ সারিতে regex **আবার** গোনা | **৯৩০ ms** |
+   * | `design_targets` → প্রতিটার জন্য একটা প্রোব | ১,৮২১টা ইনডেক্স-লুকআপ, ৫µs করে | **২৫ ms** |
+   *
+   * ⭐ সূচকে হিসাবটা **আগে থেকেই বসানো**; প্রথম পথটা সেটা ব্যবহারই করত
+   * না — সূচক দিয়ে কেবল সারিগুলো বেছে নিয়ে তারপর হিপ থেকে পড়ে regex
+   * নতুন করে চালাত (`Bitmap Heap Scan`, ৩,৮৮৪ ব্লক)।
+   *
+   * ⚠️ ফেরত তালিকাটা `IN (…)` হয়ে Prisma-য় যায়। আজ **৪৭০**টা; ধীরে
+   * বাড়বে (আর ফাইলের নাম দেওয়ার অভ্যাস ভালো হলে **কমবে**)। ৩০ হাজার
+   * ছাড়ালে Postgres-এর প্যারামিটার-সীমা কাছে আসবে, আর তখন ছাঁকনি ও
+   * পাতা-ভাগ দুটোই SQL-এ নামাতে হবে।
+   *
+   * ⚠️ ছয় অঙ্ক বা তার কম **এখানেও ধরা পড়ে**: `keepKnownLongIds` কেবল
+   * ক্রেডিট বসানোর সময় লম্বা নম্বর ছাঁকে, আর এখানে মিলানো হচ্ছে
+   * `design_targets.job_number`-এর সাথে — যা সংজ্ঞা অনুযায়ীই "জানা নম্বর"।
    */
-  async seenJobNumbers(): Promise<number[]> {
-    const rows = await this.prisma.$queryRaw<{ did: string | null }[]>`
-      SELECT DISTINCT ${Prisma.raw(DESIGN_ID_SQL_EXPR)} AS did
-      FROM app_usage
-      WHERE ${Prisma.raw(DESIGN_APPS_SQL)}
-        AND ${Prisma.raw(DESIGN_ID_SQL_EXPR)} IS NOT NULL`;
+  async unseenJobNumbers(from: Date): Promise<number[]> {
+    /**
+     * ⚠️ ভেতরের কোয়েরিতে `window_title`/`process_name` **যোগ্যতা ছাড়া**
+     * লেখা — ঠিক যেভাবে `migration.sql`-এর সূচকে আছে। ভেতরের স্কোপ
+     * আগে খোঁজা হয়, তাই ওগুলো `app_usage`-এরই কলাম।
+     */
+    const rows = await this.prisma.$queryRaw<{ job_number: number }[]>`
+      SELECT t.job_number
+      FROM design_targets t
+      WHERE t.completed_at >= ${from}
+        AND t.job_number IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM app_usage a
+          WHERE ${Prisma.raw(DESIGN_APPS_SQL)}
+            AND ${Prisma.raw(DESIGN_ID_SQL_EXPR)} = t.job_number::text
+        )`;
 
-    const out: number[] = [];
-    for (const r of rows) {
-      if (r.did === null) continue;
-      const n = Number.parseInt(r.did, 10);
-      // ⚠️ `job_number` কলামটা `Int` — বড় কিছু পাঠালে Prisma ছুড়ত
-      if (Number.isSafeInteger(n) && n <= 2_147_483_647) out.push(n);
-    }
-
-    return out;
+    return rows.map((r) => r.job_number);
   }
 
   /**

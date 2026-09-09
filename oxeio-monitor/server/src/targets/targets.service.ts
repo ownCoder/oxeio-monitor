@@ -1054,11 +1054,19 @@ export class TargetsService {
     const since = traceSince === null ? null : dhakaStart(traceSince);
 
     /**
-     * ⚠️ গোটা তালিকাটা কেবল **এই একটা ধাপের** জন্য আনা হয় — প্রশ্নটা
-     * উল্টো দিকের ("কোনগুলো কখনো আসেনি"), আর সেটা `notIn` ছাড়া লেখা যায় না।
+     * ⭐ কেবল **এই একটা ধাপের** জন্য — আর প্রশ্নটা `design_targets` থেকে
+     * জিজ্ঞেস করা হয় বলে খরচ ৯৩০ ms থেকে ২৫ ms-এ নামে
+     * ([`unseenJobNumbers`](./file-trace.service.ts))।
      */
-    const seenJobs =
-      query.stage === 'no_file' ? await this.trace.seenJobNumbers() : [];
+    const noFileFrom =
+      traceSince === null
+        ? null
+        : dhakaStart(laterDay(UPLOAD_QUEUE_FROM, traceSince));
+
+    const unseenJobs =
+      query.stage === 'no_file' && noFileFrom !== null
+        ? await this.trace.unseenJobNumbers(noFileFrom)
+        : [];
 
     const stage =
       /**
@@ -1077,15 +1085,12 @@ export class TargetsService {
        * পরেরটা যেটা, সেটাই ধরা হয়।
        */
       query.stage === 'no_file'
-        ? traceSince === null
+        ? noFileFrom === null
           ? // ⚠️ একটাও শিরোনাম জমা নেই — তখন কারো নামে কিছু বলার অধিকার নেই
             { id: { in: [] as number[] } }
           : {
-              completedAt: {
-                not: null,
-                gte: dhakaStart(laterDay(UPLOAD_QUEUE_FROM, traceSince)),
-              },
-              jobNumber: { not: null, notIn: seenJobs },
+              completedAt: { not: null, gte: noFileFrom },
+              jobNumber: { in: unseenJobs },
             }
         : query.stage === 'to_check'
         ? {

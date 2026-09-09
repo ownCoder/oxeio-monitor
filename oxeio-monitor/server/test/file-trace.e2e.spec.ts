@@ -170,6 +170,17 @@ const CORPUS: readonly string[] = [
   '1050918_OL5I.psd',
 ];
 
+/**
+ * ⭐⭐ **কেবল একটা ভাঙা নিয়মই যে নম্বরগুলো বানাতে পারে।**
+ *
+ * ⚠️ উপরের তালিকার কোনো শিরোনাম থেকেই এগুলো বেরোনোর কথা নয় —
+ * বেরোলে বুঝতে হবে SQL-এর নিয়মটা সরে গেছে:
+ *   · `100004`  — সীমানা-যাচাই না থাকলে `1000042` কেটে ছয় অঙ্ক
+ *   · `1016337` — `10163372_181.eps` থেকে, `(?![0-9])` না থাকলে
+ *   · `4` · `12` — "দুইয়ের কম নয়" নিয়মটা আলগা হলে
+ */
+const WRONG_IDS: readonly number[] = [100004, 1016337, 105091, 4, 12];
+
 describe('ফাইলের চিহ্ন — SQL আর TypeScript একই নিয়ম', () => {
   /**
    * ⭐⭐⭐ **এই ফাইলের সবচেয়ে জরুরি টেস্ট।**
@@ -191,8 +202,15 @@ describe('ফাইলের চিহ্ন — SQL আর TypeScript একই
       if (id !== null) fromTs.add(Number.parseInt(id, 10));
     }
 
-    // ── Postgres-এর উত্তর
-    const fromSql = new Set(await trace.seenJobNumbers());
+    /**
+     * ── Postgres-এর উত্তর, **প্রোডাকশনের কোড দিয়েই**।
+     *
+     * ⚠️⚠️ জিজ্ঞেস করা হয় সঠিক নম্বরগুলো **আর** ভুল নিয়মে যেগুলো
+     * বেরোত — দুটো একসাথে। তাই দুদিকেই ধরা পড়ে: সঠিকটা হারালেও, আর
+     * ভুলটা এসে পড়লেও।
+     */
+    const probe = [...new Set([...fromTs, ...WRONG_IDS])];
+    const fromSql = new Set((await trace.secondsFor(probe)).keys());
 
     expect([...fromSql].sort((a, b) => a - b)).toEqual(
       [...fromTs].sort((a, b) => a - b),
