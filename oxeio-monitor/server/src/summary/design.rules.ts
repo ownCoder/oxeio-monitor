@@ -249,6 +249,41 @@ export function designTargetOf(
   return own ?? policy ?? 0;
 }
 
+/**
+ * ⭐⭐⭐ **একদিনে সর্বোচ্চ কতগুলো "শেষ" বলা যাবে** *(মালিকের নিয়ম,
+ * ৯ সেপ্টেম্বর ২০২৬: "kono designer daily 25 tar beshi design complete
+ * korte parbena")* — `null` মানে **কোনো সীমা নেই**।
+ *
+ * ⚠️⚠️ সীমাটা `designTargetOf()`-এর সংখ্যাই, আলাদা কোনো ধ্রুবক নয়। দুটো
+ * আলাদা সংখ্যা রাখলে একদিন কারো টার্গেট ৩০ করা হতো আর সীমা ২৫-এই আটকে
+ * থাকত — অর্থাৎ টার্গেট ছোঁয়াই অসম্ভব হয়ে যেত।
+ *
+ * | কে | সীমা | কেন |
+ * |---|---|---|
+ * | ডিজাইনার, টার্গেট ২৫ | **২৫** | নিয়মটা যাঁদের জন্য |
+ * | ডিজাইনার, টার্গেট **০** | নেই | ০ = *"এর টার্গেট বন্ধ"*, শাস্তি নয় |
+ * | ম্যানেজার (OX-01) | নেই | তাঁর টার্গেটই নেই; মাঠে তিনি দিনে ৪৪ পর্যন্ত করেন |
+ *
+ * ⚠️⚠️ **সীমাটা কেবল ডিজাইনারের নিজের হাতে-চাপা বোতামে।** মালিক বা
+ * ম্যানেজার কারো হয়ে চিহ্ন দিলে এটা খাটে না — নইলে ভুল সংশোধনের পথটাই
+ * বন্ধ হয়ে যেত, আর অডিটে (`completed_by_id`) কে করেছে সেটা এমনিতেই লেখা
+ * থাকে।
+ *
+ * ⚠️ মাঠে মেপে দেখা *(২৩ আগস্ট–৯ সেপ্টেম্বর)*: ১,৬৮৭টা "শেষ"-এর মধ্যে
+ * এই সীমা আটকাত **১৩টা** (০.৮%) — সবই OX-09 (৯) ও OX-08 (৪)।
+ */
+export function dailyCompletionCap(
+  staffType: string | null | undefined,
+  own: number | null | undefined,
+  policy: number | null | undefined,
+): number | null {
+  if (!hasDesignTarget(staffType)) return null;
+
+  const target = designTargetOf(own, policy);
+
+  return target > 0 ? target : null;
+}
+
 export interface DesignView {
   done: number;
   /** ⚠️ `null` = **এই কর্মীর কোনো ডিজাইন-টার্গেট নেই** — শূন্য টার্গেট নয় */

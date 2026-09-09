@@ -4,6 +4,7 @@ import {
   KNOWN_JOB_FROM,
   designIdOf,
   designFirstSeenInDay,
+  dailyCompletionCap,
   designTargetOf,
   designView,
   hasDesignTarget,
@@ -227,6 +228,44 @@ describe('hasDesignTarget · designView', () => {
  * (`1536601`, `5005369`, `5524618`, `9937760`), আর ওগুলো ডিজাইন বলে
  * গোনা হচ্ছিল।
  */
+
+describe('dailyCompletionCap — দিনে সর্বোচ্চ কতগুলো "শেষ"', () => {
+  /**
+   * ⭐⭐⭐ **সীমাটা টার্গেটের সংখ্যাই, আলাদা ধ্রুবক নয়।**
+   *
+   * ⚠️⚠️ দুটো আলাদা সংখ্যা রাখলে একদিন কারো টার্গেট ৩০ করা হতো আর সীমা
+   * ২৫-এই আটকে থাকত — অর্থাৎ টার্গেট ছোঁয়াই অসম্ভব হয়ে যেত।
+   */
+  it('⭐⭐⭐ ডিজাইনারের নিজের টার্গেটই সীমা', () => {
+    expect(dailyCompletionCap('designer', 30, 25)).toBe(30);
+    expect(dailyCompletionCap('designer', null, 25)).toBe(25);
+  });
+
+  /**
+   * ⭐⭐⭐ **ম্যানেজারের কোনো সীমা নেই।**
+   *
+   * ⚠️⚠️ মাঠে OX-01 দিনে ৪৪ পর্যন্ত করেন, আর তাঁর কোনো টার্গেটই নেই।
+   * ⚠️ পলিসির সংখ্যাটা (২৫) তাঁর জন্যও আসে, তাই গেটটা `staffType` ধরেই
+   * হতে হয় — সংখ্যা ধরে নয়।
+   */
+  it('⭐⭐⭐ টার্গেট নেই যাঁর, সীমাও নেই — পলিসিতে ২৫ থাকলেও', () => {
+    expect(dailyCompletionCap('manager', null, 25)).toBeNull();
+    expect(dailyCompletionCap('researcher', null, 25)).toBeNull();
+    expect(dailyCompletionCap(null, null, 25)).toBeNull();
+  });
+
+  /**
+   * ⚠️⚠️ **০ মানে "এর টার্গেট বন্ধ", শাস্তি নয়** — `designTargetOf`-এর
+   * নোটে ওটা একটা বৈধ সিদ্ধান্ত। সীমা ০ ধরলে তিনি একটাও শেষ করতে
+   * পারতেন না।
+   */
+  it('⭐⭐⭐ টার্গেট ০ মানে সীমা নেই, সীমা ০ নয়', () => {
+    expect(dailyCompletionCap('designer', 0, 25)).toBeNull();
+    expect(dailyCompletionCap('designer', null, 0)).toBeNull();
+    expect(dailyCompletionCap('designer', null, null)).toBeNull();
+  });
+});
+
 describe('keepKnownLongIds — লম্বা নম্বর তালিকায় থাকতেই হবে', () => {
   it('সীমাটা দশ লাখ', () => {
     expect(KNOWN_JOB_FROM).toBe(1_000_000);

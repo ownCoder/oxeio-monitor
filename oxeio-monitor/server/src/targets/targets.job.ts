@@ -28,6 +28,8 @@ export class TargetsJob {
   private readonly lock = new RunLock();
   /** ⚠️ আলাদা তালা — ফেরত ও বণ্টন কখনো একে অন্যকে আটকাবে না */
   private readonly returnLock = new RunLock();
+  /** ⚠️ টপ-আপেরও নিজের তালা — ঘণ্টার টিক যেন বণ্টনকে আটকে না রাখে */
+  private readonly topUpLock = new RunLock();
 
   constructor(private readonly targets: TargetsService) {}
 
@@ -65,6 +67,46 @@ export class TargetsJob {
   async returnScheduled(): Promise<void> {
     if (!SCHEDULING_ENABLED) return;
     await this.returnOnce();
+  }
+
+  /**
+   * ⭐⭐⭐ **কাজের সময়ে ঘণ্টায় একবার হাত দেখে নেওয়া** *(৯ সেপ্টেম্বর ২০২৬)*।
+   *
+   * ⚠️⚠️ **এটা সকালের বণ্টনের নকল নয়** — ওটা সবাইকে ৩০-এ তোলে, এটা কেবল
+   * তাঁকেই ছোঁয় যিনি আজ ২৫ ছুঁতে পারবেন না। হাত ভরা থাকলে `topUpSize()`
+   * ০ ফেরত দেয়, তাই বেশিরভাগ টিকে কিছুই ঘটে না।
+   *
+   * ⚠️ ঘটনার সাথে সাথে চালানো (`markDone`/`skip`-এর পরে) **যথেষ্ট নয়**:
+   * যাঁর হাতে একটাও নেই তিনি কিছু চাপতেই পারেন না, আর ঠিক তাঁর কথাই
+   * নিয়মটা বলে। মাঠে ওই দশা হয় যখন সকালে পুলে কম থাকে — `allocationSizes`
+   * কর্মী-কোডের ক্রমে দেয়, আর শেষজন কিছুই পান না।
+   *
+   * ⭐ ৯টা–৭টা, কারণ এর বাইরে কেউ কাজ করেন না আর পুল ঘাঁটার মানে নেই।
+   * ⚠️ মিনিট ৫-এ, ঠিক ঘণ্টায় নয় — অন্য জবগুলোর সাথে একসাথে চললে
+   *    ডাটাবেসে অকারণ ভিড় হতো।
+   */
+  @Cron('0 5 9-19 * * *', {
+    name: 'design-target-top-up',
+    timeZone: JOB_TIMEZONE,
+    disabled: !SCHEDULING_ENABLED,
+    waitForCompletion: true,
+  })
+  async topUpScheduled(): Promise<void> {
+    if (!SCHEDULING_ENABLED) return;
+    await this.topUpOnce();
+  }
+
+  /** টেস্ট বা হাতে চালানোর জন্য। ⚠️ কখনো throw করে না। */
+  async topUpOnce(now: Date = new Date()): Promise<void> {
+    await this.topUpLock.run(async () => {
+      try {
+        await this.targets.topUpAll(now);
+      } catch (err) {
+        this.logger.error(
+          `Top-up sweep failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    });
   }
 
   /** টেস্ট বা হাতে চালানোর জন্য। ⚠️ কখনো throw করে না। */

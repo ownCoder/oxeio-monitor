@@ -8,9 +8,15 @@ import {
 } from '@nestjs/common';
 import { DesignTargetStatus, Prisma, UserRole } from '@prisma/client';
 
+import { localMidnightOf, nextLocalMidnight } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  dailyCompletionCap,
+  designTargetOf,
+  hasDesignTarget,
+} from '../summary/design.rules';
 import { FileTraceService } from './file-trace.service';
 import {
   allocationSizes,
@@ -21,6 +27,7 @@ import {
   fileSecOf,
   parseBulk,
   POOL_PER_DESIGNER,
+  topUpSize,
   UPLOAD_QUEUE_FROM,
   type RejectedLine,
 } from './targets.rules';
@@ -792,6 +799,7 @@ export class TargetsService {
     employeeId: number,
     id: number,
     reason: DropReason,
+    now: Date = new Date(),
   ): Promise<{ ok: boolean }> {
     const { count } = await this.prisma.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
@@ -800,6 +808,9 @@ export class TargetsService {
       //    কারণ লেখা ছিল না। ⭐ ঘরটা `dropReason`, কারণ Delete-ও এখানেই লেখে।
       data: { status: DesignTargetStatus.skipped, dropReason: reason },
     });
+
+    // ⭐ বাদ দেওয়াও হাত খালি করে — তাই এখানেও (মালিকের নিয়ম: "complete + skip")
+    if (count > 0) await this.topUp(employeeId, now);
 
     return { ok: count > 0 };
   }
@@ -814,19 +825,192 @@ export class TargetsService {
     employeeId: number,
     id: number,
     userId: number,
+    now: Date = new Date(),
   ): Promise<{ ok: boolean }> {
+    /**
+     * ⭐⭐⭐ **দিনের সীমা** *(মালিকের নিয়ম, ৯ সেপ্টেম্বর ২০২৬)* — সীমাটা
+     * তাঁর নিজের দৈনিক টার্গেটের সংখ্যাই ([`dailyCompletionCap`]).
+     *
+     * ⚠️⚠️ **এটা কেবল এই পথে** — অর্থাৎ ডিজাইনার নিজে যেখানে বোতাম
+     * চাপেন (`POST /me/targets/:id/done`)। মালিক বা ম্যানেজারের
+     * `update()` পথটা ছোঁয়া হয়নি, নইলে ভুল সংশোধনের রাস্তাই বন্ধ হতো।
+     */
+    const cap = await this.capFor(employeeId);
+
+    if (cap !== null) {
+      const doneToday = await this.completedToday(employeeId, now);
+
+      if (doneToday >= cap) {
+        /**
+         * ⚠️ সারিটা **হাতেই থেকে যায়** — মুছে যায় না, পুলেও ফেরে না।
+         * তাই কালকে এটাই আবার চেপে শেষ করা যায়, আর কাজটা হারায় না।
+         */
+        /**
+         * ⚠️⚠️ বার্তাটা **যে সংখ্যাটা গোনা হয়েছে সেটাই বলে**, টার্গেটের
+         * নাম নয়। কারণ ডিজাইনারের Home পাতা একটা **অন্য** সংখ্যা দেখায়
+         * (`design_credits` — কতগুলো ফাইল খোলা হয়েছে), আর মাঠে ওই দুটো
+         * একই দিনে ২৯ বনাম ৩২ হয়েছিল। "টার্গেট শেষ" লিখলে তিনি নিজের
+         * পর্দার সংখ্যার সাথে মেলাতে গিয়ে বিভ্রান্ত হতেন।
+         */
+        throw new ConflictException(
+          `You have already marked ${cap} designs done today, so this one ` +
+            `cannot be marked done — leave it in your list and finish it tomorrow.`,
+        );
+      }
+    }
+
     const { count } = await this.prisma.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
       data: {
         status: DesignTargetStatus.done,
-        completedAt: new Date(),
+        completedAt: now,
         completedVia: 'manual',
         // ⭐ কে চেপেছেন — `completedVia` কেবল "কীভাবে" বলে (২৩ আগস্ট)
         completedById: userId,
       },
     });
 
+    if (count > 0) await this.topUp(employeeId, now);
+
     return { ok: count > 0 };
+  }
+
+  /**
+   * ⭐⭐⭐ **সব ডিজাইনারের হাত দেখে নেওয়া** *(৯ সেপ্টেম্বর ২০২৬)* —
+   * যাঁর দরকার, কেবল তাঁকেই দেওয়া হয়।
+   *
+   * ⚠️⚠️ **কেন ঘটনার সাথে সাথে চালানোই যথেষ্ট নয়।** `topUp()` ডাকা হয়
+   * শেষ বা বাদ দেওয়ার **পরে**, অর্থাৎ কিছু একটা হাতে থাকতেই হয়। যাঁর
+   * হাতে **একটাও নেই** তিনি কিছু চাপতেই পারেন না — আর ঠিক তাঁর কথাই
+   * মালিক বলেছিলেন (*"তার কাছে করার মতো আর ডিজাইন নেই"*)।
+   *
+   * ⚠️ মাঠে ওই অবস্থাটা হয়: সকালে পুলে কম থাকলে `allocationSizes`
+   * কর্মী-কোডের ক্রমে দেয় আর শেষজন **কিছুই পান না**; মাঝদিনে যোগ দেওয়া
+   * কেউ, বা যাঁর ধরন সেদিনই `designer` করা হলো — সবারই একই দশা।
+   *
+   * ⭐ `topUp()` নিজেই idempotent (হাত ভরা থাকলে ০ ফেরত দেয়), তাই
+   * বারবার চালানো নিরাপদ।
+   */
+  async topUpAll(now: Date = new Date()): Promise<void> {
+    const designers = await this.prisma.employee.findMany({
+      where: { status: 'active', staffType: { in: [...DESIGN_WORK_STAFF_TYPES] } },
+      select: { id: true },
+      orderBy: { empCode: 'asc' },
+    });
+
+    for (const d of designers) await this.topUp(d.id, now);
+  }
+
+  /**
+   * ⭐ **এই কর্মীর দিনের সীমা** — `null` মানে সীমা নেই।
+   *
+   * ⚠️ সংখ্যাটা তিন জায়গা থেকে আসে (কর্মীর নিজের ঘর → পলিসি → নেই), আর
+   * সেই ক্রমটা `designTargetOf()`-এ একবারই লেখা।
+   */
+  private async capFor(employeeId: number): Promise<number | null> {
+    const emp = await this.prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: {
+        staffType: true,
+        dailyDesignTarget: true,
+        policy: { select: { dailyDesignTarget: true } },
+      },
+    });
+    if (emp === null) return null;
+
+    return dailyCompletionCap(
+      emp.staffType,
+      emp.dailyDesignTarget,
+      emp.policy?.dailyDesignTarget,
+    );
+  }
+
+  /**
+   * ⭐ **আজ ঢাকার দিনে কতগুলো "শেষ" বলা হয়েছে।**
+   *
+   * ⚠️⚠️ সীমানা দুটো `localMidnightOf`/`nextLocalMidnight` থেকে — হাতে
+   * কষা হয় না। `workDateOf()` একটা **লেবেল**, মুহূর্ত নয়; ওটা সরাসরি
+   * বসালে দিনটা ঢাকার ভোর ৬টায় শুরু হতো, আর এই রেপোতে ঠিক ওই ভুলটাই
+   * সবচেয়ে বেশিবার হয়েছে।
+   *
+   * ⚠️ গোনা হয় `assignedToId` ধরে, `completedById` ধরে নয় — ড্যাশবোর্ডের
+   * সংখ্যাটাও তাই, আর দুটো আলাদা হলে পর্দা ও সীমা দুটো কথা বলত।
+   */
+  private async completedToday(employeeId: number, now: Date): Promise<number> {
+    return this.prisma.designTarget.count({
+      where: {
+        assignedToId: employeeId,
+        completedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+      },
+    });
+  }
+
+  /**
+   * ⭐⭐⭐ **হাতে যথেষ্ট না থাকলে আরও দেওয়া** *(মালিকের নিয়ম,
+   * ৯ সেপ্টেম্বর ২০২৬)* — শেষ বা বাদ দেওয়ার ঠিক পরেই।
+   *
+   * ⚠️⚠️ **কখনো throw করে না।** টপ-আপ একটা সুবিধা; ওটা ব্যর্থ হলে
+   * ডিজাইনারের "শেষ করেছি" চাপাটা ব্যর্থ হবে না।
+   *
+   * ⭐ ঘটনার সাথে সাথে চলে, কোনো টিকের অপেক্ষায় নয় — নইলে কেউ হাত খালি
+   * নিয়ে দশ মিনিট বসে থাকতেন। সকালের বণ্টনের যন্ত্রটাই (`claimFor`)
+   * ব্যবহার হয়, তাই পুল থেকে তোলার নিয়ম এক জায়গাতেই থাকে।
+   */
+  private async topUp(employeeId: number, now: Date): Promise<void> {
+    try {
+      const emp = await this.prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: {
+          staffType: true,
+          dailyDesignTarget: true,
+          policy: { select: { dailyDesignTarget: true } },
+        },
+      });
+      // ⚠️ টার্গেট যাঁর নেই (ম্যানেজার), তাঁর জন্য কিছুই নয় — সকালের
+      //    বণ্টনই যথেষ্ট, আর তাঁর ছোঁয়ার মতো কোনো সংখ্যা নেই
+      if (emp === null || !hasDesignTarget(emp.staffType)) return;
+
+      const [completedToday, openCount, issuedToday] = await Promise.all([
+        this.completedToday(employeeId, now),
+        this.prisma.designTarget.count({
+          where: { assignedToId: employeeId, status: DesignTargetStatus.assigned },
+        }),
+        // ⭐ আজ মোট কতগুলো দেওয়া হয়েছে — দিনের ছাদটা এর উপরেই দাঁড়ায়
+        this.prisma.designTarget.count({
+          where: {
+            assignedToId: employeeId,
+            assignedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+          },
+        }),
+      ]);
+
+      const size = topUpSize({
+        staffType: emp.staffType,
+        completedToday,
+        openCount,
+        issuedToday,
+        dailyTarget: designTargetOf(
+          emp.dailyDesignTarget,
+          emp.policy?.dailyDesignTarget,
+        ),
+      });
+      if (size === 0) return;
+
+      const given = await this.claimFor(employeeId, size, now);
+
+      if (given > 0) {
+        this.logger.log(
+          `Design targets topped up · ${given} to employee ${employeeId} ` +
+            `(done ${completedToday}, had ${openCount})`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Top-up failed for employee ${employeeId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   /**
