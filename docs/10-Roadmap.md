@@ -1,6 +1,6 @@
 > **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
 
-> **27 September 2026 — Production expansion:** আটটি অনুমোদিত Production feature-এর code প্রস্তুত; phase-by-phase [status](production-expansion-plan.md) ও [verification](audits/2026-09-27-production-expansion.md) আলাদা। পরবর্তী operational কাজ: verified production backup, migration/API/web rollout, external monitor account/URLs ও notification verification, retained production backup restore drill। এই run-এর restore proof synthetic data-র।
+> **27 September 2026 — Production expansion:** আটটি অনুমোদিত Production feature-এর code প্রস্তুত; phase-by-phase [status](production-expansion-plan.md) ও [verification](audits/2026-09-27-production-expansion.md) আলাদা। পরবর্তী operational কাজ: verified production backup, migration/API/web rollout, external monitor account/URLs ও notification verification। Synthetic এবং VPS-এর retained production backup—দুটির isolated restore verified; ভবিষ্যৎ backup-এ drill পুনরাবৃত্তি করতে হবে।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.

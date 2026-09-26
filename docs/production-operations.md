@@ -39,3 +39,5 @@ Requires the backup's `.sha256` sidecar. The script checks the encrypted checksu
 ## Release verification
 
 Before deployment: typecheck/lint, production integration tests on a disposable database, existing target lifecycle regressions, frontend build and visual review. After deployment: health/version agreement, authenticated role checks, queue/history readback and migration presence. Do not seed test products, comments or sales into the production database.
+
+Latest drill: on 27 September 2026, both synthetic data and the retained production backup from 26 September 02:30 Dhaka restored successfully in isolated containers. See the [verification record](audits/2026-09-27-production-expansion.md) and separate checksum-bound evidence files. Production data was not changed. Repeat after rollout to cover the new schema and future snapshots.

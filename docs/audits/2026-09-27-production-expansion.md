@@ -24,11 +24,17 @@ An encrypted custom-format dump of the synthetic preview database was restored t
 
 Restored: 1 synthetic user, 2 synthetic employees, 6 synthetic targets, 37 applied migrations, 0 invalid constraints. A second run with a wrong synthetic key failed, produced no success evidence, and removed its temporary container. This validates the restore workflow, **not a retained production backup**.
 
+## Retained production-backup verification
+
+After the synthetic drill, the existing VPS backup `oxeio-2026-09-26-0230.dump.enc` (21,996,752 bytes; recorded successful at 2026-09-25 20:30 UTC) was restored on the same VPS using the same isolated tool. The source backup and production database were read only. Its existing passphrase was passed through a mode-600 temporary file without printing it and removed by an exit trap. No backup contents or credentials were downloaded.
+
+The drill completed at 2026-09-26 18:39:16 UTC (27 September 00:39 Dhaka): **14 users, 13 employees, 50,620 targets, 35 applied migrations, 0 invalid constraints**. The 35-migration count matches the pre-expansion production schema. The temporary network-isolated container and key were removed. The result establishes restoreability of this specific checksum/snapshot, not of future backups or the unreleased expansion data. [Production backup restore evidence](2026-09-27-production-backup-restore.json).
+
 ## Remaining operational work
 
 1. Take and verify a retained production backup, then deploy migrations/API/web together with health and role checks.
 2. Connect independent monitor accounts/secret ping URLs and verify external alert delivery. A configured URL is not shown as proof that an external monitor is healthy.
 3. Enable the owner action digest only after verifying the private Telegram destination. Live delivery is untested in this change.
-4. Run and retain evidence from an isolated restore of an actual production backup. Synthetic evidence is kept separately.
+4. Repeat restore drills for future retained backups, particularly after the new schema is deployed. Synthetic and real backup evidence are retained separately.
 
 The Compose file was externally renamed during implementation; the owner explicitly approved restoring `docker-compose.yml`, and its original name was restored. Existing unrelated `web/src/pages/live/OpenAlerts.tsx` was preserved.
