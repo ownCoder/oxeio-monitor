@@ -1,4 +1,6 @@
 > **Follow-up — 26 September 2026:** the system audit fixes and matched source/API/web
+
+> **27 September 2026 — Production expansion:** অনুমোদিত Studio নকশা Production Board, History drawer, Design Review, Workload, Quality, Action digest, System checks ও Product results-এ প্রসারিত হয়েছে। নতুন scope ও release সীমা [production plan](production-expansion-plan.md)-এ আছে।
 > deployment are tracked in [the repair ledger](audits/2026-09-26-fix-tracker.md).
 > Release notes below describe the preceding Studio-only deployments.
 

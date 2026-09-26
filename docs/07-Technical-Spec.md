@@ -1,4 +1,6 @@
 > **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
+
+> **27 September 2026 — Production expansion:** `/api/v1/production` module: transactional target event trigger, priority/due date, preview/comment tables, owner sales imports/costs, daily digest এবং independent success heartbeats। নতুন migration দুইটি additive; rollout-এর আগে verified backup প্রয়োজন। Role limits, CSV contract, timing ও rollback [operations guide](production-operations.md)-এ।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.

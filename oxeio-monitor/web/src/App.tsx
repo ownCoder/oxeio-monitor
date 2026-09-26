@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
@@ -22,6 +23,8 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SecurityPage } from './pages/security/SecurityPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { homePathFor, seesEveryone } from './api/auth';
+
+const ProductionPage = lazy(() => import('./pages/production/ProductionPage').then(module => ({ default: module.ProductionPage })));
 
 /**
  * তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ — তাই "লগইন করেনি অথচ ভেতরের পেজ দেখছে"
@@ -207,6 +210,7 @@ function Router() {
              এলে পাতাটা সার্ভারের বার্তাই দেখাবে, আর সেটাই এই কোডবেসের
              নিয়ম — পর্দায় লুকানো প্রথম রক্ষাকবচ, শেষ নয়।
         */}
+        <Route path="production/:section?" element={<Suspense fallback={<p>Loading production workspace…</p>}><ProductionPage /></Suspense>} />
         <Route path="targets" element={<TargetsPage />} />
         <Route path="targets/all" element={<AllTargetsPage />} />
         {/*

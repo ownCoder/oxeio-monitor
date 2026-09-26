@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
 import {
@@ -210,7 +211,7 @@ function TargetRow({
            লাগে না, লিঙ্কটা লাগে; আর নম্বরটা ছাড়া কাজ শেষই হয় না।
       */}
       <span className="num min-w-[104px] text-[19px] font-semibold tracking-tight text-ink">
-        {target.jobNumber ?? '—'}
+        {target.jobNumber ?? '—'} <Link to={`/production/board?target=${target.id}`} className="text-xs text-brand-ink hover:underline">History & review</Link>
       </span>
 
       <span className="min-w-0 flex-1">
@@ -304,7 +305,7 @@ function FinishedRow({
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line px-3 py-2">
       <span className="num min-w-[104px] text-[15px] font-semibold text-ink-2">
-        {target.jobNumber ?? '—'}
+        {target.jobNumber ?? '—'} <Link to={`/production/board?target=${target.id}`} className="text-xs text-brand-ink hover:underline">History & review</Link>
       </span>
 
       <span className="min-w-0 flex-1">

@@ -1,4 +1,6 @@
 > **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
+
+> **27 September 2026 — Production expansion:** অনুমোদিত Studio production workspace-এর আটটি feature implementation ও verification [নতুন build record](audits/2026-09-27-production-expansion.md)-এ। Production এখনও release 409 / 1081b09; নতুন feature/migration deploy করা হয়নি।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.

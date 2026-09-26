@@ -1,5 +1,7 @@
 # oXeio Workforce Monitor
 
+> **Unreleased Studio expansion:** all eight approved feature implementations are tracked in the [production plan](docs/production-expansion-plan.md), with [verification evidence](docs/audits/2026-09-27-production-expansion.md) and [operations instructions](docs/production-operations.md). External monitoring setup and production rollout remain separate.
+
 > **Current release: 409 / 1081b09** — round 2 fixes B01–B03 are deployed and verified on 26 September 2026. See the [deployment record](docs/audits/2026-09-26-round2-fixes.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment

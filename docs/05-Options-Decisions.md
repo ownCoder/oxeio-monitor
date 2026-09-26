@@ -1,4 +1,6 @@
 > **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
+
+> **27 September 2026 — Production expansion:** মালিক Studio mockup ও আটটি feature অনুমোদন করেছেন। Preview image PostgreSQL-এ থাকবে (PNG/JPEG, 2 MB, সর্বোচ্চ 50 version/target), যেন encrypted backup সেটিও ধরে। Sales মাস/live-ASIN/currency অনুযায়ী import হবে; cost explicit estimate, salary/profit নয়। Digest default off; external monitor configuration আলাদা operational step। [বিস্তারিত](production-operations.md)।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.

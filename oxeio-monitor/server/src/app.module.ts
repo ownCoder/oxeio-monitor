@@ -21,6 +21,7 @@ import { ReportsModule } from './reports/reports.module';
 import { ScreenshotsModule } from './screenshots/screenshots.module';
 import { SummaryModule } from './summary/summary.module';
 import { TargetsModule } from './targets/targets.module';
+import { ProductionModule } from './production/production.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -69,6 +70,7 @@ import { UsersModule } from './users/users.module';
     SummaryModule,
     // ⭐ ডিজাইন-টার্গেট (২২ আগস্ট) — জমা · রোজকার বণ্টন · শেষ হওয়া
     TargetsModule,
+    ProductionModule,
     AlertsModule,
     // ⚠️ OpsModule ও DigestModule দুটোরই `@Cron` আছে, কিন্তু explorer আসে
     // উপরের SummaryModule-এর global forRoot() থেকে — তাই এদের **পরে** রাখা।

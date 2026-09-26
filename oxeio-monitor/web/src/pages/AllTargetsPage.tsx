@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import {
@@ -673,6 +674,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                     >
                       {r.asin}
                     </a>
+                    <Link to={`/production/board?target=${r.id}`} className="block text-xs text-brand-ink hover:underline">History & review</Link>
                     {/*
                       ⚠️ কাজের নম্বর **না থাকলে লাইনটাই বসে না** — একটা
                          "—" দেখানোর চেয়ে ফাঁকা জায়গাই শান্ত, আর পুলে

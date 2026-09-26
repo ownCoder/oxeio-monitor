@@ -396,7 +396,7 @@ export class TargetsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.markUploaded(id, new Date());
+    return this.targets.markUploaded(id, new Date(), actor.userId);
   }
 
   /** ⭐ **"Amazon-এ লাইভ"** — সাথে নতুন পণ্যের ASIN (ঐচ্ছিক) */
@@ -407,7 +407,7 @@ export class TargetsController {
     @Body() dto: LiveDto,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.markLive(id, dto.liveAsin ?? null, new Date());
+    return this.targets.markLive(id, dto.liveAsin ?? null, new Date(), actor.userId);
   }
 
   /**
@@ -434,8 +434,8 @@ export class TargetsController {
 
   @Roles(UserRole.owner, UserRole.manager)
   @Post('distribute')
-  distribute() {
-    return this.targets.distribute();
+  distribute(@CurrentUser() actor: SessionUser) {
+    return this.targets.distribute(new Date(), actor.userId);
   }
 }
 
@@ -468,7 +468,7 @@ export class MyTargetsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DropReasonDto,
   ) {
-    return this.targets.skip(employeeIdOf(actor), id, dto.reason);
+    return this.targets.skip(employeeIdOf(actor), id, dto.reason, new Date(), actor.userId);
   }
 
   /**

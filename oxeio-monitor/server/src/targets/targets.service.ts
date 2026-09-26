@@ -12,6 +12,7 @@ import { localMidnightOf, nextLocalMidnight } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { targetHistoryContext, targetWrite } from './target-history.context';
 import {
   dailyCompletionCap,
   designTargetOf,
@@ -393,7 +394,7 @@ export class TargetsService {
    * ⚠️ কখনো throw করে না — বণ্টন ব্যর্থ হলে কাল আবার চেষ্টা হবে; এর
    * জন্য সার্ভার নামা চলবে না।
    */
-  async distribute(now: Date = new Date()): Promise<{ assigned: number }> {
+  async distribute(now: Date = new Date(), userId: number | null = null): Promise<{ assigned: number }> {
     let assigned = 0;
 
     try {
@@ -435,7 +436,7 @@ export class TargetsService {
       );
 
       for (const [employeeId, size] of sizes) {
-        assigned += await this.claimFor(employeeId, size, now);
+        assigned += await this.claimFor(employeeId, size, now, userId, 'distribution');
       }
 
       if (assigned > 0) {
@@ -468,6 +469,8 @@ export class TargetsService {
     employeeId: number,
     size: number,
     now: Date,
+    userId: number | null = null,
+    source = 'top_up',
   ): Promise<number> {
     const picked = await this.prisma.$queryRaw<{ id: number }[]>`
       SELECT id FROM design_targets
@@ -481,7 +484,7 @@ export class TargetsService {
     let count = 0;
 
     for (const row of picked) {
-      const done = await this.prisma.$executeRaw`
+      const done = await targetWrite(this.prisma, userId, source, tx => tx.$executeRaw`
         UPDATE design_targets
         SET status = 'assigned',
             assigned_to_id = ${employeeId},
@@ -492,7 +495,7 @@ export class TargetsService {
             --    নাম কোনোদিন কিছুর সাথে মিলত না।
             job_number = COALESCE(job_number, nextval('design_job_number_seq'))
         WHERE id = ${row.id} AND status = 'pool'
-      `;
+      `);
       count += done;
     }
 
@@ -552,7 +555,7 @@ export class TargetsService {
       // Recheck start and credit eligibility at the write, including credits
       // committed since the initial selection. A concurrent start on this row
       // makes PostgreSQL re-evaluate started_at after waiting for its lock.
-      const count = await this.prisma.$executeRaw`
+      const count = await targetWrite(this.prisma, null, 'end_of_day', tx => tx.$executeRaw`
         UPDATE design_targets AS target
         SET status = 'pool', assigned_to_id = NULL, assigned_at = NULL
         WHERE target.id IN (${Prisma.join(ids)})
@@ -563,7 +566,7 @@ export class TargetsService {
               AND credit.design_id = target.job_number::text
               AND credit.first_work_date = ${workDate}::date
           )
-      `;
+      `);
 
       if (count > 0) this.logger.log(`Design targets returned to the pool · ${count}`);
 
@@ -665,7 +668,7 @@ export class TargetsService {
     });
     if (before === null) return 0;
 
-    const { count } = await this.prisma.designTarget.updateMany({
+    const { count } = await targetWrite(this.prisma, by.userId, 'manual', tx => tx.designTarget.updateMany({
       where,
       data: {
         status: DesignTargetStatus.assigned,
@@ -673,7 +676,7 @@ export class TargetsService {
         completedVia: null,
         completedById: null,
       },
-    });
+    }));
     if (count === 0) return 0;
 
     /**
@@ -809,14 +812,15 @@ export class TargetsService {
     id: number,
     reason: DropReason,
     now: Date = new Date(),
+    userId: number | null = null,
   ): Promise<{ ok: boolean }> {
-    const { count } = await this.prisma.designTarget.updateMany({
+    const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
       where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
       // ⚠️⚠️ কারণটা এখন **বাধ্যতামূলক** *(৩১ আগস্ট)* — ঐচ্ছিক থাকায়
       //    পর্দা কোনোদিন কিছু পাঠায়ইনি, আর ৯৩টা skipped সারির একটাতেও
       //    কারণ লেখা ছিল না। ⭐ ঘরটা `dropReason`, কারণ Delete-ও এখানেই লেখে।
       data: { status: DesignTargetStatus.skipped, dropReason: reason },
-    });
+    }));
 
     // ⭐ বাদ দেওয়াও হাত খালি করে — তাই এখানেও (মালিকের নিয়ম: "complete + skip")
     if (count > 0) await this.topUp(employeeId, now);
@@ -846,16 +850,18 @@ export class TargetsService {
      */
     // Serialize completion decisions per employee across API instances.
     // Transaction locks are released on commit/rollback; namespace differs from clock drift.
-    const count = await this.prisma.$transaction(async (tx) => {
+    const completion = await this.prisma.$transaction(async (tx) => {
+      await targetHistoryContext(tx, userId, 'manual');
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(260926, ${employeeId}::int)::text AS locked`;
       const cap = await this.capFor(employeeId, tx);
       if (cap !== null) {
         const doneToday = await this.completedToday(employeeId, now, tx);
         if (doneToday >= cap) {
-          throw new ConflictException(
-            `You have already marked ${cap} designs done today, so this one ` +
-              `cannot be marked done — leave it in your list and finish it tomorrow.`,
-          );
+          // Commit the rejection evidence before returning HTTP 409; throwing inside
+          // this transaction would also roll the audit record back.
+          await tx.auditLog.create({ data: { userId, action: 'completion_cap_blocked',
+            targetType: 'design_target', targetId: String(id), meta: { employeeId, cap, doneToday } } });
+          return { count: 0, blockedCap: cap };
         }
       }
       const result = await tx.designTarget.updateMany({
@@ -867,11 +873,17 @@ export class TargetsService {
           completedById: userId,
         },
       });
-      return result.count;
+      return { count: result.count, blockedCap: null };
     });
-    if (count > 0) await this.topUp(employeeId, now);
+    if (completion.blockedCap !== null) {
+      throw new ConflictException(
+        `You have already marked ${completion.blockedCap} designs done today, so this one ` +
+          `cannot be marked done — leave it in your list and finish it tomorrow.`,
+      );
+    }
+    if (completion.count > 0) await this.topUp(employeeId, now);
 
-    return { ok: count > 0 };
+    return { ok: completion.count > 0 };
   }
 
   /**
@@ -1095,13 +1107,13 @@ export class TargetsService {
 
         // ⚠️ `startedAt: null` শর্তটা এখানেও — উপরের পড়া আর এই লেখার
         //    মাঝে অন্য একটা রান চিহ্ন বসিয়ে ফেলতে পারে
-        const { count: n } = await this.prisma.designTarget.updateMany({
+        const { count: n } = await targetWrite(this.prisma, null, 'agent', tx => tx.designTarget.updateMany({
           where: {
             id: row.id, startedAt: null,
             status: DesignTargetStatus.assigned, assignedToId: employeeId,
           },
           data: { startedAt: when },
-        });
+        }));
 
         count += n;
       }
@@ -1505,7 +1517,7 @@ export class TargetsService {
           ? { status, completedAt: now, completedVia: 'manual', completedById: userId }
           : { status };
 
-    const { count } = await this.prisma.designTarget.updateMany({
+    const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
       where: {
         id,
         // A retry must not move yesterday's completion into today's count.
@@ -1514,7 +1526,7 @@ export class TargetsService {
           : {}),
       },
       data,
-    });
+    }));
     if (count > 0) return { ok: true };
     if (status === DesignTargetStatus.done) {
       const existing = await this.prisma.designTarget.findUnique({
@@ -1561,14 +1573,14 @@ export class TargetsService {
 
     // Eligibility belongs in the write: a designer may complete work while
     // this request is in flight. RETURNING also makes audit IDs match actual writes.
-    const deleted = await this.prisma.designTarget.updateManyAndReturn({
+    const deleted = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateManyAndReturn({
       where: {
         id: { in: wanted },
         status: { notIn: [DesignTargetStatus.done, DesignTargetStatus.deleted] },
       },
       data: { status: DesignTargetStatus.deleted, dropReason: reason },
       select: { id: true },
-    });
+    }));
     const count = deleted.length;
     const keptDone = await this.prisma.designTarget.count({
       where: { id: { in: wanted }, status: DesignTargetStatus.done },
@@ -1768,7 +1780,7 @@ export class TargetsService {
         checkedAt: now,
         checkedById: userId,
         errorFoundAt: ok ? null : now,
-      }, 'This design is not finished yet, so there is nothing to check.');
+      }, 'This design is not finished yet, so there is nothing to check.', userId);
   }
 
   /**
@@ -1782,7 +1794,7 @@ export class TargetsService {
   async markFixed(id: number, userId: number, now: Date): Promise<{ ok: true }> {
     return this.advanceStage(id, 'errorFoundAt', 'fixedAt',
       { fixedAt: now, fixedById: userId },
-      'No spelling error was recorded for this design, so there is nothing to fix.');
+      'No spelling error was recorded for this design, so there is nothing to fix.', userId);
   }
 
   /**
@@ -1801,21 +1813,21 @@ export class TargetsService {
     userId: number,
     now: Date,
   ): Promise<{ ok: boolean }> {
-    const { count } = await this.prisma.designTarget.updateMany({
+    const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
       where: {
         id,
         status: { in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted] },
         dropReason: { not: null },
       },
       data: { reviewedAt: now, reviewedById: userId },
-    });
+    }));
 
     return { ok: count > 0 };
   }
 
-  async markUploaded(id: number, now: Date): Promise<{ ok: true }> {
+  async markUploaded(id: number, now: Date, userId: number | null = null): Promise<{ ok: true }> {
     return this.advanceStage(id, 'completedAt', 'uploadedAt', { uploadedAt: now },
-      'This design is not finished yet, so it cannot be marked uploaded.');
+      'This design is not finished yet, so it cannot be marked uploaded.', userId);
   }
 
   /**
@@ -1827,9 +1839,9 @@ export class TargetsService {
    * ⚠️ আপলোড না হয়ে লাইভ হতে পারে না — Amazon-এ কিছু ওঠাতে হলে আগে
    *    পাঠাতেই হয়।
    */
-  async markLive(id: number, liveAsin: string | null, now: Date): Promise<{ ok: true }> {
+  async markLive(id: number, liveAsin: string | null, now: Date, userId: number | null = null): Promise<{ ok: true }> {
     return this.advanceStage(id, 'uploadedAt', 'liveAt', { liveAt: now, liveAsin },
-      'This design has not been uploaded yet, so it cannot be live.');
+      'This design has not been uploaded yet, so it cannot be live.', userId);
   }
 
   /** Prerequisites and idempotency must hold at write time, not at an earlier read. */
@@ -1839,11 +1851,12 @@ export class TargetsService {
     stage: 'checkedAt' | 'fixedAt' | 'uploadedAt' | 'liveAt',
     data: Prisma.DesignTargetUncheckedUpdateManyInput,
     invalidMessage: string,
+    userId: number | null,
   ): Promise<{ ok: true }> {
-    const { count } = await this.prisma.designTarget.updateMany({
+    const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
       where: { id, [prerequisite]: { not: null }, [stage]: null },
       data,
-    });
+    }));
     if (count > 0) return { ok: true };
     const target = await this.prisma.designTarget.findUnique({
       where: { id },

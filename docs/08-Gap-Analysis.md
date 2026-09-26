@@ -1,4 +1,6 @@
 > **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
+
+> **27 September 2026 — Production expansion:** G172-এর assignment/return history এবং G173-এর actual distribution/top-up actor/source এখন transactional event log-এ আছে। Completion-cap 409 audit commit হওয়ার পরে ফেরে, তাই প্রত্যাখ্যান evidence rollback হয় না। এগুলো local implementation-এ সমাধান করা হয়েছে; production rollout বাকি। নিচের পুরোনো gap count/status ঐতিহাসিক। [Validation record](audits/2026-09-27-production-expansion.md)।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.
