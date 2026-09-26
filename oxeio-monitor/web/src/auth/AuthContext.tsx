@@ -4,14 +4,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 
-import * as authApi from '../api/auth';
 import type { Me } from '../api/auth';
 import { setUnauthorizedHandler } from '../api/client';
-import { loadSession } from './session';
+import { endSession, hasLogoutIntent, loadSession, saveLogoutIntent } from './session';
 import { IdleWarning } from './IdleWarning';
 import { login as loginRequest, type LoginCredentials } from './twoFactorApi';
 import { useIdleLogout } from './useIdleLogout';
@@ -49,6 +49,7 @@ interface AuthState {
    *    আরেক মুখ।
    */
   offline: boolean;
+  logoutStatus: 'none' | 'pending' | 'failed';
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -58,9 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [timedOut, setTimedOut] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [logoutStatus, setLogoutStatus] = useState<AuthState['logoutStatus']>(
+    () => hasLogoutIntent() ? 'pending' : 'none',
+  );
+  const logoutIntent = useRef(hasLogoutIntent());
+  const logoutInFlight = useRef(false);
+  const refreshEpoch = useRef(0);
+  const invalidateRefresh = useCallback(() => { ++refreshEpoch.current; }, []);
 
   const refresh = useCallback(async () => {
+    if (logoutIntent.current) return;
+    const epoch = ++refreshEpoch.current;
     const result = await loadSession();
+    if (logoutIntent.current || epoch !== refreshEpoch.current) return;
     if (result.kind === 'authenticated') {
       setUser(result.user);
       setOffline(false);
@@ -73,24 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setLoading(false);
   }, []);
-
-  useEffect(() => {
-    // যেকোনো রিকোয়েস্টে সেশন শেষ হলে (৩০ মিনিট নিষ্ক্রিয়তা — I09)
-    // সাথে সাথেই লগইন পর্দায় ফিরে যাওয়া
-    setUnauthorizedHandler(() => setUser(null));
-    void refresh();
-  }, [refresh]);
-
-  /**
-   * ⭐ নেট ফিরে এলে নিজে থেকেই আবার দেখা। এটা না থাকলে ব্যবহারকারীকে
-   * হাতে রিফ্রেশ করতে হতো — আর হোমস্ক্রিনের অ্যাপে "রিফ্রেশ" বোতামই নেই,
-   * তাই তাঁকে অ্যাপ বন্ধ করে আবার খুলতে হতো।
-   */
-  useEffect(() => {
-    const onOnline = (): void => void refresh();
-    window.addEventListener('online', onOnline);
-    return () => window.removeEventListener('online', onOnline);
-  }, [refresh]);
 
   const signIn = useCallback(
     async (creds: LoginCredentials): Promise<SignInResult> => {
@@ -114,12 +107,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    try {
-      await authApi.logout();
-    } finally {
-      setUser(null);
+    if (logoutInFlight.current) return;
+    logoutInFlight.current = true;
+    logoutIntent.current = true;
+    saveLogoutIntent(true);
+    ++refreshEpoch.current;
+    setLogoutStatus('pending');
+    setUser(null);
+    setLoading(false);
+    setOffline(false);
+    const ended = await endSession();
+    logoutInFlight.current = false;
+    if (ended) {
+      saveLogoutIntent(false);
+      logoutIntent.current = false;
+      setLogoutStatus('none');
+    } else {
+      setLogoutStatus('failed');
     }
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      ++refreshEpoch.current;
+      setUser(null);
+    });
+    if (logoutIntent.current) void signOut();
+    else void refresh();
+    return invalidateRefresh;
+  }, [refresh, signOut, invalidateRefresh]);
+
+  useEffect(() => {
+    const onOnline = (): void => {
+      if (logoutIntent.current) void signOut();
+      else void refresh();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [refresh, signOut]);
 
   /**
    * I09 — সময় ফুরালে সার্ভারেও cookie মুছে দেওয়া হয়।
@@ -135,8 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const idle = useIdleLogout(user !== null, expire);
 
   const value = useMemo(
-    () => ({ user, loading, signIn, signOut, refresh, timedOut, offline }),
-    [user, loading, signIn, signOut, refresh, timedOut, offline],
+    () => ({ user, loading, signIn, signOut, refresh, timedOut, offline, logoutStatus }),
+    [user, loading, signIn, signOut, refresh, timedOut, offline, logoutStatus],
   );
 
   return (

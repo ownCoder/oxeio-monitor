@@ -28,7 +28,28 @@ import { homePathFor, seesEveryone } from './api/auth';
  * বা "পাসওয়ার্ড না বদলে ঘুরে বেড়াচ্ছে" — এমন কিছু সম্ভবই নয়।
  */
 function Router() {
-  const { user, loading, offline, refresh } = useAuth();
+  const { user, loading, offline, refresh, logoutStatus, signOut } = useAuth();
+
+  if (logoutStatus !== 'none') {
+    return (
+      <div className="grid min-h-full place-items-center p-6 text-center">
+        <div className="max-w-xs" role="status">
+          <p className="text-sm font-medium text-ink">
+            {logoutStatus === 'pending' ? 'Signing out…' : 'Sign out could not be completed'}
+          </p>
+          {logoutStatus === 'failed' && <>
+            <p className="mt-2 text-sm text-ink-3">
+              Your session may still be active. Reconnect and retry before leaving this device.
+            </p>
+            <button type="button" onClick={() => void signOut()}
+              className="mt-4 rounded-md border border-line px-3 py-2 text-sm text-ink-2 hover:bg-surface-2">
+              Retry sign out
+            </button>
+          </>}
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

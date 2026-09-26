@@ -1,4 +1,4 @@
-import { me, type Me } from '../api/auth';
+import { logout, me, type Me } from '../api/auth';
 import { ApiError } from '../api/client';
 
 export type SessionResult =
@@ -15,4 +15,24 @@ export async function loadSession(): Promise<SessionResult> {
       ? { kind: 'signed-out' }
       : { kind: 'unavailable' };
   }
+}
+
+const LOGOUT_INTENT = 'oxeio.logout-pending';
+
+export function hasLogoutIntent(): boolean {
+  try { return sessionStorage.getItem(LOGOUT_INTENT) === '1'; }
+  catch { return false; }
+}
+
+export function saveLogoutIntent(pending: boolean): void {
+  try {
+    if (pending) sessionStorage.setItem(LOGOUT_INTENT, '1');
+    else sessionStorage.removeItem(LOGOUT_INTENT);
+  } catch { /* Restricted storage still allows the in-memory logout guard. */ }
+}
+
+/** A 401 already establishes that this session cannot authenticate. */
+export async function endSession(): Promise<boolean> {
+  try { await logout(); return true; }
+  catch (error) { return error instanceof ApiError && error.status === 401; }
 }

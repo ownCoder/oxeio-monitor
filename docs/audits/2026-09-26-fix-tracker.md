@@ -1,6 +1,8 @@
 # System audit fixes â€” 26 September 2026
 
 The owner authorized documenting and fixing A01â€“A07 one by one.
+
+Follow-up: [round 2 fixes B01–B03](2026-09-26-round2-fixes.md) are locally verified; their deployment status is tracked separately from release 407 below.
 Original evidence: [system audit](2026-09-26-system-audit.md).
 
 | ID | Priority | Issue | Status |

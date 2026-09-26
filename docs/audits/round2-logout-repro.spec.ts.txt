@@ -1,0 +1,31 @@
+import { describe, expect, it, vi } from 'vitest';
+const harness = vi.hoisted(() => ({ setters: [] as ReturnType<typeof vi.fn>[], owner: { id: 1, role: 'owner' } }));
+vi.mock('react', async (importOriginal) => ({
+  ...await importOriginal<typeof import('react')>(),
+  useState: (initial: unknown) => {
+    const setter = vi.fn();
+    const value = harness.setters.length === 0 ? harness.owner : initial;
+    harness.setters.push(setter);
+    return [value, setter];
+  },
+  useCallback: (fn: unknown) => fn,
+  useMemo: (factory: () => unknown) => factory(),
+  useEffect: () => {},
+}));
+vi.mock('../src/auth/useIdleLogout', () => ({ useIdleLogout: () => ({ phase: 'active' }) }));
+vi.mock('../src/api/auth', () => ({ logout: vi.fn().mockRejectedValue(new Error('network unavailable')) }));
+vi.mock('../src/auth/session', () => ({ loadSession: vi.fn().mockResolvedValue({ kind: 'authenticated', user: harness.owner }) }));
+import { AuthProvider } from '../src/auth/AuthContext';
+
+// Characterization evidence: passing means the failure path was reproduced.
+describe('round two logout evidence', () => {
+  it('clears local user after failed logout, then restores an unchanged session', async () => {
+    harness.setters.length = 0;
+    const provider = AuthProvider({ children: null });
+    const auth = provider.props.value;
+    await expect(auth.signOut()).rejects.toThrow('network unavailable');
+    expect(harness.setters[0]).toHaveBeenLastCalledWith(null);
+    await auth.refresh();
+    expect(harness.setters[0]).toHaveBeenLastCalledWith(harness.owner);
+  });
+});

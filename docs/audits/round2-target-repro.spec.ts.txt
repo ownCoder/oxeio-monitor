@@ -1,0 +1,78 @@
+import { describe, expect, it, vi } from 'vitest';
+import { TargetsService } from '../src/targets/targets.service';
+
+const now = new Date('2026-09-26T10:00:00Z');
+function service(prisma: any) {
+  return new TargetsService(prisma, {} as any, {} as any);
+}
+
+// Characterization evidence: passing means the BUG was reproduced.
+// Mock storage enforces the predicates supplied by the real service.
+describe('round two audit evidence', () => {
+  it('returns a target whose work starts after the selection', async () => {
+    const row: any = { id: 101, jobNumber: 1000001, assignedToId: 7, status: 'assigned', startedAt: null };
+    const svc = service({
+      designCredit: { findMany: vi.fn().mockResolvedValue([]) },
+      designTarget: {
+        findMany: vi.fn(async () => {
+          const snapshot = { ...row };
+          row.startedAt = now; // Agent records a start before the return UPDATE.
+          return [snapshot];
+        }),
+        updateMany: vi.fn(async ({ where, data }) => {
+          if (!where.id.in.includes(row.id) || where.status !== row.status ||
+              ('startedAt' in where && where.startedAt !== row.startedAt)) return { count: 0 };
+          Object.assign(row, data);
+          return { count: 1 };
+        }),
+      },
+    });
+    expect(await svc.returnUnworked(now)).toEqual({ returned: 1 });
+    expect(row.startedAt).toEqual(now);
+    expect(row.status).toBe('pool');
+    expect(row.assignedToId).toBeNull();
+  });
+
+  it('marks an unfinished target uploaded after a concurrent undo', async () => {
+    const row: any = { id: 101, status: 'done', completedAt: now, uploadedAt: null };
+    const svc = service({ designTarget: {
+      findUnique: vi.fn(async () => {
+        const snapshot = { ...row };
+        Object.assign(row, { status: 'assigned', completedAt: null });
+        return snapshot;
+      }),
+      update: vi.fn(async ({ where, data }) => {
+        expect(where).toEqual({ id: row.id });
+        Object.assign(row, data);
+        return row;
+      }),
+    } });
+    await svc.markUploaded(row.id, now);
+    expect(row.completedAt).toBeNull();
+    expect(row.status).toBe('assigned');
+    expect(row.uploadedAt).toEqual(now);
+  });
+
+  it('overwrites an existing upload timestamp on concurrent duplicate requests', async () => {
+    const row: any = { id: 101, completedAt: now, uploadedAt: null };
+    let reads = 0;
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const svc = service({ designTarget: {
+      findUnique: vi.fn(async () => {
+        const snapshot = { ...row };
+        if (++reads === 2) release();
+        await gate;
+        return snapshot;
+      }),
+      update: vi.fn(async ({ where, data }) => {
+        expect(where).toEqual({ id: row.id });
+        Object.assign(row, data);
+        return row;
+      }),
+    } });
+    const later = new Date(now.getTime() + 1000);
+    await Promise.all([svc.markUploaded(row.id, now), svc.markUploaded(row.id, later)]);
+    expect(row.uploadedAt).toEqual(later);
+  });
+});

@@ -549,12 +549,21 @@ export class TargetsService {
         .map((t) => t.id);
       if (ids.length === 0) return { returned: 0 };
 
-      const { count } = await this.prisma.designTarget.updateMany({
-        // ⚠️ `status` শর্তটা এখানেও — এই ফাঁকে কেউ শেষ করে ফেললে তাঁর
-        //    কাজটা যেন পুলে ফেরত না যায়
-        where: { id: { in: ids }, status: DesignTargetStatus.assigned },
-        data: { status: DesignTargetStatus.pool, assignedToId: null, assignedAt: null },
-      });
+      // Recheck start and credit eligibility at the write, including credits
+      // committed since the initial selection. A concurrent start on this row
+      // makes PostgreSQL re-evaluate started_at after waiting for its lock.
+      const count = await this.prisma.$executeRaw`
+        UPDATE design_targets AS target
+        SET status = 'pool', assigned_to_id = NULL, assigned_at = NULL
+        WHERE target.id IN (${Prisma.join(ids)})
+          AND target.status = 'assigned' AND target.started_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM design_credits AS credit
+            WHERE credit.employee_id = target.assigned_to_id
+              AND credit.design_id = target.job_number::text
+              AND credit.first_work_date = ${workDate}::date
+          )
+      `;
 
       if (count > 0) this.logger.log(`Design targets returned to the pool · ${count}`);
 
@@ -1087,7 +1096,10 @@ export class TargetsService {
         // ⚠️ `startedAt: null` শর্তটা এখানেও — উপরের পড়া আর এই লেখার
         //    মাঝে অন্য একটা রান চিহ্ন বসিয়ে ফেলতে পারে
         const { count: n } = await this.prisma.designTarget.updateMany({
-          where: { id: row.id, startedAt: null },
+          where: {
+            id: row.id, startedAt: null,
+            status: DesignTargetStatus.assigned, assignedToId: employeeId,
+          },
           data: { startedAt: when },
         });
 
@@ -1752,27 +1764,11 @@ export class TargetsService {
     userId: number,
     now: Date,
   ): Promise<{ ok: true }> {
-    const target = await this.prisma.designTarget.findUnique({
-      where: { id },
-      select: { completedAt: true, checkedAt: true },
-    });
-    if (!target) throw new NotFoundException('No design target with this id');
-    if (target.completedAt === null) {
-      throw new BadRequestException(
-        'This design is not finished yet, so there is nothing to check.',
-      );
-    }
-    if (target.checkedAt !== null) return { ok: true };
-
-    await this.prisma.designTarget.update({
-      where: { id },
-      data: {
+    return this.advanceStage(id, 'completedAt', 'checkedAt', {
         checkedAt: now,
         checkedById: userId,
         errorFoundAt: ok ? null : now,
-      },
-    });
-    return { ok: true };
+      }, 'This design is not finished yet, so there is nothing to check.');
   }
 
   /**
@@ -1784,23 +1780,9 @@ export class TargetsService {
    * একটা ফুলে যাওয়া সংখ্যা দেখে ("বেলাল ১৬টা ডিজাইন করেছে?")।
    */
   async markFixed(id: number, userId: number, now: Date): Promise<{ ok: true }> {
-    const target = await this.prisma.designTarget.findUnique({
-      where: { id },
-      select: { errorFoundAt: true, fixedAt: true },
-    });
-    if (!target) throw new NotFoundException('No design target with this id');
-    if (target.errorFoundAt === null) {
-      throw new BadRequestException(
-        'No spelling error was recorded for this design, so there is nothing to fix.',
-      );
-    }
-    if (target.fixedAt !== null) return { ok: true };
-
-    await this.prisma.designTarget.update({
-      where: { id },
-      data: { fixedAt: now, fixedById: userId },
-    });
-    return { ok: true };
+    return this.advanceStage(id, 'errorFoundAt', 'fixedAt',
+      { fixedAt: now, fixedById: userId },
+      'No spelling error was recorded for this design, so there is nothing to fix.');
   }
 
   /**
@@ -1832,25 +1814,8 @@ export class TargetsService {
   }
 
   async markUploaded(id: number, now: Date): Promise<{ ok: true }> {
-    const target = await this.prisma.designTarget.findUnique({
-      where: { id },
-      select: { completedAt: true, uploadedAt: true },
-    });
-    if (!target) throw new NotFoundException('No design target with this id');
-    if (target.completedAt === null) {
-      throw new BadRequestException(
-        'This design is not finished yet, so it cannot be marked uploaded.',
-      );
-    }
-    // ⚠️ আগে চিহ্ন বসে থাকলে তারিখটা সরানো হয় না — "কবে আপলোড হলো"
-    //    প্রতিবার আজকের তারিখে লাফ দিত
-    if (target.uploadedAt !== null) return { ok: true };
-
-    await this.prisma.designTarget.update({
-      where: { id },
-      data: { uploadedAt: now },
-    });
-    return { ok: true };
+    return this.advanceStage(id, 'completedAt', 'uploadedAt', { uploadedAt: now },
+      'This design is not finished yet, so it cannot be marked uploaded.');
   }
 
   /**
@@ -1863,22 +1828,31 @@ export class TargetsService {
    *    পাঠাতেই হয়।
    */
   async markLive(id: number, liveAsin: string | null, now: Date): Promise<{ ok: true }> {
+    return this.advanceStage(id, 'uploadedAt', 'liveAt', { liveAt: now, liveAsin },
+      'This design has not been uploaded yet, so it cannot be live.');
+  }
+
+  /** Prerequisites and idempotency must hold at write time, not at an earlier read. */
+  private async advanceStage(
+    id: number,
+    prerequisite: 'completedAt' | 'errorFoundAt' | 'uploadedAt',
+    stage: 'checkedAt' | 'fixedAt' | 'uploadedAt' | 'liveAt',
+    data: Prisma.DesignTargetUncheckedUpdateManyInput,
+    invalidMessage: string,
+  ): Promise<{ ok: true }> {
+    const { count } = await this.prisma.designTarget.updateMany({
+      where: { id, [prerequisite]: { not: null }, [stage]: null },
+      data,
+    });
+    if (count > 0) return { ok: true };
     const target = await this.prisma.designTarget.findUnique({
       where: { id },
-      select: { uploadedAt: true, liveAt: true },
+      select: { completedAt: true, errorFoundAt: true, uploadedAt: true,
+        checkedAt: true, fixedAt: true, liveAt: true },
     });
     if (!target) throw new NotFoundException('No design target with this id');
-    if (target.uploadedAt === null) {
-      throw new BadRequestException(
-        'This design has not been uploaded yet, so it cannot be live.',
-      );
-    }
-    if (target.liveAt !== null) return { ok: true };
-
-    await this.prisma.designTarget.update({
-      where: { id },
-      data: { liveAt: now, liveAsin },
-    });
-    return { ok: true };
+    if (target[prerequisite] === null) throw new BadRequestException(invalidMessage);
+    if (target[stage] !== null) return { ok: true };
+    throw new ConflictException('This design changed during the request. Please try again.');
   }
 }
