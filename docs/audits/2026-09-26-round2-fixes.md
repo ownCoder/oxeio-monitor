@@ -1,6 +1,6 @@
 # Round 2 fixes — 26 September 2026
 
-The owner requested fixes for [B01–B03](2026-09-26-system-audit-round2.md). All three are repaired and verified in the local working tree. These changes have not been committed, pushed, or deployed; the live application remains on the previously deployed release.
+The owner requested fixes for [B01–B03](2026-09-26-system-audit-round2.md), then authorized deployment. All three are repaired and deployed as **release 409 / 1081b09** on `https://hub.oxeio.com`. Verified on 26 September 2026 at 17:25 UTC.
 
 | Finding | Repair | Verification |
 |---|---|---|
@@ -25,6 +25,16 @@ The owner requested fixes for [B01–B03](2026-09-26-system-audit-round2.md). Al
 - Existing inconsistent historical records were not rewritten.
 - Credit visibility follows PostgreSQL statement snapshots; this fix does not attempt to predict agent events that have not arrived or coordinate independent future credit transactions.
 - If browser session storage is disabled, logout intent remains protected in memory for the current page but cannot be persisted across reloads.
-- No production rollout or GitHub push is included in this repair record.
+- GitHub was not pushed during this rollout. The VPS received the source via a verified Git bundle.
+
+## Verified VPS deployment
+
+- Source commit: `1081b0934ffc5b9f8a9deb7e6c6234c8994308fd`; web and API both report build **409**, commit **1081b09**.
+- Public HTTPS health: `status: ok`, `db: up`. Web, API and PostgreSQL containers all healthy.
+- Served HTML, JavaScript, CSS and service worker match the new image byte for byte. The browser loaded Sign in and displayed matching web/API release metadata; an authenticated dashboard check was not performed because this browser session was signed out.
+- Only web/API containers were replaced. PostgreSQL retained its container identity; no migrations, seed or historical-data rewrite ran.
+- Release evidence directory: `/opt/oxeio-releases/round2-1081b09` (build metadata, health response, served-asset checks).
+- Rollback images preserve release 407: `oxeio-api:before-round2-1081b09`, `oxeio-web:before-round2-1081b09`. New images also have `round2-1081b09` tags.
+- `/opt/oxeio/.git/oxeio-deployed-commit` records the verified application commit above. Later documentation-only commits do not change runtime release 409.
 
 Active regression files: `oxeio-monitor/server/test/target-lifecycle.e2e.spec.ts`, `oxeio-monitor/web/test/logout.spec.ts`, and `oxeio-monitor/web/test/session.spec.ts`. The `.spec.ts.txt` audit files remain historical pre-fix evidence, not current passing invariants.

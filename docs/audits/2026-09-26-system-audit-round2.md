@@ -1,6 +1,6 @@
 # System audit — round 2 — 26 September 2026
 
-**Repair update:** B01–B03 are fixed and verified in the local working tree. See [round 2 fix record](2026-09-26-round2-fixes.md) for current status and tests. The findings and reproduction instructions below describe the pre-fix `eb5e681` snapshot; run the historical characterization files only against that snapshot.
+**Repair update:** B01–B03 are fixed and deployed in release **409 / 1081b09**. See [round 2 fix record](2026-09-26-round2-fixes.md) for current status and tests. The findings and reproduction instructions below describe the pre-fix `eb5e681` snapshot; run the historical characterization files only against that snapshot.
 
 Audited source: `eb5e681` on `main`. This is a new audit following the completed A01–A07 fixes, not a reopening of those sequential fixes. No application code or production data was changed in this round.
 

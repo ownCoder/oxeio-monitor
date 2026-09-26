@@ -1,5 +1,7 @@
 # oXeio Workforce Monitor
 
+> **Current release: 409 / 1081b09** — round 2 fixes B01–B03 are deployed and verified on 26 September 2026. See the [deployment record](docs/audits/2026-09-26-round2-fixes.md).
+
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
 > Earlier test totals and dated project status below are historical.

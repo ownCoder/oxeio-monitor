@@ -1,4 +1,4 @@
-> **Current audit status — 26 September 2026:** A01–A07 are fixed and verified; application release 407 is live.
+> **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.
