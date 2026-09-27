@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import {
   addTargets,
-  distributeTargets,
   REJECT_TEXT,
   targetStats,
   type BulkResult,
@@ -11,7 +10,6 @@ import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { Button, Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
-import { useAuth } from '../auth/AuthContext';
 import { Chip, Notice, ServerError, useMutation } from './settings/ui';
 import { Table } from '../components/Table';
 
@@ -30,15 +28,12 @@ import { Table } from '../components/Table';
  * ঠিক এই কারণেই Deposits-ও সাইডবারে গেছে (09 § ৩ঃ)।
  */
 export function TargetsPage() {
-  const { user } = useAuth();
   const stats = useApi(targetStats, []);
   const submit = useMutation();
-  const spread = useMutation();
 
   const [text, setText] = useState('');
   const [result, setResult] = useState<BulkResult | null>(null);
 
-  const canDistribute = user?.role === 'owner' || user?.role === 'manager';
   const s = stats.data;
 
   return (
@@ -115,7 +110,7 @@ export function TargetsPage() {
               className="num w-full rounded-lg border border-line bg-paper p-3 text-[12.5px] text-ink"
             />
 
-            <ServerError error={submit.error ?? spread.error} />
+            <ServerError error={submit.error} />
 
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -135,23 +130,6 @@ export function TargetsPage() {
                 {submit.busy ? 'Adding…' : 'Add to pool'}
               </Button>
 
-              {/*
-                ⚠️ owner/manager-only: বণ্টন একবার হয়ে গেলে ফেরানো যায় না
-                   (কাজের নম্বর বসে যায়), তাই বোতামটা সবার হাতে নয়।
-              */}
-              {canDistribute && (
-                <Button
-                  disabled={spread.busy}
-                  onClick={() =>
-                    spread.run(async () => {
-                      await distributeTargets();
-                      stats.reload();
-                    })
-                  }
-                >
-                  {spread.busy ? 'Distributing…' : 'Distribute now'}
-                </Button>
-              )}
 
               <span className="text-[12px] text-ink-3">
                 Distribution runs on its own at 8:00 every morning
