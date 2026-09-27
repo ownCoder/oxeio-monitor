@@ -201,6 +201,11 @@ class DropReasonDto {
   reason!: DropReason;
 }
 
+class SkipDecisionDto {
+  @IsBoolean()
+  approve!: boolean;
+}
+
 /**
  * **ডিজাইন-টার্গেট** *(২২ আগস্ট ২০২৬)*।
  *
@@ -390,13 +395,23 @@ export class TargetsController {
     return this.targets.markReviewed(id, actor.userId, new Date());
   }
 
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post(':id/skip-decision')
+  decideSkip(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SkipDecisionDto,
+  ) {
+    return this.targets.decideSkip(id, dto.approve, actor.userId);
+  }
+
   @Post(':id/uploaded')
   async uploaded(
     @CurrentUser() actor: SessionUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.markUploaded(id, new Date());
+    return this.targets.markUploaded(id, new Date(), actor.userId);
   }
 
   /** ⭐ **"Amazon-এ লাইভ"** — সাথে নতুন পণ্যের ASIN (ঐচ্ছিক) */
@@ -407,7 +422,7 @@ export class TargetsController {
     @Body() dto: LiveDto,
   ) {
     await this.targets.assertCanUse(actor);
-    return this.targets.markLive(id, dto.liveAsin ?? null, new Date());
+    return this.targets.markLive(id, dto.liveAsin ?? null, new Date(), actor.userId);
   }
 
   /**
@@ -434,8 +449,8 @@ export class TargetsController {
 
   @Roles(UserRole.owner, UserRole.manager)
   @Post('distribute')
-  distribute() {
-    return this.targets.distribute();
+  distribute(@CurrentUser() actor: SessionUser) {
+    return this.targets.distribute(new Date(), actor.userId);
   }
 }
 
@@ -454,6 +469,11 @@ export class MyTargetsController {
     return this.targets.mine(employeeIdOf(actor));
   }
 
+  @Get('skip-allowance')
+  skipAllowance(@CurrentUser() actor: SessionUser) {
+    return this.targets.skipAllowance(employeeIdOf(actor));
+  }
+
   /**
    * ⭐ "এটা বাদ দিলাম" — মালিকের বাছাই ছিল **দুটোই** (নিজে থেকে ধরা
    * **আর** ডিজাইনারের শুধরানো)।
@@ -468,7 +488,7 @@ export class MyTargetsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: DropReasonDto,
   ) {
-    return this.targets.skip(employeeIdOf(actor), id, dto.reason);
+    return this.targets.skip(employeeIdOf(actor), id, dto.reason, new Date(), actor.userId);
   }
 
   /**

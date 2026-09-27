@@ -4,6 +4,7 @@ import {
   completeTarget,
   myTargets,
   skipTarget,
+  skipAllowance,
   undoTarget,
   type DropReason,
   type MyTarget,
@@ -37,6 +38,7 @@ import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/u
 export function MyTargets() {
   const { data, loading, error, reload } = useApi(myTargets, []);
   const skip = useMutation();
+  const allowance = useApi(skipAllowance, []);
 
   /**
    * ⚠️ পপ-আপ আটকানোর বার্তা `skip.error`-এর সাথে মেশানো হয়নি — ওটা
@@ -59,7 +61,8 @@ export function MyTargets() {
    * ⚠️ সার্ভার **আজকের** শেষ করাগুলোই পাঠায়, তাই এখানে দিন গোনার
    * দরকার নেই — `completedAt` থাকা মানেই "আজ, আর এখনো ফেরানো যায়"।
    */
-  const inHand = data.filter((t) => t.completedAt === null);
+  const pending = data.filter((t) => t.skipReviewPending);
+  const inHand = data.filter((t) => t.completedAt === null && !t.skipReviewPending);
   const finished = data.filter((t) => t.completedAt !== null);
 
   /**
@@ -104,6 +107,16 @@ export function MyTargets() {
       }
     >
       <div className="space-y-3 p-4">
+        <Notice>
+          The first 3 skip requests each Dhaka day are automatic. Further requests need owner or manager approval before replacement work can be issued.
+          {allowance.data && ` Automatic skips remaining today: ${allowance.data.remaining}.`}
+        </Notice>
+        {pending.length > 0 && <div className="space-y-2">
+          <p className="text-sm font-semibold">Pending skip review · {pending.length}</p>
+          {pending.map(t => <div key={t.id} className="rounded-lg border border-line p-3 text-sm">
+            Job {t.jobNumber ?? '—'} · {t.asin} — waiting for owner or manager review. You can continue your other designs.
+          </div>)}
+        </div>}
         {/*
           ⭐⭐ এই এক লাইনটাই গোটা কার্ডের কারণ। ডিজাইনারের একমাত্র কাজ
              নম্বরটা ফাইলের নামে বসানো — সেটা না জানলে কোনো টার্গেটই
@@ -142,6 +155,7 @@ export function MyTargets() {
             onSkip={(reason) =>
               skip.run(async () => {
                 await skipTarget(t.id, reason);
+                allowance.reload();
                 reload();
               })
             }

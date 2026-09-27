@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
+  decideSkip,
   deleteTargets,
   listTargetAdders,
   undoComplete,
@@ -673,6 +674,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                     >
                       {r.asin}
                     </a>
+
                     {/*
                       ⚠️ কাজের নম্বর **না থাকলে লাইনটাই বসে না** — একটা
                          "—" দেখানোর চেয়ে ফাঁকা জায়গাই শান্ত, আর পুলে
@@ -801,6 +803,11 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                       })
                     }
                     mayDelete={mayDelete}
+                    onSkipDecision={(approve) => edit.run(async () => {
+                      await decideSkip(r.id, approve);
+                      data.reload();
+                      stats.reload();
+                    })}
                     mayProofread={user?.canProofread === true}
                     onDelete={(reason) =>
                       edit.run(async () => {
@@ -849,6 +856,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
  * সংখ্যাটা এক, কিন্তু ভরসা এক নয়।
  */
 function StatusChip({ row }: { row: TargetRow }) {
+  if (row.skipReviewPending) return <Chip tone="attention">Pending skip review</Chip>;
   if (row.status === 'done') {
     /*
       ⚠️ পুরোনো Excel থেকে আসা সারিগুলো আলাদা করে বলা হয় — ওগুলোর
@@ -953,6 +961,11 @@ function FileCell({ sec }: { sec: number | null }) {
 }
 
 function WhenCell({ row }: { row: TargetRow }) {
+  if (row.skipReviewPending || row.status === 'skipped') return (
+    <span className="num mt-0.5 block text-[11.5px] text-ink-3">
+      {row.skipRequestedAt ? `${formatDateTime(row.skipRequestedAt)} · skip requested` : 'Skip time not recorded (legacy)'}
+    </span>
+  );
   const when =
     row.completedAt ?? row.startedAt ?? row.assignedAt ?? row.addedAt;
 
@@ -1039,6 +1052,7 @@ function RowActions({
   onLive,
   onUndo,
   onReviewed,
+  onSkipDecision,
   onDelete,
   mayDelete,
   mayProofread,
@@ -1055,6 +1069,7 @@ function RowActions({
   onUndo: () => void;
   /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
   onReviewed: () => void;
+  onSkipDecision: (approve: boolean) => void;
   onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
@@ -1080,6 +1095,13 @@ function RowActions({
    * ধরা, কি-বোর্ড সামলানো — তিনটে নতুন ফাঁদ, একটাও দরকার নেই।
    */
   const [open, setOpen] = useState(false);
+
+  if (row.skipReviewPending) return mayDelete ? (
+    <span className="flex flex-wrap justify-end gap-1.5">
+      <MiniButton tone="good" disabled={busy} onClick={() => onSkipDecision(true)}>Approve skip</MiniButton>
+      <MiniButton disabled={busy} onClick={() => onSkipDecision(false)}>Reject · return to designer</MiniButton>
+    </span>
+  ) : <span className="text-xs text-ink-3">Waiting for owner or manager</span>;
 
   /**
    * ⭐⭐ **"Really delete" উঠে গেছে, তার জায়গায় তিনটে কারণ** *(৩১ আগস্ট)*।

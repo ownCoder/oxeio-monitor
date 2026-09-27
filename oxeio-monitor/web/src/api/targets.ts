@@ -77,6 +77,8 @@ export interface TargetStats {
 }
 
 export interface MyTarget {
+  skipReviewPending: boolean;
+  skipRequestedAt: string | null;
   id: number;
   asin: string;
   /** ⭐ সার্ভার ASIN থেকে বানিয়ে পাঠায় — ওয়েব জোড়া লাগায় না */
@@ -152,6 +154,14 @@ export function skipTarget(
   });
 }
 
+export function skipAllowance() {
+  return api<{ limit: number; requested: number; remaining: number }>('/me/targets/skip-allowance');
+}
+
+export function decideSkip(id: number, approve: boolean) {
+  return api<{ ok: boolean }>(`/design-targets/${id}/skip-decision`, { method: 'POST', body: { approve } });
+}
+
 export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
 
 /**
@@ -181,6 +191,8 @@ export interface DeleteResult {
 }
 
 export interface TargetRow {
+  skipReviewPending: boolean;
+  skipRequestedAt: string | null;
   id: number;
   asin: string;
   url: string;

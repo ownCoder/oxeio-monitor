@@ -722,6 +722,10 @@ model AgentVersion {
  * দুটো চেহারা টেবিলে থাকত।
  */
 model DesignTarget {
+  skipReviewPending Boolean @default(false) @map("skip_review_pending")
+  skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
+  skipRequests DesignSkipRequest[]
+  history DesignTargetEvent[]
   id     Int                @id @default(autoincrement())
   /// ⚠️ ঠিক ১০ অক্ষর, বড় হাতে সাজানো — `targets.rules.ts` দেখুন
   asin   String             @unique @db.VarChar(10)
@@ -1237,4 +1241,40 @@ model DepositSettlement {
   /// সেই সিদ্ধান্তটা তখনকার, আজকের নয়
   @@unique([employeeId])
   @@map("deposit_settlements")
+}
+
+/// A request survives rejection, un-skip and reassignment. Daily allowance counts requests.
+model DesignSkipRequest {
+  id Int @id @default(autoincrement())
+  targetId Int @map("target_id")
+  employeeId Int @map("employee_id")
+  actorUserId Int? @map("actor_user_id")
+  reason String @db.VarChar(16)
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(3)
+  decision String @db.VarChar(16)
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  reviewerUserId Int? @map("reviewer_user_id")
+  target DesignTarget @relation(fields: [targetId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, requestedAt])
+  @@index([targetId, decision])
+  @@map("design_skip_requests")
+}
+
+/// Written atomically by the target-history trigger; no API edits/deletes.
+model DesignTargetEvent {
+  id             Int      @id @default(autoincrement())
+  targetId       Int      @map("target_id")
+  action         String   @db.VarChar(32)
+  actorUserId    Int?     @map("actor_user_id")
+  actorName      String?  @map("actor_name") @db.VarChar(200)
+  source         String   @db.VarChar(40)
+  beforeState    Json?    @map("before_state")
+  afterState     Json     @map("after_state")
+  recordedAt     DateTime @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  target         DesignTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([targetId, id])
+  @@index([recordedAt, action])
+  @@map("design_target_events")
 }
