@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **Current release: 414 / 352682c** — Design Pool audit fixes and usability improvements deployed and verified on 28 September 2026. See the [audit record](docs/audits/2026-09-28-design-pool.md), [usage guide](docs/design-pool-operations.md) and [current state for another PC](docs/current-state.md). Prior release records below are historical.
+> **Current release: 416 / 95141ab** — Uploaded and Live on Amazon tiles removed from Add design targets; deployed and verified on 28 September 2026. See the [release record](docs/audits/2026-09-28-add-target-three-stages.md), [usage guide](docs/design-pool-operations.md) and [current state for another PC](docs/current-state.md). Prior release records below are historical.
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).

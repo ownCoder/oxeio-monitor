@@ -5,12 +5,15 @@
 ## Live
 
 - Site: https://hub.oxeio.com
-- Web/API: **414 / 352682c**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
-- শেষ কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
+- Web/API: **416 / 95141ab**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- শেষ কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
+- আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
 - Add design targets-এর Distribute now removal বহাল; সকাল 08:00 automatic distribution চালু। [Release 412 record](audits/2026-09-27-remove-distribute.md)।
 - Release 411-এর skip review বহাল: প্রতি Dhaka day প্রথম ৩টি automatic skip; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। [ব্যবহারবিধি](skip-review-operations.md) · [Release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 416: UI-only change; frontend build/typecheck ও targeted lint, live Chrome এবং HTTPS verification-এর record release note-এ। No migration or seed.
 
 - Release 414: backend 138 এবং frontend 281 tests passed; final 8 audit cases re-run passed. Typecheck, lint/build, encrypted backup parsing, public HTTPS ও bundle hash verified. No migration or seed.
 
