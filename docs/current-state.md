@@ -4,6 +4,7 @@
 
 ## Live
 
+- সর্বশেষ review: [Whole-system review ও next steps](audits/2026-09-28-system-next-steps.md)। Read-only checks: fleet 12/12 recent heartbeats on 0.4.11, 28 September backup/checksum OK, disk 41%, one informational open alert. পরের অগ্রাধিকার: September payroll reconciliation, skip-rate/history report, external alert/recovery proof, physical agent acceptance। এই review-এ নতুন feature deploy করা হয়নি।
 - Site: https://hub.oxeio.com
 - Web/API: **418 / e559b45**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
 - শেষ কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
