@@ -1,11 +1,11 @@
 # Design Pool — ব্যবহারবিধি
 
-২৮ সেপ্টেম্বর ২০২৬ · Live **414 / 352682c** · [Audit ও verification](audits/2026-09-28-design-pool.md)
+২৮ সেপ্টেম্বর ২০২৬ · Live **418 / e559b45** · [Latest UI change](audits/2026-09-28-pool-no-upload-live.md) · [Audit ও verification](audits/2026-09-28-design-pool.md)
 
 ## খোঁজা ও ছাঁকা
 
 - **Search ASIN or job number**-এ ASIN বা job number লিখুন। Amazon URL-এর বদলে ASIN দিতে হবে।
-- **Target status**-এ Waiting, In hand, Done, Done today, no file trace, Skipped ও Deleted আছে। Check/fix/upload/live queue-র বোতামগুলো কাজের পরের ধাপ খুঁজতে ব্যবহার করুন।
+- **Target status**-এ Waiting, In hand, Done, Done today, no file trace, Skipped ও Deleted আছে। **To check** ও **To fix** বোতাম বানান যাচাই ও সংশোধনের queue দেখায়। Upload/live queues এই পাতায় নেই।
 - **Filters** খুলে Designer, Added by ও date range বাছুন। **Today** ও **Last 7 days** Dhaka calendar day ধরে।
 - Done-এর date হলো completion time; পরে upload/live হলেও ওই দিনের result-এ থাকে। Review/Skipped-এর date হলো skip-request time। অন্য views latest activity ধরে।
 - পুরোনো skip-এর সময় জানা না থাকলে এবং Review-এ deleted target দেখতে date filter clear করুন।
@@ -20,7 +20,7 @@ Delete-এ reason লাগে। Target স্থায়ীভাবে database
 
 ## কাজের ধাপ
 
-Complete হওয়ার পর spelling check/error, প্রয়োজন হলে Fixed, তারপর Uploaded ও Live actions আছে। Existing rule অনুযায়ী unchecked design-ও upload করা যায়; কিন্তু recorded spelling error fix না হলে Upload হয় না। Ordinary designers নিজের My targets-এ কাজ করেন; Design Pool-এর management/research কাজ role অনুযায়ী সীমিত।
+Design Pool-এ Complete, spelling check/error ও প্রয়োজন হলে Fixed actions আছে। Uploaded ও Live buttons মূল row এবং More actions থেকে সরানো হয়েছে। আগের upload/live records ও backend rules সংরক্ষিত আছে। Ordinary designers নিজের My targets-এ কাজ করেন; Design Pool-এর management/research কাজ role অনুযায়ী সীমিত।
 
 **More actions**-এর `⋯`-এ অতিরিক্ত actions আছে। ভুল Complete হলে eligible design-এ **Undo complete** ব্যবহার করুন; **To pool** assignment ছেড়ে দেয়। No-file-trace নিজে থেকে কাজ না হওয়ার প্রমাণ নয়—job number ছাড়া নাম বা unsaved file-ও trace না রাখতে পারে।
 
