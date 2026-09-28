@@ -8,11 +8,9 @@ import {
   undoComplete,
   listTargetDesigners,
   listTargets,
-  markLive,
   markChecked,
   markFixed,
   markReviewed,
-  markUploaded,
   targetStats,
   type DropReason,
   type TargetRow,
@@ -298,7 +296,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
         {showQueues &&
-          FILTERS.map((f) => (
+          FILTERS.filter((f) => f.stage !== 'to_upload' && f.stage !== 'to_live').map((f) => (
           <button
             key={f.key}
             type="button"
@@ -531,7 +529,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
 
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">
-          {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time, including designs uploaded or made live later.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
+          {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
         </p>}
         <ServerError error={edit.error} />
       </div>
@@ -808,18 +806,6 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                         stats.reload();
                       })
                     }
-                    onUploaded={() =>
-                      edit.run(async () => {
-                        await markUploaded(r.id);
-                        data.reload();
-                      })
-                    }
-                    onLive={() =>
-                      edit.run(async () => {
-                        await markLive(r.id);
-                        data.reload();
-                      })
-                    }
                     onUndo={() =>
                       edit.run(async () => {
                         await undoComplete(r.id);
@@ -1077,10 +1063,8 @@ function RowActions({
   row,
   busy,
   onChange,
-  onUploaded,
   onChecked,
   onFixed,
-  onLive,
   onUndo,
   onReviewed,
   onSkipDecision,
@@ -1091,11 +1075,9 @@ function RowActions({
   row: TargetRow;
   busy: boolean;
   onChange: (status: TargetStatus) => void;
-  onUploaded: () => void;
   /** ⭐ `true` = বানান ঠিক · `false` = ভুল পাওয়া গেছে */
   onChecked: (ok: boolean) => void;
   onFixed: () => void;
-  onLive: () => void;
   /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
   onUndo: () => void;
   /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
@@ -1226,14 +1208,6 @@ function RowActions({
           Has error
         </MiniButton>
       </>
-    ) : row.completedAt !== null && row.uploadedAt === null && !broken ? (
-      <MiniButton disabled={busy} onClick={onUploaded}>
-        Uploaded
-      </MiniButton>
-    ) : row.uploadedAt !== null && row.liveAt === null ? (
-      <MiniButton tone="good" disabled={busy} onClick={onLive}>
-        Live
-      </MiniButton>
     ) : row.status !== 'done' ? (
       /*
         ⚠️ নামটা **"Complete"**, "Done" নয় — ডিজাইনারের পাতায় ঠিক এই
@@ -1292,22 +1266,6 @@ function RowActions({
       {mayProofread && broken && (
         <MiniButton tone="good" disabled={busy} onClick={onFixed}>
           Fixed
-        </MiniButton>
-      )}
-      {/*
-        ⚠️⚠️ **ভুল পাওয়া অথচ ঠিক-না-হওয়া ডিজাইনে "Uploaded" বোতামই ওঠে না**
-        *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট)* — জানা-ভাঙা জিনিস Amazon-এ যাবে না।
-        ⭐ কিন্তু **এখনো দেখা হয়নি** এমন সারি আটকায় না; আটকালে কিউটা
-        রাতারাতি ০ হয়ে যেত আর কেউ শুরুই করত না।
-      */}
-      {row.completedAt !== null && row.uploadedAt === null && !broken && (
-        <MiniButton disabled={busy} onClick={onUploaded}>
-          Uploaded
-        </MiniButton>
-      )}
-      {row.uploadedAt !== null && row.liveAt === null && (
-        <MiniButton tone="good" disabled={busy} onClick={onLive}>
-          Live
         </MiniButton>
       )}
       {/*

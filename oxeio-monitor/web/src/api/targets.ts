@@ -376,12 +376,6 @@ export function markReviewed(id: number): Promise<{ ok: boolean }> {
   });
 }
 
-/** ⭐ "আপলোড হয়েছে" — owner · manager · গবেষক */
-export function markUploaded(id: number): Promise<{ ok: boolean }> {
-  return api<{ ok: boolean }>(`/design-targets/${id}/uploaded`, { method: 'POST' });
-}
-
-/** ⭐ "Amazon-এ লাইভ" — নতুন পণ্যের ASIN ঐচ্ছিক */
 /**
  * ⭐⭐ **"বানান দেখলাম"** — `ok: false` হলে সারিটা ঠিক-করার কিউতে যায়।
  *
@@ -398,13 +392,6 @@ export function markChecked(id: number, ok: boolean): Promise<{ ok: true }> {
 /** ⭐ **"ঠিক করেছি"** — ভুল পাওয়া ডিজাইন সারিয়ে দেওয়া হয়েছে */
 export function markFixed(id: number): Promise<{ ok: true }> {
   return api<{ ok: true }>(`/design-targets/${id}/fixed`, { method: 'POST' });
-}
-
-export function markLive(id: number, liveAsin?: string): Promise<{ ok: boolean }> {
-  return api<{ ok: boolean }>(`/design-targets/${id}/live`, {
-    method: 'POST',
-    body: liveAsin ? { liveAsin } : {},
-  });
 }
 
 /** ⭐ ছাঁকনির ড্রপডাউনের জন্য — যাঁদের নামে কোনো টার্গেট আছে */
