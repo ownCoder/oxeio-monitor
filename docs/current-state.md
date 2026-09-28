@@ -4,16 +4,19 @@
 
 ## Live
 
-- সর্বশেষ review: [Whole-system review ও next steps](audits/2026-09-28-system-next-steps.md)। Read-only checks: fleet 12/12 recent heartbeats on 0.4.11, 28 September backup/checksum OK, disk 41%, one informational open alert. পরের অগ্রাধিকার: September payroll reconciliation, skip-rate/history report, external alert/recovery proof, physical agent acceptance। এই review-এ নতুন feature deploy করা হয়নি।
+- সর্বশেষ কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **418 / e559b45**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
-- শেষ কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
+- Web/API: **422 / cc34a36**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
 - Add design targets-এর Distribute now removal বহাল; সকাল 08:00 automatic distribution চালু। [Release 412 record](audits/2026-09-27-remove-distribute.md)।
 - Release 411-এর skip review বহাল: প্রতি Dhaka day প্রথম ৩টি automatic skip; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। [ব্যবহারবিধি](skip-review-operations.md) · [Release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 421/422: 261 backend + 282 frontend tests; readiness/operations 46 tests; current agent core 102 focused tests. Builds, targeted lint, public readiness GET/HEAD, healthy containers এবং unchanged PostgreSQL verified. No migration/seed. Agent unit tests physical PC acceptance নয়।
+- Payroll: snapshot 28 September 02:30 Dhaka; daily/monthly/payroll/self-view/report hours matched, net arithmetic matched. Owner review/month-end reconciliation ছাড়া month close করবেন না। Private review: `/opt/oxeio-releases/system-improvements-20260928/private-review/payroll-review-2026-09.html`।
 
 - Release 418: frontend 279 tests passed, production build/typecheck ও targeted lint; no migration or seed. Final Chrome/health evidence release record-এ।
 
@@ -36,14 +39,21 @@
 ## অসমাপ্ত / unreleased
 
 - Local workspace-এ পূর্ণ Production workspace-এর আলাদা পরিবর্তন আছে। এর UI এবং `20260926020000_production_workspace` migration live নয়। Target-history dependency শুধু release 411-এ live হয়েছে।
-- Screenshot evidence, comparative skip-rate dashboard ও automatic sanctions skip release-এর অংশ নয়।
+- Recorded skip insights এবং management design history release 421-এ live। Missing historical data reconstructed নয়; automatic sanctions নেই।
 - পুরো পুরোনো/dirty local checkout deploy করবেন না। Current VPS source-এর সঙ্গে scope মিলিয়ে পরের release বানাতে হবে।
 
 ## Recovery ও পরবর্তী কাজ
 
+- Current release/evidence/source bundle: `/opt/oxeio-releases/system-improvements-20260928`। Local clean mirror `.release-system`; eleven scoped files deployed source-এর সঙ্গে SHA256 matched: [manifest](audits/system-source-alignment.json)। Main dirty checkout আলাদা pending কাজ রাখে।
+- UptimeRobot: API/database monitor `804106657`, backup freshness monitor `804106772`; five-minute checks, existing account email. দুটোই Up observed; test email inbox receipt এখনও owner confirmation pending। Backup probe local success/failure/26-hour stale state দেখে; B2 freshness নয়।
+- Local Sep28 এবং existing B2 Sep26 encrypted backups আলাদা network-none containers-এ restored; [local evidence](audits/restore-latest-backup.json), [offsite evidence](audits/restore-offsite-backup.json)। Weekly offsite timer এখনও unchanged।
+- Latest Sep28 encrypted backup → existing B2 `oxeio-backups` upload/daily schedule automatic approval rejection-এর পর specific owner approval pending। Prepared drafts run/install হয়নি।
+- Physical acceptance-এর permission আছে, কিন্তু নির্দিষ্ট office PC/device এবং access method পাওয়া যায়নি। [Procedure](audits/2026-09-28-system-improvements.md) প্রস্তুত; restart/sleep/network test চালানো হয়েছে বলা যাবে না।
+- Rollback to 421: `oxeio-api:before-monitor-readiness-20260928`, `oxeio-web:before-monitor-readiness-20260928`; initial feature rollback to 418: `before-system-improvements-20260928` image tags। Both compose files mandatory।
+
 - Release 414-এর আগের images: `oxeio-api:before-pool-audit-20260928`, `oxeio-web:before-pool-audit-20260928` (release 412)।
 - Current release encrypted backup/source bundle: `/opt/oxeio-releases/design-pool-audit-20260928`।
-- পরের উপযোগী Design Pool scope: saved/shareable filters, history drawer, recorded skip-rate report, full filtered export. Current CSV only exports the visible page.
+- Saved/shareable filters, history ও recorded skip-rate report এখন live। Full filtered export এখনও নেই; current CSV visible page export করে।
 
 - Release 412-এর আগের images: `oxeio-api:before-remove-distribute`, `oxeio-web:before-remove-distribute` — এগুলো release 411, যেখানে skip review আছে।
 - Encrypted pre-411 backup ও source bundle-এর তথ্য [release 411 record](audits/2026-09-27-skip-review.md)-এ। Pending skips থাকলে skip-review-বিহীন পুরোনো API-তে rollback করা যাবে না; আগে নতুন API দিয়ে সিদ্ধান্ত দিতে হবে।

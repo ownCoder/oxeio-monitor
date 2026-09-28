@@ -1,0 +1,54 @@
+{
+  "application": "422 / cc34a36",
+  "checkedAt": "2026-09-28",
+  "authoritativeSource": "/opt/oxeio",
+  "localMirror": ".release-system",
+  "files": [
+    {
+      "sha256": "065275893b42271def1f11167bf5cd40a3464531b1f12ce6b41e1dcb8caab9d5",
+      "path": "oxeio-monitor/server/src/targets/target-insights.controller.ts"
+    },
+    {
+      "sha256": "3f119876ec3fa4d50d84be0f307b7602ffddd27594209c37cb42be5baca6acc3",
+      "path": "oxeio-monitor/server/src/targets/targets.module.ts"
+    },
+    {
+      "sha256": "eb48ede21ac5ad06a885aeb1df3f2a676c92e2c4ff1afbb0184dcbd0ac999ba1",
+      "path": "oxeio-monitor/server/test/target-insights.e2e.spec.ts"
+    },
+    {
+      "sha256": "02dbe06a489ae572bbc33d1d8b9a5263fc54d29ec2d403bd87514879b20851eb",
+      "path": "oxeio-monitor/web/src/api/targetInsights.ts"
+    },
+    {
+      "sha256": "ba0313b3f29e89dce270c9d183e31bd99460453eccd9b762193897377927b16b",
+      "path": "oxeio-monitor/web/src/pages/targets/Insights.tsx"
+    },
+    {
+      "sha256": "b84caeb8f78d5e2786ae9c70574fad2dde57109a1597d023cc570a12c66b1e38",
+      "path": "oxeio-monitor/web/src/pages/targets/SavedViews.tsx"
+    },
+    {
+      "sha256": "0d1c252d87c10ce3dc0a9756a2dc00507f2c87e819e936bbfb3188fb540a9043",
+      "path": "oxeio-monitor/web/src/pages/AllTargetsPage.tsx"
+    },
+    {
+      "sha256": "29ecb46e86ed119053834007d6799e49e8951c24bdfba47f0c8c8a7550c52333",
+      "path": "oxeio-monitor/web/test/saved-views.spec.ts"
+    },
+    {
+      "sha256": "13c2792d8898d77260ee8e2d58d9053ec37d592590b3f17e5394fcaf679c5ba9",
+      "path": "oxeio-monitor/server/src/health/readiness.controller.ts"
+    },
+    {
+      "sha256": "7d8cf8adc7173167ea09923a397301004d012a45aa70d741229ef5cea9be8599",
+      "path": "oxeio-monitor/server/src/health/health.module.ts"
+    },
+    {
+      "sha256": "e083b1eafe224ffbc8044900ac69c9507c1faa28de57536f96b9dbe495a49f5e",
+      "path": "oxeio-monitor/server/test/readiness.spec.ts"
+    }
+  ],
+  "allElevenDeployedFilesMatch": true,
+  "mainCheckout": "dirty; preserved; not release-ready"
+}

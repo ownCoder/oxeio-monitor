@@ -1,0 +1,11 @@
+[Unit]
+Description=oXeio daily encrypted offsite backup (pending owner approval)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Dhaka
+Persistent=true
+RandomizedDelaySec=5m
+Unit=oxeio-offsite.service
+
+[Install]
+WantedBy=timers.target

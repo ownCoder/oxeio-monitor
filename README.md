@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **Current release: 418 / e559b45** — Upload/live controls removed from Design Pool and Add design targets; deployed and verified on 28 September 2026. See the [release record](docs/audits/2026-09-28-pool-no-upload-live.md), [usage guide](docs/design-pool-operations.md) and [current state for another PC](docs/current-state.md). Prior release records below are historical.
+> **Current release: 422 / cc34a36** — recorded skip insights, design history, saved/shareable pool filters and minimal external DB/backup readiness probes. See [implementation/acceptance record](docs/audits/2026-09-28-system-improvements.md) and [canonical handoff](docs/current-state.md) for completed work and pending operational acceptance.
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).

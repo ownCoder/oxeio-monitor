@@ -29,3 +29,12 @@ Design Pool-এ Complete, spelling check/error ও প্রয়োজন হল�
 **Export this page · CSV** বর্তমানে দেখা সর্বোচ্চ ৫০টি matching row export করে। পুরো pool বা অন্য pages এতে থাকে না। আরও row চাইলে next page খুলে export করুন। CSV-তে ASIN, job number, status, designer, added-by এবং relevant dates/reason আছে; timestamps ISO format-এ। Pending assignment-এর status `pending_skip_review` হয়।
 
 UTF-8 Bengali names, quotes ও spreadsheet formula protection আছে। Saved views, per-job history drawer, skip-rate report এবং full filtered export-এর পরবর্তী scope [audit doc](audits/2026-09-28-design-pool.md)-এ আছে।
+
+
+## Recorded insights, history and saved views — release 421
+
+Owner/manager-এর জন্য Skip report-এ Dhaka date range দিয়ে requests/automatic/pending/approved/rejected, unique recorded assignments এবং cohort rate দেখা যায়। Pending/rejected numerator-এ যায় না; period-এর বাইরে assignment unknown/carry-in হিসেবে আলাদা থাকে। Assignment recording 27 September 12:33 থেকে; আগের data তৈরি করা হয়নি। একই target repeated assignment/request হলেও rate double-count করে না।
+
+History button recorded actor/source ও status transition দেখায়; Older events দিয়ে cursor pagination। Missing old history কাজ হয়নি বা bypass হয়েছে—এমন প্রমাণ নয়।
+
+View name দিয়ে current filters save করা যায় (প্রতি browser/account/page সর্বোচ্চ ১০টি)। Saved button filters restore করে; × removes that saved view. Shareable view link search/status/staff/adder/date filters URL-এ রাখে, অন্য PC-তে সেই link খুলুন। Saved list automatic cloud sync হয় না। Removed upload/live queues ফিরে আসে না।

@@ -1,0 +1,14 @@
+{
+  "outcome": "verified",
+  "backupSha256": "d8b415627a91eb05a5c5ab4821162e715d19addbf70d4a16f84f43685e7e8441",
+  "startedAt": "2026-09-28T06:23:26Z",
+  "finishedAt": "2026-09-28T06:23:44.478747+00:00",
+  "counts": {
+    "users": 14,
+    "employees": 13,
+    "targets": 51170,
+    "migrations": 37,
+    "invalidConstraints": 0
+  },
+  "isolation": "network-none disposable PostgreSQL 16; tmpfs data"
+}
