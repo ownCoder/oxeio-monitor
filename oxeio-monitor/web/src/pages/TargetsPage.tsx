@@ -44,7 +44,7 @@ export function TargetsPage() {
       <div className="space-y-3">
         <Card
           title="The Pipeline"
-          hint="From collected link to a product that sells"
+          hint="From collected link to a finished design"
         >
           <div className="p-4">
             {stats.loading && !s && <Loading />}
@@ -52,19 +52,11 @@ export function TargetsPage() {
 
             {s && (
               <>
-                {/*
-                  ⭐⭐ **ক্রমটাই এখানে আসল কথা** *(২৩ আগস্ট ২০২৬)*।
-                  আগে চারটে টাইল পাশাপাশি ছিল, আর তাতে বোঝা যেত না কাজটা
-                  কোন পথে এগোয়। ⚠️ এখন বাঁ থেকে ডানে পড়লেই ফুটোটা দেখা
-                  যায়: ৩০ দেওয়া → ২৫ ডিজাইন → ২০ আপলোড → ১২ লাইভ।
-                */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {/* সংগ্রহ → হাতে থাকা → ডিজাইন: এই পাতায় তিনটি ধাপ। */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <Tile n={s.pool} label="In the pool" tone="text-ink" />
                   <Tile n={s.assigned} label="In hand" tone="text-data" />
                   <Tile n={s.done} label="Designed" tone="text-ink" />
-                  <Tile n={s.uploaded} label="Uploaded" tone="text-data" />
-                  {/* ⭐ শেষ ধাপটাই একমাত্র যেটা টাকা আনে — তাই সবুজ */}
-                  <Tile n={s.live} label="Live on Amazon" tone="text-ok" />
                 </div>
 
                 {/*
