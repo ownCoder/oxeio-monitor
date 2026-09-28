@@ -42,6 +42,8 @@ import {
 } from './targets/filters';
 import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 import { downloadTargetsCsv } from './targets/export';
+import { SkipInsights, HistoryDrawer } from './targets/Insights';
+import { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -99,15 +101,18 @@ function dhakaToday(): string {
  * সময় শেখা: দুই জায়গায় কপি থাকলে একদিন একটা বদলাত আর অন্যটা নয়।
  */
 export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
-  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? 'all');
+  const [initialView] = useState(() => parsePoolView(window.location.search));
+  const [showInsights,setShowInsights] = useState(false);
+  const [historyId,setHistoryId] = useState<number|null>(null);
+  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? initialView.filter as FilterKey);
   /** ⚠️ আটকানো পাতায় কিউ বদলানোর কন্ট্রোলগুলো বসে না */
   const showQueues = lockedStage === undefined;
-  const [q, setQ] = useState('');
-  const [staffId, setStaffId] = useState('');
+  const [q, setQ] = useState(initialView.q);
+  const [staffId, setStaffId] = useState(initialView.staffId);
   /** ⭐ কে এনেছেন — `users.id`, `staffId`-র (`employees.id`) থেকে আলাদা */
-  const [addedById, setAddedById] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [addedById, setAddedById] = useState(initialView.addedById);
+  const [from, setFrom] = useState(initialView.from);
+  const [to, setTo] = useState(initialView.to);
   const [page, setPage] = useState(1);
   /** ⭐ বাকি ছাঁকনিগুলো খোলা আছে কি না *(২৫ আগস্ট)* — ডিফল্টে বন্ধ */
   const [showFilters, setShowFilters] = useState(false);
@@ -271,6 +276,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
     setPage(1); setQ(''); setStaffId(''); setAddedById(''); setFrom(''); setTo(''); setFilter(lockedStage ?? 'all');
     setPicked(new Set()); setConfirmingBulk(false);
   };
+  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);setPage(1);setPicked(new Set());setConfirmingBulk(false);};
   const skipDates = filter === 'to_review' || filter === 'skipped';
 
   const change = (next: () => void) => {
@@ -437,6 +443,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
         <MiniButton disabled={data.loading || edit.busy} onClick={() => { setPicked(new Set()); setConfirmingBulk(false); data.reload(); stats.reload(); }}>Refresh</MiniButton>
         <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page)}>Export this page · CSV</MiniButton>
+        {mayDelete && <MiniButton onClick={()=>setShowInsights(!showInsights)}>{showInsights?'Hide skip report':'Skip report'}</MiniButton>}
         {hasSearchFilters && <MiniButton onClick={resetFilters}>Reset all filters</MiniButton>}
         {data.loading && <span role="status" className="text-xs text-ink-3">Loading targets…</span>}
       </div>
@@ -527,6 +534,9 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
         </div>
       )}
 
+      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to}} onApply={applyView}/>
+      {mayDelete&&showInsights&&<SkipInsights/>}
+      {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">
           {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
@@ -783,6 +793,8 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                 key: 'edit',
                 header: '',
                 render: (r) => (
+                  <span className="flex flex-wrap items-center justify-end gap-1.5">
+                  {mayDelete&&<MiniButton title={'History for '+r.asin} onClick={()=>setHistoryId(r.id)}>History</MiniButton>}
                   <RowActions
                     row={r}
                     busy={edit.busy}
@@ -837,6 +849,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                       })
                     }
                   />
+                  </span>
                 ),
               },
             ]}
@@ -1301,7 +1314,7 @@ function RowActions({
         ⚠️ গবেষকের হাতে Delete থাকবে না — ৪৬ হাজার সারির মধ্যে একটা
            ভুল ডিলিট কেউ খুঁজেই পেত না।
       */}
-      {mayDelete && (
+      {mayDelete && row.status !== 'done' && (
         <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
           Delete
         </MiniButton>

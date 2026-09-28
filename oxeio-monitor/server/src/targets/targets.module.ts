@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { TargetInsightsController } from './target-insights.controller';
 
 import { AuditModule } from '../audit/audit.module';
 import { FileTraceService } from './file-trace.service';
@@ -15,7 +16,7 @@ import { TargetsService } from './targets.service';
  */
 @Module({
   imports: [AuditModule],
-  controllers: [TargetsController, MyTargetsController],
+  controllers: [TargetsController, MyTargetsController, TargetInsightsController],
   providers: [TargetsService, TargetsJob, FileTraceService],
   // ⭐ `SummaryService` এটা ডাকে — ফাইলের নাম থেকে টার্গেট বন্ধ করতে
   exports: [TargetsService],
