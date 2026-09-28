@@ -1286,6 +1286,9 @@ export class TargetsService {
      * ২৩ তারিখটাও বোঝায়। তাই পরের দিনের শুরু পর্যন্ত (`lt`) দেখা হয়।
      */
 
+    if (query.from && query.to && query.from > query.to)
+      throw new BadRequestException('From date must be on or before the to date.');
+
     const activity =
       query.from || query.to
         ? {
@@ -1403,10 +1406,11 @@ export class TargetsService {
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
+      ...(query.stage && query.stage !== 'to_review' ? { status: DesignTargetStatus.done } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(query.addedById ? { addedById: query.addedById } : {}),
       ...(activity ? (query.stage === 'to_review' || query.status === 'skipped'
-        ? { skipRequestedAt: activity } : { lastActivityAt: activity }) : {}),
+        ? { skipRequestedAt: activity } : query.status === 'done' ? { completedAt: activity } : { lastActivityAt: activity }) : {}),
       AND: [match ?? {}, stage],
     };
 
@@ -1746,8 +1750,8 @@ export class TargetsService {
         by: ['status'],
         _count: { _all: true },
       }),
-      this.prisma.designTarget.count({ where: { uploadedAt: { not: null } } }),
-      this.prisma.designTarget.count({ where: { liveAt: { not: null } } }),
+      this.prisma.designTarget.count({ where: { status: DesignTargetStatus.done, uploadedAt: { not: null } } }),
+      this.prisma.designTarget.count({ where: { status: DesignTargetStatus.done, liveAt: { not: null } } }),
       /**
        * ⚠️⚠️ এই দুটো সংখ্যা **`list()`-এর ছাঁকনির হুবহু যমজ** হতে হবে —
        * চিপে ১৩২ লিখে ক্লিক করলে ৯০টা এলে কেউ আর সংখ্যাটা বিশ্বাস করবে না।
@@ -1755,15 +1759,17 @@ export class TargetsService {
        */
       this.prisma.designTarget.count({
         where: {
+          status: DesignTargetStatus.done,
           completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
           checkedAt: null,
         },
       }),
       this.prisma.designTarget.count({
-        where: { errorFoundAt: { not: null }, fixedAt: null },
+        where: { status: DesignTargetStatus.done, errorFoundAt: { not: null }, fixedAt: null },
       }),
       this.prisma.designTarget.count({
         where: {
+          status: DesignTargetStatus.done,
           completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
           uploadedAt: null,
           // ⚠️ ভুল পাওয়া অথচ ঠিক-না-হওয়া সারি বাদ — `list()`-এর যমজ
@@ -1919,17 +1925,24 @@ export class TargetsService {
     userId: number | null,
   ): Promise<{ ok: true }> {
     const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
-      where: { id, [prerequisite]: { not: null }, [stage]: null },
+      where: { id, status: DesignTargetStatus.done, skipReviewPending: false,
+        [prerequisite]: { not: null }, [stage]: null,
+        ...(stage === 'uploadedAt' ? { OR: [{ errorFoundAt: null }, { fixedAt: { not: null } }] } : {}),
+      },
       data,
     }));
     if (count > 0) return { ok: true };
     const target = await this.prisma.designTarget.findUnique({
       where: { id },
-      select: { completedAt: true, errorFoundAt: true, uploadedAt: true,
+      select: { status: true, skipReviewPending: true, completedAt: true, errorFoundAt: true, uploadedAt: true,
         checkedAt: true, fixedAt: true, liveAt: true },
     });
     if (!target) throw new NotFoundException('No design target with this id');
+    if (target.status !== DesignTargetStatus.done || target.skipReviewPending)
+      throw new BadRequestException('Only completed designs can advance through production stages.');
     if (target[prerequisite] === null) throw new BadRequestException(invalidMessage);
+    if (stage === 'uploadedAt' && target.errorFoundAt !== null && target.fixedAt === null)
+      throw new BadRequestException('Fix the recorded spelling error before uploading this design.');
     if (target[stage] !== null) return { ok: true };
     throw new ConflictException('This design changed during the request. Please try again.');
   }

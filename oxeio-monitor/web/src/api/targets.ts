@@ -112,10 +112,6 @@ export function targetStats(signal?: AbortSignal): Promise<TargetStats> {
   return api<TargetStats>('/design-targets/stats', { signal });
 }
 
-export function distributeTargets(): Promise<{ assigned: number }> {
-  return api<{ assigned: number }>('/design-targets/distribute', { method: 'POST' });
-}
-
 export function myTargets(signal?: AbortSignal): Promise<MyTarget[]> {
   return api<MyTarget[]>('/me/targets', { signal });
 }

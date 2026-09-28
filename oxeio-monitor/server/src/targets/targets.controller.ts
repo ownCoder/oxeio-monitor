@@ -300,6 +300,7 @@ export class TargetsController {
    * পাহারা বসালে একদিন একটা দিয়ে অন্যটা ফাঁকি দেওয়া যেত। ⭐ পর্দায়
    * বোতামটা কেবল owner/manager দেখেন (`mayDelete`)।
    */
+  @Roles(UserRole.owner, UserRole.manager)
   @Post('delete')
   async deleteMany(
     @CurrentUser() actor: SessionUser,
@@ -321,6 +322,7 @@ export class TargetsController {
    * ⚠️ বডিসহ `DELETE` অনেক প্রক্সি ফেলে দেয়, তাই কারণটা **query-তে**
    * (`?reason=not_found`) — একটা ছোট, চেনা মান, আর ওতে ব্যক্তিগত কিছু নেই।
    */
+  @Roles(UserRole.owner, UserRole.manager)
   @Delete(':id')
   async remove(
     @CurrentUser() actor: SessionUser,
