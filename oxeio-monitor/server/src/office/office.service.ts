@@ -29,7 +29,7 @@ function manager(actor: SessionUser) {
 @Injectable()
 export class OfficeService {
   constructor(private readonly db: PrismaService) {}
-  private scope(actor: SessionUser): Prisma.OfficeEntryWhereInput {
+  scope(actor: SessionUser): Prisma.OfficeEntryWhereInput {
     return manager(actor)
       ? {}
       : {

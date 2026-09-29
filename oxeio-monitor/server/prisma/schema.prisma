@@ -1405,3 +1405,11 @@ model OfficeAcknowledgement {
   @@id([entryId,userId,version])
   @@map("office_acknowledgements")
 }
+
+model WorkspaceReceipt {
+ userId Int @map("user_id")
+ key String @db.VarChar(120)
+ readAt DateTime @default(now()) @map("read_at") @db.Timestamptz(3)
+ @@id([userId,key])
+ @@map("workspace_receipts")
+}

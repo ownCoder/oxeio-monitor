@@ -1,3 +1,4 @@
+import { WorkspaceModule } from './workspace/workspace.module';
 import { OfficeModule } from './office/office.module';
 import { ProductionModule } from './production/production.module';
 import { Module } from '@nestjs/common';
@@ -80,6 +81,7 @@ import { UsersModule } from './users/users.module';
     DigestModule,
     HealthModule,
     OfficeModule,
+    WorkspaceModule,
     ProductionModule,
   ],
 })

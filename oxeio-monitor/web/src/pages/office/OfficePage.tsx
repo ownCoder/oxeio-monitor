@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useApi } from '../../api/useApi';
@@ -50,6 +50,14 @@ export function OfficePage() {
     ),
     [error, setError] = useState(''),
     [archived, setArchived] = useState(false);
+  const entryId = params.get('entry');
+  useEffect(() => {
+    if (!entryId || !/^[1-9][0-9]*$/.test(entryId)) return;
+    const controller = new AbortController();
+    setEditing(undefined);
+    void api<Entry>("/office/" + entryId, {signal:controller.signal}).then(row => {setEditing(row);setKind(row.kind);setError('');}).catch(e => {if (!controller.signal.aborted) setError((e as Error).message);});
+    return () => controller.abort();
+  }, [entryId]);
   const choices = sections[active];
   const selected = choices.includes(kind) ? kind : choices[0];
   const list = useApi(

@@ -28,6 +28,7 @@ import { homePathFor, seesEveryone } from './api/auth';
  * তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ — তাই "লগইন করেনি অথচ ভেতরের পেজ দেখছে"
  * বা "পাসওয়ার্ড না বদলে ঘুরে বেড়াচ্ছে" — এমন কিছু সম্ভবই নয়।
  */
+const WorkspacePage=lazy(()=>import('./pages/WorkspacePage').then(m=>({default:m.WorkspacePage})));
 const OfficePage=lazy(()=>import('./pages/office/OfficePage').then(m=>({default:m.OfficePage})));
 const ProductionPage=lazy(()=>import('./pages/production/ProductionPage').then(m=>({default:m.ProductionPage})));
 function Router() {
@@ -229,6 +230,7 @@ function Router() {
              করতে পারবে। (এটা তার উপর নজরদারির কোনো নতুন পথ খোলে না —
              পাতাটা শুধু তার নিজের লগইন নিয়ে।)
         */}
+        <Route path="workspace/:section?" element={<Suspense fallback={<p>Loading workspace…</p>}><WorkspacePage /></Suspense>} />
         <Route path="office/:section?" element={<Suspense fallback={<p>Loading office workspace…</p>}><OfficePage /></Suspense>} />
         <Route path="production/:section?" element={<Suspense fallback={<p>Loading production workspace…</p>}><ProductionPage /></Suspense>} />
         <Route path="security" element={<SecurityPage />} />
