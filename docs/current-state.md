@@ -4,10 +4,11 @@
 
 ## Live
 
-- সর্বশেষ কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
+- সর্বশেষ কাজ: Office workspace-এর আটটি section এবং পূর্বে তৈরি Production workspace live। Brief templates, Help requests, submission checks, SOP acknowledgement, equipment, joining/leaving এবং coaching ব্যবহারের জন্য প্রস্তুত। [Release 428 record](audits/2026-09-29-office-workspace.md) · [ব্যবহারবিধি](office-workspace-operations.md)।
+- আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **424 / e327e29**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- Web/API: **428 / 6d7705c**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -15,6 +16,8 @@
 - Release 411-এর skip review বহাল: প্রতি Dhaka day প্রথম ৩টি automatic skip; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। [ব্যবহারবিধি](skip-review-operations.md) · [Release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 427/428: 1,254 server unit + 293 frontend + 109 integration tests passed। Clean builds/lint এবং main local typechecks passed; retained encrypted backup isolated restore/upgrade passed; two migrations, no seed/payroll closure। Chrome synthetic owner/staff flows এবং live owner UI verified।
 
 - Release 424: 285 frontend tests, production build/typecheck, targeted lint এবং Chrome component preview passed। Public app bundle hash matched; healthy API/web/database, PostgreSQL unchanged। No migration/seed।
 
@@ -29,7 +32,7 @@
 
 - Release 412: local typecheck ও targeted lint; production build; public HTML, bundle hash এবং Distribute now অনুপস্থিতি যাচাই। Database migration লাগেনি।
 - Release 411: exact source-এ ৮ integration + ৪০ rule test; encrypted backup parsing; ২ migration; matching API/web commit ও public bundle যাচাই।
-- Applied migrations: `20260926010000_target_history`, `20260927010000_skip_review_limit`। Seed চালানো হয়নি। PostgreSQL container পুনরায় তৈরি করা হয়নি।
+- Applied migrations: `20260926010000_target_history`, `20260927010000_skip_review_limit`, `20260926020000_production_workspace`, `20260929010000_office_workflows`। Seed চালানো হয়নি। PostgreSQL container পুনরায় তৈরি করা হয়নি।
 
 ## Source ও access
 
@@ -41,17 +44,18 @@
 
 ## পরবর্তী feature research
 
-- 29 September market comparison: [recommendations](2026-09-29-market-research.md)। First pilot: brief templates, blocker/help requests, submission checklist; existing local proofing/workload আগে scoped review/release। Research only; new implementation approved নয়। Live application remains 424।
+- 29 September market comparison: [recommendations](2026-09-29-market-research.md)। First pilot: brief templates, blocker/help requests, submission checklist; existing local proofing/workload আগে scoped review/release। Owner approved implementation; Office ও Production release 428 live। First-use content/pilot instructions: [guide](office-workspace-operations.md)।
 
 ## অসমাপ্ত / unreleased
 
-- Local workspace-এ পূর্ণ Production workspace-এর আলাদা পরিবর্তন আছে। এর UI এবং `20260926020000_production_workspace` migration live নয়। Target-history dependency শুধু release 411-এ live হয়েছে।
+- Production workspace ও migration এখন live। Main checkout-এ unrelated agent/payroll/Studio পরিবর্তন রয়ে গেছে; সেগুলো এই release-এ অন্তর্ভুক্ত নয়।
 - Recorded skip insights এবং management design history release 421-এ live। Missing historical data reconstructed নয়; automatic sanctions নেই।
 - পুরো পুরোনো/dirty local checkout deploy করবেন না। Current VPS source-এর সঙ্গে scope মিলিয়ে পরের release বানাতে হবে।
 
 ## Recovery ও পরবর্তী কাজ
 
-- Latest source/evidence: `/opt/oxeio-releases/my-target-selection-20260929`; clean mirror `.release-my-targets`। Rollback to 422: `before-my-target-selection-20260929` API/web tags। [Details](audits/2026-09-29-my-target-selection.md)।
+- Latest source/evidence: `/opt/oxeio-releases/office-workflows-20260929`; clean mirror `.release-office`। Rollback to 424: `before-office-workflows-20260929` API/web tags। [Details](audits/2026-09-29-office-workspace.md)।
+- Previous source/evidence: `/opt/oxeio-releases/my-target-selection-20260929`; clean mirror `.release-my-targets`। Rollback to 422: `before-my-target-selection-20260929` API/web tags। [Details](audits/2026-09-29-my-target-selection.md)।
 - Previous release/evidence/source bundle: `/opt/oxeio-releases/system-improvements-20260928`। Local clean mirror `.release-system`; eleven scoped files deployed source-এর সঙ্গে SHA256 matched: [manifest](audits/system-source-alignment.json)। Main dirty checkout আলাদা pending কাজ রাখে।
 - UptimeRobot: API/database monitor `804106657`, backup freshness monitor `804106772`; five-minute checks, existing account email. দুটোই Up observed; test email inbox receipt এখনও owner confirmation pending। Backup probe local success/failure/26-hour stale state দেখে; B2 freshness নয়।
 - Local Sep28 এবং existing B2 Sep26 encrypted backups আলাদা network-none containers-এ restored; [local evidence](audits/restore-latest-backup.json), [offsite evidence](audits/restore-offsite-backup.json)। Weekly offsite timer এখনও unchanged।
