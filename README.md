@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **Current release: 422 / cc34a36** — recorded skip insights, design history, saved/shareable pool filters and minimal external DB/backup readiness probes. See [implementation/acceptance record](docs/audits/2026-09-28-system-improvements.md) and [canonical handoff](docs/current-state.md) for completed work and pending operational acceptance.
+> **Current release: 424 / e327e29** — My Data remembers the selected design and sorts targets by job number. See [release record](docs/audits/2026-09-29-my-target-selection.md) and [canonical handoff](docs/current-state.md). Previous system improvements and pending operational acceptance remain recorded there.
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
