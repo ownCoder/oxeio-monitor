@@ -4,12 +4,13 @@
 
 ## Live
 
-- সর্বশেষ কাজ: Sidebar-এর Office ও Production নিচে, Settings-এর পরে রাখা হয়েছে। [Release 430](audits/2026-09-29-sidebar-order.md)।
+- সর্বশেষ কাজ: Search, Notification inbox এবং Deadline/reminder live। Header থেকে Search/Inbox; একই workspace page-এ Deadlines। Read status account অনুযায়ী অন্য PC-তেও থাকে; reminder app-এর ভেতরে। [Release 433](audits/2026-09-29-workspace-tools.md) · [ব্যবহারবিধি ও limits](workspace-tools-operations.md)।
+- আগের কাজ: Sidebar-এর Office ও Production নিচে, Settings-এর পরে রাখা হয়েছে। [Release 430](audits/2026-09-29-sidebar-order.md)।
 - আগের কাজ: Office workspace-এর আটটি section এবং পূর্বে তৈরি Production workspace live। Brief templates, Help requests, submission checks, SOP acknowledgement, equipment, joining/leaving এবং coaching ব্যবহারের জন্য প্রস্তুত। [Release 428 record](audits/2026-09-29-office-workspace.md) · [ব্যবহারবিধি](office-workspace-operations.md)।
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **430 / 689966c**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- Web/API: **433 / 1bd6c4e**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -17,6 +18,10 @@
 - Release 411-এর skip review বহাল: প্রতি Dhaka day প্রথম ৩টি automatic skip; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। [ব্যবহারবিধি](skip-review-operations.md) · [Release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 432/433: 24 database integration tests (5 new workspace tests) এবং 293 frontend tests; clean API/web builds/typechecks/targeted lint। Current encrypted backup isolated restore/migration passed, core data counts unchanged। Chrome synthetic UI flows verified; authenticated live UI test করা হয়নি। Public health, bundle hash, protected endpoint 401 এবং healthy containers verified। One additive receipts migration, no seed।
+
+- পরের feature পর্যায়ে side-by-side version comparison, attachment/reference library, image similarity, bulk edit/reassign preview এবং leave-aware planning এখনও implement হয়নি।
 
 - Release 430: scoped two-item sidebar reorder; clean production build/typecheck ও targeted lint passed। Public health/container verification, PostgreSQL unchanged; no migration/seed। Authenticated browser UI test করা হয়নি।
 
