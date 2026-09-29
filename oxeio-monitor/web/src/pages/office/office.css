@@ -1,0 +1,151 @@
+.office {
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
+  color: var(--color-ink);
+}
+.office h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+.office h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+.office header {
+  margin-bottom: 24px;
+}
+.office-eyebrow,
+.office small {
+  color: var(--color-ink-3);
+  font-size: 12px;
+}
+.office nav,
+.office-toolbar,
+.office footer {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 18px 0;
+}
+.office nav a,
+.office button:not(.office-card) {
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}
+.office nav [aria-current],
+.office [aria-pressed='true'] {
+  background: var(--color-surface-2);
+  border-color: var(--color-brand);
+}
+.office-primary {
+  background: var(--color-brand);
+  color: white;
+}
+.office-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.office-card {
+  display: block;
+  text-align: left;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+}
+.office-card h2 {
+  margin: 8px 0;
+}
+.office-card:hover {
+  border-color: var(--color-brand);
+}
+.office-badge {
+  display: inline-block;
+  font-size: 12px;
+  background: var(--color-surface-2);
+  padding: 4px 8px;
+  margin-top: 10px;
+  border-radius: 6px;
+}
+.office-editor {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid var(--color-brand);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+.office label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.office input:not([type='checkbox']),
+.office select,
+.office textarea {
+  padding: 10px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  max-width: 100%;
+  min-width: 0;
+}
+.office textarea {
+  min-height: 120px;
+}
+.office-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.office .office-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.office-task {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-line);
+}
+.office-note,
+.office-empty {
+  color: var(--color-ink-3);
+  margin: 16px 0;
+  font-size: 14px;
+}
+.office-recent {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.office [role='alert'],
+.office-warning {
+  color: var(--color-danger);
+  padding: 10px 0;
+}
+.office button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.office :focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+}
+.office-history {
+  display: block;
+  white-space: pre-wrap;
+  color: var(--color-ink-3);
+  margin: 8px 0;
+  font-size: 12px;
+}
+.office>h2{margin-top:24px}.office-editor pre{white-space:pre-wrap;overflow-wrap:anywhere}

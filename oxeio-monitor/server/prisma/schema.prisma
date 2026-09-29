@@ -209,6 +209,7 @@ model WorkPolicy {
 }
 
 model Employee {
+  officeEntries OfficeEntry[]
   id             Int            @id @default(autoincrement())
   empCode        String         @unique @map("emp_code")
   fullName       String         @map("full_name")
@@ -722,6 +723,13 @@ model AgentVersion {
  * দুটো চেহারা টেবিলে থাকত।
  */
 model DesignTarget {
+  officeEntries OfficeEntry[]
+  previews DesignPreview[]
+  sales ProductSale[]
+  costs ProductCost[]
+  priority Int @default(0)
+  dueAt DateTime? @map("due_at") @db.Timestamptz(3)
+  assignmentReason String? @map("assignment_reason") @db.VarChar(500)
   skipReviewPending Boolean @default(false) @map("skip_review_pending")
   skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
   skipRequests DesignSkipRequest[]
@@ -1277,4 +1285,123 @@ model DesignTargetEvent {
   @@index([targetId, id])
   @@index([recordedAt, action])
   @@map("design_target_events")
+}
+
+model DesignPreview {
+  id         Int      @id @default(autoincrement())
+  targetId   Int      @map("target_id")
+  version    Int
+  filename   String   @db.VarChar(120)
+  mime       String   @db.VarChar(32)
+  sha256     String   @db.VarChar(64)
+  image      Bytes
+  authorId   Int      @map("author_id")
+  authorName String   @map("author_name") @db.VarChar(200)
+  note       String   @db.VarChar(1000)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  target     DesignTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  comments   DesignComment[]
+  @@unique([targetId, version])
+  @@unique([targetId, sha256])
+  @@map("design_previews")
+}
+
+model DesignComment {
+  id           Int      @id @default(autoincrement())
+  previewId    Int      @map("preview_id")
+  authorId     Int      @map("author_id")
+  authorName   String   @map("author_name") @db.VarChar(200)
+  text         String   @db.VarChar(2000)
+  x            Float?
+  y            Float?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt   DateTime? @map("resolved_at") @db.Timestamptz(3)
+  resolvedById Int?      @map("resolved_by_id")
+  preview      DesignPreview @relation(fields: [previewId], references: [id], onDelete: Cascade)
+  @@index([previewId, id])
+  @@map("design_comments")
+}
+
+model SalesImport {
+  id         Int      @id @default(autoincrement())
+  sha256     String   @unique @db.VarChar(64)
+  name       String   @db.VarChar(120)
+  actorId    Int      @map("actor_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  rows       ProductSale[]
+  @@map("sales_imports")
+}
+
+model ProductSale {
+  id        Int     @id @default(autoincrement())
+  importId  Int     @map("import_id")
+  period    String  @db.VarChar(7)
+  liveAsin  String  @map("live_asin") @db.VarChar(20)
+  units     Int
+  royalty   Decimal @db.Decimal(14, 2)
+  currency  String  @db.VarChar(3)
+  targetId  Int?    @map("target_id")
+  batch     SalesImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  target    DesignTarget? @relation(fields: [targetId], references: [id], onDelete: SetNull)
+  @@unique([period, liveAsin, currency])
+  @@index([targetId])
+  @@map("product_sales")
+}
+
+model ProductCost {
+  id        Int     @id @default(autoincrement())
+  targetId  Int     @map("target_id")
+  amount    Decimal @db.Decimal(14, 2)
+  currency  String  @db.VarChar(3)
+  note      String  @db.VarChar(500)
+  actorId   Int     @map("actor_id")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  target    DesignTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  @@unique([targetId, currency])
+  @@map("product_costs")
+}
+
+
+model OfficeEntry {
+  id Int @id @default(autoincrement())
+  kind String @db.VarChar(32)
+  title String @db.VarChar(120)
+  content Json
+  employeeId Int? @map("employee_id")
+  targetId Int? @map("target_id")
+  createdBy Int @map("created_by")
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(3)
+  employee Employee? @relation(fields:[employeeId],references:[id],onDelete:Restrict)
+  target DesignTarget? @relation(fields:[targetId],references:[id],onDelete:Restrict)
+  events OfficeEvent[]
+  acknowledgements OfficeAcknowledgement[]
+  @@index([kind,updatedAt])
+  @@index([employeeId])
+  @@index([targetId])
+  @@map("office_entries")
+}
+model OfficeEvent {
+  id Int @id @default(autoincrement())
+  entryId Int @map("entry_id")
+  actorId Int @map("actor_id")
+  actorName String @map("actor_name") @db.VarChar(254)
+  action String @db.VarChar(20)
+  version Int
+  snapshot Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  entry OfficeEntry @relation(fields:[entryId],references:[id],onDelete:Restrict)
+  @@index([entryId,id])
+  @@map("office_events")
+}
+model OfficeAcknowledgement {
+  entryId Int @map("entry_id")
+  userId Int @map("user_id")
+  version Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  entry OfficeEntry @relation(fields:[entryId],references:[id],onDelete:Restrict)
+  @@id([entryId,userId,version])
+  @@map("office_acknowledgements")
 }

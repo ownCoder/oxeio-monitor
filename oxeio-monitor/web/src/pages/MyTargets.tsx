@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
 import {
@@ -278,6 +279,8 @@ function TargetRow({
         ⚠️ `navigator.clipboard` না থাকলে (পুরোনো ব্রাউজার, http) বোতামটা
            চুপচাপ কিছুই করে না — তাই আগে দেখে নেওয়া হয়।
       */}
+      <Link className="text-xs text-brand" to={`/office/help?target=${target.id}`}>Details &amp; help</Link>
+      <Link className="text-xs text-brand" to={`/production/board?target=${target.id}`}>Design review</Link>
       {target.jobNumber !== null && typeof navigator.clipboard !== 'undefined' && (
         <MiniButton
           onClick={() => void navigator.clipboard.writeText(String(target.jobNumber))}

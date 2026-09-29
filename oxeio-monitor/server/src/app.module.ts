@@ -1,3 +1,5 @@
+import { OfficeModule } from './office/office.module';
+import { ProductionModule } from './production/production.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
@@ -77,6 +79,8 @@ import { UsersModule } from './users/users.module';
     OpsModule,
     DigestModule,
     HealthModule,
+    OfficeModule,
+    ProductionModule,
   ],
 })
 export class AppModule {}

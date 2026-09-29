@@ -82,6 +82,8 @@ interface NavItem {
  *    কিন্তু চারটে ট্যাবের তিনটেয় ৪০৩ পাওয়ার চেয়ে সেটা ভালো।
  */
 const NAV: NavItem[] = [
+  {to:'/office/today',label:'Office',roles:['owner','manager','employee','researcher']},
+  {to:'/production',label:'Production',roles:['owner','manager','researcher']},
   {
     to: '/',
     label: 'Live Board',
