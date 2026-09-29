@@ -318,11 +318,12 @@ export function Layout() {
 
   const inbox = usePolling(signal => user ? api<{unread:number}>('/workspace/inbox', {signal}) : Promise.resolve(null), 60000, [user?.userId]);
 
+  const reloadInbox = inbox.reload;
   useEffect(() => {
-    const refreshInbox = () => inbox.reload();
+    const refreshInbox = () => reloadInbox();
     window.addEventListener('oxeio-inbox-read', refreshInbox);
     return () => window.removeEventListener('oxeio-inbox-read', refreshInbox);
-  }, [inbox.reload]);
+  }, [reloadInbox]);
 
   const nav = user
     ? NAV.filter(
