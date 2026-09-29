@@ -39,6 +39,10 @@
 - Shared handoff copy: `/opt/oxeio/docs/current-state.md`। GitHub বা অন্য PC-তে automatic sync যাচাই করা হয়নি; এই নথির update-এ GitHub push করা হয়নি।
 - Release directories: `/opt/oxeio-releases/skip-review-20260927`, `/opt/oxeio-releases/remove-distribute-20260927`, `/opt/oxeio-releases/design-pool-audit-20260928`।
 
+## পরবর্তী feature research
+
+- 29 September market comparison: [recommendations](2026-09-29-market-research.md)। First pilot: brief templates, blocker/help requests, submission checklist; existing local proofing/workload আগে scoped review/release। Research only; new implementation approved নয়। Live application remains 424।
+
 ## অসমাপ্ত / unreleased
 
 - Local workspace-এ পূর্ণ Production workspace-এর আলাদা পরিবর্তন আছে। এর UI এবং `20260926020000_production_workspace` migration live নয়। Target-history dependency শুধু release 411-এ live হয়েছে।
