@@ -8,6 +8,7 @@ import {
   editable,
   LABELS,
   taskProgress,
+  applyChecklist,
   type Content,
   type Entry,
   type Kind,
@@ -348,6 +349,7 @@ function Editor({
         : Promise.resolve({ rows: [], total: 0 }),
     [templateKind],
   );
+  const latestChecklist=templates.data?.rows.find(t=>t.id===content.checklistId);
   const [designSearch, setDesignSearch] = useState('');
   const designs = useApi(
     (signal) =>
@@ -645,6 +647,7 @@ function Editor({
                 ))}
               </select>
             </label>
+            {canEdit && latestChecklist && latestChecklist.version !== content.checklistVersion && <div className="office-warning"><p>This checklist has changed. Load the current version and check its items again.</p><button type="button" disabled={busy} onClick={()=>setContent(c=>applyChecklist(c,latestChecklist))}>Use latest checklist</button></div>}
             {(
               (templates.data?.rows.find(
                 (t) =>

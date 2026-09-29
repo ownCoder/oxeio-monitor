@@ -119,3 +119,6 @@ export function taskProgress(content: Content): string {
   const tasks = content.tasks as { done: boolean }[];
   return `${tasks.filter((t) => t.done).length}/${tasks.length} completed`;
 }
+export function applyChecklist(content: Content, template: Entry): Content {
+  return {...content,checklistId:template.id,checklistVersion:template.version,checked:(template.content.items as string[]).map(()=>false)};
+}
