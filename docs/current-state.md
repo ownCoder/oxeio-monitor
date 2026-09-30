@@ -44,7 +44,7 @@
 
 - Release 412: local typecheck ও targeted lint; production build; public HTML, bundle hash এবং Distribute now অনুপস্থিতি যাচাই। Database migration লাগেনি।
 - Release 411: exact source-এ ৮ integration + ৪০ rule test; encrypted backup parsing; ২ migration; matching API/web commit ও public bundle যাচাই।
-- Applied migrations: `20260926010000_target_history`, `20260927010000_skip_review_limit`, `20260926020000_production_workspace`, `20260929010000_office_workflows`। Seed চালানো হয়নি। PostgreSQL container পুনরায় তৈরি করা হয়নি।
+- Recent applied migrations: `20260926010000_target_history`, `20260927010000_skip_review_limit`, `20260926020000_production_workspace`, `20260929010000_office_workflows`, `20260929020000_workspace_inbox`, `20260930070000_salary_payments`। Seed চালানো হয়নি। PostgreSQL container পুনরায় তৈরি করা হয়নি।
 
 ## Source ও access
 
