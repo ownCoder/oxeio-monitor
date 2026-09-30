@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **Current release: 433 / 1bd6c4e** — Workspace Search, Notification inbox and Deadline reminders. Office and Production remain at the bottom of the sidebar. Office briefs, help requests, submission checks, SOPs, equipment and staff follow-up, plus the Production workspace. See [release record](docs/audits/2026-09-29-office-workspace.md), [operations](docs/office-workspace-operations.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 435 / d9f312e** — Screenshots now supports seven-day date ranges, Dhaka time bands, app name and monitor filters alongside Staff, with server-side counts and role-safe access. See [release record](docs/audits/2026-09-30-screenshots-filters.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
