@@ -58,6 +58,13 @@ export interface GalleryQuery {
   employeeId?: number;
   /** না দিলে ঢাকার আজকের কর্মদিবস */
   date?: string;
+  /** Up to seven inclusive Dhaka work dates; send both or neither. */
+  fromDate?: string;
+  toDate?: string;
+  timeBand?: 'all' | '00-06' | '06-12' | '12-18' | '18-24';
+  app?: string;
+  /** Zero-based; the control displays monitor numbers starting at one. */
+  monitorIndex?: number;
   /** ১ থেকে শুরু। ⚠️ সর্বোচ্চ ১০,০০০ */
   page?: number;
 }
