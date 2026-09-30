@@ -4,14 +4,15 @@
 
 ## Live
 
-- সর্বশেষ কাজ: Screenshots page-এ ১–৭ দিনের date range (Today/Yesterday/Last 7 days), Dhaka time band, active app, monitor number এবং আগের staff filter একসঙ্গে কাজ করে। Filter server-side count/pagination-এর আগে বসে; employee/researcher নিজের ছবিতেই সীমিত। Empty-result guidance filter অনুযায়ী বদলায়। [Release 435](audits/2026-09-30-screenshots-filters.md)।
+- সর্বশেষ কাজ: owner-only **Salary** page-এ নির্বাচিত মাসের সব প্রাসঙ্গিক staff-এর মাসিক salary, হিসাবকৃত net payable এবং payment status (Not recorded/Unpaid/Partial/Paid) দেখা যায়। মালিক amount/date/note দিয়ে status লিখতে বা সংশোধন করতে পারেন; কোনো টাকা স্বয়ংক্রিয়ভাবে পাঠানো হয় না। আগের মাসগুলোর payment অনুমান করা হয়নি। [Release 437](audits/2026-09-30-salary-tracking.md) · [ব্যবহারবিধি](salary-operations.md)।
+- আগের কাজ: Screenshots page-এ ১–৭ দিনের date range (Today/Yesterday/Last 7 days), Dhaka time band, active app, monitor number এবং আগের staff filter একসঙ্গে কাজ করে। Filter server-side count/pagination-এর আগে বসে; employee/researcher নিজের ছবিতেই সীমিত। Empty-result guidance filter অনুযায়ী বদলায়। [Release 435](audits/2026-09-30-screenshots-filters.md)।
 - আগের কাজ: Search, Notification inbox এবং Deadline/reminder live। Header থেকে Search/Inbox; একই workspace page-এ Deadlines। Read status account অনুযায়ী অন্য PC-তেও থাকে; reminder app-এর ভেতরে। [Release 433](audits/2026-09-29-workspace-tools.md) · [ব্যবহারবিধি ও limits](workspace-tools-operations.md)।
 - আগের কাজ: Sidebar-এর Office ও Production নিচে, Settings-এর পরে রাখা হয়েছে। [Release 430](audits/2026-09-29-sidebar-order.md)।
 - আগের কাজ: Office workspace-এর আটটি section এবং পূর্বে তৈরি Production workspace live। Brief templates, Help requests, submission checks, SOP acknowledgement, equipment, joining/leaving এবং coaching ব্যবহারের জন্য প্রস্তুত। [Release 428 record](audits/2026-09-29-office-workspace.md) · [ব্যবহারবিধি](office-workspace-operations.md)।
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **435 / d9f312e**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- Web/API: **437 / 3422cb7**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -20,6 +21,7 @@
 
 ## যাচাই
 
+- Release 437: disposable DB-তে ৪টি Salary payment/role test + আগের ৩৬টি payroll/proration integration test, frontend ২৯৫টি test, API/web build/typecheck/lint passed। Current encrypted backup isolated restore ও additive migration drill-এ core counts অপরিবর্তিত; নতুন `salary_payments` খালি। Chrome synthetic owner/status/staff-denied flow verified; real salaries browser-এ খোলা হয়নি। Public health, bundle hash, unauthenticated Salary 401, PostgreSQL unchanged, scoped source hashes release record-এ।
 - Release 435: isolated DB-তে ৪টি নতুন filter integration case + আগের ৬টি latest-screenshot case passed; frontend 293 tests, API/web builds, typechecks ও targeted lint passed। Chrome-এ শুধু synthetic sample দিয়ে owner/staff filter ও reset flows দেখা হয়েছে; authenticated live gallery খোলা হয়নি। No migration, seed বা production screenshot data read। Live health, unauthenticated screenshots 401, public bundle hash, unchanged PostgreSQL container এবং ছয়টি scoped source hash release record-এ।
 - Release 432/433: 24 database integration tests (5 new workspace tests) এবং 293 frontend tests; clean API/web builds/typechecks/targeted lint। Current encrypted backup isolated restore/migration passed, core data counts unchanged। Chrome synthetic UI flows verified; authenticated live UI test করা হয়নি। Public health, bundle hash, protected endpoint 401 এবং healthy containers verified। One additive receipts migration, no seed।
 
@@ -64,7 +66,8 @@
 
 ## Recovery ও পরবর্তী কাজ
 
-- Latest source/evidence: `/opt/oxeio-releases/screenshots-filters-20260930`; clean mirror `.release-office`। Rollback images: `oxeio-api:before-screenshots-filters-20260930`, `oxeio-web:before-screenshots-filters-20260930` (application 433)। [Release record](audits/2026-09-30-screenshots-filters.md)।
+- Latest source/evidence: `/opt/oxeio-releases/salary-20260930`; clean mirror `.release-salary`। Rollback images `oxeio-api:before-salary-20260930`, `oxeio-web:before-salary-20260930` (application 435)। [Release record](audits/2026-09-30-salary-tracking.md)। `20260930070000_salary_payments` migration additive; পুরোনো app-এ ফিরলেও নতুন payment records নষ্ট করবেন না।
+- Earlier source/evidence: `/opt/oxeio-releases/screenshots-filters-20260930`; clean mirror `.release-office`। Rollback images: `oxeio-api:before-screenshots-filters-20260930`, `oxeio-web:before-screenshots-filters-20260930` (application 433)। [Release record](audits/2026-09-30-screenshots-filters.md)।
 - Earlier source/evidence: `/opt/oxeio-releases/office-workflows-20260929`; clean mirror `.release-office`। Rollback to 424: `before-office-workflows-20260929` API/web tags। [Details](audits/2026-09-29-office-workspace.md)।
 - Previous source/evidence: `/opt/oxeio-releases/my-target-selection-20260929`; clean mirror `.release-my-targets`। Rollback to 422: `before-my-target-selection-20260929` API/web tags। [Details](audits/2026-09-29-my-target-selection.md)।
 - Previous release/evidence/source bundle: `/opt/oxeio-releases/system-improvements-20260928`। Local clean mirror `.release-system`; eleven scoped files deployed source-এর সঙ্গে SHA256 matched: [manifest](audits/system-source-alignment.json)। Main dirty checkout আলাদা pending কাজ রাখে।

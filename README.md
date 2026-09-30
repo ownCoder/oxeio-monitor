@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **Current release: 435 / d9f312e** — Screenshots now supports seven-day date ranges, Dhaka time bands, app name and monitor filters alongside Staff, with server-side counts and role-safe access. See [release record](docs/audits/2026-09-30-screenshots-filters.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 437 / 3422cb7** — Owner-only Salary lists monthly pay for staff and records Not recorded, Unpaid, Partial or Paid with an audit trail. See [release record](docs/audits/2026-09-30-salary-tracking.md), [operations](docs/salary-operations.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
