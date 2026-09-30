@@ -20,6 +20,7 @@ import { TargetsPage } from './pages/TargetsPage';
 import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SalaryPage } from './pages/SalaryPage';
 import { SecurityPage } from './pages/security/SecurityPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { homePathFor, seesEveryone } from './api/auth';
@@ -223,6 +224,7 @@ function Router() {
         <Route path="screenshots" element={<GalleryPage />} />
         <Route path="monthly" element={<MonthlyPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        {isOwner && <Route path="salary" element={<SalaryPage />} />}
 
         {/*
           ⭐ I06 — শর্ত ছাড়া, **সব ভূমিকার জন্য**। নিজের অ্যাকাউন্টের 2FA

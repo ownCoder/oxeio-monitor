@@ -34,6 +34,7 @@ const ACTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All events' },
   { value: 'view_screenshot', label: 'Screenshot viewed' },
   { value: 'payroll_view', label: 'Salary viewed' },
+  { value: 'salary_payment_update', label: 'Salary payment updated' },
   { value: 'change_setting', label: 'Setting changed' },
   /**
    * ⭐⭐ **শেষ হওয়া ডিজাইন "শেষ নয়" করা** *(২৫ আগস্ট ২০২৬)*।

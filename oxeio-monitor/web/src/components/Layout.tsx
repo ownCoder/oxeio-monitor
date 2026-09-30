@@ -224,6 +224,7 @@ const NAV: NavItem[] = [
    */
   { to: '/monthly', label: 'Monthly', roles: ['owner', 'manager'] },
   { to: '/reports', label: 'Reports', roles: ['owner', 'manager'] },
+  { to: '/salary', label: 'Salary', roles: ['owner'] },
   /**
    * ⭐ **R21 — জামানত।** Monthly ও Reports-এর ঠিক পরে, কারণ তিনটেই একই
    * প্রশ্নের দিক: **টাকা কোথায় দাঁড়িয়ে আছে।**

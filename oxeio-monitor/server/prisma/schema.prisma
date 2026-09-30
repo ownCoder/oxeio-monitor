@@ -241,6 +241,7 @@ model Employee {
   monthlySalary  Decimal?       @map("monthly_salary") @db.Decimal(12, 2)
   /// ⭐ পুরোনো বেতনগুলো — অতীতের পে-রোল যাতে না নড়ে (SalaryPeriod-এর ডক দেখুন)
   salaryPeriods  SalaryPeriod[]
+  salaryPayments SalaryPayment[]
   joinedOn       DateTime?      @map("joined_on") @db.Date
 
   /**
@@ -1010,6 +1011,28 @@ model SalaryPeriod {
   @@unique([employeeId, throughMonth])
   @@index([employeeId])
   @@map("salary_periods")
+}
+
+/// Owner-recorded payment state. No row means historical status is unknown.
+/// The payroll calculation remains the source of the amount due.
+model SalaryPayment {
+  id                  Int      @id @default(autoincrement())
+  employeeId          Int      @map("employee_id")
+  yearMonth           String   @map("year_month") @db.Char(7)
+  status              String   @db.VarChar(7)
+  paidAmount          Decimal  @map("paid_amount") @db.Decimal(12, 2)
+  netPayableAtRecord  Decimal? @map("net_payable_at_record") @db.Decimal(12, 2)
+  paidOn              DateTime? @map("paid_on") @db.Date
+  note                String?  @db.VarChar(500)
+  recordedById        Int      @map("recorded_by_id")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, yearMonth])
+  @@index([yearMonth])
+  @@map("salary_payments")
 }
 
 model MonthlySummary {
