@@ -1,6 +1,12 @@
 # oXeio Workforce Monitor
 
-> **Current release: 437 / 3422cb7** — Owner-only Salary lists monthly pay for staff and records Not recorded, Unpaid, Partial or Paid with an audit trail. See [release record](docs/audits/2026-09-30-salary-tracking.md), [operations](docs/salary-operations.md) and [canonical handoff](docs/current-state.md).
+> **Continue from another PC:** read [current state](docs/current-state.md) and [standing instructions](docs/work-preferences.md) first. Update these records after each completed task.
+
+> **Working preference — 27 September 2026:** use the owner's Google Chrome and installed ChatGPT extension for browser work. Do not use the internal/in-app browser. See [persistent working instructions](docs/work-preferences.md).
+
+> **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
+
+> **Current release: 440 / 076916f** — Owner-only Salary lists monthly pay, shows the next-month 5th as scheduled payday, and records actual payment status with an audit trail. OX-07's offboarding and deposit correction are recorded in the [release record](docs/audits/2026-10-01-ox07-offboarding-payday.md). See [operations](docs/salary-operations.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
@@ -43,7 +49,7 @@ items — they were considered and **rejected**, and the reasons are in
 | **Silent installation** | Staff agree to monitoring when they join, and the agent never hides: it shows a tray icon and a "My data" window. A policy [template](docs/monitoring-policy-template.md) ships with the repo for deployments that need a signed document. |
 | **Hiding hours from the person who worked them** | Every employee can open their own page and see exactly what was recorded, including any manual correction the owner made and the reason for it. |
 | **Screenshots outside 07:00–23:00** | Capture is time-boxed, and images auto-delete after 90 days. |
-| **Approval workflows** | The owner can correct hours, but nobody has to ask permission to work. |
+| **Approval before working** | Staff can work without approval. More than three design skip requests per Dhaka day require owner/manager review before replacement work is issued. |
 
 The one principle everything else follows: **a number must never claim to know
 something it doesn't.** A day the server wasn't watching is drawn as a dotted
