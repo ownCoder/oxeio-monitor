@@ -2,6 +2,8 @@
 
 **Salary** sidebar-এ শুধু owner দেখতে পাবেন। পৃষ্ঠার Month বেছে ওই মাসে কর্মরত staff-দের নাম, মাসিক salary, হিসাবকৃত **Net payable** এবং payment status দেখুন। Manager বা staff এই পাতা বা API খুলতে পারেন না। Salary দেখা ও payment status বদল—দুটিই audit log-এ লেখা হয়।
 
+প্রতিটি মাসের salary দেওয়ার নির্ধারিত দিন **পরের মাসের ৫ তারিখ**—যেমন সেপ্টেম্বরের salary ৫ অক্টোবর, ডিসেম্বরের salary পরের বছরের ৫ জানুয়ারি। Salary page-এ এই scheduled date দেখা যায়; পেরিয়ে গেলে payment যাচাইয়ের reminder আসে। এটি প্রকৃত payment date নয় এবং কোনো status নিজে থেকে Paid/Unpaid করে না।
+
 ## Payment status
 
 - **Not recorded**: ঐতিহাসিক payment-এর কোনো তথ্য নথিভুক্ত নেই। এটিকে Unpaid ধরে নেবেন না। Release-এর সময় আগের কোনো মাসের status নিজে থেকে বসানো হয়নি।

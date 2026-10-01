@@ -1,9 +1,11 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ৩০ সেপ্টেম্বর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ১ অক্টোবর ২০২৬ · Asia/Dhaka
 
 ## Live
 
+- OX-07 Sadia Akther-এর last working day ৩০ সেপ্টেম্বর; staff inactive ও portal access disabled। তাঁর deposit খাতা আগস্ট+সেপ্টেম্বর মোট ৳১,০০০, ভুল অক্টোবর কিস্তি সরানো ও settlement snapshot ৳১,০০০ করা হয়েছে; **আগের `refunded` outcome বহাল, বাস্তবে ফেরত হয়েছে কি না owner confirmation pending।** Salary page-এ প্রতিটি মাসের নির্ধারিত payment date পরের মাসের ৫ তারিখ দেখায়, কিন্তু কোনো payment auto-record হয় না। [Record](audits/2026-10-01-ox07-offboarding-payday.md) · [Salary guide](salary-operations.md)।
+- OX-12 Abdul Karim-এর agent login recovery: Sadia-র PC তাঁকে দেওয়া হয়েছে, অথচ Windows identity আগের OX-07 device-এ বাঁধা থাকায় login-এর পরে enrollment 409 হচ্ছিল। Sadia-র আগের registration ও Abdul-এর অবসরপ্রাপ্ত `INTERN_2` device revoke করে নতুন PC-তে OX-12 enrollment/heartbeat verify করা হয়েছে; ইতিহাস অক্ষত। [Recovery record](audits/2026-10-01-ox12-agent-reassignment.md)।
 - সর্বশেষ কাজ: owner-only **Salary** page-এ নির্বাচিত মাসের সব প্রাসঙ্গিক staff-এর মাসিক salary, হিসাবকৃত net payable এবং payment status (Not recorded/Unpaid/Partial/Paid) দেখা যায়। মালিক amount/date/note দিয়ে status লিখতে বা সংশোধন করতে পারেন; কোনো টাকা স্বয়ংক্রিয়ভাবে পাঠানো হয় না। আগের মাসগুলোর payment অনুমান করা হয়নি। [Release 437](audits/2026-09-30-salary-tracking.md) · [ব্যবহারবিধি](salary-operations.md)।
 - আগের কাজ: Screenshots page-এ ১–৭ দিনের date range (Today/Yesterday/Last 7 days), Dhaka time band, active app, monitor number এবং আগের staff filter একসঙ্গে কাজ করে। Filter server-side count/pagination-এর আগে বসে; employee/researcher নিজের ছবিতেই সীমিত। Empty-result guidance filter অনুযায়ী বদলায়। [Release 435](audits/2026-09-30-screenshots-filters.md)।
 - আগের কাজ: Search, Notification inbox এবং Deadline/reminder live। Header থেকে Search/Inbox; একই workspace page-এ Deadlines। Read status account অনুযায়ী অন্য PC-তেও থাকে; reminder app-এর ভেতরে। [Release 433](audits/2026-09-29-workspace-tools.md) · [ব্যবহারবিধি ও limits](workspace-tools-operations.md)।
@@ -12,7 +14,7 @@
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **437 / 3422cb7**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
+- Web/API: **440 / 076916f**। Public HTTPS health ও দুই container healthy যাচাই করা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -60,13 +62,16 @@
 
 ## অসমাপ্ত / unreleased
 
+- OX-12-এর reassigned PC-তে Abdul-এর agent ১ অক্টোবর ১০:৩৯-এ enroll করেছে; active heartbeat verified। Agent version 0.4.9, rollout-এর পর update পর্যবেক্ষণ করা যাবে।
+- OX-07-এর deposit settlement-এ `refunded` আগেই লেখা ছিল; বাস্তব ফেরত দেওয়ার বিষয় owner-এর কাছে নিশ্চিত করতে হবে। ৫ অক্টোবর সেপ্টেম্বরের চূড়ান্ত payroll দেখে প্রকৃত payment status/date লিখতে হবে।
 - Production workspace ও migration এখন live। Main checkout-এ unrelated agent/payroll/Studio পরিবর্তন রয়ে গেছে; সেগুলো এই release-এ অন্তর্ভুক্ত নয়।
 - Recorded skip insights এবং management design history release 421-এ live। Missing historical data reconstructed নয়; automatic sanctions নেই।
 - পুরো পুরোনো/dirty local checkout deploy করবেন না। Current VPS source-এর সঙ্গে scope মিলিয়ে পরের release বানাতে হবে।
 
 ## Recovery ও পরবর্তী কাজ
 
-- Latest source/evidence: `/opt/oxeio-releases/salary-20260930`; clean mirror `.release-salary`। Rollback images `oxeio-api:before-salary-20260930`, `oxeio-web:before-salary-20260930` (application 435)। [Release record](audits/2026-09-30-salary-tracking.md)। `20260930070000_salary_payments` migration additive; পুরোনো app-এ ফিরলেও নতুন payment records নষ্ট করবেন না।
+- Latest payday release/source/evidence: `/opt/oxeio-releases/payday-20261001`; clean mirror `.release-salary/oxeio-monitor` (payday scope updated)। Rollback images `oxeio-api:before-payday-20261001`, `oxeio-web:before-payday-20261001` (build 437)। [Release record](audits/2026-10-01-ox07-offboarding-payday.md)। No migration/seed; salary payment records untouched।
+- Previous salary release/evidence: `/opt/oxeio-releases/salary-20260930`। Rollback images `oxeio-api:before-salary-20260930`, `oxeio-web:before-salary-20260930` (application 435)। [Release record](audits/2026-09-30-salary-tracking.md)। `20260930070000_salary_payments` migration additive; পুরোনো app-এ ফিরলেও নতুন payment records নষ্ট করবেন না।
 - Earlier source/evidence: `/opt/oxeio-releases/screenshots-filters-20260930`; clean mirror `.release-office`। Rollback images: `oxeio-api:before-screenshots-filters-20260930`, `oxeio-web:before-screenshots-filters-20260930` (application 433)। [Release record](audits/2026-09-30-screenshots-filters.md)।
 - Earlier source/evidence: `/opt/oxeio-releases/office-workflows-20260929`; clean mirror `.release-office`। Rollback to 424: `before-office-workflows-20260929` API/web tags। [Details](audits/2026-09-29-office-workspace.md)।
 - Previous source/evidence: `/opt/oxeio-releases/my-target-selection-20260929`; clean mirror `.release-my-targets`। Rollback to 422: `before-my-target-selection-20260929` API/web tags। [Details](audits/2026-09-29-my-target-selection.md)।
