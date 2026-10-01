@@ -5,6 +5,7 @@
 ## Live
 
 - OX-07 Sadia Akther-এর last working day ৩০ সেপ্টেম্বর; staff inactive ও portal access disabled। তাঁর deposit খাতা আগস্ট+সেপ্টেম্বর মোট ৳১,০০০, ভুল অক্টোবর কিস্তি সরানো ও settlement snapshot ৳১,০০০ করা হয়েছে; **আগের `refunded` outcome বহাল, বাস্তবে ফেরত হয়েছে কি না owner confirmation pending।** Salary page-এ প্রতিটি মাসের নির্ধারিত payment date পরের মাসের ৫ তারিখ দেখায়, কিন্তু কোনো payment auto-record হয় না। [Record](audits/2026-10-01-ox07-offboarding-payday.md) · [Salary guide](salary-operations.md)।
+- Deposit fleet audit: ১৩ staff record-এর মধ্যে Sadia ছাড়া কারও last working month-এর পর কিস্তি নেই; settlement mismatch-ও নেই। কিন্তু active ১১ জনের অক্টোবরের ৳৫০০ করে মোট ৳৫,৫০০ ১ অক্টোবরেই ledger-এ বসেছে। এটি বাস্তবে আদায় হয়েছে কি না system জানে না; salary payment table-এ কোনো record নেই। Deposit বাস্তবে কখন কাটা হয়, owner clarification pending। [Audit](audits/2026-10-01-deposit-fleet-audit.md)।
 - OX-12 Abdul Karim-এর agent login recovery: Sadia-র PC তাঁকে দেওয়া হয়েছে, অথচ Windows identity আগের OX-07 device-এ বাঁধা থাকায় login-এর পরে enrollment 409 হচ্ছিল। Sadia-র আগের registration ও Abdul-এর অবসরপ্রাপ্ত `INTERN_2` device revoke করে নতুন PC-তে OX-12 enrollment/heartbeat verify করা হয়েছে; ইতিহাস অক্ষত। [Recovery record](audits/2026-10-01-ox12-agent-reassignment.md)।
 - সর্বশেষ কাজ: owner-only **Salary** page-এ নির্বাচিত মাসের সব প্রাসঙ্গিক staff-এর মাসিক salary, হিসাবকৃত net payable এবং payment status (Not recorded/Unpaid/Partial/Paid) দেখা যায়। মালিক amount/date/note দিয়ে status লিখতে বা সংশোধন করতে পারেন; কোনো টাকা স্বয়ংক্রিয়ভাবে পাঠানো হয় না। আগের মাসগুলোর payment অনুমান করা হয়নি। [Release 437](audits/2026-09-30-salary-tracking.md) · [ব্যবহারবিধি](salary-operations.md)।
 - আগের কাজ: Screenshots page-এ ১–৭ দিনের date range (Today/Yesterday/Last 7 days), Dhaka time band, active app, monitor number এবং আগের staff filter একসঙ্গে কাজ করে। Filter server-side count/pagination-এর আগে বসে; employee/researcher নিজের ছবিতেই সীমিত। Empty-result guidance filter অনুযায়ী বদলায়। [Release 435](audits/2026-09-30-screenshots-filters.md)।
@@ -64,6 +65,7 @@
 
 - OX-12-এর reassigned PC-তে Abdul-এর agent ১ অক্টোবর ১০:৩৯-এ enroll করেছে; active heartbeat verified। Agent version 0.4.9, rollout-এর পর update পর্যবেক্ষণ করা যাবে।
 - OX-07-এর deposit settlement-এ `refunded` আগেই লেখা ছিল; বাস্তব ফেরত দেওয়ার বিষয় owner-এর কাছে নিশ্চিত করতে হবে। ৫ অক্টোবর সেপ্টেম্বরের চূড়ান্ত payroll দেখে প্রকৃত payment status/date লিখতে হবে।
+- Deposit যদি বেতন দেওয়ার দিন কাটা হয়, planned বনাম collected amount আলাদা দেখানোর পরিবর্তন প্রয়োজন; বর্তমান মাসের সারি `ensureLedger()` নিজে বানায়, তাই শুধু delete করলে আবার ফিরে আসবে। Owner-এর নিয়ম নিশ্চিত হওয়ার অপেক্ষা।
 - Production workspace ও migration এখন live। Main checkout-এ unrelated agent/payroll/Studio পরিবর্তন রয়ে গেছে; সেগুলো এই release-এ অন্তর্ভুক্ত নয়।
 - Recorded skip insights এবং management design history release 421-এ live। Missing historical data reconstructed নয়; automatic sanctions নেই।
 - পুরো পুরোনো/dirty local checkout deploy করবেন না। Current VPS source-এর সঙ্গে scope মিলিয়ে পরের release বানাতে হবে।
