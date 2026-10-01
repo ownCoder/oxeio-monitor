@@ -4,6 +4,7 @@ import { EmployeeStatus, Prisma } from '@prisma/client';
 import { workDateOf } from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { salaryForMonth } from './payroll.math';
+import { salaryDueOn } from './salary-payday';
 import { PayrollService } from './payroll.service';
 import type { RecordSalaryPaymentDto } from './salary.dto';
 
@@ -26,6 +27,7 @@ export interface SalaryOverviewRow {
 
 export interface SalaryOverview {
   yearMonth: string;
+  dueOn: string;
   closed: boolean;
   rows: SalaryOverviewRow[];
   missingSummary: string[];
@@ -76,6 +78,7 @@ export class SalaryService {
     const paymentsByEmployee = new Map(payments.map(payment => [payment.employeeId, payment]));
     return {
       yearMonth,
+      dueOn: salaryDueOn(yearMonth),
       closed: !!closure,
       missingSummary: sheet.missingSummary,
       approximateHolidayDates: sheet.approximateHolidayDates,

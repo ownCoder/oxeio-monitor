@@ -22,6 +22,7 @@ export interface SalaryRow {
 
 export interface SalaryOverview {
   yearMonth: string;
+  dueOn: string;
   closed: boolean;
   rows: SalaryRow[];
   missingSummary: string[];

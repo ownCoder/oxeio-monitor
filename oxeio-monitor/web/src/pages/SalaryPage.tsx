@@ -123,6 +123,7 @@ export function SalaryPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2 text-xs text-ink-2">
             <span className="rounded-md border border-line bg-surface px-3 py-2">{data.rows.length} staff</span>
+            <span className="rounded-md border border-line bg-surface px-3 py-2">Scheduled payday · {formatDate(data.dueOn)}</span>
             {(['not_recorded', 'unpaid', 'partial', 'paid'] as const).map(status => (
               <span key={status} className="rounded-md border border-line bg-surface px-3 py-2">
                 {statusLabel[status]}: {data.rows.filter(row => row.payment.status === status).length}
@@ -130,6 +131,8 @@ export function SalaryPage() {
             ))}
           </div>
           {!data.closed && <Caveat>Month is open. Net payable may still change. Confirm the amount before recording a payment; the row will flag any later difference.</Caveat>}
+          {data.dueOn < todayInDhaka() && data.rows.some(row => row.payment.status !== 'paid') &&
+            <Caveat>Scheduled payday has passed. Check actual payments and record their status; an unrecorded payment is not automatically marked unpaid.</Caveat>}
           {data.missingSummary.length > 0 && <Caveat>Net payable is not calculated for: {data.missingSummary.join(', ')}. Their salary remains visible, but payment cannot be marked Paid yet.</Caveat>}
           {data.approximateHolidayDates.length > 0 && <Caveat>Some holiday dates are approximate. Confirm the payroll figures before recording payments.</Caveat>}
           {saved && <p className="text-sm text-ink-2" role="status">Payment status saved and audit logged.</p>}
@@ -173,7 +176,7 @@ export function SalaryPage() {
             <PaymentEditor key={`${month}-${editing}`} row={data.rows.find(row => row.employeeId === editing)!} month={month}
               onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); setSaved(true); reload(); }} />
           )}
-          <p className="text-xs text-ink-3">Payment status is a manual record, not a bank transfer. No record means the historical status is unknown. Every view and change is audit logged.</p>
+          <p className="text-xs text-ink-3">Salary for this month is scheduled on the 5th of the following month. Payment status is a manual record, not a bank transfer. No record means the historical status is unknown. Every view and change is audit logged.</p>
         </div>
       )}
     </Page>
