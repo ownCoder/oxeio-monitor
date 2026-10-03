@@ -17,6 +17,41 @@ export function insightRange(from: string, to: string) {
 @Roles(UserRole.owner, UserRole.manager)
 export class TargetInsightsController {
  constructor(private readonly prisma: PrismaService) {}
+ @Get('daily') async daily(@Query('from') from: string, @Query('to') to: string) {
+  const {start,end}=insightRange(from,to);
+  if (end.getTime()-start.getTime()>31*86400000) throw new BadRequestException('Choose up to 31 days for the daily report');
+  const rows=await this.prisma.$queryRaw<{
+   date:string;employeeId:number;empCode:string;fullName:string;completed:number;skipped:number|null;pending:number|null;
+  }[]>(Prisma.sql`
+   WITH days AS (
+    SELECT generate_series(${from}::date,${to}::date,interval '1 day')::date AS report_date
+   ), completed AS (
+    SELECT assigned_to_id employee_id,(completed_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,count(*)::int n
+    FROM design_targets
+    WHERE assigned_to_id IS NOT NULL AND completed_at>=${start} AND completed_at<${end}
+    GROUP BY 1,2
+   ), skips AS (
+    SELECT employee_id,(requested_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,
+     count(*) FILTER (WHERE decision IN ('automatic','approved'))::int skipped,
+     count(*) FILTER (WHERE decision='pending')::int pending
+    FROM design_skip_requests
+    WHERE requested_at>=${start} AND requested_at<${end}
+    GROUP BY 1,2
+   )
+   SELECT to_char(d.report_date,'YYYY-MM-DD') date,e.id "employeeId",e.emp_code "empCode",e.full_name "fullName",
+    coalesce(c.n,0)::int completed,
+    CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.skipped,0)::int END skipped,
+    CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.pending,0)::int END pending
+   FROM days d CROSS JOIN employees e
+   LEFT JOIN completed c ON c.employee_id=e.id AND c.work_date=d.report_date
+   LEFT JOIN skips s ON s.employee_id=e.id AND s.work_date=d.report_date
+   WHERE (e.joined_on IS NULL OR e.joined_on<=d.report_date)
+     AND (e.left_on IS NULL OR e.left_on>=d.report_date)
+   ORDER BY d.report_date DESC,e.emp_code
+  `);
+  return {from,to,skipHistoryCompleteFrom:'2026-09-28',rows,
+   definition:'Completed = designs with a completion timestamp, credited to their current assigned staff on the Dhaka completion day. Skipped = automatic or approved skip requests on their Dhaka request day, using the current decision; repeated successful requests count separately. Pending is separate; rejected requests do not count. Skip days before 28 September 2026 are unknown because the request ledger was introduced partway through 27 September.'};
+ }
  @Get('skips') async skips(@Query('from') from: string, @Query('to') to: string) {
   const {start,end}=insightRange(from,to);
   const [rows,since] = await this.prisma.$transaction([

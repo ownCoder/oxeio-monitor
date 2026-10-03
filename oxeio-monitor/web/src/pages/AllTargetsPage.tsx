@@ -443,7 +443,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
         <MiniButton disabled={data.loading || edit.busy} onClick={() => { setPicked(new Set()); setConfirmingBulk(false); data.reload(); stats.reload(); }}>Refresh</MiniButton>
         <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page)}>Export this page · CSV</MiniButton>
-        {mayDelete && <MiniButton onClick={()=>setShowInsights(!showInsights)}>{showInsights?'Hide skip report':'Skip report'}</MiniButton>}
+        {mayDelete && <MiniButton onClick={()=>setShowInsights(!showInsights)}>{showInsights?'Hide daily report':'Daily designs & skips'}</MiniButton>}
         {hasSearchFilters && <MiniButton onClick={resetFilters}>Reset all filters</MiniButton>}
         {data.loading && <span role="status" className="text-xs text-ink-3">Loading targets…</span>}
       </div>

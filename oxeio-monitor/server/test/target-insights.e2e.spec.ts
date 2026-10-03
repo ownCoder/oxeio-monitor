@@ -14,6 +14,19 @@ describe('Recorded target insights',()=>{
  it('does not double count repeated assignments or rejected/repeated requests in rate',async()=>{await assigned();await assigned();await skip('automatic');await skip('rejected');const result=await controller.skips(day,day);expect(result.rows).toEqual([expect.objectContaining({assigned:1,requests:2,automatic:1,rejected:1,cohortSkipped:1,skipRate:100,outsideCohort:0})]);});
  it('keeps carry-in requests visible with an unknown rate',async()=>{await skip('pending');expect((await controller.skips(day,day)).rows).toEqual([expect.objectContaining({assigned:0,pending:1,outsideCohort:1,skipRate:null})]);});
  it('shows zero percent when recorded assignments have no request',async()=>{await assigned();expect((await controller.skips(day,day)).rows).toEqual([expect.objectContaining({requests:0,assigned:1,skipRate:0})]);});
+ it('counts daily completions and successful skips, with pending separate',async()=>{
+  await h.prisma.designTarget.update({where:{id:target},data:{assignedToId:employee,status:'done',completedAt:at}});
+  await skip('automatic');await skip('approved');await skip('rejected');
+  const another=(await h.prisma.designTarget.create({data:{asin:'B000000002',addedById:owner}})).id;
+  await skip('pending',another);
+  const row=(await controller.daily(day,day)).rows.find(r=>r.employeeId===employee);
+  expect(row).toMatchObject({date:day,completed:1,skipped:2,pending:1});
+ });
+ it('shows unavailable historical skips instead of zero and limits daily ranges',async()=>{
+  const old=(await controller.daily('2026-09-27','2026-09-27')).rows.find(r=>r.employeeId===employee);
+  expect(old).toMatchObject({completed:0,skipped:null,pending:null});
+  await expect(controller.daily('2026-09-01','2026-10-03')).rejects.toThrow();
+ });
  it('paginates timeline without duplicates and rejects bad cursors',async()=>{await h.prisma.designTargetEvent.createMany({data:Array.from({length:53},()=>({targetId:target,action:'assigned',source:'fixture',afterState:{status:'assigned'},recordedAt:at}))});const first=await controller.history(target);expect(first.rows).toHaveLength(50);const next=await controller.history(target,String(first.nextBefore));expect(next.rows.some(r=>first.rows.some(f=>f.id===r.id))).toBe(false);await expect(controller.history(target,'NaN')).rejects.toThrow();await expect(controller.history(target+10000)).rejects.toThrow();});
- it('restricts both actual HTTP routes to management',async()=>{await h.prisma.user.create({data:{email:'research-insight@test.local',fullName:'Researcher fixture',role:'researcher',passwordHash:await hashPassword('insight-password-123'),mustChangePw:false}});const research=await loginReady(h,'research-insight@test.local','insight-password-123');await research.http.get(`/api/v1/target-insights/skips?from=${day}&to=${day}`).expect(403);await research.http.get(`/api/v1/target-insights/${target}/history`).expect(403);const boss=await loginReady(h,OWNER_EMAIL,OWNER_PASSWORD);await boss.http.get(`/api/v1/target-insights/skips?from=${day}&to=${day}`).expect(200);await boss.http.get(`/api/v1/target-insights/${target}/history?before=bad`).expect(400);});
+ it('restricts all actual HTTP routes to management',async()=>{await h.prisma.user.create({data:{email:'research-insight@test.local',fullName:'Researcher fixture',role:'researcher',passwordHash:await hashPassword('insight-password-123'),mustChangePw:false}});const research=await loginReady(h,'research-insight@test.local','insight-password-123');await research.http.get(`/api/v1/target-insights/daily?from=${day}&to=${day}`).expect(403);await research.http.get(`/api/v1/target-insights/skips?from=${day}&to=${day}`).expect(403);await research.http.get(`/api/v1/target-insights/${target}/history`).expect(403);const boss=await loginReady(h,OWNER_EMAIL,OWNER_PASSWORD);await boss.http.get(`/api/v1/target-insights/daily?from=${day}&to=${day}`).expect(200);await boss.http.get(`/api/v1/target-insights/skips?from=${day}&to=${day}`).expect(200);await boss.http.get(`/api/v1/target-insights/${target}/history?before=bad`).expect(400);});
 });
