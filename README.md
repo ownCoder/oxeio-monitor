@@ -6,7 +6,7 @@
 
 > **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
 
-> **Current release: 440 / 076916f** — Owner-only Salary lists monthly pay, shows the next-month 5th as scheduled payday, and records actual payment status with an audit trail. OX-07's offboarding and deposit correction are recorded in the [release record](docs/audits/2026-10-01-ox07-offboarding-payday.md). See [operations](docs/salary-operations.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 444 / 69a456a** — Design Pool now has an owner/manager daily staff table for completed designs, approved/automatic skips and pending skip reviews. Choose a date range or a person; pre-ledger skip days show “—”. See [release record](docs/audits/2026-10-03-daily-designs.md), [operations](docs/design-pool-operations.md) and [canonical handoff](docs/current-state.md). The previous Salary payday and OX-07 records remain in [their release record](docs/audits/2026-10-01-ox07-offboarding-payday.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).

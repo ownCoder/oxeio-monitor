@@ -1,6 +1,14 @@
 # Design Pool — ব্যবহারবিধি
 
-২৮ সেপ্টেম্বর ২০২৬ · Live **418 / e559b45** · [Latest UI change](audits/2026-09-28-pool-no-upload-live.md) · [Audit ও verification](audits/2026-09-28-design-pool.md)
+৩ অক্টোবর ২০২৬ · Live **444 / 69a456a** · [Daily report release](audits/2026-10-03-daily-designs.md) · [Original pool audit](audits/2026-09-28-design-pool.md)
+
+## প্রতিদিন কার কত Complete / Skip
+
+Owner/manager হিসেবে **Design Pool → Daily designs & skips** খুলুন। Default-এ শেষ ৭ Dhaka day দেখায়। From/To দিয়ে সর্বোচ্চ ৩১ দিন বাছুন; **Today** ও **Last 7 days** shortcuts আছে। **Staff** dropdown দিয়ে একজনকে বাছলে daily row ও উপরের মোট সংখ্যা সেই ব্যক্তির হবে। Refresh report দিয়ে নতুন কাজ/skip review সিদ্ধান্ত আনুন।
+
+**Completed** হলো completion timestamp থাকা design, completion-এর Dhaka day-তে বর্তমান assigned staff-এর নামে। **Skipped** হলো ওই Dhaka day-তে করা automatic বা পরে approved হওয়া skip request; একই design-এর সফল repeated request থাকলে প্রতিটি action গণনা হয়। **Pending** আলাদা; rejected request Skipped নয়। Approved/rejected decision বদলালে অতীতের request-day সংখ্যা বদলাতে পারে। এটি skip-এর সঙ্গে completed-এর সরাসরি conversion rate নয়। ২৭ সেপ্টেম্বরের মাঝপথে skip ledger চালু হয়েছে; **২৮ সেপ্টেম্বরের আগের Skipped/Pending “—” মানে তথ্য অজানা, শূন্য নয়**।
+
+নিচের **Skip-rate details** আগের cohort report: recorded assignments, requests ও review decisions দেখায়। Daily table-এর সংখ্যা এবং cohort rate-এর denominator আলাদা, তাই সরাসরি তুলনা করবেন না।
 
 ## খোঁজা ও ছাঁকা
 
