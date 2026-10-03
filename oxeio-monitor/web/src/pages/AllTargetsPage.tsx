@@ -42,7 +42,7 @@ import {
 } from './targets/filters';
 import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 import { downloadTargetsCsv } from './targets/export';
-import { SkipInsights, HistoryDrawer } from './targets/Insights';
+import { HistoryDrawer } from './targets/Insights';
 import { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';
 
 /**
@@ -102,7 +102,6 @@ function dhakaToday(): string {
  */
 export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
   const [initialView] = useState(() => parsePoolView(window.location.search));
-  const [showInsights,setShowInsights] = useState(false);
   const [historyId,setHistoryId] = useState<number|null>(null);
   const [filter, setFilter] = useState<FilterKey>(lockedStage ?? initialView.filter as FilterKey);
   /** ⚠️ আটকানো পাতায় কিউ বদলানোর কন্ট্রোলগুলো বসে না */
@@ -443,7 +442,6 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
         <MiniButton disabled={data.loading || edit.busy} onClick={() => { setPicked(new Set()); setConfirmingBulk(false); data.reload(); stats.reload(); }}>Refresh</MiniButton>
         <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page)}>Export this page · CSV</MiniButton>
-        {mayDelete && <MiniButton onClick={()=>setShowInsights(!showInsights)}>{showInsights?'Hide daily report':'Daily designs & skips'}</MiniButton>}
         {hasSearchFilters && <MiniButton onClick={resetFilters}>Reset all filters</MiniButton>}
         {data.loading && <span role="status" className="text-xs text-ink-3">Loading targets…</span>}
       </div>
@@ -535,7 +533,6 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       )}
 
       <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to}} onApply={applyView}/>
-      {mayDelete&&showInsights&&<SkipInsights/>}
       {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">

@@ -147,6 +147,12 @@ const NAV: NavItem[] = [
     roles: ['owner', 'manager', 'researcher'],
     child: true,
   },
+  {
+    to: '/targets/daily',
+    label: 'Daily designs & skips',
+    roles: ['owner', 'manager'],
+    child: true,
+  },
   /**
    * ⭐⭐ **Review** *(মালিকের নির্দেশ, ৩১ আগস্ট ২০২৬)* — Design Pool-এর
    * ঠিক নিচে।
