@@ -1,6 +1,6 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ৩ অক্টোবর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ৪ অক্টোবর ২০২৬ · Asia/Dhaka
 
 ## Live
 
@@ -63,6 +63,7 @@
 
 ## পরবর্তী feature research
 
+- ৪ অক্টোবরের prioritization: আগে payroll/deposit truth, offsite recovery/alert ও physical PC acceptance; পরের feature হিসেবে daily count drilldown, leave-aware assignment preview, version compare/review, safe bulk changes ও reference library। এটি [সুপারিশ](2026-10-04-next-priorities.md), implement/deploy হয়নি।
 - 29 September market comparison: [recommendations](2026-09-29-market-research.md)। First pilot: brief templates, blocker/help requests, submission checklist; existing local proofing/workload আগে scoped review/release। Owner approved implementation; Office ও Production release 428 live। First-use content/pilot instructions: [guide](office-workspace-operations.md)।
 
 ## অসমাপ্ত / unreleased
