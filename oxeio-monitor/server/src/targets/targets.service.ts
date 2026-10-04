@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import { DesignTargetStatus, Prisma, UserRole } from '@prisma/client';
 
-import { localMidnightOf, nextLocalMidnight } from '../agent/util/dhaka-time';
+import {
+  LOCAL_OFFSET_ISO,
+  localMidnightOf,
+  nextLocalMidnight,
+  workDateOf,
+} from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -40,7 +45,8 @@ import {
  * ক্লিক করার পর ৯০টা এলে কেউ আর কোনো সংখ্যাই বিশ্বাস করবে না, আর এই
  * প্রকল্পে ঠিক এভাবেই একই সূত্র দুই জায়গায় লেখা হয়ে বাগ জন্মেছে।
  */
-const dhakaStart = (day: string): Date => new Date(`${day}T00:00:00+06:00`);
+const dhakaStart = (day: string): Date =>
+  new Date(`${day}T00:00:00${LOCAL_OFFSET_ISO}`);
 const nextDay = (day: string): Date =>
   new Date(dhakaStart(day).getTime() + 86_400_000);
 
@@ -59,7 +65,7 @@ const laterDay = (a: string, b: string): string => (a >= b ? a : b);
  * তখন "গতকালের কাজ" বলে আটকে যেত।
  */
 const workDateStr = (at: Date): string =>
-  new Date(at.getTime() + 6 * 3_600_000).toISOString().slice(0, 10);
+  workDateOf(at).toISOString().slice(0, 10);
 
 /**
  * ⚠️⚠️ পর্দায় সর্বোচ্চ কতগুলো বাদ-পড়া লাইন দেখানো হবে *(২৩ আগস্ট ২০২৬)*।

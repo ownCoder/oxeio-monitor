@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { dhakaClock, workDateOf } from '../agent/util/dhaka-time';
+import {
+  WORK_TIMEZONE,
+  dhakaClock,
+  workDateOf,
+} from '../agent/util/dhaka-time';
 import { AlertMailer, type SendOutcome } from '../alerts/alerts.mailer';
 import { TelegramChannel } from '../alerts/telegram.channel';
 import { PrismaService } from '../prisma/prisma.service';
@@ -224,7 +228,7 @@ export class DigestService {
           FROM design_targets
          WHERE assigned_to_id = ANY(${staff.map((d) => d.id)}::int[])
            AND completed_at IS NOT NULL
-           AND (completed_at AT TIME ZONE 'Asia/Dhaka')::date = ${workDate}::date
+           AND (completed_at AT TIME ZONE ${WORK_TIMEZONE})::date = ${workDate}::date
          GROUP BY 1
       `;
       const byId = new Map(rows.map((r) => [r.employee_id, Number(r.n)]));

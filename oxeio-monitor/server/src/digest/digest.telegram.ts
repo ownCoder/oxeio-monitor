@@ -1,3 +1,4 @@
+import { WORK_TIMEZONE_LABEL } from '../agent/util/dhaka-time';
 import type { DesignView } from '../summary/design.rules';
 import type { Digest, DigestRow } from './digest.math';
 
@@ -131,7 +132,7 @@ export function telegramDigest(
 
   const out: string[] = [
     `${orgName} · Daily report`,
-    `${digest.workDate} · ${extras.atTime} Dhaka`,
+    `${digest.workDate} · ${extras.atTime} ${WORK_TIMEZONE_LABEL}`,
     '',
     `Worked today   ${hm(totals.hoursToday)}`,
     `Staff          ${totals.workedToday} of ${totals.employees} worked`,

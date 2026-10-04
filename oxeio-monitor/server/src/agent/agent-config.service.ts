@@ -4,6 +4,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Device } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { LOCAL_OFFSET_MIN, WORK_TIMEZONE } from './util/dhaka-time';
 
 export interface AgentConfig {
   idleThresholdSec: number;
@@ -12,6 +13,12 @@ export interface AgentConfig {
   screenshotFrom: string | null;
   screenshotTo: string | null;
   timezone: string;
+  /**
+   * Minutes east of UTC for `timezone` (Asia/Dhaka = 360). Sent as a number
+   * so the agent does not need a tz database: the server only accepts zones
+   * without DST, so one fixed offset is the whole story.
+   */
+  utcOffsetMinutes: number;
   monthlyTargetHours: number;
   heartbeatSec: number;
   appTracking: { enabled: boolean; minDurationSec: number };
@@ -46,7 +53,10 @@ export class AgentConfigService {
       slotMinutes: policy.slotMinutes,
       screenshotFrom: policy.screenshotFrom,
       screenshotTo: policy.screenshotTo,
-      timezone: policy.timezone,
+      // The server's zone, not `policy.timezone`: every work date the server
+      // computes uses WORK_TIMEZONE, and the agent must cut days the same way
+      timezone: WORK_TIMEZONE,
+      utcOffsetMinutes: LOCAL_OFFSET_MIN,
       monthlyTargetHours: Number(policy.monthlyTargetHours),
       heartbeatSec: 30,
       appTracking: { enabled: true, minDurationSec: 5 },

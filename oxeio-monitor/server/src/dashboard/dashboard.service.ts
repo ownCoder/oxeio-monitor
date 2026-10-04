@@ -5,7 +5,11 @@ import {
 } from '@nestjs/common';
 import type { SegmentState } from '@prisma/client';
 
-import { nextLocalMidnight, workDateOf } from '../agent/util/dhaka-time';
+import {
+  DHAKA_OFFSET_MIN,
+  nextLocalMidnight,
+  workDateOf,
+} from '../agent/util/dhaka-time';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   decideLiveStatus,
@@ -169,7 +173,7 @@ export interface HourlyBucket {
  * ব্যবহার হয়: `workDateOf()` ঢাকার দিনটাকে UTC-মধ্যরাত হিসেবে ফেরায়, আর
  * আসল ঢাকা-মধ্যরাত ওটার এত মিলিসেকেন্ড আগে।
  */
-const DHAKA_OFFSET_MS = 6 * 3600_000;
+const DHAKA_OFFSET_MS = DHAKA_OFFSET_MIN * 60_000;
 
 export interface TrendDay {
   /** ঢাকার কর্মদিবস, `YYYY-MM-DD` */

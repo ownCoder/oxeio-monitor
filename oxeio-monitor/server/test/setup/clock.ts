@@ -14,7 +14,7 @@
  * import করতে পারে না। ⭐ হেল্পার আলাদা রাখায় **দুই জাতের স্পেকেই** একই
  * ঘড়ি, আর নিয়মটাও সবখানে এক।
  */
-import { workDateOf } from '../../src/agent/util/dhaka-time';
+import { DHAKA_OFFSET_MIN, workDateOf } from '../../src/agent/util/dhaka-time';
 
 /**
  * ফিক্সচারের জন্য একটা **নিরাপদ মুহূর্ত** — আজকের ঢাকা-দিনের **দুপুর ১২টা**।
@@ -40,7 +40,12 @@ import { workDateOf } from '../../src/agent/util/dhaka-time';
 export function dhakaNoon(dayOffset = 0): Date {
   // `workDateOf` ঢাকার দিনটাকে UTC-মধ্যরাত হিসেবে ফেরায়; +৬ঘ = ঢাকার ১২:০০
   const day = workDateOf(new Date());
-  return new Date(day.getTime() + dayOffset * 86_400_000 + 6 * 3_600_000);
+  // (12h − offset) instead of a hardcoded 6h, so it is local noon in any WORK_TIMEZONE
+  return new Date(
+    day.getTime() +
+      dayOffset * 86_400_000 +
+      (12 * 60 - DHAKA_OFFSET_MIN) * 60_000,
+  );
 }
 
 /**

@@ -37,6 +37,11 @@ describe('পাবলিক রুট', () => {
 });
 
 describe('লগইন ছাড়া সুরক্ষিত রুট', () => {
+  it('GET /auth/time-zone is public and defaults to Dhaka', async () => {
+    const res = await h.http().get('/api/v1/auth/time-zone').expect(200);
+    expect(res.body).toEqual({ timeZone: 'Asia/Dhaka', utcOffsetMinutes: 360 });
+  });
+
   it('GET /auth/me → 401', async () => {
     await h.http().get('/api/v1/auth/me').expect(401);
   });

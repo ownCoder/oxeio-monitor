@@ -114,6 +114,16 @@ describe('device auth', () => {
     expect(res.body.config.idleThresholdSec).toBe(60);
   });
 
+  it('carries the work-day zone and its fixed offset (default Dhaka)', async () => {
+    const res = await asAgent(
+      h.http().get('/api/v1/agent/config'),
+      device.token,
+    ).expect(200);
+
+    expect(res.body.config.timezone).toBe('Asia/Dhaka');
+    expect(res.body.config.utcOffsetMinutes).toBe(360);
+  });
+
   it('revoke করা ডিভাইস 403 পায় (H06)', async () => {
     await h.prisma.device.update({
       where: { id: device.deviceId },

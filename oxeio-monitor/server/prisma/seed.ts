@@ -51,7 +51,8 @@ async function seedWorkPolicy(): Promise<number> {
       screenshotTo: '23:00',
       idleThresholdSec: 60,
       slotMinutes: 5,
-      timezone: 'Asia/Dhaka',
+      // Same zone the server runs on (WORK_TIMEZONE, default Asia/Dhaka)
+      timezone: process.env.WORK_TIMEZONE?.trim() || 'Asia/Dhaka',
       isActive: true,
     },
   });

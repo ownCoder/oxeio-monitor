@@ -1,3 +1,4 @@
+import { WORK_TIMEZONE_LABEL } from '../agent/util/dhaka-time';
 import type { AttendanceRow, SummaryRow } from '../reports/reports.types';
 
 /**
@@ -234,7 +235,7 @@ export function digestSubject(digest: Digest): string {
 export function digestBody(digest: Digest, orgName: string): string {
   const { totals } = digest;
   const lines: string[] = [
-    `${orgName} — Daily summary · ${digest.workDate} (Dhaka)`,
+    `${orgName} — Daily summary · ${digest.workDate} (${WORK_TIMEZONE_LABEL})`,
     '',
     `Hours today — ${h(totals.hoursToday)} total, ` +
       `${totals.workedToday}/${totals.employees} staff worked`,

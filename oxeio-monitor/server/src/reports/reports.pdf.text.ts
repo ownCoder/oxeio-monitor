@@ -1,4 +1,4 @@
-import { dhakaPathParts } from '../agent/util/dhaka-time';
+import { WORK_TIMEZONE, dhakaPathParts } from '../agent/util/dhaka-time';
 
 /**
  * F06 — PDF-এ কোন লেখা আদৌ **ছাপা যাবে** তার খাঁটি হিসাব। pdfkit এখানে
@@ -180,7 +180,7 @@ export function truncateToWidth(
  */
 export function dhakaStamp(instant: Date): string {
   const { year, month, day, hhmmss } = dhakaPathParts(instant);
-  return `${year}-${month}-${day} ${hhmmss.slice(0, 2)}:${hhmmss.slice(2, 4)} (Asia/Dhaka)`;
+  return `${year}-${month}-${day} ${hhmmss.slice(0, 2)}:${hhmmss.slice(2, 4)} (${WORK_TIMEZONE})`;
 }
 
 /**

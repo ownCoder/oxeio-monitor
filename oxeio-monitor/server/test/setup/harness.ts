@@ -9,7 +9,7 @@ import request from 'supertest';
 import { AppCategoryService } from '../../src/activity/app-category.service';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/app.setup';
-import { workDateOf } from '../../src/agent/util/dhaka-time';
+import { DHAKA_OFFSET_MIN, workDateOf } from '../../src/agent/util/dhaka-time';
 import { PrismaService } from '../../src/prisma/prisma.service';
 
 export const OWNER_EMAIL = 'owner@test.local';
@@ -293,7 +293,7 @@ export function todayWindow(seconds: number): {
   // ১ সেকেন্ড মার্জিন — endedAt "এখন"-এর ঠিক পরে হয়ে গেলে সার্ভার
   // ভবিষ্যতের টাইমস্ট্যাম্প দেখত
   const endedAt = new Date(Date.now() - 1_000);
-  const dhakaMidnight = workDateOf(endedAt).getTime() - 6 * 3_600_000;
+  const dhakaMidnight = workDateOf(endedAt).getTime() - DHAKA_OFFSET_MIN * 60_000;
 
   const startedAt = new Date(
     Math.max(endedAt.getTime() - seconds * 1_000, dhakaMidnight + 1_000),

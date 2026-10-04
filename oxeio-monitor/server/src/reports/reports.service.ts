@@ -17,7 +17,7 @@ import {
   type UsageGroup,
   type UsageTally,
 } from '../activity/activity.math';
-import { workDateOf } from '../agent/util/dhaka-time';
+import { WORK_TIMEZONE, workDateOf } from '../agent/util/dhaka-time';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -237,12 +237,12 @@ export class ReportsService {
       { employee_id: number; work_date: Date; n: number }[]
     >`
       SELECT assigned_to_id AS employee_id,
-             (completed_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,
+             (completed_at AT TIME ZONE ${WORK_TIMEZONE})::date AS work_date,
              count(*)::int AS n
         FROM design_targets
        WHERE assigned_to_id = ANY(${ctx.employees.map((e) => e.id)}::int[])
          AND completed_at IS NOT NULL
-         AND (completed_at AT TIME ZONE 'Asia/Dhaka')::date
+         AND (completed_at AT TIME ZONE ${WORK_TIMEZONE})::date
              BETWEEN ${range.from}::date AND ${range.to}::date
        GROUP BY 1, 2
     `;

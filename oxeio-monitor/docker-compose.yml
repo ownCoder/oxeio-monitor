@@ -37,7 +37,10 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      TZ: Asia/Dhaka # GMT+6 (UTC+06:00), no DST
+      TZ: ${WORK_TIMEZONE:-Asia/Dhaka} # default GMT+6 (UTC+06:00), no DST
+      # Work-day zone for every date, cron job and report. Only zones without
+      # DST are accepted; the server refuses to start otherwise.
+      WORK_TIMEZONE: ${WORK_TIMEZONE:-Asia/Dhaka}
       DATABASE_URL: postgresql://${POSTGRES_USER:-oxeio}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oxeio}?schema=public
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       # ⚠️ চলক দুটো এখানে **স্পষ্ট করে** পাস করতে হয়। compose হোস্টের
@@ -249,7 +252,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      TZ: Asia/Dhaka
+      TZ: ${WORK_TIMEZONE:-Asia/Dhaka}
+      # the seed writes it into work_policies.timezone
+      WORK_TIMEZONE: ${WORK_TIMEZONE:-Asia/Dhaka}
       DATABASE_URL: postgresql://${POSTGRES_USER:-oxeio}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-oxeio}?schema=public
       SEED_OWNER_EMAIL: ${SEED_OWNER_EMAIL:-}
       SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:-}

@@ -1,4 +1,4 @@
-import { workDateOf } from '../agent/util/dhaka-time';
+import { WORK_TIMEZONE_LABEL, workDateOf } from '../agent/util/dhaka-time';
 import { addDays, toIsoDate } from '../reports/reports.range';
 import type { AttendanceRow, SummaryRow } from '../reports/reports.types';
 
@@ -783,7 +783,7 @@ export function weeklyMessage(
 
   const head = [
     `${org} — Weekly summary`,
-    `${weekly.from} → ${weekly.to} (Dhaka, ${weekly.days} days)`,
+    `${weekly.from} → ${weekly.to} (${WORK_TIMEZONE_LABEL}, ${weekly.days} days)`,
     '',
   ];
 
@@ -906,7 +906,7 @@ export function weeklyMessage(
   const tail = [
     '',
     'How to read this',
-    `  • Window: the ${weekly.days} days ending today (Dhaka).`,
+    `  • Window: the ${weekly.days} days ending today (${WORK_TIMEZONE_LABEL}).`,
     '  • Hours are credited — work plus adjustments made by the owner.',
     "  • Today's target is left out, because today is not over yet.",
   ];

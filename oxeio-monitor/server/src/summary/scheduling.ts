@@ -7,6 +7,8 @@
  * ফলে ওখানে ইনজেক্ট করা কোনো সার্ভিস পাওয়া সম্ভব নয়।
  */
 
+import { WORK_TIMEZONE } from '../agent/util/dhaka-time';
+
 /**
  * ⭐ টেস্টে সিডিউলার সম্পূর্ণ বন্ধ।
  *
@@ -22,7 +24,8 @@ export const SCHEDULING_ENABLED = process.env.NODE_ENV !== 'test';
  * সন্ধ্যা ৬:১৫ হতো, অর্থাৎ দিন-ক্লোজ জব দিনের মাঝখানে চলে গিয়ে অসম্পূর্ণ
  * দিনকে "চূড়ান্ত" বলে দাগিয়ে দিত।
  */
-export const JOB_TIMEZONE = 'Asia/Dhaka';
+// Same zone as every work date (`WORK_TIMEZONE`, default Asia/Dhaka)
+export const JOB_TIMEZONE = WORK_TIMEZONE;
 
 /** একটা জব এক সময়ে একবারই — একই প্রসেসের ভেতরে। */
 export class RunLock {
