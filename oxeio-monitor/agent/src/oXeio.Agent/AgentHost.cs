@@ -219,6 +219,9 @@ internal sealed class AgentHost : IAsyncDisposable
     /// </summary>
     private AgentConfig _config = AgentConfig.Default;
 
+    /// <summary>The last work-day zone, kept on disk across restarts.</summary>
+    private readonly WorkZoneMemory _zoneMemory;
+
     /// <summary>
     /// সার্ভার থেকে আনা, কিন্তু এখনো প্রয়োগ হয়নি। heartbeat থ্রেড লেখে,
     /// <see cref="TrackLoop"/> <c>Interlocked.Exchange</c> দিয়ে তুলে নেয়।
@@ -280,6 +283,13 @@ internal sealed class AgentHost : IAsyncDisposable
         _settings = settings;
         _version = version;
         _log = log ?? NullSyncLog.Instance;
+
+        // Before the first work date is computed: a restart without network
+        // must keep counting in the zone the server last sent, not in Dhaka
+        _zoneMemory = new WorkZoneMemory(AgentDataDirectory.Default);
+        if (_zoneMemory.TryRestore())
+            _log.Info($"Work-day zone restored: {DhakaTime.ToMemoryLine()}");
+
         _activeDate = DhakaTime.WorkDateOf(DateTimeOffset.UtcNow);
     }
 
@@ -1622,6 +1632,8 @@ internal sealed class AgentHost : IAsyncDisposable
             changes.Add($"heartbeat {old.HeartbeatSec}s → {cfg.HeartbeatSec}s");
         }
 
+        ApplyWorkZone(cfg, changes);
+
         ApplyAppTracking(cfg, old, change, now, changes);
         ApplyIdleThreshold(cfg, old, change, now, changes);
 
@@ -1630,6 +1642,30 @@ internal sealed class AgentHost : IAsyncDisposable
         _log.Info(changes.Count == 0
             ? $"Config {version} — nothing changed"
             : $"Config {version} applied: {string.Join(" · ", changes)}");
+    }
+
+    /// <summary>
+    /// The work-day zone, when the server sends one (<c>utcOffsetMinutes</c>).
+    ///
+    /// ⚠️ A server older than the field sends nothing — the current zone stays.
+    /// ⚠️ Applied before the idle and app trackers below, so a segment cut by
+    /// those changes already gets the new work date.
+    /// </summary>
+    private void ApplyWorkZone(AgentConfig cfg, List<string> changes)
+    {
+        if (cfg.UtcOffsetMinutes is not { } minutes) return;
+
+        var before = DhakaTime.ToMemoryLine();
+        if (!DhakaTime.TrySet(cfg.Timezone, minutes))
+        {
+            _log.Warn($"Ignoring work-day zone {cfg.Timezone} ({minutes} min) — out of range");
+            return;
+        }
+
+        if (DhakaTime.ToMemoryLine() == before) return;
+
+        _zoneMemory.Remember();
+        changes.Add($"work-day zone {before} → {DhakaTime.ToMemoryLine()}");
     }
 
     private void ApplyAppTracking(

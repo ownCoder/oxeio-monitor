@@ -31,6 +31,13 @@ public sealed record AgentConfig
     /// <summary>v1-এ সবসময় <c>"Asia/Dhaka"</c> — <see cref="oXeio.Core.Time.DhakaTime"/> দেখুন।</summary>
     public required string Timezone { get; init; }
 
+    /// <summary>
+    /// Minutes east of UTC for <see cref="Timezone"/> (Asia/Dhaka = 360). The
+    /// server only accepts zones without DST, so this one number is enough.
+    /// <c>null</c> from a server older than the field — keep the current offset.
+    /// </summary>
+    public int? UtcOffsetMinutes { get; init; }
+
     public required double MonthlyTargetHours { get; init; }
 
     public required int HeartbeatSec { get; init; }
@@ -52,6 +59,7 @@ public sealed record AgentConfig
         ScreenshotFrom = "07:00",
         ScreenshotTo = "23:00",
         Timezone = "Asia/Dhaka",
+        UtcOffsetMinutes = 360,
         MonthlyTargetHours = 208,
         HeartbeatSec = 30,
         AppTracking = new AppTrackingConfig { Enabled = true, MinDurationSec = 5 },

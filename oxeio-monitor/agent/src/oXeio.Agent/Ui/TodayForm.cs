@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 
 using oXeio.Core.Agent;
 using oXeio.Core.Models;
+using oXeio.Core.Time;
 
 namespace oXeio.Agent.Ui;
 
@@ -100,7 +101,7 @@ internal sealed class TodayForm : OwnerDrawnForm
                 : options.EmployeeName!;
 
         stack.Line(who, TrayFontRole.Small, Theme.Ink2);
-        stack.Line(UiText.WorkDate(now) + " · Dhaka", TrayFontRole.Small, Muted);
+        stack.Line(UiText.WorkDate(now) + " · " + DhakaTime.Label, TrayFontRole.Small, Muted);
         stack.Gap(6);
 
         // ⭐ অবস্থাটা সংখ্যার পাশেই — জানালার একমাত্র এটাই মিনিটে মিনিটে বদলায়।
