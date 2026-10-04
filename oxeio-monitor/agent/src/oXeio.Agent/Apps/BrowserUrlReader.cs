@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Windows.Automation;
 
+using oXeio.Core.Apps;
+
 namespace oXeio.Agent.Apps;
 
 /// <summary>
@@ -29,18 +31,6 @@ internal sealed class BrowserUrlReader
     /// সময়টা অপেক্ষা করলে সেকেন্ডের হিসাব পিছিয়ে যেত।
     /// </summary>
     private static readonly TimeSpan Timeout = TimeSpan.FromMilliseconds(400);
-
-    /// <summary>
-    /// address bar-এর নাম যেসব ভাষায়/ভার্সনে যা হয়। ⚠️ তালিকাটা
-    /// সম্পূর্ণ নয় এবং হতে পারেও না — তাই নিচে নাম-নিরপেক্ষ ফলব্যাকও আছে।
-    /// </summary>
-    private static readonly string[] AddressBarNames =
-    [
-        "address and search bar", // Chrome
-        "address bar",            // Edge (কিছু ভার্সন)
-        "search or enter address", // Firefox
-        "omnibox",
-    ];
 
     private int _consecutiveFailures;
 
@@ -102,24 +92,12 @@ internal sealed class BrowserUrlReader
 
         if (edits.Count == 0) return null;
 
-        // ১· নাম মিলিয়ে খোঁজা — সবচেয়ে নির্ভরযোগ্য
-        foreach (AutomationElement edit in edits)
-        {
-            var name = edit.Current.Name;
-            if (string.IsNullOrEmpty(name)) continue;
-
-            foreach (var known in AddressBarNames)
-            {
-                if (name.Contains(known, StringComparison.OrdinalIgnoreCase))
-                    return ValueOf(edit);
-            }
-        }
-
-        // ২· ফলব্যাক: প্রথম Edit।
-        // ⚠️ এটা ভুল কন্ট্রোলও ধরতে পারে (যেমন পেজের ভেতরের সার্চ বাক্স)।
-        //    তাতে ক্ষতি নেই — DomainParser ডোমেইনের মতো না দেখালে বাদ দেয়,
-        //    তাই টাইপ করা সার্চ-শব্দ কখনো "ডোমেইন" হিসেবে জমা হয় না।
-        return ValueOf(edits[0]);
+        var index = AddressBarMatcher.Pick(
+            edits.Count,
+            i => edits[i].Current.ClassName,
+            i => edits[i].Current.AutomationId,
+            i => edits[i].Current.Name);
+        return index is { } i ? ValueOf(edits[i]) : null;
     }
 
     private static string? ValueOf(AutomationElement element)
