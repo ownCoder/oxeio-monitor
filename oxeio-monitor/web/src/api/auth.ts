@@ -56,6 +56,21 @@ export function me(): Promise<Me> {
   return api('/auth/me', { silent401: true });
 }
 
+export interface WorkTimeZone {
+  /** IANA name, e.g. `Asia/Dhaka` */
+  timeZone: string;
+  /** Minutes east of UTC — fixed, the server refuses zones with DST */
+  utcOffsetMinutes: number;
+}
+
+/**
+ * The work-day zone the server counts in. Public, like `session-policy`, so
+ * the login page can show dates on the same day as everything else.
+ */
+export function fetchWorkTimeZone(signal?: AbortSignal): Promise<WorkTimeZone> {
+  return api('/auth/time-zone', { silent401: true, signal });
+}
+
 export function logout(): Promise<void> {
   return api('/auth/logout', { method: 'POST' });
 }

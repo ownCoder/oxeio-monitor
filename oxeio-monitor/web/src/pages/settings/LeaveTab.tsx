@@ -10,7 +10,7 @@ import {
 import { useApi } from '../../api/useApi';
 import { Card } from '../../components/Card';
 import { Caveat, Empty, ErrorBox, Loading } from '../../components/States';
-import { formatDate } from '../../lib/format';
+import { formatDate, todayInDhaka } from '../../lib/format';
 import {
   ConfirmDialog,
   FormGrid,
@@ -336,5 +336,5 @@ function labelOf(type: string): string {
 
 /** ⚠️ ঢাকার আজ, ব্রাউজারের নয় — `MonthsTab`-এর একই নোট দেখুন */
 function currentMonth(): string {
-  return new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 7);
+  return todayInDhaka().slice(0, 7);
 }

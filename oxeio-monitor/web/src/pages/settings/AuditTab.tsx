@@ -14,6 +14,7 @@ import {
   monthStartOf,
   todayInDhaka,
   workDateOf,
+  workOffsetIso,
 } from '../../lib/format';
 import { Chip, FilterChip, MiniButton, Notice } from './ui';
 
@@ -81,15 +82,13 @@ const PAGE_SIZE = 50;
  *    UTC মধ্যরাত ধরত, আর ঢাকার সকাল ৬টার আগের ঘটনাগুলো আগের দিনে পড়ে
  *    যেত — অর্থাৎ ভোরে কে কী দেখল সেটা খুঁজে পাওয়া যেত না।
  */
-const DHAKA_OFFSET = '+06:00';
-
 function dayStart(date: string): string {
-  return `${date}T00:00:00.000${DHAKA_OFFSET}`;
+  return `${date}T00:00:00.000${workOffsetIso()}`;
 }
 
 /** ⚠️ সার্ভারে `lte` — inclusive। তাই দিনের শেষ মিলিসেকেন্ড পর্যন্ত। */
 function dayEnd(date: string): string {
-  return `${date}T23:59:59.999${DHAKA_OFFSET}`;
+  return `${date}T23:59:59.999${workOffsetIso()}`;
 }
 
 export function AuditTab() {

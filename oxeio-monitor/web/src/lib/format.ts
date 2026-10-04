@@ -16,7 +16,57 @@
  * ⭐ Asia/Dhaka = UTC+06:00, কোনো DST নেই — সার্ভারের `dhaka-time.ts`-এর
  * ঠিক একই ধ্রুবক। দুই জায়গায় দুটো সংখ্যা থাকলে একদিন একটা বদলাত।
  */
-const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+let DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * The work-day zone, which the server may run on something other than
+ * Asia/Dhaka (`WORK_TIMEZONE`). Starts as Dhaka, so a server that does not
+ * send the zone (older version, request failed) behaves exactly as before.
+ */
+let workZone = { timeZone: 'Asia/Dhaka', utcOffsetMinutes: 360 };
+
+/**
+ * Replaces the offset used by every helper in this file. Called once from
+ * `main.tsx` with the answer of `GET /auth/time-zone`, before the first
+ * render — components read "today" in `useState` initialisers, so a value
+ * that changed after mounting would leave them on the wrong day.
+ */
+export function setWorkTimeZone(zone: {
+  timeZone: string;
+  utcOffsetMinutes: number;
+}): void {
+  if (!Number.isFinite(zone.utcOffsetMinutes)) return;
+  workZone = {
+    timeZone: zone.timeZone,
+    utcOffsetMinutes: zone.utcOffsetMinutes,
+  };
+  DHAKA_OFFSET_MS = zone.utcOffsetMinutes * 60 * 1000;
+}
+
+/** IANA name of the work-day zone — `Asia/Dhaka` by default */
+export function workTimeZone(): string {
+  return workZone.timeZone;
+}
+
+/** Short place name for labels: `Asia/Dhaka` → `Dhaka`, `America/Sao_Paulo` → `Sao Paulo` */
+export function workTimeZoneLabel(): string {
+  return (workZone.timeZone.split('/').pop() ?? workZone.timeZone).replace(
+    /_/g,
+    ' ',
+  );
+}
+
+/** Offset of the work-day zone in ms (Dhaka = 6 h) — for the few callers that cut days by hand */
+export function workOffsetMs(): number {
+  return DHAKA_OFFSET_MS;
+}
+
+/** The offset as an ISO-8601 suffix: `+06:00`, `-03:00` */
+export function workOffsetIso(): string {
+  const min = workZone.utcOffsetMinutes;
+  const abs = Math.abs(min);
+  return `${min < 0 ? '-' : '+'}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR = 3600;
 

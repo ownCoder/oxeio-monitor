@@ -24,7 +24,7 @@ import { Card } from '../components/Card';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
 import { Table, type Column } from '../components/Table';
-import { formatDate, formatDateTime, formatDuration } from '../lib/format';
+import { formatDate, formatDateTime, formatDuration, todayInDhaka } from '../lib/format';
 import {
   Chip,
   MiniButton,
@@ -82,7 +82,7 @@ export function AllTargetsPage() {
 /** ঢাকার আজকের তারিখ, `YYYY-MM-DD` */
 function dhakaToday(): string {
   // ⚠️ `toISOString()` UTC দেয় — ঢাকায় ভোর ৬টার আগে সেটা গতকাল দেখাত
-  return new Date(Date.now() + 6 * 3_600_000).toISOString().slice(0, 10);
+  return todayInDhaka();
 }
 
 /**

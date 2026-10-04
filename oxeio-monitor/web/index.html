@@ -83,7 +83,15 @@
     <meta name="description" content="Live workforce monitoring for oXeio LLC — attendance, activity and screenshots." />
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Shown until React renders. main.tsx first asks the server how to show
+      dates (zone, currency, format) — usually a blink, up to 3 s on a slow
+      link — and an empty page that long reads as "broken".
+      Inline style, neutral grey: the stylesheet and the user's theme (kept
+      in localStorage) are not known yet, and this has to read on both.
+      React replaces it on its first render.
+    -->
+    <div id="root"><p role="status" style="margin:30vh 0 0;text-align:center;font:13px/1.4 system-ui,sans-serif;color:#8a8f98">Loading oXeio…</p></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

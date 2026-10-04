@@ -16,6 +16,7 @@ import {
   formatDuration,
   formatTime,
   parseWorkDate,
+  workOffsetMs,
 } from '../../lib/format';
 
 /**
@@ -37,7 +38,6 @@ import {
  */
 
 /** ⚠️ Asia/Dhaka = UTC+06:00, DST নেই — `lib/format.ts`-এর ঠিক একই ধ্রুবক */
-const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
 const MINUTES_PER_DAY = 24 * 60;
 
 /**
@@ -346,7 +346,7 @@ function TimelineBody({ timeline }: { timeline: Timeline }) {
 function buildView(t: Timeline): View {
   // ⚠️ `parseWorkDate` UTC-midnight দেয়; ৬ ঘণ্টা পিছিয়ে নিলে ঢাকার ০০:০০
   const parsed = parseWorkDate(t.date);
-  const dayStartMs = (parsed?.getTime() ?? 0) - DHAKA_OFFSET_MS;
+  const dayStartMs = (parsed?.getTime() ?? 0) - workOffsetMs();
   const minuteOf = (iso: string): number =>
     (new Date(iso).getTime() - dayStartMs) / 60000;
 

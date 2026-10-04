@@ -9,7 +9,7 @@ import { Card } from '../components/Card';
 import { Button, Page } from '../components/Page';
 import { Empty, ErrorBox, Loading } from '../components/States';
 import { Tabs } from '../components/Tabs';
-import { dhakaHourNow, formatDate, formatDateShort, formatDuration, formatTime, weekdayOf } from '../lib/format';
+import { dhakaHourNow, formatDate, formatDateShort, formatDuration, formatTime, weekdayOf, workTimeZone, workTimeZoneLabel } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
 import { TopApps } from './live/TopApps';
 import { StatusStrip } from './live/TeamBars';
@@ -68,7 +68,7 @@ export function LiveBoardPage() {
       {isOwner && <StudioStat label="Open alerts" value={alerts.data?.openCount ?? '—'} tone={alerts.data?.openCount ? 'warning' : undefined} note={<Link to="/alerts" className="underline underline-offset-4">{alerts.error ? 'Refresh failed · view alerts ↗' : alerts.data?.rows[0]?.title ?? 'View alerts ↗'}</Link>} />}
     </div>
     <div className="studio-overview">
-      <Card title="Shape of the Day" hint="Team hours by hour · Dhaka time" padded={false}><DataPanel result={pulse}>{pulse.data && <DayPulse hours={pulse.data.hours} currentHour={dhakaHourNow()} />}</DataPanel></Card>
+      <Card title="Shape of the Day" hint={`Team hours by hour · ${workTimeZoneLabel()} time`} padded={false}><DataPanel result={pulse}>{pulse.data && <DayPulse hours={pulse.data.hours} currentHour={dhakaHourNow()} />}</DataPanel></Card>
       <Card title="Team Right Now" hint="Agent status at the last refresh" padded={false}>
         <StatusStrip cards={cards} />
         <p className="studio-connection-note">Offline describes the agent connection, not whether someone worked.</p>
@@ -94,7 +94,7 @@ export function LiveBoardPage() {
 
   return <Page><div className="studio-board">
     <div className="studio-board-head">
-      <div><h1>Your team, at a glance.</h1><p>{workDate ? `${formatDate(workDate)} · Asia/Dhaka` : 'Live Board · Asia/Dhaka'}</p></div>
+      <div><h1>Your team, at a glance.</h1><p>{workDate ? `${formatDate(workDate)} · ${workTimeZone()}` : `Live Board · ${workTimeZone()}`}</p></div>
       {canViewBoard && <div className="studio-actions"><span className="studio-updated"><strong className={board.error ? 'text-idle-ink' : 'text-ok'}>{board.error ? 'STALE' : board.paused ? 'PAUSED' : board.data ? 'LIVE' : 'CONNECTING'}</strong>{board.updatedAt && ` · Updated ${formatTime(board.updatedAt.toISOString())}`}</span><Link className="tap text-xs underline underline-offset-4" to="/reports">Reports ↗</Link><Button onClick={refresh} disabled={board.loading}>{board.loading ? 'Refreshing…' : 'Refresh'}</Button><Link className="tap rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink" to="/worklog">Open Worklog ↗</Link></div>}
     </div>
     {content}

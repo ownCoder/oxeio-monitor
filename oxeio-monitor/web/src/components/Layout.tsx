@@ -8,6 +8,7 @@ import { Wordmark } from './Brand';
 import '../studio.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeToggle } from './ThemeToggle';
+import { workOffsetMs, workTimeZoneLabel } from '../lib/format';
 
 /**
  * নেভের ব্যাজের তাল — বোর্ডের pulse-এর মতোই ধীরে।
@@ -271,7 +272,7 @@ const NAV: NavItem[] = [
  *    রিফ্রেশ হয় ৩০ সেকেন্ডে — ঘড়িটা তখন ডেটার চেয়ে তাজা দেখাত।
  */
 function dhakaStamp(): string {
-  const d = new Date(Date.now() + 6 * 3600_000);
+  const d = new Date(Date.now() + workOffsetMs());
   const iso = d.toISOString();
   const [y, m, day] = iso.slice(0, 10).split('-');
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -354,7 +355,7 @@ export function Layout() {
         <header className="studio-topbar">
           <div><span className="text-ink-2">Workspace / </span><span>{currentPage}</span></div>
           <div className="studio-topbar-actions">
-            <span className="studio-topbar-time text-ink-2">Dhaka · {dhakaStamp()}</span>
+            <span className="studio-topbar-time text-ink-2">{workTimeZoneLabel()} · {dhakaStamp()}</span>
             <ThemeToggle />
             <button type="button" onClick={() => void signOut()} className="tap px-3 py-1.5 text-xs">Sign out</button>
           </div>

@@ -6,7 +6,7 @@ import { Card } from '../../components/Card';
 import { Duration } from '../../components/Duration';
 import { SectionHead } from '../../components/Page';
 import { Caveat, Empty, ErrorBox, Loading } from '../../components/States';
-import { formatDuration } from '../../lib/format';
+import { formatDuration, workTimeZoneLabel } from '../../lib/format';
 
 /**
  * E05 — ২৪টা কলাম, কোন ঘণ্টায় কত মিনিট কাজ।
@@ -50,7 +50,7 @@ export function HourlyChart({
     <section>
       <SectionHead
         title="Work by hour"
-        hint="Counted time only · 24 hours on the Dhaka clock"
+        hint={`Counted time only · 24 hours on the ${workTimeZoneLabel()} clock`}
       />
 
       {loading && !data ? (
@@ -219,7 +219,7 @@ function Body({ data }: { data: HourlyData }) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line px-4 py-2.5 text-[11.5px] text-ink-3">
-          <span>Numbers below = hour of the Dhaka day (0–23)</span>
+          <span>Numbers below = hour of the {workTimeZoneLabel()} day (0–23)</span>
           <span>
             Counted work this day{' '}
             <Duration seconds={data.totalActiveSec} className="text-ink-2" />
