@@ -1,10 +1,11 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ৪ অক্টোবর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ৫ অক্টোবর ২০২৬ · Asia/Dhaka
 
 ## Live
 
-- সর্বশেষ release **446 / `cad69e415f9bb67d695b70b884489cc3efb8f101`**: **Daily designs & skips** এখন Design Pool-এর ভিতরে নয়; Targets sidebar-এ নিজস্ব page `/targets/daily`। Owner/manager-only route, আগের daily counts/filter ও skip-rate details একই। [ব্যবহারবিধি](design-pool-operations.md) · [release record](audits/2026-10-03-daily-design-page.md)। Clean source mirror `.release-salary/oxeio-monitor`; VPS release `/opt/oxeio-releases/daily-design-page-20261003`।
+- সর্বশেষ release **449 / `52c6a9d438c71eb766556ded8553aa121d2b806a`**: Live Board-এ Windows `locked` state আর **Idle** নয়, **PC locked** নামে আলাদা count/status। OX-09-এর PC ৫ অক্টোবর 09:49 পর্যন্ত locked heartbeat পাঠিয়েছিল; মধ্যরাতের session আগের দিনের rollover, নতুন office arrival নয়। 09:49-এর পর একই device active ও screenshot পাঠিয়েছে; **কে ব্যবহার করেছেন server জানে না**, কোনো recent unlock/logon event-ও নেই। Physical/remote identity verification pending। [ঘটনা ও release record](audits/2026-10-05-ox09-idle.md)। Clean source mirror `.release-salary/oxeio-monitor`; VPS release `/opt/oxeio-releases/pc-locked-20261005`।
+- আগের release **446 / `cad69e415f9bb67d695b70b884489cc3efb8f101`**: **Daily designs & skips** এখন Design Pool-এর ভিতরে নয়; Targets sidebar-এ নিজস্ব page `/targets/daily`। Owner/manager-only route, আগের daily counts/filter ও skip-rate details একই। [ব্যবহারবিধি](design-pool-operations.md) · [release record](audits/2026-10-03-daily-design-page.md)। আগের VPS release `/opt/oxeio-releases/daily-design-page-20261003`।
 - আগের release **444 / `69a456a88691140504a094e5c5fe5278ccdf8053`**: daily counts/filter প্রথম চালু হয়; এখন সেই report আলাদা page-এ। শেষ ৭ দিন default; সর্বোচ্চ ৩১ দিনের range, Today/Last 7 days, staff filter, Complete/Skipped/Pending daily row ও মোট count। Skip ledger-এর আগের দিন “—” দেখায়। [ব্যবহারবিধি](design-pool-operations.md) · [test/deployment record](audits/2026-10-03-daily-designs.md)। আগের VPS source/evidence `/opt/oxeio-releases/daily-designs-20261003`।
 - OX-07 Sadia Akther-এর last working day ৩০ সেপ্টেম্বর; staff inactive ও portal access disabled। তাঁর deposit খাতা আগস্ট+সেপ্টেম্বর মোট ৳১,০০০, ভুল অক্টোবর কিস্তি সরানো ও settlement snapshot ৳১,০০০ করা হয়েছে; **আগের `refunded` outcome বহাল, বাস্তবে ফেরত হয়েছে কি না owner confirmation pending।** Salary page-এ প্রতিটি মাসের নির্ধারিত payment date পরের মাসের ৫ তারিখ দেখায়, কিন্তু কোনো payment auto-record হয় না। [Record](audits/2026-10-01-ox07-offboarding-payday.md) · [Salary guide](salary-operations.md)।
 - Deposit fleet audit: ১৩ staff record-এর মধ্যে Sadia ছাড়া কারও last working month-এর পর কিস্তি নেই; settlement mismatch-ও নেই। কিন্তু active ১১ জনের অক্টোবরের ৳৫০০ করে মোট ৳৫,৫০০ ১ অক্টোবরেই ledger-এ বসেছে। এটি বাস্তবে আদায় হয়েছে কি না system জানে না; salary payment table-এ কোনো record নেই। Deposit বাস্তবে কখন কাটা হয়, owner clarification pending। [Audit](audits/2026-10-01-deposit-fleet-audit.md)।
@@ -17,7 +18,7 @@
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **446 / cad69e4**। Public HTTPS health, `/targets/daily` route, protected report endpoint ও দুই container healthy যাচাই করা হয়েছে।
+- Web/API: **449 / 52c6a9d**। Public HTTPS health, protected Live Board endpoint ও দুই container healthy যাচাই করা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -26,6 +27,7 @@
 
 ## যাচাই
 
+- Release 449: isolated exact source-এ dashboard math ৫০/৫০ ও frontend ২৯৬/২৯৬ tests, API/web typecheck, lint ও build passed। Public JS/container hash matched; API/web healthy, PostgreSQL container unchanged; no migration/seed। OX-09 read-only record 09:49 locked এবং 10:03 active state দেখায়। Authenticated browser view পরীক্ষা করা হয়নি।
 - Release 446: isolated staged web source-এ typecheck, lint, build ও ২৯৫ frontend tests passed; local mirror-এ একই checks passed। Public route 200, anonymous report API 401, public JS/container hash matched; API/web healthy, PostgreSQL container unchanged। Authenticated browser view পরীক্ষা করা হয়নি; no migration/seed।
 - Release 444: disposable PostgreSQL-এ ১৬ backend integration/regression tests (daily report ও skip review) এবং ২৯৫ frontend tests passed; API/web typecheck, lint, build passed। Live API/web healthy, public JS container hash-এর সঙ্গে মিলে, daily report endpoint anonymous request-এ 401। PostgreSQL container বদলায়নি; migration/seed হয়নি। Authenticated browser view পরীক্ষা করা হয়নি।
 - Release 437: disposable DB-তে ৪টি Salary payment/role test + আগের ৩৬টি payroll/proration integration test, frontend ২৯৫টি test, API/web build/typecheck/lint passed। Current encrypted backup isolated restore ও additive migration drill-এ core counts অপরিবর্তিত; নতুন `salary_payments` খালি। Chrome synthetic owner/status/staff-denied flow verified; real salaries browser-এ খোলা হয়নি। Public health, bundle hash, unauthenticated Salary 401, PostgreSQL unchanged, scoped source hashes release record-এ।
@@ -68,6 +70,7 @@
 
 ## অসমাপ্ত / unreleased
 
+- OX-09-এর নামে registered `DESKTOP-2HJTO63` (`rajot` Windows account) ৫ অক্টোবর 09:49-এর পর active হয়েছে। কর্মী তখন অফিসে না থাকলে কে/কীভাবে PC ব্যবহার করেছেন তা physical/remote check দরকার; server heartbeat বা screenshot একা ব্যক্তি শনাক্ত করে না। Confirmation ছাড়া registration revoke, attendance/salary adjustment বা অভিযোগ করা হয়নি।
 - OX-12-এর reassigned PC-তে Abdul-এর agent ১ অক্টোবর ১০:৩৯-এ enroll করেছে; active heartbeat verified। Agent version 0.4.9, rollout-এর পর update পর্যবেক্ষণ করা যাবে।
 - OX-07-এর deposit settlement-এ `refunded` আগেই লেখা ছিল; বাস্তব ফেরত দেওয়ার বিষয় owner-এর কাছে নিশ্চিত করতে হবে। ৫ অক্টোবর সেপ্টেম্বরের চূড়ান্ত payroll দেখে প্রকৃত payment status/date লিখতে হবে।
 - Deposit যদি বেতন দেওয়ার দিন কাটা হয়, planned বনাম collected amount আলাদা দেখানোর পরিবর্তন প্রয়োজন; বর্তমান মাসের সারি `ensureLedger()` নিজে বানায়, তাই শুধু delete করলে আবার ফিরে আসবে। Owner-এর নিয়ম নিশ্চিত হওয়ার অপেক্ষা।
@@ -77,6 +80,7 @@
 
 ## Recovery ও পরবর্তী কাজ
 
+- Latest PC-locked status release/evidence: `/opt/oxeio-releases/pc-locked-20261005`; clean mirror `.release-salary/oxeio-monitor`। Rollback images `oxeio-api:before-pc-locked-20261005`, `oxeio-web:before-pc-locked-20261005` (build 446)। [Release record](audits/2026-10-05-ox09-idle.md)। Scope সাতটি source/test file; no migration/seed।
 - Latest standalone page release/evidence: `/opt/oxeio-releases/daily-design-page-20261003`; clean mirror `.release-salary/oxeio-monitor`। Rollback images `oxeio-api:before-daily-design-page-20261003`, `oxeio-web:before-daily-design-page-20261003` (build 444)। [Release record](audits/2026-10-03-daily-design-page.md)। Scope পাঁচটি frontend file; no migration/seed।
 - Original daily-report release/evidence: `/opt/oxeio-releases/daily-designs-20261003`। Rollback images `oxeio-api:before-daily-designs-20261003`, `oxeio-web:before-daily-designs-20261003` (build 440)। [Release record](audits/2026-10-03-daily-designs.md)। Scope পাঁচটি source/test file; no migration/seed।
 - Latest payday release/source/evidence: `/opt/oxeio-releases/payday-20261001`; clean mirror `.release-salary/oxeio-monitor` (payday scope updated)। Rollback images `oxeio-api:before-payday-20261001`, `oxeio-web:before-payday-20261001` (build 437)। [Release record](audits/2026-10-01-ox07-offboarding-payday.md)। No migration/seed; salary payment records untouched।

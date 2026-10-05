@@ -6,7 +6,7 @@
 
 > **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
 
-> **Current release: 446 / cad69e4** — Owner/manager **Targets → Daily designs & skips** is now its own page at `/targets/daily`, with daily completed, skipped and pending counts by staff. The inline Design Pool report is gone. See [page release](docs/audits/2026-10-03-daily-design-page.md), [operations](docs/design-pool-operations.md) and [canonical handoff](docs/current-state.md). The [original daily report](docs/audits/2026-10-03-daily-designs.md) records its counting rules.
+> **Current release: 449 / 52c6a9d** — Live Board shows a reporting Windows session as **PC locked** instead of Idle. A locked PC confirms neither office presence nor work; OX-09's 5 October case and its changing device state are recorded in the [investigation and release record](docs/audits/2026-10-05-ox09-idle.md). See the [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
