@@ -38,6 +38,7 @@ export function LiveBoardPage() {
   const cards = board.data?.cards ?? [];
   const active = cards.filter((card) => isWorking(card.status)).length;
   const idle = cards.filter((card) => card.status === 'idle').length;
+  const locked = cards.filter((card) => card.status === 'locked').length;
   const offline = cards.filter((card) => card.status === 'offline').length;
   const todaySec = cards.reduce((sum, card) => sum + card.todayWorkedSec, 0);
   const worked = cards.filter((card) => card.todayWorkedSec > 0).length;
@@ -60,7 +61,7 @@ export function LiveBoardPage() {
   else content = <>
     {board.error && <p role="status" className="rounded-lg border border-brand/30 bg-brand-bg px-4 py-3 text-sm text-brand-ink">Couldn't refresh — showing the last successful snapshot from {formatTime(board.updatedAt?.toISOString() ?? null)}.</p>}
     <div className="studio-stats">
-      <StudioStat label="Working now" value={active} unit={`/ ${cards.length}`} note={<>{idle} idle · {offline} offline<br />{cards.length - withTarget} off / no target today</>} />
+      <StudioStat label="Working now" value={active} unit={`/ ${cards.length}`} note={<>{idle} idle · {locked} PC locked · {offline} offline<br />{cards.length - withTarget} off / no target today</>} />
       <StudioStat label="Hours today" value={formatDuration(todaySec)} note={<>{worked} staff with recorded time{delta && <><br />{delta}{trend.error && ' · last update'}</>}</>} />
       <StudioStat label="Average today" value={worked ? formatDuration(todaySec / worked) : '—'} note={<>Across {worked} staff with time<br />{dailyTarget ? `${formatDuration(dailyTarget)} daily target` : 'Individual targets shown below'}</>} />
       {hasDesigners && <StudioStat label="Designs finished" value={finished} note="Marked complete today" />}

@@ -10,7 +10,7 @@ import { isWorking, splitBoard } from '../src/pages/live/onTheClock';
  * সে বোর্ড থেকে **নীরবে উধাও** হয়ে যায়। ১৫ জনের অফিসে একজন কম দেখালে
  * সেটা চোখে পড়ার কথা নয়।
  */
-const ALL: LiveStatus[] = ['active', 'idle', 'offline'];
+const ALL: LiveStatus[] = ['active', 'idle', 'locked', 'offline'];
 
 const card = (status: LiveStatus, employeeId: number): LiveCard =>
   ({ employeeId, status }) as LiveCard;
@@ -26,6 +26,10 @@ describe('isWorking', () => {
    */
   it('idle কাজ নয়', () => {
     expect(isWorking('idle')).toBe(false);
+  });
+
+  it('locked PC কাজ নয়', () => {
+    expect(isWorking('locked')).toBe(false);
   });
 
   it('offline কাজ নয়', () => {

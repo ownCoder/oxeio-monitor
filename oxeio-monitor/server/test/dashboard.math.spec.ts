@@ -53,8 +53,8 @@ describe('decideLiveStatus — কার্ডের রঙ', () => {
     expect(statusOf([device({ lastState: 'idle' })])).toBe('idle');
   });
 
-  it('locked আলাদা রঙ পায় না — idle-এ মেশে', () => {
-    expect(statusOf([device({ lastState: 'locked' })])).toBe('idle');
+  it('সচল PC locked হলে Idle না বলে PC locked দেখায়', () => {
+    expect(statusOf([device({ lastState: 'locked' })])).toBe('locked');
   });
 
   /**
@@ -209,7 +209,7 @@ describe('decideLiveStatus — এজেন্টের কথা বনাম �
     const old = device({ lastState: null, lastStateAt: null });
 
     expect(statusOf([old], 'active')).toBe('active');
-    expect(statusOf([old], 'locked')).toBe('idle');
+    expect(statusOf([old], 'locked')).toBe('locked');
     expect(statusOf([old], null)).toBe('idle');
   });
 

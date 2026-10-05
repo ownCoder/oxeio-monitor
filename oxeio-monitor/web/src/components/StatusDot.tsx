@@ -26,19 +26,22 @@ import type { LiveStatus } from '../api/dashboard';
 export const STATUS_LABEL: Record<LiveStatus, string> = {
   active: 'Working',
   idle: 'Idle',
+  locked: 'PC locked',
   offline: 'Offline',
 };
 
 /** টুলটিপে "কেন এই রঙ" — ব্যবহারকারী অনুমান করতে বাধ্য হবে না */
 const STATUS_HINT: Record<LiveStatus, string> = {
   active: 'Was active in the last segment',
-  idle: 'Agent is running, but nothing recent',
+  idle: 'Agent is running, but no recent input; this does not confirm office presence',
+  locked: 'Windows is locked. The PC is online; staff presence is not confirmed',
   offline: 'No response for over 90 seconds — PC off, asleep, or no internet',
 };
 
 const DOT_CLASS: Record<LiveStatus, string> = {
   active: 'bg-ok',
   idle: 'bg-idle',
+  locked: 'bg-ink-3',
   offline: 'bg-offline',
 };
 
@@ -67,6 +70,7 @@ export function StatusDot({
 const CHIP_CLASS: Record<LiveStatus, string> = {
   active: 'border-ok/45 bg-ok/10 text-ok',
   idle: 'border-idle/45 bg-idle/10 text-idle',
+  locked: 'border-line bg-surface-2 text-ink-2',
   offline: 'border-line bg-surface text-ink-3',
 };
 
@@ -89,7 +93,7 @@ export function StatusChip({ status }: { status: LiveStatus }) {
  *    ভুল অনুমানের ফল হয় ভুল অভিযোগ।
  */
 export function StatusLegend() {
-  const all: LiveStatus[] = ['active', 'idle', 'offline'];
+  const all: LiveStatus[] = ['active', 'idle', 'locked', 'offline'];
   return (
     <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-ink-3">
       {all.map((status) => (

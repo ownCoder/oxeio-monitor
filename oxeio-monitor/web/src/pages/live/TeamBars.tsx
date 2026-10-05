@@ -12,12 +12,14 @@ import { dayDuty } from './roster';
 const ORDER: { status: LiveStatus; label: string }[] = [
   { status: 'active', label: 'Working' },
   { status: 'idle', label: 'Idle' },
+  { status: 'locked', label: 'PC locked' },
   { status: 'offline', label: 'Offline' },
 ];
 
 const FILL: Record<LiveStatus, string> = {
   active: 'var(--color-ok)',
   idle: 'var(--color-idle)',
+  locked: 'var(--color-ink-3)',
   offline: 'var(--color-offline)',
 };
 

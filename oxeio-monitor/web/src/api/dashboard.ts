@@ -23,7 +23,7 @@ import { qs } from './query';
  * ⭐ এজেন্ট সত্যিই ভাঙলে খবরটা আসে **অ্যালার্ট** হয়ে (`AgentDownCheck`),
  * যেখানে সাথে ব্যাখ্যাও থাকে — "no shutdown event arrived either"।
  */
-export type LiveStatus = 'active' | 'idle' | 'offline';
+export type LiveStatus = 'active' | 'idle' | 'locked' | 'offline';
 
 /** টাইমলাইনের সেগমেন্টে অবশ্য `locked` আলাদা থাকে */
 export type SegmentState = 'active' | 'idle' | 'locked';

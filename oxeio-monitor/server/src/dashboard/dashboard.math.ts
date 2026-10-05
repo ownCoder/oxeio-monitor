@@ -35,9 +35,9 @@ export const HOURS_PER_DAY = 24;
  */
 export const OFFLINE_AFTER_SEC = 90;
 
-/** কার্ডের চারটি রঙ (E01)। SegmentState-এর `locked` এখানে `idle`-এ মেশে। */
 /**
- * কার্ডের **তিনটে** রঙ (E01)। `SegmentState`-এর `locked` এখানে `idle`-এ মেশে।
+ * কার্ডের চারটি স্পষ্ট অবস্থা। `locked`-কে Idle বললে PC চালু রেখে
+ * কর্মী না এলেও তাঁকে অফিসে বসে নিষ্ক্রিয় মনে হতে পারে।
  *
  * ⚠️⚠️ **`agent_down` তুলে দেওয়া হয়েছে** *(১৭ আগস্ট)* — বিস্তারিত
  * <c>decideLiveStatus</c>-এ। সংক্ষেপে: বোর্ড কোনোদিনই নিশ্চিতভাবে বলতে
@@ -45,7 +45,7 @@ export const OFFLINE_AFTER_SEC = 90;
  * ⭐ ওই প্রশ্নের সত্যিকারের উত্তর দেয় `AgentDownCheck`, আর সেটা
  * **অ্যালার্টে** যায় — যেখানে ভুল হলে সংশোধনও করা যায়।
  */
-export type LiveStatus = 'active' | 'idle' | 'offline';
+export type LiveStatus = 'active' | 'idle' | 'locked' | 'offline';
 
 /**
  * একটা ডিভাইস সম্পর্কে বোর্ডের জানা সবটুকু (`devices` সারির তিনটে কলাম)।
@@ -197,9 +197,9 @@ export function decideLiveStatus(input: LiveStatusInput): LiveStatus {
   //    কাজের সময় হিসেবে দাবি করা হয় না।
   if (state === null) return 'idle';
 
-  // `locked` আলাদা রঙ পায় না — বোর্ডে মাত্র চারটে রঙ, আর স্টাফের দিক থেকে
-  // PC লক করা আর নিষ্ক্রিয় বসে থাকা একই: কোনোটাই কাজের সময় নয়।
-  return state === 'active' ? 'active' : 'idle';
+  // PC locked মানে agent বেঁচে আছে; কর্মী অফিসে আছেন কি না জানা যায় না।
+  // Idle বললে আজ না-আসা কর্মীকেও ডেস্কে বসে আছেন মনে হতে পারে।
+  return state;
 }
 
 /*
