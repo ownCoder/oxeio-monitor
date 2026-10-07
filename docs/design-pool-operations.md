@@ -1,12 +1,14 @@
 # Design Pool — ব্যবহারবিধি
 
-৭ অক্টোবর ২০২৬ · Live **454 / c66a051** · [Skip replacement release](audits/2026-10-07-skip-replacement-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
+৭ অক্টোবর ২০২৬ · Live **456 / a016ebe** · [Skip replacement release](audits/2026-10-07-skip-replacement-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
 
 Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
 
 ## পুল থেকে বণ্টন
 
 প্রতিদিন **সকাল ৮:০০ (ঢাকা সময়)** active designer ও manager-দের হাতে সর্বোচ্চ **৩০টি করে** রাখার জন্য পুল থেকে random design দেওয়া হয়। আগে থেকেই চলমান design থাকলে কেবল খালি জায়গা পূরণ হয়। Recipient order-ও প্রতি run-এ random হয়; pool কম থাকলে সেই random order-এ একবারে একটি করে round-robin ভাগ হয়। Add design targets পাতায় **Distribute now** button নেই; owner/manager-এর backend manual route আছে, তবে স্বাভাবিক কাজের জন্য সেটি লাগে না।
+
+Hourly top-up এবং owed-replacement sweep-এও eligible recipient order প্রতি run-এ random হয়। Owed replacement সাধারণ target top-up-এর আগে পূরণ করার চেষ্টা চলে।
 
 Designer-এর দৈনিক completion target এখনও বাকি থাকলে এবং হাতে থাকা design দিয়ে সেটি পূরণ সম্ভব না হলে কাজের সময় **০৯:০৫–১৯:০৫** প্রতি ঘণ্টায় check হয়; complete/skip-এর পরেও top-up হতে পারে। একজনকে দিনে সর্বোচ্চ **৬০টি issue** করার cap আছে। **২৩:৫৫**-এ না-শুরু-করা design পুলে ফেরে; শুরু হওয়া বা pending skip-review design হাতে থাকে। ৭ অক্টোবরের [live distribution audit](audits/2026-10-07-design-distribution-status.md)-এ scheduled assignment ও return কার্যকর দেখা গেছে।
 

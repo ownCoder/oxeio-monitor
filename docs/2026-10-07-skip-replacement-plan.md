@@ -1,6 +1,6 @@
 # Design Pool: permanent skip, instant replacement, fair distribution
 
-৭ অক্টোবর ২০২৬। **Implemented and deployed in releases 453–454.** [Release record](audits/2026-10-07-skip-replacement-release.md)। Owner correction: designer যে design Not Found, Events বা Copyright দিয়ে skip করবেন, accepted হলে সেটি **`skipped`-ই থাকবে এবং assignable pool-এ ফিরবে না**। আগের ৭ দিনের hold/re-entry ধারণা ভুল ছিল এবং বাতিল। Accepted skip-এর সঙ্গে সঙ্গে একই designer সমপরিমাণ নতুন design issue করার চেষ্টা হয়; pool/slot/day cap না থাকলে durable owed থাকে। Distribution সব eligible staff-এর মধ্যে random order-এ হয়।
+৭ অক্টোবর ২০২৬। **Implemented and deployed in releases 453–456.** [Release record](audits/2026-10-07-skip-replacement-release.md)। Owner correction: designer যে design Not Found, Events বা Copyright দিয়ে skip করবেন, accepted হলে সেটি **`skipped`-ই থাকবে এবং assignable pool-এ ফিরবে না**। আগের ৭ দিনের hold/re-entry ধারণা ভুল ছিল এবং বাতিল। Accepted skip-এর সঙ্গে সঙ্গে একই designer সমপরিমাণ নতুন design issue করার চেষ্টা হয়; pool/slot/day cap না থাকলে durable owed থাকে। Morning distribution, hourly top-up এবং owed-replacement sweep-এ eligible staff-এর processing order random হয়।
 
 ## Before release and production scope
 
