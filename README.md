@@ -6,7 +6,7 @@
 
 > **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
 
-> **Current release: 456 / a016ebe** — accepted design skips stay skipped and receive one durable replacement when pool/limits permit; morning, hourly top-up and owed-replacement recipient order are randomized, and the daily report shows reason and replacement status. See the [release record](docs/audits/2026-10-07-skip-replacement-release.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 460 / e3cb2b2** — designers choose Page Not Found, Event, Copyright or Others when skipping; only Page Not Found needs no review. Every skip attempts one atomic 1:1 replacement, including during an owner-granted extra workload, with durable owed work when pool/daily limits prevent delivery. See the [release record](docs/audits/2026-10-07-four-reason-skip-review-release.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
@@ -49,7 +49,7 @@ items — they were considered and **rejected**, and the reasons are in
 | **Silent installation** | Staff agree to monitoring when they join, and the agent never hides: it shows a tray icon and a "My data" window. A policy [template](docs/monitoring-policy-template.md) ships with the repo for deployments that need a signed document. |
 | **Hiding hours from the person who worked them** | Every employee can open their own page and see exactly what was recorded, including any manual correction the owner made and the reason for it. |
 | **Screenshots outside 07:00–23:00** | Capture is time-boxed, and images auto-delete after 90 days. |
-| **Approval before working** | Staff can work without approval. More than three design skip requests per Dhaka day require owner/manager review before replacement work is issued. |
+| **Approval before working** | Staff can work without approval. Page Not Found skip needs no review; Event, Copyright and Others go to manager/owner review, while a 1:1 replacement is attempted immediately. |
 
 The one principle everything else follows: **a number must never claim to know
 something it doesn't.** A day the server wasn't watching is drawn as a dotted
