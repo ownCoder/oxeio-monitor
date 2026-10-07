@@ -408,6 +408,7 @@ describe('টপ-আপ — টার্গেট ছোঁয়ার মত�
     await targets.skip(emp, ids[0], 'not_found', now);
 
     expect(await openCountOf(emp)).toBe(0);
+    expect(await h.prisma.designSkipRequest.count({ where: { employeeId: emp, replacementDue: true } })).toBe(1);
   });
 
   /**

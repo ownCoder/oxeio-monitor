@@ -43,7 +43,34 @@ describe('Daily skip review gate', () => {
     expect(requests.filter(r => r.decision === 'pending')).toHaveLength(1);
     expect(requests.every(r => r.actorUserId === actorId && r.requestedAt.getTime() === now.getTime())).toBe(true);
     expect(await h.prisma.designTarget.count({ where: { skipReviewPending: true, status: 'assigned' } })).toBe(1);
-    expect(await service.skipAllowance(employeeId, now)).toEqual({ limit: 3, requested: 4, remaining: 0 });
+    expect(await service.skipAllowance(employeeId, now)).toMatchObject({ limit: 3, requested: 4, remaining: 0, replacementOwed: 3 });
+  });
+
+  it('issues exactly one random pool replacement per automatic skip, while skipped designs stay skipped', async () => {
+    await h.prisma.designTarget.createMany({ data: Array.from({ length: 3 }, (_, n) => ({
+      asin: `D${String(n).padStart(9, '0')}`, addedById: ownerId,
+    })) });
+    for (const id of ids.slice(0, 3)) await service.skip(employeeId, id, 'not_found', now, actorId);
+    expect(await h.prisma.designTarget.count({ where: { status: 'assigned', assignedToId: employeeId } })).toBe(30);
+    expect(await h.prisma.designTarget.count({ where: { id: { in: ids.slice(0, 3) }, status: 'skipped' } })).toBe(3);
+    expect(await h.prisma.designTarget.count({ where: { status: 'pool' } })).toBe(0);
+    const requests = await h.prisma.designSkipRequest.findMany({ orderBy: { id: 'asc' } });
+    expect(requests).toHaveLength(3);
+    expect(requests.every(r => !r.replacementDue && r.replacementTargetId && r.replacementIssuedAt)).toBe(true);
+    expect(new Set(requests.map(r => r.replacementTargetId)).size).toBe(3);
+    expect(await service.skipAllowance(employeeId, now)).toMatchObject({ replacementOwed: 0 });
+  });
+
+  it('keeps a replacement owed while the pool is empty, then fills it once', async () => {
+    await service.skip(employeeId, ids[0], 'events', now, actorId);
+    expect(await service.skipAllowance(employeeId, now)).toMatchObject({ replacementOwed: 1 });
+    await h.prisma.designTarget.create({ data: { asin: 'D000000001', addedById: ownerId } });
+    await service.topUpAll(now);
+    await service.topUpAll(now);
+    const request = await h.prisma.designSkipRequest.findFirstOrThrow();
+    expect(request).toMatchObject({ replacementDue: false });
+    expect(request.replacementTargetId).not.toBeNull();
+    expect(await h.prisma.designTarget.count({ where: { status: 'assigned', assignedToId: employeeId } })).toBe(30);
   });
 
   it('does not spend allowance on retries or another employee’s target', async () => {
@@ -72,10 +99,12 @@ describe('Daily skip review gate', () => {
 
   it('rejects to the same designer and keeps consumed allowance and history after un-skip', async () => {
     await requestFour();
+    expect(await h.prisma.designSkipRequest.count({ where: { replacementDue: true } })).toBe(3);
     await service.decideSkip(ids[3], false, ownerId, now);
     expect(await h.prisma.designTarget.findUnique({ where: { id: ids[3] } })).toMatchObject({ status: 'assigned', skipReviewPending: false, assignedToId: employeeId, dropReason: null });
     await service.skip(employeeId, ids[3], 'events', now, actorId);
     expect(await h.prisma.designSkipRequest.count({ where: { targetId: ids[3] } })).toBe(2);
+    expect(await h.prisma.designSkipRequest.count({ where: { targetId: ids[3], replacementDue: true } })).toBe(0);
     expect(await service.skipAllowance(employeeId, now)).toMatchObject({ requested: 5, remaining: 0 });
     await service.update(ids[0], 'pool', now, ownerId);
     expect(await h.prisma.designSkipRequest.count({ where: { targetId: ids[0] } })).toBe(1);
@@ -90,6 +119,7 @@ describe('Daily skip review gate', () => {
     expect(row.reviewerUserId).toBe(ownerId);
     expect(row.decidedAt).toEqual(now);
     expect(['approved', 'rejected']).toContain(row.decision);
+    expect(row.replacementDue).toBe(row.decision === 'approved');
   });
 
   it('resets allowance at Dhaka midnight without releasing pending work', async () => {

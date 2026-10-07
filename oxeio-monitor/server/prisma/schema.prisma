@@ -734,6 +734,7 @@ model DesignTarget {
   skipReviewPending Boolean @default(false) @map("skip_review_pending")
   skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
   skipRequests DesignSkipRequest[]
+  replacementFor DesignSkipRequest[] @relation("skipReplacement")
   history DesignTargetEvent[]
   id     Int                @id @default(autoincrement())
   /// ⚠️ ঠিক ১০ অক্ষর, বড় হাতে সাজানো — `targets.rules.ts` দেখুন
@@ -1285,10 +1286,16 @@ model DesignSkipRequest {
   decision String @db.VarChar(16)
   decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
   reviewerUserId Int? @map("reviewer_user_id")
+  /// Only new accepted skips owe a replacement; historical rows default to false.
+  replacementDue Boolean @default(false) @map("replacement_due")
+  replacementTargetId Int? @map("replacement_target_id")
+  replacementIssuedAt DateTime? @map("replacement_issued_at") @db.Timestamptz(3)
   target DesignTarget @relation(fields: [targetId], references: [id], onDelete: Restrict)
+  replacementTarget DesignTarget? @relation("skipReplacement", fields: [replacementTargetId], references: [id], onDelete: Restrict)
 
   @@index([employeeId, requestedAt])
   @@index([targetId, decision])
+  @@index([employeeId, replacementDue, requestedAt])
   @@map("design_skip_requests")
 }
 

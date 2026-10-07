@@ -43,6 +43,7 @@ export interface TargetStats {
   assigned: number;
   done: number;
   skipped: number;
+  replacementOwed: number;
   /** ⭐ Amazon-এ পাতাটাই নেই — হাতে মুছে ফেলা *(২৯ আগস্ট)* */
   deleted: number;
   perDesigner: number;
@@ -151,7 +152,7 @@ export function skipTarget(
 }
 
 export function skipAllowance() {
-  return api<{ limit: number; requested: number; remaining: number }>('/me/targets/skip-allowance');
+  return api<{ limit: number; requested: number; remaining: number; replacementOwed: number }>('/me/targets/skip-allowance');
 }
 
 export function decideSkip(id: number, approve: boolean) {

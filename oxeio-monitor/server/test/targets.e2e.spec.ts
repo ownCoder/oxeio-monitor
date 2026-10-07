@@ -342,7 +342,7 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
    * দুজনের কাছে থাকার কথা নয়, কিন্তু "কথা নয়" আর "পারবে না" এক নয়।
    */
   it('অন্যের নম্বর দিয়ে কিছু বন্ধ হয় না', async () => {
-    await staff('OX-D1', 'designer', 'd1@test.local');
+    const first = await staff('OX-D1', 'designer', 'd1@test.local');
     const other = await staff('OX-D2', 'designer', 'd2@test.local');
     const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     await post(owner, '/api/v1/design-targets/bulk', { text: URL_OF(1) }).expect(201);
@@ -351,10 +351,10 @@ describe('ফাইলের নাম থেকে "কাজ শুরু" ধ
     await targets.distribute();
 
     const row = await h.prisma.designTarget.findFirstOrThrow();
-    // ⚠️ সারিটা OX-D1-এর (কর্মী-কোডের ক্রমে প্রথম), কিন্তু বন্ধ করার
-    //    চেষ্টা করছেন OX-D2
+    // Recipient order is randomized; always use the employee who did not get it.
+    const wrongEmployeeId = row.assignedToId === first.id ? other.id : first.id;
     const closed = await targets.markStartedByJobNumbers(
-      other.id,
+      wrongEmployeeId,
       new Map([[String(row.jobNumber), dhakaNoon()]]),
     );
 
@@ -492,7 +492,9 @@ describe('দিন শেষে পুলে ফেরত', () => {
 
     const { returned } = await targets.returnUnworked(workDateOf(TODAY));
 
-    expect(returned).toBe(28);
+    // Accepted skip is replaced immediately, so that untouched replacement
+    // also returns at day close.
+    expect(returned).toBe(29);
     expect(await h.prisma.designTarget.count({ where: { status: 'done' } })).toBe(1);
     expect(await h.prisma.designTarget.count({ where: { status: 'skipped' } })).toBe(1);
   });

@@ -10,6 +10,7 @@ import {
   JOB_NUMBER_START,
   MAX_ISSUED_PER_DAY,
   parseBulk,
+  shuffledNeeds,
   topUpSize,
 } from '../src/targets/targets.rules';
 
@@ -298,12 +299,7 @@ describe('allocationSizes — কাকে কতগুলো', () => {
     expect(sizes.has(3)).toBe(false);
   });
 
-  /**
-   * ⚠️⚠️ **পুল ফুরিয়ে গেলে যতটা আছে ততটাই** — আর ক্রমটা কলারের দেওয়া
-   * (কর্মী-কোড), র‍্যান্ডম নয়। ঘাটতির দিনে কে পাবে সেটা অনুমেয় থাকা
-   * দরকার, নইলে রোজ আলাদা লোক বঞ্চিত হতেন আর কেউ কারণ বলতে পারত না।
-   */
-  it('পুলে কম থাকলে ক্রম মেনে যতটা পারা যায়', () => {
+  it('পুলে কম থাকলে সবাইকে round-robin ভাগে দেয়', () => {
     const sizes = allocationSizes(
       [
         { employeeId: 1, openCount: 0 },
@@ -312,8 +308,18 @@ describe('allocationSizes — কাকে কতগুলো', () => {
       40,
     );
 
-    expect(sizes.get(1)).toBe(30);
-    expect(sizes.get(2)).toBe(10);
+    expect(sizes.get(1)).toBe(20);
+    expect(sizes.get(2)).toBe(20);
+  });
+
+  it('staff order randomize করে, মূল list বদলায় না', () => {
+    const original = [{ employeeId: 1, openCount: 0 }, { employeeId: 2, openCount: 0 }];
+    const shuffled = shuffledNeeds(original, () => 0);
+    expect(shuffled.map(n => n.employeeId)).toEqual([2, 1]);
+    expect(original.map(n => n.employeeId)).toEqual([1, 2]);
+    const sizes = allocationSizes(shuffled, 1);
+    expect(sizes.get(2)).toBe(1);
+    expect(sizes.has(1)).toBe(false);
   });
 
   it('পুল খালি হলে কেউ কিছু পায় না', () => {

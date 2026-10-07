@@ -89,6 +89,7 @@ function PipelineCard({ stats }: { stats: ApiResult<TargetStats> }) {
               Dropped along the way:{' '}
               <span className="num font-medium">{s.skipped}</span> skipped ·{' '}
               <span className="num font-medium">{s.deleted}</span> gone from Amazon
+              {s.replacementOwed > 0 && <> · <span className="num font-medium">{s.replacementOwed}</span> replacement owed</>}
             </div>
           </>
         )}

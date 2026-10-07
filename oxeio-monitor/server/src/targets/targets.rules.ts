@@ -360,15 +360,24 @@ export interface DesignerNeed {
   openCount: number;
 }
 
+/** Shuffle recipients without changing the caller's list. */
+export function shuffledNeeds<T>(needs: readonly T[], randomIndex: (max: number) => number): T[] {
+  const out = [...needs];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = randomIndex(i + 1);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /**
  * ⭐⭐ **কাকে কতগুলো দিতে হবে** — খাঁটি অঙ্ক, র‍্যান্ডম বাছাইয়ের আগে।
  *
  * ⚠️ হাতে থাকা টার্গেট **বাদ দিয়ে** হিসাব: রোজ ৩০টা করে দিলে সপ্তাহখানেকে
  * কারো হাতে দুশো জমে যেত, আর পুল ফুরিয়ে যেত অকারণে।
  *
- * ⚠️ পুলে যথেষ্ট না থাকলে **যতটা আছে ততটাই**, আর কে আগে পাবে সেটা
- * `needs`-এর ক্রম অনুযায়ী — কলার ওই ক্রম কর্মী-কোড ধরে দেয়, তাই
- * ঘাটতির দিনেও বণ্টন অনুমেয় থাকে, র‍্যান্ডম নয়।
+ * Pool shortage is shared one round at a time in shuffled recipient order,
+ * instead of filling the lowest employee code first.
  */
 export function allocationSizes(
   needs: readonly DesignerNeed[],
@@ -378,15 +387,16 @@ export function allocationSizes(
   const out = new Map<number, number>();
   let left = poolSize;
 
-  for (const need of needs) {
-    if (left <= 0) break;
-
-    const want = Math.max(0, perDesigner - need.openCount);
-    if (want === 0) continue;
-
-    const give = Math.min(want, left);
-    out.set(need.employeeId, give);
-    left -= give;
+  const remaining = needs.map(n => ({ employeeId: n.employeeId,
+    want: Math.max(0, perDesigner - n.openCount) }));
+  while (left > 0 && remaining.some(n => n.want > 0)) {
+    for (const need of remaining) {
+      if (left === 0) break;
+      if (need.want === 0) continue;
+      out.set(need.employeeId, (out.get(need.employeeId) ?? 0) + 1);
+      need.want--;
+      left--;
+    }
   }
 
   return out;

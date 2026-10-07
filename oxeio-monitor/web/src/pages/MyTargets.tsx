@@ -58,7 +58,7 @@ export function MyTargets() {
 
   if (loading && !data) return <Loading />;
   if (error && !data) return <ErrorBox error={error} retry={reload} />;
-  if (!data || data.length === 0) return null;
+  if (!data || (data.length === 0 && !allowance.data?.replacementOwed)) return null;
 
   /**
    * ⭐⭐ **দুই ভাগ** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
@@ -118,9 +118,12 @@ export function MyTargets() {
     >
       <div className="space-y-3 p-4">
         <Notice>
-          The first 3 skip requests each Dhaka day are automatic. Further requests need owner or manager approval before replacement work can be issued.
+          The first 3 skip requests each Dhaka day are automatic. Further requests need owner or manager approval. Each accepted skip gets one new random design immediately when the pool and daily limit allow it.
           {allowance.data && ` Automatic skips remaining today: ${allowance.data.remaining}.`}
         </Notice>
+        {!!allowance.data?.replacementOwed && <Notice tone="attention">
+          Replacement designs owed: {allowance.data.replacementOwed}. They will be issued before ordinary top-ups when capacity is available.
+        </Notice>}
         {pending.length > 0 && <div className="space-y-2">
           <p className="text-sm font-semibold">Pending skip review · {pending.length}</p>
           {pending.map(t => <div key={t.id} role="group" tabIndex={0} aria-label={`Design ${t.jobNumber??t.asin}`} data-selected={selectedId===t.id} onClick={()=>selectTarget(t.id)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selectTarget(t.id);}}} className={`rounded-lg border p-3 text-sm ${selectedId===t.id?'border-brand bg-brand/10 ring-1 ring-brand/30':'border-line'}`}>

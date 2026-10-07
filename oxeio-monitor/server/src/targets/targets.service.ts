@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomInt } from 'node:crypto';
 import { DesignTargetStatus, Prisma, UserRole } from '@prisma/client';
 
 import { localMidnightOf, nextLocalMidnight } from '../agent/util/dhaka-time';
@@ -21,6 +22,7 @@ import {
 import { FileTraceService } from './file-trace.service';
 import {
   allocationSizes,
+  shuffledNeeds,
   amazonUrl,
   canUseTargets,
   DESIGN_WORK_STAFF_TYPES,
@@ -375,6 +377,8 @@ export class TargetsService {
       },
     });
 
+    if (created.count > 0) await this.fulfillAllOwed(new Date());
+
     return {
       added: created.count,
       alreadyKnown: accepted.length - created.count,
@@ -404,6 +408,8 @@ export class TargetsService {
     let assigned = 0;
 
     try {
+      // Previously accepted skips have first claim on newly available pool work.
+      await this.fulfillAllOwed(now);
       const designers = await this.prisma.employee.findMany({
         // ⭐ কারা পান সেটা এক জায়গায় লেখা — `DESIGN_WORK_STAFF_TYPES`-এর
         //    টীকায় কারণসহ (২৬ আগস্ট: ম্যানেজারও ডিজাইন করেন)
@@ -412,9 +418,6 @@ export class TargetsService {
           staffType: { in: [...DESIGN_WORK_STAFF_TYPES] },
         },
         select: { id: true, empCode: true },
-        // ⚠️ কর্মী-কোড ধরে — পুলে ঘাটতি থাকলে কে আগে পাবে সেটা **অনুমেয়**
-        //    থাকা দরকার; র‍্যান্ডম হলে রোজ আলাদা লোক বঞ্চিত হতেন আর কেউ
-        //    কারণ বলতে পারত না। (বাছাই র‍্যান্ডম, ক্রম নয়।)
         orderBy: { empCode: 'asc' },
       });
       if (designers.length === 0) return { assigned: 0 };
@@ -434,10 +437,10 @@ export class TargetsService {
       });
 
       const sizes = allocationSizes(
-        designers.map((d) => ({
+        shuffledNeeds(designers.map((d) => ({
           employeeId: d.id,
           openCount: openBy.get(d.id) ?? 0,
-        })),
+        })), max => randomInt(max)),
         poolSize,
       );
 
@@ -841,6 +844,7 @@ export class TargetsService {
       await tx.designSkipRequest.create({ data: {
         targetId: id, employeeId, actorUserId: userId, reason, requestedAt: now,
         decision: pending ? 'pending' : 'automatic', decidedAt: pending ? null : now,
+        replacementDue: !pending,
       } });
       await tx.designTarget.update({ where: { id }, data: {
         status: pending ? 'assigned' : 'skipped', dropReason: reason,
@@ -850,15 +854,21 @@ export class TargetsService {
       return { ok: true, pending };
     }, { maxWait: 30_000, timeout: 30_000 });
     // Pending work occupies its assignment slot in every allocation path.
-    if (result.ok && !result.pending) await this.topUp(employeeId, now);
+    if (result.ok && !result.pending) {
+      await this.fulfillOwed(employeeId, now);
+      await this.topUp(employeeId, now);
+    }
     return { ok: result.ok };
   }
 
   async skipAllowance(employeeId: number, now = new Date()) {
-    const requested = await this.prisma.designSkipRequest.count({ where: {
-      employeeId, requestedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
-    } });
-    return { limit: DAILY_AUTOMATIC_SKIPS, requested, remaining: Math.max(0, DAILY_AUTOMATIC_SKIPS - requested) };
+    const [requested, replacementOwed] = await Promise.all([
+      this.prisma.designSkipRequest.count({ where: {
+        employeeId, requestedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+      } }),
+      this.prisma.designSkipRequest.count({ where: { employeeId, replacementDue: true } }),
+    ]);
+    return { limit: DAILY_AUTOMATIC_SKIPS, requested, remaining: Math.max(0, DAILY_AUTOMATIC_SKIPS - requested), replacementOwed };
   }
 
   async decideSkip(id: number, approve: boolean, userId: number, now = new Date()): Promise<{ ok: boolean }> {
@@ -869,7 +879,7 @@ export class TargetsService {
         throw new ConflictException('This skip request has already been decided or changed. Refresh the list.');
       const decision = await tx.designSkipRequest.updateMany({
         where: { targetId: id, decision: 'pending' },
-        data: { decision: approve ? 'approved' : 'rejected', decidedAt: now, reviewerUserId: userId },
+        data: { decision: approve ? 'approved' : 'rejected', decidedAt: now, reviewerUserId: userId, replacementDue: approve },
       });
       if (decision.count !== 1) throw new ConflictException('No pending skip request exists.');
       await tx.designTarget.update({ where: { id }, data: {
@@ -880,7 +890,10 @@ export class TargetsService {
       } });
       return row.assignedToId;
     }, { maxWait: 30_000, timeout: 30_000 });
-    if (approve && employeeId !== null) await this.topUp(employeeId, now);
+    if (approve && employeeId !== null) {
+      await this.fulfillOwed(employeeId, now);
+      await this.topUp(employeeId, now);
+    }
     return { ok: true };
   }
 
@@ -959,6 +972,7 @@ export class TargetsService {
    * বারবার চালানো নিরাপদ।
    */
   async topUpAll(now: Date = new Date()): Promise<void> {
+    await this.fulfillAllOwed(now);
     const designers = await this.prisma.employee.findMany({
       where: { status: 'active', staffType: { in: [...DESIGN_WORK_STAFF_TYPES] } },
       select: { id: true },
@@ -966,6 +980,74 @@ export class TargetsService {
     });
 
     for (const d of designers) await this.topUp(d.id, now);
+  }
+
+  /** Owed replacements have priority over ordinary goal-based top-ups. */
+  private async fulfillAllOwed(now: Date): Promise<void> {
+    const due = await this.prisma.designSkipRequest.findMany({
+      where: { replacementDue: true },
+      select: { employeeId: true },
+      distinct: ['employeeId'],
+    });
+    for (const row of due) await this.fulfillOwed(row.employeeId, now);
+  }
+
+  /**
+   * Each accepted skip creates one durable debt. Assignment and clearing the
+   * debt commit together; a failed/empty pool leaves it for the next sweep.
+   */
+  private async fulfillOwed(employeeId: number, now: Date): Promise<number> {
+    try {
+      return await targetWrite(this.prisma, null, 'skip_replacement', async tx => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(260927, ${employeeId}::int)::text`;
+        const employee = await tx.employee.findUnique({
+          where: { id: employeeId }, select: { status: true, staffType: true },
+        });
+        if (employee?.status !== 'active' || !employee.staffType ||
+            !(DESIGN_WORK_STAFF_TYPES as readonly string[]).includes(employee.staffType)) return 0;
+
+        const [owed, open, issued] = await Promise.all([
+          tx.designSkipRequest.findMany({
+            where: { employeeId, replacementDue: true, decision: { in: ['automatic', 'approved'] } },
+            orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }],
+            select: { id: true }, take: MAX_ISSUED_PER_DAY,
+          }),
+          tx.designTarget.count({ where: { assignedToId: employeeId, status: 'assigned' } }),
+          tx.designTarget.count({ where: {
+            assignedToId: employeeId,
+            assignedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+          } }),
+        ]);
+        const available = Math.min(owed.length, Math.max(0, POOL_PER_DESIGNER - open),
+          Math.max(0, MAX_ISSUED_PER_DAY - issued));
+        let delivered = 0;
+        for (const request of owed.slice(0, available)) {
+          const picked = await tx.$queryRaw<{ id: number }[]>`
+            WITH picked AS (
+              SELECT id FROM design_targets WHERE status = 'pool'
+              ORDER BY random() LIMIT 1 FOR UPDATE SKIP LOCKED
+            )
+            UPDATE design_targets AS target
+            SET status = 'assigned', assigned_to_id = ${employeeId}, assigned_at = ${now},
+                job_number = COALESCE(job_number, nextval('design_job_number_seq'))
+            WHERE target.id IN (SELECT id FROM picked) AND target.status = 'pool'
+            RETURNING target.id
+          `;
+          if (picked.length === 0) break;
+          await tx.designSkipRequest.update({
+            where: { id: request.id },
+            data: { replacementDue: false, replacementTargetId: picked[0].id, replacementIssuedAt: now },
+          });
+          delivered++;
+        }
+        return delivered;
+      }, { maxWait: 30_000, timeout: 30_000 });
+    } catch (err) {
+      this.logger.error(`Skip replacement failed for employee ${employeeId}: ${
+        err instanceof Error ? err.message : String(err)
+      }`);
+      return 0;
+    }
   }
 
   /**
@@ -1735,6 +1817,7 @@ export class TargetsService {
       toUpload: number;
       /** ⭐ আপলোড হয়েছে অথচ লাইভ হয়নি */
       toLive: number;
+      replacementOwed: number;
     }
   > {
     /**
@@ -1744,7 +1827,7 @@ export class TargetsService {
      * schema-র নোট দেখুন)। একটা কাজ একই সাথে `done` **আর** আপলোড **আর**
      * লাইভ হতে পারে, আর সেটাই ঠিক।
      */
-    const [rows, uploaded, live, toCheck, toFix, toUpload, toLive, toReview] =
+    const [rows, uploaded, live, toCheck, toFix, toUpload, toLive, toReview, replacementOwed] =
       await Promise.all([
       this.prisma.designTarget.groupBy({
         by: ['status'],
@@ -1790,6 +1873,7 @@ export class TargetsService {
           reviewedAt: null,
         },
       }),
+      this.prisma.designSkipRequest.count({ where: { replacementDue: true } }),
     ]);
 
     const out = {
@@ -1814,6 +1898,7 @@ export class TargetsService {
       toUpload,
       toLive,
       toReview,
+      replacementOwed,
     };
     for (const r of rows) out[r.status] = r._count._all;
 
