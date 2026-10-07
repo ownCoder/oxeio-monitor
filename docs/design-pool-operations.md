@@ -1,6 +1,8 @@
 # Design Pool — ব্যবহারবিধি
 
-৩ অক্টোবর ২০২৬ · Live **446 / cad69e4** · [Separate page release](audits/2026-10-03-daily-design-page.md) · [Daily report release](audits/2026-10-03-daily-designs.md)
+৭ অক্টোবর ২০২৬ · Live **451 / 49d899e** · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md) · [Daily report page](audits/2026-10-03-daily-design-page.md)
+
+Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
 
 ## প্রতিদিন কার কত Complete / Skip
 
@@ -25,6 +27,8 @@ Owner/manager হিসেবে **Targets → Daily designs & skips** আলা
 শুধু owner/manager Delete করতে পারেন। Select-all শুধু এই page-এর deletable targets নেয়। Finished, already-deleted ও pending skip-review target select করা যায় না। Backend-ও completed/pending কাজ রক্ষা করে।
 
 Delete-এ reason লাগে। Target স্থায়ীভাবে database থেকে মুছে যায় না; Deleted হয়, নতুন assignment-এ যায় না এবং একই ASIN আবার bulk add করে নতুন target বানানো যায় না। ভুল হলে existing **Un-delete** action দিয়ে pool-এ ফেরানো যায়। Pending skip-এর ক্ষেত্রে আগে owner/manager **Approve skip** বা **Reject** দেবেন।
+
+Amazon link-এ **Page Not Found / Dogs of Amazon** দেখালে ASIN দিয়ে row খুঁজে select করে **Delete selected → Not Found** দিন; পরে row-তে **Deleted · Not Found** নিশ্চিত করুন। একটি product-এর “Currently unavailable”, robot/CAPTCHA, network error বা temporary block মানেই missing নয়। ৭ অক্টোবরের সীমিত live audit-এ ১৮টি confirmed missing target চিহ্নিত হয়েছে; [audit record](audits/2026-10-07-amazon-not-found.md)-এ scope, ASIN ও বাকি কাজ আছে।
 
 ## কাজের ধাপ
 

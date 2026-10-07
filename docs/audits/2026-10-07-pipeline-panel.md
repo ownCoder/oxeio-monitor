@@ -1,0 +1,9 @@
+# Pipeline panel moved to Design Pool — 7 October 2026
+
+The owner asked to move the **The Pipeline** card shown on Add design targets to the top of Design Pool. It now appears directly above **Every Target** on `/targets/all`; `/targets` contains only **Add Links**. The card retains the same three counts (In the pool, In hand, Designed) and dropped counts. It reuses Design Pool's existing stats request, so the panel and queue counts refresh together after target actions and Refresh. Review keeps its existing list without the panel.
+
+Scoped source: `web/src/pages/TargetsPage.tsx` and `web/src/pages/AllTargetsPage.tsx`. Local release mirror: `.release-salary/oxeio-monitor`; production source: `/opt/oxeio/oxeio-monitor`. The dirty main local checkout was not used as release source.
+
+Validation: local web typecheck, lint, production build and **296/296** frontend tests passed. The exact scoped files overlaid on the VPS HEAD passed isolated Docker web typecheck, lint, build and **295/295** tests (the validation image carries one fewer test). Live Chrome owner session showed the Pipeline card before Every Target on Design Pool with loaded counts and no Pipeline on Add design targets. Public health reports matching web/API build and commit; public JS SHA256 matches the web container. API/web containers are healthy and the PostgreSQL container ID did not change. No database migration or seed.
+
+Release **451 / `49d899eb2ed070910ea0866ee19a03f1fc5ae35e`**. VPS release evidence and source bundle: `/opt/oxeio-releases/pipeline-panel-20261007`. Rollback image tags: `oxeio-api:before-pipeline-panel-20261007`, `oxeio-web:before-pipeline-panel-20261007` (build 449). Rollback must use both compose files and both images; restore the matching prior app commit/source before any later rebuild. The deployed commit marker is `/opt/oxeio/.git/oxeio-deployed-commit`.
