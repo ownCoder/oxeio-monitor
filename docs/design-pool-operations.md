@@ -1,6 +1,6 @@
 # Design Pool — ব্যবহারবিধি
 
-৭ অক্টোবর ২০২৬ · Live **460 / e3cb2b2** · [Skip/review release](audits/2026-10-07-four-reason-skip-review-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
+৭ অক্টোবর ২০২৬ · Live **462 / aefc8d7** · [Skip/review release](audits/2026-10-07-four-reason-skip-review-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
 
 Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
 
@@ -20,7 +20,7 @@ Owner/manager হিসেবে **Targets → Daily designs & skips** আলা
 
 Report-এ দৈনিক **Issued, Page Not Found, Event, Copyright, Others, Replacement issued ও Owed** দেখা যায়। Issued হলো assignment-history event-এর দিন; replacement columns হলো ওই দিনের request-গুলোর **বর্তমান** delivery/debt অবস্থা—পরে delivery হলে পুরোনো দিনের row বদলাবে। Replacement tracking ৭ অক্টোবর release 453 থেকে; তার আগের শূন্য মানে replacement হয়েছিল/হয়নি, কোনোটাই প্রমাণ করে না।
 
-**Completed** হলো completion timestamp থাকা design, completion-এর Dhaka day-তে বর্তমান assigned staff-এর নামে। **Skipped** হলো ওই Dhaka day-তে করা non-rejected request; নতুন নিয়মে pending-review design-ও ইতিমধ্যে skipped, তাই Pending আলাদা column-এ দেখানোর পাশাপাশি Skipped-এ গণনা হয়। Reject হলে আগের দিনের Skipped সংখ্যা কমতে পারে। এটি skip-এর সঙ্গে completed-এর সরাসরি conversion rate নয়। ২৭ সেপ্টেম্বরের মাঝপথে skip ledger চালু হয়েছে; **২৮ সেপ্টেম্বরের আগের Skipped/Pending “—” মানে তথ্য অজানা, শূন্য নয়**।
+**Completed** হলো completion timestamp থাকা design, completion-এর Dhaka day-তে বর্তমান assigned staff-এর নামে। **Skipped** হলো ওই Dhaka day-তে করা non-rejected request; নতুন নিয়মে pending-review design-ও ইতিমধ্যে skipped, তাই Pending আলাদা column-এ দেখানোর পাশাপাশি Skipped-এ গণনা হয়; পুরোনো assigned-pending request শুধু Pending-এ থাকে। Reject হলে আগের দিনের Skipped সংখ্যা কমতে পারে। এটি skip-এর সঙ্গে completed-এর সরাসরি conversion rate নয়। ২৭ সেপ্টেম্বরের মাঝপথে skip ledger চালু হয়েছে; **২৮ সেপ্টেম্বরের আগের Skipped/Pending “—” মানে তথ্য অজানা, শূন্য নয়**।
 
 নিচের **Skip-rate details** আগের cohort report: recorded assignments, requests ও review decisions দেখায়। Daily table-এর সংখ্যা এবং cohort rate-এর denominator আলাদা, তাই সরাসরি তুলনা করবেন না।
 

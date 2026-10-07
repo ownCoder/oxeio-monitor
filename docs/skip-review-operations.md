@@ -1,6 +1,6 @@
 # Design skip — ব্যবহার ও review
 
-৭ অক্টোবর ২০২৬ · Live release **460 / e3cb2b2** · [সাইট](https://hub.oxeio.com) · [Release record](audits/2026-10-07-four-reason-skip-review-release.md)
+৭ অক্টোবর ২০২৬ · Live release **462 / aefc8d7** · [সাইট](https://hub.oxeio.com) · [Release record](audits/2026-10-07-four-reason-skip-review-release.md)
 
 ## Designer-এর নিয়ম
 
@@ -18,6 +18,6 @@ Page Not Found skip manager queue-তে যায় না। পুরোনো 
 
 ## রিপোর্ট ও সীমা
 
-**Daily designs & skips**-এ request-এর Dhaka day অনুযায়ী Skipped, Pending, Page Not Found, Event, Copyright, Others, replacement issued ও owed দেখা যায়। Pending request design ইতিমধ্যে skipped বলে Skipped সংখ্যাতেও থাকে; rejected হলে ওই দিনের Skipped থেকে সরে যায়। পুরোনো **Skip-rate details** cohort rate pending request-কে approval না হওয়া পর্যন্ত numerator-এ ধরে না। ২৮ সেপ্টেম্বরের আগের skip ledger অসম্পূর্ণ; “—” শূন্য নয়।
+**Daily designs & skips**-এ request-এর Dhaka day অনুযায়ী Skipped, Pending, Page Not Found, Event, Copyright, Others, replacement issued ও owed দেখা যায়। নতুন pending-review design ইতিমধ্যে skipped বলে Skipped ও Pending দুই সংখ্যাতেই থাকে; পুরোনো assigned-pending request শুধু Pending-এ থাকে। Reject হলে ওই দিনের Skipped থেকে সরে যায়। পুরোনো **Skip-rate details** cohort rate pending request-কে approval না হওয়া পর্যন্ত numerator-এ ধরে না। ২৮ সেপ্টেম্বরের আগের skip ledger অসম্পূর্ণ; “—” শূন্য নয়।
 
 Replacement তখনই তাৎক্ষণিক পাওয়া সম্ভব যখন pool-এ Ready design আছে এবং ৬০/day issue limit বাকি। OX-09-কে ৭ অক্টোবর দেওয়া আলাদা extra design-এর ফলে তাঁর হাতে ৩৪টি ছিল; নতুন atomic swap ওই অবস্থাতেও ৩৪টি বজায় রেখে replacement দেয়। কোনো real staff skip দিয়ে live পরীক্ষা করা হয়নি; isolated integration test ও release checks পাস করেছে।

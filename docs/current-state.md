@@ -4,7 +4,9 @@
 
 ## Live
 
-- **সর্বশেষ release 460 / `e3cb2b244fad0dd4e2f631166fba9e30b666e19b`**: Skip ও ১:১ replacement একই database transaction-এ সম্পন্ন হয়। Owner-এর একদিনের extra grant-এ কারও হাতে সাধারণ ৩০টির বেশি থাকলেও skip করলে পুরোনোটি সরে একই সময়ে ১টি নতুন design আসে—open সংখ্যা বাড়ে না। Ready pool খালি বা ৬০/day issue limit হলে durable owed থাকে। OX-09-এর আজকের ৩৪-open অবস্থার edge case-টি isolated test-এ যাচাই হয়েছে। VPS release `/opt/oxeio-releases/skip-atomic-swap-20261007`; ৪৩ migrations-সহ disposable DB-তে ১১৮/১১৮ API tests পাস। [Release record](audits/2026-10-07-four-reason-skip-review-release.md)।
+- **সর্বশেষ release 462 / `aefc8d76666e7e486b9c7f1cf12de746a66939dd`**: Daily designs & skips report-এ নতুন pending review design `skipped` হলে Skipped ও Pending দুই column-এ দেখায়, কিন্তু পুরোনো assigned-pending request শুধু Pending-এ দেখায়। এতে আগের ৬টি pending Copyright request ভুল করে Skipped হয় না; সেগুলোর status/decision বদলায়নি। VPS code-only release `/opt/oxeio-releases/skip-insights-legacy-20261007`; ৪৩ migrations-সহ isolated DB-তে ১০/১০ report tests পাস। [Release record](audits/2026-10-07-four-reason-skip-review-release.md)।
+
+- **আগের release 460 / `e3cb2b244fad0dd4e2f631166fba9e30b666e19b`**: Skip ও ১:১ replacement একই database transaction-এ সম্পন্ন হয়। Owner-এর একদিনের extra grant-এ কারও হাতে সাধারণ ৩০টির বেশি থাকলেও skip করলে পুরোনোটি সরে একই সময়ে ১টি নতুন design আসে—open সংখ্যা বাড়ে না। Ready pool খালি বা ৬০/day issue limit হলে durable owed থাকে। OX-09-এর আজকের ৩৪-open অবস্থার edge case-টি isolated test-এ যাচাই হয়েছে। VPS release `/opt/oxeio-releases/skip-atomic-swap-20261007`; ৪৩ migrations-সহ disposable DB-তে ১১৮/১১৮ API tests পাস। [Release record](audits/2026-10-07-four-reason-skip-review-release.md)।
 
 - **আগের release 459 / `bc392a2adc624e058cf7f1bdd75c2a4e9b8b5122`**: Designer Skip-এ এখন **Page Not Found, Event, Copyright, Others**। Page Not Found review ছাড়াই accepted; অন্য তিনটি সঙ্গে সঙ্গে `skipped` হয়ে manager/owner review-তে যায়। চার কারণেই একই designer-কে ১:১ random replacement তাৎক্ষণিক দেওয়ার চেষ্টা হয়; pool/৬০-day limit না মিললে durable owed থাকে; পরে owed পূরণে ৩০-open cap চলে। পুরোনো design নিজে থেকে pool-এ ফেরে না। Daily report-এ Others ও pending-but-skipped সংখ্যা যোগ হয়েছে। Migration `20261007130000_skip_reason_review`; পুরোনো request backfill নয়। VPS source/backup/log `/opt/oxeio-releases/skip-reason-review-20261007`। Public build 459/commit, JS hash, protected endpoint ও তিন healthy container verified; ৩০টি OX-09 extra assignment history অক্ষত। [Release ও যাচাই](audits/2026-10-07-four-reason-skip-review-release.md) · [ব্যবহারবিধি](skip-review-operations.md)।
 
@@ -34,7 +36,7 @@
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **460 / e3cb2b2**। Public HTTPS health, protected Design Pool endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। আগের release 451-এ Chrome-এ authenticated Design Pool/Add design targets page দেখা হয়েছিল; release 460-এর authenticated browser UI পরীক্ষা করা হয়নি।
+- Web/API: **462 / aefc8d7**। Public HTTPS health, protected Design Pool endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। আগের release 451-এ Chrome-এ authenticated Design Pool/Add design targets page দেখা হয়েছিল; release 462-এর authenticated browser UI পরীক্ষা করা হয়নি।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
@@ -42,6 +44,8 @@
 - Release 411-এর প্রথম-৩টি automatic skip নিয়ম release 459-এ বদলেছে। বর্তমান নিয়ম: শুধু Page Not Found review ছাড়া; অন্য তিন কারণ manager/owner review-তে, কিন্তু replacement আগে চেষ্টা হয়। [বর্তমান ব্যবহারবিধি](skip-review-operations.md) · [পুরোনো release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 462: ৪৩ migrations-সহ disposable PostgreSQL-এ report-এর **১০/১০** tests, API typecheck/lint/build passed। পুরোনো assigned-pending এবং নতুন skipped-pending একসঙ্গে রেখে count পরীক্ষা হয়েছে। No migration/seed বা production record পরিবর্তন। [Evidence](audits/2026-10-07-four-reason-skip-review-release.md)।
 
 - Release 460: ৪৩ migrations-সহ disposable PostgreSQL-এ **১১৮/১১৮** API integration/regression tests, typecheck/lint/build passed; এর মধ্যে ৩৪-open atomic swap test আছে। Public health build 460/commit, protected endpoint 401, public JS container hash ও API/web/PostgreSQL healthy যাচাই হয়েছে। No migration/seed in this hotfix; PostgreSQL container অপরিবর্তিত। [Evidence](audits/2026-10-07-four-reason-skip-review-release.md)।
 
@@ -123,7 +127,7 @@
 - Rollback to 421: `oxeio-api:before-monitor-readiness-20260928`, `oxeio-web:before-monitor-readiness-20260928`; initial feature rollback to 418: `before-system-improvements-20260928` image tags। Both compose files mandatory।
 
 - Release 414-এর আগের images: `oxeio-api:before-pool-audit-20260928`, `oxeio-web:before-pool-audit-20260928` (release 412)।
-- Current release source bundle: `/opt/oxeio-releases/skip-atomic-swap-20261007`; encrypted backup: `/opt/oxeio-releases/skip-reason-review-20261007`।
+- Current release source bundle: `/opt/oxeio-releases/skip-insights-legacy-20261007`; encrypted backup: `/opt/oxeio-releases/skip-reason-review-20261007`।
 - Saved/shareable filters, history ও recorded skip-rate report এখন live। Full filtered export এখনও নেই; current CSV visible page export করে।
 
 - Release 412-এর আগের images: `oxeio-api:before-remove-distribute`, `oxeio-web:before-remove-distribute` — এগুলো release 411, যেখানে skip review আছে।

@@ -6,7 +6,7 @@
 
 > **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
 
-> **Current release: 460 / e3cb2b2** — designers choose Page Not Found, Event, Copyright or Others when skipping; only Page Not Found needs no review. Every skip attempts one atomic 1:1 replacement, including during an owner-granted extra workload, with durable owed work when pool/daily limits prevent delivery. See the [release record](docs/audits/2026-10-07-four-reason-skip-review-release.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 462 / aefc8d7** — designers choose Page Not Found, Event, Copyright or Others when skipping; only Page Not Found needs no review. Every skip attempts one atomic 1:1 replacement, including during an owner-granted extra workload, with durable owed work when pool/daily limits prevent delivery. The daily report distinguishes new skipped-pending work from old assigned-pending requests. See the [release record](docs/audits/2026-10-07-four-reason-skip-review-release.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
