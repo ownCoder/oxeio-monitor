@@ -979,7 +979,7 @@ export class TargetsService {
       orderBy: { empCode: 'asc' },
     });
 
-    for (const d of designers) await this.topUp(d.id, now);
+    for (const d of shuffledNeeds(designers, max => randomInt(max))) await this.topUp(d.id, now);
   }
 
   /** Owed replacements have priority over ordinary goal-based top-ups. */
@@ -989,7 +989,7 @@ export class TargetsService {
       select: { employeeId: true },
       distinct: ['employeeId'],
     });
-    for (const row of due) await this.fulfillOwed(row.employeeId, now);
+    for (const row of shuffledNeeds(due, max => randomInt(max))) await this.fulfillOwed(row.employeeId, now);
   }
 
   /**
