@@ -838,7 +838,7 @@ export class TargetsService {
       if (!row || row.assignedToId !== employeeId || row.status !== 'assigned' || row.skipReviewPending)
         return { ok: false, pending: false };
       const pending = reason !== 'not_found';
-      await tx.designSkipRequest.create({ data: {
+      const request = await tx.designSkipRequest.create({ data: {
         targetId: id, employeeId, actorUserId: userId, reason, requestedAt: now,
         decision: pending ? 'pending' : 'automatic', decidedAt: pending ? null : now,
         replacementDue: true,
@@ -848,12 +848,34 @@ export class TargetsService {
         skipReviewPending: pending, skipRequestedAt: now,
         reviewedAt: pending ? null : now, reviewedById: null,
       } });
+      // The skip frees exactly one assignment, so swap its replacement in the
+      // same transaction even when a one-day owner grant put this designer over
+      // the ordinary 30-open ceiling. The 60/day issuance safety limit remains.
+      const issued = await tx.designTarget.count({ where: {
+        assignedToId: employeeId,
+        assignedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+      } });
+      if (issued < MAX_ISSUED_PER_DAY) {
+        await targetHistoryContext(tx, null, 'skip_replacement');
+        const picked = await tx.$queryRaw<{ id: number }[]>`
+          WITH picked AS (
+            SELECT id FROM design_targets WHERE status = 'pool'
+            ORDER BY random() LIMIT 1 FOR UPDATE SKIP LOCKED
+          )
+          UPDATE design_targets AS target
+          SET status = 'assigned', assigned_to_id = ${employeeId}, assigned_at = ${now},
+              job_number = COALESCE(job_number, nextval('design_job_number_seq'))
+          WHERE target.id IN (SELECT id FROM picked) AND target.status = 'pool'
+          RETURNING target.id
+        `;
+        if (picked.length === 1) await tx.designSkipRequest.update({
+          where: { id: request.id },
+          data: { replacementDue: false, replacementTargetId: picked[0].id, replacementIssuedAt: now },
+        });
+      }
       return { ok: true, pending };
     }, { maxWait: 30_000, timeout: 30_000 });
-    // Every skip frees its slot immediately; review never delays replacement.
-    if (result.ok) {
-      await this.fulfillOwed(employeeId, now);
-    }
+    // The transaction either issued one replacement or durably recorded it as owed.
     return { ok: result.ok };
   }
 

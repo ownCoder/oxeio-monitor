@@ -62,6 +62,18 @@ describe('Reason-based immediate skip replacement', () => {
     expect(await service.stats()).toMatchObject({ toReview: 3 });
   });
 
+  it('swaps one replacement atomically when an owner extra grant put open work above 30', async () => {
+    await h.prisma.designTarget.createMany({ data: Array.from({ length: 4 }, (_, n) => ({
+      asin: `E${String(n).padStart(9, '0')}`, addedById: ownerId,
+      assignedToId: employeeId, assignedAt: now, status: 'assigned' as const,
+    })) });
+    await addPool(1);
+    await service.skip(employeeId, ids[0], 'others', now, actorId);
+    expect(await h.prisma.designTarget.count({ where: { status: 'assigned', assignedToId: employeeId } })).toBe(34);
+    expect(await h.prisma.designSkipRequest.findFirstOrThrow()).toMatchObject({ replacementDue: false, decision: 'pending' });
+    expect(await h.prisma.designTarget.count({ where: { id: ids[0], status: 'skipped' } })).toBe(1);
+  });
+
   it('keeps a durable 1:1 debt while pool is empty and fulfills it once when stock arrives', async () => {
     for (const [n, reason] of reasons.entries()) await service.skip(employeeId, ids[n], reason, now, actorId);
     expect(await service.skipAllowance(employeeId, now)).toMatchObject({ replacementOwed: 4 });
