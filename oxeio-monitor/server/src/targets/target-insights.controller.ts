@@ -40,15 +40,15 @@ export class TargetInsightsController {
     GROUP BY 1,2
    ), skips AS (
     SELECT employee_id,(requested_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,
-     count(*) FILTER (WHERE decision <> 'rejected')::int skipped,
+     count(*) FILTER (WHERE decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped'))::int skipped,
      count(*) FILTER (WHERE decision='pending')::int pending,
-     count(*) FILTER (WHERE decision <> 'rejected' AND reason='not_found')::int not_found,
-     count(*) FILTER (WHERE decision <> 'rejected' AND reason='events')::int events,
-     count(*) FILTER (WHERE decision <> 'rejected' AND reason='copyright')::int copyright,
-     count(*) FILTER (WHERE decision <> 'rejected' AND reason='others')::int others,
+     count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='not_found')::int not_found,
+     count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='events')::int events,
+     count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='copyright')::int copyright,
+     count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='others')::int others,
      count(*) FILTER (WHERE replacement_target_id IS NOT NULL)::int replacement_issued,
      count(*) FILTER (WHERE replacement_due)::int replacement_owed
-    FROM design_skip_requests
+    FROM design_skip_requests request JOIN design_targets target ON target.id=request.target_id
     WHERE requested_at>=${start} AND requested_at<${end}
     GROUP BY 1,2
    )
@@ -71,7 +71,7 @@ export class TargetInsightsController {
    ORDER BY d.report_date DESC,e.emp_code
   `);
   return {from,to,skipHistoryCompleteFrom:'2026-09-28',rows,
-   definition:'Issued counts recorded assignment events on the Dhaka issue day (history starts 27 September 2026). Completed is credited to current assigned staff on completion day. Skipped and reasons count requests other than rejected on request day; pending review is shown separately. Replacement issued/owed describe those requests as of now, even if delivery happened later. Replacement tracking began with release 453 on 7 October; earlier zeros do not mean replacements were delivered. Skip days before 28 September are unknown.'};
+   definition:'Issued counts recorded assignment events on the Dhaka issue day (history starts 27 September 2026). Completed is credited to current assigned staff on completion day. Skipped and reasons count automatic/approved requests plus pending requests whose target is already skipped; legacy pending assignments remain only in Pending. Replacement issued/owed describe those requests as of now, even if delivery happened later. Replacement tracking began with release 453 on 7 October; earlier zeros do not mean replacements were delivered. Skip days before 28 September are unknown.'};
  }
  @Get('skips') async skips(@Query('from') from: string, @Query('to') to: string) {
   const {start,end}=insightRange(from,to);

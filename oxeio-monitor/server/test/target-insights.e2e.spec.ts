@@ -20,7 +20,15 @@ describe('Recorded target insights',()=>{
   const another=(await h.prisma.designTarget.create({data:{asin:'B000000002',addedById:owner}})).id;
   await skip('pending',another);
   const row=(await controller.daily(day,day)).rows.find(r=>r.employeeId===employee);
-  expect(row).toMatchObject({date:day,completed:1,skipped:3,pending:1});
+  expect(row).toMatchObject({date:day,completed:1,skipped:2,pending:1});
+ });
+ it('counts new skipped pending requests without misreporting legacy assigned pending work',async()=>{
+  const old=(await h.prisma.designTarget.create({data:{asin:'B000000004',addedById:owner,assignedToId:employee,assignedAt:at,status:'assigned'}})).id;
+  await skip('pending',old);
+  const fresh=(await h.prisma.designTarget.create({data:{asin:'B000000005',addedById:owner,assignedToId:employee,assignedAt:at,status:'assigned'}})).id;
+  await skip('pending',fresh);
+  await h.prisma.designTarget.update({where:{id:fresh},data:{status:'skipped',skipReviewPending:true,skipRequestedAt:at,dropReason:'copyright'}});
+  expect((await controller.daily(day,day)).rows.find(r=>r.employeeId===employee)).toMatchObject({skipped:1,pending:2,copyright:1});
  });
  it('shows issued work, skip reason and a replacement moving from owed to delivered',async()=>{
   await assigned();
