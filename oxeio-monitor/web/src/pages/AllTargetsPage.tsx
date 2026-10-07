@@ -14,10 +14,11 @@ import {
   targetStats,
   type DropReason,
   type TargetRow,
+  type TargetStats,
   type TargetStatus,
   updateTarget,
 } from '../api/targets';
-import { useApi } from '../api/useApi';
+import { useApi, type ApiResult } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Card } from '../components/Card';
 import { Page } from '../components/Page';
@@ -65,11 +66,45 @@ import { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';
 export function AllTargetsPage() {
   return (
     <Page title="Design Pool" subtitle="Every link, and where it stands">
-      <TargetList />
+      <TargetList showPipeline />
     </Page>
   );
 }
 
+function PipelineCard({ stats }: { stats: ApiResult<TargetStats> }) {
+  const s = stats.data;
+  return (
+    <Card title="The Pipeline" hint="From collected link to a finished design">
+      <div className="p-4">
+        {stats.loading && !s && <Loading />}
+        {stats.error && !s && <ErrorBox error={stats.error} retry={stats.reload} />}
+        {s && (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <PipelineTile n={s.pool} label="In the pool" tone="text-ink" />
+              <PipelineTile n={s.assigned} label="In hand" tone="text-data" />
+              <PipelineTile n={s.done} label="Designed" tone="text-ink" />
+            </div>
+            <div className="mt-3 text-[12px] text-ink-3">
+              Dropped along the way:{' '}
+              <span className="num font-medium">{s.skipped}</span> skipped ·{' '}
+              <span className="num font-medium">{s.deleted}</span> gone from Amazon
+            </div>
+          </>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function PipelineTile({ n, label, tone }: { n: number; label: string; tone: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-paper px-3 py-2.5">
+      <div className={`num text-[22px] font-semibold ${tone}`}>{n}</div>
+      <div className="text-[11px] tracking-wide text-ink-3 uppercase">{label}</div>
+    </div>
+  );
+}
 
 /**
  * ⭐⭐ **পুরো তালিকা** *(২৩ আগস্ট, মালিকের চাওয়া)*।
@@ -100,7 +135,7 @@ function dhakaToday(): string {
  * ⚠️ মার্কআপটা **নকল করা হয়নি, ভাগ করা হয়েছে** — ১৭ আগস্টে Worklog-এর
  * সময় শেখা: দুই জায়গায় কপি থাকলে একদিন একটা বদলাত আর অন্যটা নয়।
  */
-export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
+export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?: Stage; showPipeline?: boolean } = {}) {
   const [initialView] = useState(() => parsePoolView(window.location.search));
   const [historyId,setHistoryId] = useState<number|null>(null);
   const [filter, setFilter] = useState<FilterKey>(lockedStage ?? initialView.filter as FilterKey);
@@ -285,6 +320,8 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
   };
 
   return (
+    <div className="space-y-3">
+    {showPipeline && <PipelineCard stats={stats} />}
     <Card
       title="Every Target"
       /*
@@ -874,6 +911,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
         </>
       )}
     </Card>
+    </div>
   );
 }
 

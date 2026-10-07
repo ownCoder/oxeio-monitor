@@ -3,13 +3,10 @@ import { useState } from 'react';
 import {
   addTargets,
   REJECT_TEXT,
-  targetStats,
   type BulkResult,
 } from '../api/targets';
-import { useApi } from '../api/useApi';
 import { Card } from '../components/Card';
 import { Button, Page } from '../components/Page';
-import { ErrorBox, Loading } from '../components/States';
 import { Chip, Notice, ServerError, useMutation } from './settings/ui';
 import { Table } from '../components/Table';
 
@@ -28,13 +25,10 @@ import { Table } from '../components/Table';
  * ঠিক এই কারণেই Deposits-ও সাইডবারে গেছে (09 § ৩ঃ)।
  */
 export function TargetsPage() {
-  const stats = useApi(targetStats, []);
   const submit = useMutation();
 
   const [text, setText] = useState('');
   const [result, setResult] = useState<BulkResult | null>(null);
-
-  const s = stats.data;
 
   return (
     <Page
@@ -42,47 +36,6 @@ export function TargetsPage() {
       subtitle="Amazon links the designers will work from"
     >
       <div className="space-y-3">
-        <Card
-          title="The Pipeline"
-          hint="From collected link to a finished design"
-        >
-          <div className="p-4">
-            {stats.loading && !s && <Loading />}
-            {stats.error && !s && <ErrorBox error={stats.error} retry={stats.reload} />}
-
-            {s && (
-              <>
-                {/* সংগ্রহ → হাতে থাকা → ডিজাইন: এই পাতায় তিনটি ধাপ। */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <Tile n={s.pool} label="In the pool" tone="text-ink" />
-                  <Tile n={s.assigned} label="In hand" tone="text-data" />
-                  <Tile n={s.done} label="Designed" tone="text-ink" />
-                </div>
-
-                {/*
-                  ⚠️ "বাদ দেওয়া" লুকোনো হয় না — সংখ্যাটা বাড়তে থাকলে
-                     বোঝা যায় সংগ্রহের মান পড়ছে, আর সেটা জানা দরকার।
-                  ⭐ তবে পাইপলাইনের বাইরে, কারণ এটা ধাপ নয় — বেরিয়ে যাওয়া।
-                */}
-                {/*
-                  ⭐⭐ **দুটো সংখ্যা, আর ওদের মানে এক নয়** *(২৯ আগস্ট ২০২৬)*।
-                     `skipped` = ডিজাইনার করতে চাননি (মানুষের সিদ্ধান্ত),
-                     `deleted` = Amazon-এ পাতাটাই নেই (জগতের ঘটনা)।
-                  ⚠️⚠️ এক করে দেখালে সংখ্যাটা বাড়তে দেখে কেউ বুঝত না দোষটা
-                     কার — সংগ্রহের, নাকি ডিজাইনারের। ⭐ আর দ্বিতীয়টাই
-                     গবেষকের তালিকা কতটা বাসি তার একমাত্র মাপ।
-                */}
-                <div className="mt-3 text-[12px] text-ink-3">
-                  Dropped along the way:{' '}
-                  <span className="num font-medium">{s.skipped}</span> skipped ·{' '}
-                  <span className="num font-medium">{s.deleted}</span> gone from
-                  Amazon
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
-
         <Card title="Add Links" hint="One per line — paste as many as you like">
           <div className="space-y-3 p-4">
             <Notice>
@@ -115,7 +68,6 @@ export function TargetsPage() {
                     // ⚠️ বাক্সটা খালি করা হয় **সফল হলে তবেই** — নইলে
                     //    নেটওয়ার্ক ভাঙলে ৫০০ লাইন হারিয়ে যেত
                     setText('');
-                    stats.reload();
                   })
                 }
               >
@@ -134,15 +86,6 @@ export function TargetsPage() {
 
       </div>
     </Page>
-  );
-}
-
-function Tile({ n, label, tone }: { n: number; label: string; tone: string }) {
-  return (
-    <div className="rounded-lg border border-line bg-paper px-3 py-2.5">
-      <div className={`num text-[22px] font-semibold ${tone}`}>{n}</div>
-      <div className="text-[11px] tracking-wide text-ink-3 uppercase">{label}</div>
-    </div>
   );
 }
 
