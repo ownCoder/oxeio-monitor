@@ -1,12 +1,22 @@
 # Design Pool — ব্যবহারবিধি
 
-৭ অক্টোবর ২০২৬ · Live **451 / 49d899e** · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md) · [Daily report page](audits/2026-10-03-daily-design-page.md)
+৭ অক্টোবর ২০২৬ · Live **454 / c66a051** · [Skip replacement release](audits/2026-10-07-skip-replacement-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
 
 Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
+
+## পুল থেকে বণ্টন
+
+প্রতিদিন **সকাল ৮:০০ (ঢাকা সময়)** active designer ও manager-দের হাতে সর্বোচ্চ **৩০টি করে** রাখার জন্য পুল থেকে random design দেওয়া হয়। আগে থেকেই চলমান design থাকলে কেবল খালি জায়গা পূরণ হয়। Recipient order-ও প্রতি run-এ random হয়; pool কম থাকলে সেই random order-এ একবারে একটি করে round-robin ভাগ হয়। Add design targets পাতায় **Distribute now** button নেই; owner/manager-এর backend manual route আছে, তবে স্বাভাবিক কাজের জন্য সেটি লাগে না।
+
+Designer-এর দৈনিক completion target এখনও বাকি থাকলে এবং হাতে থাকা design দিয়ে সেটি পূরণ সম্ভব না হলে কাজের সময় **০৯:০৫–১৯:০৫** প্রতি ঘণ্টায় check হয়; complete/skip-এর পরেও top-up হতে পারে। একজনকে দিনে সর্বোচ্চ **৬০টি issue** করার cap আছে। **২৩:৫৫**-এ না-শুরু-করা design পুলে ফেরে; শুরু হওয়া বা pending skip-review design হাতে থাকে। ৭ অক্টোবরের [live distribution audit](audits/2026-10-07-design-distribution-status.md)-এ scheduled assignment ও return কার্যকর দেখা গেছে।
+
+**Skip পুলে ফেরত যায় না।** Not Found, Events বা Copyright দিয়ে accepted skip হলে design `skipped`-ই থাকে। প্রতিটি accepted skip-এর জন্য ওই designer-কে Ready pool থেকে **ঠিক ১টি random replacement** দেওয়ার চেষ্টা সঙ্গে সঙ্গে হয়—daily-goal top-up-এর বাইরে। প্রথম ৩টি request automatic; এর পরের pending request approval না হওয়া পর্যন্ত design তাঁর হাতেই থাকে ও replacement দেওয়া হয় না। Reject হলে আগের assignment থাকে। Pool খালি, হাতে ৩০ বা দিনে ৬০টি issue হয়ে গেলে replacement `owed` হিসেবে রেকর্ড থাকে; পরের pool addition/সকালের distribution/hourly sweep-এ অন্য top-up-এর আগে চেষ্টা হয়। My targets-এ পাওনা দেখায়; Design Pool-এর Pipeline-এ মোট পাওনা থাকলে দেখায়। পুরোনো skip-গুলোর জন্য replacement debt বানানো হয়নি। Owner-এর deliberate Un-skip/To pool action আলাদা; automatic return নয়। [Release ও limitations](audits/2026-10-07-skip-replacement-release.md)।
 
 ## প্রতিদিন কার কত Complete / Skip
 
 Owner/manager হিসেবে **Targets → Daily designs & skips** আলাদা page খুলুন (`/targets/daily`)। Design Pool-এর তালিকায় report আর খোলে না। Default-এ শেষ ৭ Dhaka day দেখায়। From/To দিয়ে সর্বোচ্চ ৩১ দিন বাছুন; **Today** ও **Last 7 days** shortcuts আছে। **Staff** dropdown দিয়ে একজনকে বাছলে daily row ও উপরের মোট সংখ্যা সেই ব্যক্তির হবে। Refresh report দিয়ে নতুন কাজ/skip review সিদ্ধান্ত আনুন।
+
+Report release 454-এ দৈনিক **Issued, reason-wise accepted skips (Not Found, Events, Copyright), Replacement issued ও Owed** যোগ হয়েছে। Issued হলো assignment-history event-এর দিন; replacement columns হলো ওই দিনের request-গুলোর **বর্তমান** delivery/debt অবস্থা—পরে delivery হলে পুরোনো দিনের row বদলাবে। Replacement tracking ৭ অক্টোবর release 453 থেকে; তার আগের শূন্য মানে replacement হয়েছিল/হয়নি, কোনোটাই প্রমাণ করে না।
 
 **Completed** হলো completion timestamp থাকা design, completion-এর Dhaka day-তে বর্তমান assigned staff-এর নামে। **Skipped** হলো ওই Dhaka day-তে করা automatic বা পরে approved হওয়া skip request; একই design-এর সফল repeated request থাকলে প্রতিটি action গণনা হয়। **Pending** আলাদা; rejected request Skipped নয়। Approved/rejected decision বদলালে অতীতের request-day সংখ্যা বদলাতে পারে। এটি skip-এর সঙ্গে completed-এর সরাসরি conversion rate নয়। ২৭ সেপ্টেম্বরের মাঝপথে skip ledger চালু হয়েছে; **২৮ সেপ্টেম্বরের আগের Skipped/Pending “—” মানে তথ্য অজানা, শূন্য নয়**।
 

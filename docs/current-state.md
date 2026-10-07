@@ -4,7 +4,11 @@
 
 ## Live
 
-- সর্বশেষ release **451 / `49d899eb2ed070910ea0866ee19a03f1fc5ae35e`**: Add design targets-এর **The Pipeline** panel এখন Design Pool-এ **Every Target** তালিকার ওপরে। Add design targets-এ শুধু Add Links। Existing count API ও refresh flow ব্যবহার করা হয়েছে; Review page অপরিবর্তিত। [Release ও যাচাই](audits/2026-10-07-pipeline-panel.md)। Source mirror `.release-salary/oxeio-monitor`; VPS release `/opt/oxeio-releases/pipeline-panel-20261007`।
+- **সর্বশেষ release 454 / `c66a05150efe3c37ccbf70e125f866d01efc0ed8`**: Daily designs & skips-এ Issued, Not Found/Events/Copyright reason counts, replacement issued/owed দেখা যায়। Release 453 / `be8ee29110cb8b4837f75fde40aaab10e8f3838f` থেকে accepted skip `skipped`-ই থাকে, ১:১ replacement আগে issue হয় বা durable owed থাকে; morning recipient order random, shortage round-robin। Pending review approval না হওয়া পর্যন্ত replacement নেই। [Release/backup/tests](audits/2026-10-07-skip-replacement-release.md) · [ব্যবহারবিধি](design-pool-operations.md)। Clean source mirror `.release-salary/oxeio-monitor`; VPS releases `/opt/oxeio-releases/skip-replacement-20261007` ও `/opt/oxeio-releases/skip-report-20261007`। ৭ অক্টোবর ১২:২৪-এ API/web/PostgreSQL healthy, public build/commit এবং JS hash matched; পুরোনো ২৪৩ skip request-এর কোনো retroactive debt নেই। Additive migration `20261007120000_skip_replacements`, seed হয়নি।
+
+- **৭ অক্টোবর ১১:৩৫ ঢাকা সময় — Design Pool distribution read-only check:** production history-তে সকাল ০৮:০০-এ scheduled `distribution` source-এ ২৪৭টি assignment এবং ০৮:৫৯–০৯:৫৭-এ `top_up` source-এ আরও ৮টি assignment আছে। সক্রিয় ৮ designer + ১ manager সবাই আজ assignment পেয়েছেন; বর্তমান pool ১৪,০৬২, in hand ১৯২। ৩০ সেপ্টেম্বর–৭ অক্টোবর প্রতিদিন ০৮:০০ distribution record আছে; গতকাল ২৩:৫৫-এ ৮৮টি untouched target ফেরত এসেছে। কোনো manual distribute বা data change করা হয়নি। [পূর্ণ read-only audit](audits/2026-10-07-design-distribution-status.md) · [নিয়ম](design-pool-operations.md)।
+
+- আগের release **451 / `49d899eb2ed070910ea0866ee19a03f1fc5ae35e`**: Add design targets-এর **The Pipeline** panel এখন Design Pool-এ **Every Target** তালিকার ওপরে। Add design targets-এ শুধু Add Links। Existing count API ও refresh flow ব্যবহার করা হয়েছে; Review page অপরিবর্তিত। [Release ও যাচাই](audits/2026-10-07-pipeline-panel.md)। Source mirror `.release-salary/oxeio-monitor`; VPS release `/opt/oxeio-releases/pipeline-panel-20261007`।
 
 - **৭ অক্টোবর Design Pool live data audit:** Chrome-এ Amazon Page Not Found/dog page নিশ্চিত হওয়ার পর ১৭টি waiting এবং ১টি assigned design-কে owner UI দিয়ে **Deleted · Not Found** করা হয়েছে। ১৮টির exact live status ও ১৮টি history event যাচাই হয়েছে। প্রাথমিক read-only pass ৩০০ waiting ও ১০০ assigned ASIN request করেছিল; Amazon robot/challenge response শুরু হওয়ায় এটি **পূর্ণ pool audit নয়**। Challenge/unavailable/uncertain link বাদ দেওয়া হয়নি; বাকি ১৪ হাজারের বেশি target-এর availability অজানা। [ASIN, evidence ও continuation](audits/2026-10-07-amazon-not-found.md) · [Design Pool guide](design-pool-operations.md)। Data correction-এর সময় app release ছিল 449; পরে Pipeline placement release 451 দেওয়া হয়েছে।
 
@@ -30,6 +34,8 @@
 - Release 411-এর skip review বহাল: প্রতি Dhaka day প্রথম ৩টি automatic skip; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। [ব্যবহারবিধি](skip-review-operations.md) · [Release 411 record](audits/2026-09-27-skip-review.md)।
 
 ## যাচাই
+
+- Release 453–454: isolated disposable PostgreSQL-এ ৪২ migrations ও ১৫২ + ১৯ focused backend tests, web ২৯৫/২৯৫ tests প্রতি staged release-এ passed; local ২৯৬/২৯৬ frontend tests। Encrypted pre-release backup isolated restore ও additive migration drill-এ employee/target/skip/history counts matched। Live public build 454/commit, JS hash, protected endpoint ও তিন healthy container verified; PostgreSQL container unchanged। Real accepted skip deliberately trigger করা হয়নি, authenticated browser UI পরীক্ষা করা হয়নি। [Evidence](audits/2026-10-07-skip-replacement-release.md)।
 
 - Release 451: local frontend typecheck/lint/build ও ২৯৬/২৯৬ tests; exact staged VPS source-এ typecheck/lint/build ও ২৯৫/২৯৫ tests passed। Chrome owner view-এ Pipeline Design Pool-এর তালিকার আগে, Add design targets-এ অনুপস্থিত। Public web/API build/commit এবং JS hash matched, API/web healthy, PostgreSQL container unchanged। No migration/seed।
 
@@ -75,6 +81,7 @@
 - 29 September market comparison: [recommendations](2026-09-29-market-research.md)। First pilot: brief templates, blocker/help requests, submission checklist; existing local proofing/workload আগে scoped review/release। Owner approved implementation; Office ও Production release 428 live। First-use content/pilot instructions: [guide](office-workspace-operations.md)।
 
 ## অসমাপ্ত / unreleased
+
 
 - OX-09-এর নামে registered `DESKTOP-2HJTO63` (`rajot` Windows account) ৫ অক্টোবর 09:49-এর পর active হয়েছে। কর্মী তখন অফিসে না থাকলে কে/কীভাবে PC ব্যবহার করেছেন তা physical/remote check দরকার; server heartbeat বা screenshot একা ব্যক্তি শনাক্ত করে না। Confirmation ছাড়া registration revoke, attendance/salary adjustment বা অভিযোগ করা হয়নি।
 - OX-12-এর reassigned PC-তে Abdul-এর agent ১ অক্টোবর ১০:৩৯-এ enroll করেছে; active heartbeat verified। Agent version 0.4.9, rollout-এর পর update পর্যবেক্ষণ করা যাবে।

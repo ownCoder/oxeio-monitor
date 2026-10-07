@@ -1,10 +1,10 @@
 # Design skip — ব্যবহার ও review
 
-২৭ সেপ্টেম্বর ২০২৬ · Live release **411 / 5dd3783** · [সাইট](https://hub.oxeio.com)
+৭ অক্টোবর ২০২৬-এ আপডেট · Live release **454 / c66a051** · [সাইট](https://hub.oxeio.com)
 
 ## Designer-এর নিয়ম
 
-- প্রতি Asia/Dhaka calendar day-এ প্রথম **৩টি সফল skip request** automatic। দিন বদলায় রাত ১২টায়।
+- প্রতি Asia/Dhaka calendar day-এ প্রথম **৩টি সফল skip request** automatic। দিন বদলায় রাত ১২টায়। Accepted skip `skipped` থাকে, পুলে নিজে থেকে ফেরে না; একই designer সঙ্গে সঙ্গে ১টি random replacement পান যদি pool, ৩০ in-hand slot এবং ৬০/day issue cap সুযোগ দেয়। না হলে replacement পাওনা রেকর্ড হয়।
 - পরের request **Pending skip review** হয়। ডিজাইনটি assigned থাকে এবং তার slot খালি হয় না; ওই request-এর জন্য approval-এর আগে replacement আসে না। অন্য ডিজাইনে কাজ চালানো যায়।
 - My targets-এ আজকের automatic allowance ও pending ডিজাইন দেখা যায়। Pending ডিজাইন complete বা আবার skip করা যায় না।
 - একই request retry বা অন্যের assignment skip করার ব্যর্থ চেষ্টা quota খরচ করে না। সফল request reject বা undo করলে দিনের quota ফেরত আসে না।
@@ -13,7 +13,7 @@
 ## Owner/manager-এর review
 
 1. **Review** পাতায় `Pending skip review` সারি দেখুন।
-2. **Approve skip** দিলে ডিজাইন skipped হয়। নতুন কাজ পাওয়া pool availability ও বিদ্যমান allocation/daily issuance limit-এর ওপর নির্ভর করে।
+2. **Approve skip** দিলে ডিজাইন skipped হয়। তখন ১টি replacement issue করার চেষ্টা হয়; pool/slot/daily cap না থাকলে পাওনা থেকে যায়।
 3. **Reject · return to designer** দিলে একই ডিজাইন একই designer-এর কাছে assigned থাকে; pending অবস্থা সরে যায়।
 
 শুধু owner/manager সিদ্ধান্ত দিতে পারেন। একই request-এ একাধিক সিদ্ধান্ত একসঙ্গে এলে প্রথম সফল সিদ্ধান্ত বহাল থাকে। সাধারণ status change, delete বা end-of-day return দিয়ে pending review পাশ কাটানো যায় না।

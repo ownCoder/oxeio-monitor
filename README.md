@@ -6,7 +6,7 @@
 
 > **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
 
-> **Current release: 451 / 49d899e** — **The Pipeline** summary is at the top of Design Pool, above Every Target; Add design targets now focuses on Add Links. See the [release record](docs/audits/2026-10-07-pipeline-panel.md) and [canonical handoff](docs/current-state.md).
+> **Current release: 454 / c66a051** — accepted design skips stay skipped and receive one durable replacement when pool/limits permit; recipient order is randomized, and the daily report shows reason and replacement status. See the [release record](docs/audits/2026-10-07-skip-replacement-release.md) and [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
