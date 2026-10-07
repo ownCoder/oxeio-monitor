@@ -22,6 +22,14 @@ describe('Recorded target insights',()=>{
   const row=(await controller.daily(day,day)).rows.find(r=>r.employeeId===employee);
   expect(row).toMatchObject({date:day,completed:1,skipped:2,pending:1});
  });
+ it('shows issued work, skip reason and a replacement moving from owed to delivered',async()=>{
+  await assigned();
+  const request=await h.prisma.designSkipRequest.create({data:{targetId:target,employeeId:employee,decision:'automatic',reason:'events',requestedAt:at,replacementDue:true}});
+  expect((await controller.daily(day,day)).rows.find(r=>r.employeeId===employee)).toMatchObject({issued:1,skipped:1,events:1,notFound:0,copyright:0,replacementOwed:1,replacementIssued:0});
+  const replacement=(await h.prisma.designTarget.create({data:{asin:'B000000003',addedById:owner}})).id;
+  await h.prisma.designSkipRequest.update({where:{id:request.id},data:{replacementDue:false,replacementTargetId:replacement,replacementIssuedAt:at}});
+  expect((await controller.daily(day,day)).rows.find(r=>r.employeeId===employee)).toMatchObject({replacementOwed:0,replacementIssued:1});
+ });
  it('shows unavailable historical skips instead of zero and limits daily ranges',async()=>{
   const old=(await controller.daily('2026-09-27','2026-09-27')).rows.find(r=>r.employeeId===employee);
   expect(old).toMatchObject({completed:0,skipped:null,pending:null});
