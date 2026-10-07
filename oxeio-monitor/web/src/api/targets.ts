@@ -152,7 +152,7 @@ export function skipTarget(
 }
 
 export function skipAllowance() {
-  return api<{ limit: number; requested: number; remaining: number; replacementOwed: number }>('/me/targets/skip-allowance');
+  return api<{ requested: number; replacementOwed: number }>('/me/targets/skip-allowance');
 }
 
 export function decideSkip(id: number, approve: boolean) {
@@ -167,7 +167,7 @@ export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
  * ⚠️ ক্রমটাই পর্দার ক্রম, আর **`not_found` প্রথমে** — মাঠে ওটাই সবচেয়ে
  * বেশি ঘটে (Amazon-এ পাতাটাই নেই)। বেশি-ব্যবহৃতটা হাতের কাছে থাকে।
  */
-export const DROP_REASONS = ['not_found', 'copyright', 'events'] as const;
+export const DROP_REASONS = ['not_found', 'events', 'copyright', 'others'] as const;
 
 export type DropReason = (typeof DROP_REASONS)[number];
 
@@ -176,9 +176,10 @@ export type DropReason = (typeof DROP_REASONS)[number];
  * বলেই একদিন "Not Found"-কে "Page gone" বলা যাবে পুরোনো সারি না ছুঁয়ে।
  */
 export const DROP_REASON_LABEL: Record<DropReason, string> = {
-  not_found: 'Not Found',
+  not_found: 'Page Not Found',
+  events: 'Event',
   copyright: 'Copyright',
-  events: 'Events',
+  others: 'Others',
 };
 
 /** ⭐ মোছার ফল — কতগুলো গেল, আর শেষ হয়ে যাওয়া কতগুলো থেকে গেল */

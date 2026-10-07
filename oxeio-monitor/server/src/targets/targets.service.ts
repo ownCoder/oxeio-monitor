@@ -95,7 +95,6 @@ export interface BulkResult {
  * কম দিলে গবেষককে বারবার "পরের পাতা" চাপতে হতো।
  */
 export const TARGET_PAGE_SIZE = 50;
-export const DAILY_AUTOMATIC_SKIPS = 3;
 
 /**
  * ⚠️ এক ডাকে সর্বোচ্চ কতগুলো মোছা যাবে। পর্দায় এক পাতায় ৫০টা, তাই
@@ -613,6 +612,7 @@ export class TargetsService {
         assignedToId: employeeId,
         OR: [
           { status: DesignTargetStatus.assigned },
+          { status: DesignTargetStatus.skipped, skipReviewPending: true },
           {
             status: DesignTargetStatus.done,
             completedAt: { gte: dhakaStart(workDateStr(new Date())) },
@@ -837,26 +837,22 @@ export class TargetsService {
       const row = await tx.designTarget.findUnique({ where: { id } });
       if (!row || row.assignedToId !== employeeId || row.status !== 'assigned' || row.skipReviewPending)
         return { ok: false, pending: false };
-      const count = await tx.designSkipRequest.count({ where: {
-        employeeId, requestedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
-      } });
-      const pending = count >= DAILY_AUTOMATIC_SKIPS;
+      const pending = reason !== 'not_found';
       await tx.designSkipRequest.create({ data: {
         targetId: id, employeeId, actorUserId: userId, reason, requestedAt: now,
         decision: pending ? 'pending' : 'automatic', decidedAt: pending ? null : now,
-        replacementDue: !pending,
+        replacementDue: true,
       } });
       await tx.designTarget.update({ where: { id }, data: {
-        status: pending ? 'assigned' : 'skipped', dropReason: reason,
+        status: 'skipped', dropReason: reason,
         skipReviewPending: pending, skipRequestedAt: now,
-        reviewedAt: null, reviewedById: null,
+        reviewedAt: pending ? null : now, reviewedById: null,
       } });
       return { ok: true, pending };
     }, { maxWait: 30_000, timeout: 30_000 });
-    // Pending work occupies its assignment slot in every allocation path.
-    if (result.ok && !result.pending) {
+    // Every skip frees its slot immediately; review never delays replacement.
+    if (result.ok) {
       await this.fulfillOwed(employeeId, now);
-      await this.topUp(employeeId, now);
     }
     return { ok: result.ok };
   }
@@ -868,18 +864,18 @@ export class TargetsService {
       } }),
       this.prisma.designSkipRequest.count({ where: { employeeId, replacementDue: true } }),
     ]);
-    return { limit: DAILY_AUTOMATIC_SKIPS, requested, remaining: Math.max(0, DAILY_AUTOMATIC_SKIPS - requested), replacementOwed };
+    return { requested, replacementOwed };
   }
 
   async decideSkip(id: number, approve: boolean, userId: number, now = new Date()): Promise<{ ok: boolean }> {
     const employeeId = await targetWrite(this.prisma, userId, approve ? 'skip_approved' : 'skip_rejected', async tx => {
       await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
       const row = await tx.designTarget.findUnique({ where: { id } });
-      if (!row?.skipReviewPending || row.status !== 'assigned')
+      if (!row?.skipReviewPending || (row.status !== 'assigned' && row.status !== 'skipped'))
         throw new ConflictException('This skip request has already been decided or changed. Refresh the list.');
       const decision = await tx.designSkipRequest.updateMany({
         where: { targetId: id, decision: 'pending' },
-        data: { decision: approve ? 'approved' : 'rejected', decidedAt: now, reviewerUserId: userId, replacementDue: approve },
+        data: { decision: approve ? 'approved' : 'rejected', decidedAt: now, reviewerUserId: userId },
       });
       if (decision.count !== 1) throw new ConflictException('No pending skip request exists.');
       await tx.designTarget.update({ where: { id }, data: {
@@ -890,9 +886,8 @@ export class TargetsService {
       } });
       return row.assignedToId;
     }, { maxWait: 30_000, timeout: 30_000 });
-    if (approve && employeeId !== null) {
+    if (employeeId !== null) {
       await this.fulfillOwed(employeeId, now);
-      await this.topUp(employeeId, now);
     }
     return { ok: true };
   }
@@ -993,7 +988,7 @@ export class TargetsService {
   }
 
   /**
-   * Each accepted skip creates one durable debt. Assignment and clearing the
+   * Each skip request creates one durable debt. Assignment and clearing the
    * debt commit together; a failed/empty pool leaves it for the next sweep.
    */
   private async fulfillOwed(employeeId: number, now: Date): Promise<number> {
@@ -1008,7 +1003,7 @@ export class TargetsService {
 
         const [owed, open, issued] = await Promise.all([
           tx.designSkipRequest.findMany({
-            where: { employeeId, replacementDue: true, decision: { in: ['automatic', 'approved'] } },
+            where: { employeeId, replacementDue: true },
             orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }],
             select: { id: true }, take: MAX_ISSUED_PER_DAY,
           }),
@@ -1483,6 +1478,7 @@ export class TargetsService {
                     } }],
                     dropReason: { not: null },
                     reviewedAt: null,
+                    NOT: { status: DesignTargetStatus.skipped, dropReason: 'not_found', skipReviewPending: false },
                   }
                 : {};
 
@@ -1871,6 +1867,7 @@ export class TargetsService {
           } }],
           dropReason: { not: null },
           reviewedAt: null,
+          NOT: { status: DesignTargetStatus.skipped, dropReason: 'not_found', skipReviewPending: false },
         },
       }),
       this.prisma.designSkipRequest.count({ where: { replacementDue: true } }),
@@ -1973,6 +1970,7 @@ export class TargetsService {
       where: {
         id,
         status: { in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted] },
+        skipReviewPending: false,
         dropReason: { not: null },
       },
       data: { reviewedAt: now, reviewedById: userId },

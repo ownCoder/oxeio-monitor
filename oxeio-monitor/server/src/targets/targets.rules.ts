@@ -442,7 +442,7 @@ export function canUseTargets(role: UserRole): boolean {
  * সবাই খালি রেখে দিতেন, আর ঘরটা আজকের `skipped_reason`-এর মতোই
  * ৯৩টা সারিতে NULL হয়ে পড়ে থাকত।
  */
-export const DROP_REASONS = ['not_found', 'copyright', 'events'] as const;
+export const DROP_REASONS = ['not_found', 'events', 'copyright', 'others'] as const;
 
 export type DropReason = (typeof DROP_REASONS)[number];
 

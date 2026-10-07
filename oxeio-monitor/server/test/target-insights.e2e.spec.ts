@@ -20,7 +20,7 @@ describe('Recorded target insights',()=>{
   const another=(await h.prisma.designTarget.create({data:{asin:'B000000002',addedById:owner}})).id;
   await skip('pending',another);
   const row=(await controller.daily(day,day)).rows.find(r=>r.employeeId===employee);
-  expect(row).toMatchObject({date:day,completed:1,skipped:2,pending:1});
+  expect(row).toMatchObject({date:day,completed:1,skipped:3,pending:1});
  });
  it('shows issued work, skip reason and a replacement moving from owed to delivered',async()=>{
   await assigned();

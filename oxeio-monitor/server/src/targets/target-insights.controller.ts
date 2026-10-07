@@ -22,7 +22,7 @@ export class TargetInsightsController {
   if (end.getTime()-start.getTime()>31*86400000) throw new BadRequestException('Choose up to 31 days for the daily report');
   const rows=await this.prisma.$queryRaw<{
    date:string;employeeId:number;empCode:string;fullName:string;completed:number;issued:number;
-   skipped:number|null;pending:number|null;notFound:number|null;events:number|null;copyright:number|null;
+   skipped:number|null;pending:number|null;notFound:number|null;events:number|null;copyright:number|null;others:number|null;
    replacementIssued:number|null;replacementOwed:number|null;
   }[]>(Prisma.sql`
    WITH days AS (
@@ -40,11 +40,12 @@ export class TargetInsightsController {
     GROUP BY 1,2
    ), skips AS (
     SELECT employee_id,(requested_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,
-     count(*) FILTER (WHERE decision IN ('automatic','approved'))::int skipped,
+     count(*) FILTER (WHERE decision <> 'rejected')::int skipped,
      count(*) FILTER (WHERE decision='pending')::int pending,
-     count(*) FILTER (WHERE decision IN ('automatic','approved') AND reason='not_found')::int not_found,
-     count(*) FILTER (WHERE decision IN ('automatic','approved') AND reason='events')::int events,
-     count(*) FILTER (WHERE decision IN ('automatic','approved') AND reason='copyright')::int copyright,
+     count(*) FILTER (WHERE decision <> 'rejected' AND reason='not_found')::int not_found,
+     count(*) FILTER (WHERE decision <> 'rejected' AND reason='events')::int events,
+     count(*) FILTER (WHERE decision <> 'rejected' AND reason='copyright')::int copyright,
+     count(*) FILTER (WHERE decision <> 'rejected' AND reason='others')::int others,
      count(*) FILTER (WHERE replacement_target_id IS NOT NULL)::int replacement_issued,
      count(*) FILTER (WHERE replacement_due)::int replacement_owed
     FROM design_skip_requests
@@ -58,6 +59,7 @@ export class TargetInsightsController {
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.not_found,0)::int END "notFound",
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.events,0)::int END events,
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.copyright,0)::int END copyright,
+    CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.others,0)::int END others,
     coalesce(s.replacement_issued,0)::int "replacementIssued",
     coalesce(s.replacement_owed,0)::int "replacementOwed"
    FROM days d CROSS JOIN employees e
@@ -69,7 +71,7 @@ export class TargetInsightsController {
    ORDER BY d.report_date DESC,e.emp_code
   `);
   return {from,to,skipHistoryCompleteFrom:'2026-09-28',rows,
-   definition:'Issued counts recorded assignment events on the Dhaka issue day (history starts 27 September 2026). Completed is credited to current assigned staff on completion day. Skipped and reasons count automatic or approved requests on request day; pending and rejected are separate. Replacement issued/owed describe those requests as of now, even if delivery happened later. Replacement tracking began with release 453 on 7 October; earlier zeros do not mean replacements were delivered. Skip days before 28 September are unknown.'};
+   definition:'Issued counts recorded assignment events on the Dhaka issue day (history starts 27 September 2026). Completed is credited to current assigned staff on completion day. Skipped and reasons count requests other than rejected on request day; pending review is shown separately. Replacement issued/owed describe those requests as of now, even if delivery happened later. Replacement tracking began with release 453 on 7 October; earlier zeros do not mean replacements were delivered. Skip days before 28 September are unknown.'};
  }
  @Get('skips') async skips(@Query('from') from: string, @Query('to') to: string) {
   const {start,end}=insightRange(from,to);

@@ -781,7 +781,9 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                       */}
                       {r.reviewedAt !== null && (
                         <Chip tone="counted">
-                          Reviewed{r.reviewedBy ? ` · ${r.reviewedBy.fullName}` : ''}
+                          {r.status === 'skipped' && r.dropReason === 'not_found' && !r.reviewedBy
+                            ? 'No review needed'
+                            : `Reviewed${r.reviewedBy ? ` · ${r.reviewedBy.fullName}` : ''}`}
                         </Chip>
                       )}
                     </span>

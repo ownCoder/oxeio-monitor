@@ -118,8 +118,7 @@ export function MyTargets() {
     >
       <div className="space-y-3 p-4">
         <Notice>
-          The first 3 skip requests each Dhaka day are automatic. Further requests need owner or manager approval. Each accepted skip gets one new random design immediately when the pool and daily limit allow it.
-          {allowance.data && ` Automatic skips remaining today: ${allowance.data.remaining}.`}
+          Choose Page Not Found, Event, Copyright or Others after pressing Skip. Page Not Found needs no review; the other reasons go to owner or manager review. Every skip receives one random replacement immediately when the pool and daily limit allow it.
         </Notice>
         {!!allowance.data?.replacementOwed && <Notice tone="attention">
           Replacement designs owed: {allowance.data.replacementOwed}. They will be issued before ordinary top-ups when capacity is available.
@@ -128,7 +127,7 @@ export function MyTargets() {
           <p className="text-sm font-semibold">Pending skip review · {pending.length}</p>
           {pending.map(t => <div key={t.id} role="group" tabIndex={0} aria-label={`Design ${t.jobNumber??t.asin}`} data-selected={selectedId===t.id} onClick={()=>selectTarget(t.id)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selectTarget(t.id);}}} className={`rounded-lg border p-3 text-sm ${selectedId===t.id?'border-brand bg-brand/10 ring-1 ring-brand/30':'border-line'}`}>
             {selectedId===t.id&&<span className="mr-2 text-brand font-semibold">✓ Selected</span>}
-            Job {t.jobNumber ?? '—'} · {t.asin} — waiting for owner or manager review. You can continue your other designs.
+            Job {t.jobNumber ?? '—'} · {t.asin} — skipped and waiting for owner or manager review. You can continue your replacement design.
           </div>)}
         </div>}
         {/*

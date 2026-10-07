@@ -289,8 +289,8 @@ describe('টপ-আপ — টার্গেট ছোঁয়ার মত�
     expect(await openCountOf(emp)).toBe(18);
   });
 
-  /** ⭐⭐⭐ **বাদ দেওয়াও হাত খালি করে** — মালিকের কথায় "complete + skip" */
-  it('⭐⭐⭐ শেষ টার্গেটটা বাদ দিলেও হাত ভরে', async () => {
+  /** Skip now gives exactly one immediate replacement; ordinary top-up remains scheduled. */
+  it('gives one replacement when the last target is skipped', async () => {
     const now = dhakaNoon();
     const emp = await person('OX-Q9', 'designer', TARGET);
 
@@ -299,7 +299,7 @@ describe('টপ-আপ — টার্গেট ছোঁয়ার মত�
 
     await targets.skip(emp, last, 'not_found', now);
 
-    expect(await openCountOf(emp)).toBe(POOL_PER_DESIGNER);
+    expect(await openCountOf(emp)).toBe(1);
   });
 
   /**
