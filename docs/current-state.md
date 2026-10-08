@@ -2,6 +2,10 @@
 
 সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
 
+## Design proposal — live নয়
+
+- পুরো system-এর clickable HTML redesign mockup তৈরি হয়েছে: [`docs/mockups/full-system-redesign.html`](mockups/full-system-redesign.html)। আগের অনুমোদিত Daily designs-এর dark visual language ধরে Live Board, Worklog, Targets, Team, Oversight, Office ও Production-এর প্রধান screen এবং owner/manager/designer/researcher role preview আছে। সব সংখ্যা উদাহরণ; screenshot gallery-তে placeholder, প্রকৃত employee screen নয়। এটি **শুধু review prototype**—live route, API, database বা permission বদলায়নি। [Scope ও next step](full-system-redesign-mockup.md)।
+
 ## Live
 
 - **সর্বশেষ release 465 / `92f3283ed55bd9feb1196109e556426d093e701c`**: `/targets/daily` page-এ অনুমোদিত HTML mockup-এর layout বসেছে। ছয়টি live KPI, last-7-day output chart, pending skip review/replacement attention, staff filter, designer search, expandable reason details এবং আলাদা Skip analysis tab এখন live API data ব্যবহার করে। আগের historical-coverage ও cohort-rate ব্যাখ্যা রাখা হয়েছে। Web typecheck/lint/build এবং ২৯৬/২৯৬ frontend tests পাস; VPS-এ web/API healthy, PostgreSQL container unchanged, public JS hash matched, protected daily endpoint anonymous-এ 401। Chrome owner session-এ page ও Skip analysis tab দেখা হয়েছে। No migration/seed। VPS release `/opt/oxeio-releases/daily-dashboard-20261008`; source mirror `.release-salary/oxeio-monitor`। [Release record](audits/2026-10-08-daily-dashboard-redesign.md)।
