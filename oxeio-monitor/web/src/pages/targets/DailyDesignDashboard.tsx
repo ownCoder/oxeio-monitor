@@ -4,11 +4,11 @@ import type {DailyDesignRow,SkipInsight} from '../../api/targetInsights';
 import {useApi} from '../../api/useApi';
 import {ErrorBox,Loading} from '../../components/States';
 import {formatDateTime} from '../../lib/format';
+import {dailyPeriodOptions,dailyPeriodRange,dhakaToday} from './daily-periods';
+import type {DailyPeriod} from './daily-periods';
 import './daily-design-dashboard.css';
 
 type View='daily'|'analysis';
-type Period='today'|'week'|'custom';
-const dhakaDate=(offset=0)=>new Date(Date.now()+21600000+offset*86400000).toISOString().slice(0,10);
 const number=(value:number|null|undefined)=>value==null?'—':value.toLocaleString();
 const initials=(name:string)=>name.trim().split(/\s+/).slice(0,2).map(part=>part[0]?.toUpperCase()).join('');
 
@@ -19,15 +19,15 @@ function DailyRow({row,expanded,onToggle}:{row:DailyDesignRow;expanded:boolean;o
 }
 
 function Chart({rows,from,to}:{rows:DailyDesignRow[];from:string;to:string}){
- const days=useMemo(()=>{const end=new Date(`${to}T12:00:00Z`);const start=new Date(`${from}T12:00:00Z`);if(Number.isNaN(end.getTime())||Number.isNaN(start.getTime()))return [];
+ const days=useMemo(()=>{const end=new Date(`${to>dhakaToday()?dhakaToday():to}T12:00:00Z`);const start=new Date(`${from}T12:00:00Z`);if(Number.isNaN(end.getTime())||Number.isNaN(start.getTime())||end<start)return [];
   const count=Math.min(7,Math.max(1,Math.round((end.getTime()-start.getTime())/86400000)+1));return Array.from({length:count},(_,index)=>{const date=new Date(end.getTime()-(count-1-index)*86400000).toISOString().slice(0,10);const matches=rows.filter(row=>row.date===date);return {date,completed:matches.reduce((n,row)=>n+row.completed,0),skipped:matches.reduce((n,row)=>n+(row.skipped??0),0)};});},[rows,from,to]);
  const max=Math.max(1,...days.map(day=>day.completed));
  return <div className="dd-chart" role="img" aria-label="Completed designs and recorded skips by day">{days.map(day=><div className="dd-chart-day" key={day.date} title={`${day.date}: ${day.completed} completed, ${day.skipped} skips`}><div className="dd-bars"><div className="dd-bar dd-bar-completed" style={{height:`${Math.max(day.completed?5:0,day.completed/max*100)}%`}}/><div className="dd-bar dd-bar-skipped" style={{height:`${Math.max(day.skipped?5:0,day.skipped/max*100)}%`}}/></div><span>{new Date(`${day.date}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'})}</span></div>)}</div>;
 }
 
 export function DailyDesignDashboard(){
- const today=dhakaDate(),weekStart=dhakaDate(-6);
- const [from,setFrom]=useState(weekStart),[to,setTo]=useState(today),[period,setPeriod]=useState<Period>('week');
+ const [initialRange]=useState(()=>dailyPeriodRange('days7'));
+ const [from,setFrom]=useState(initialRange.from),[to,setTo]=useState(initialRange.to),[period,setPeriod]=useState<DailyPeriod>('days7');
  const [staff,setStaff]=useState('all'),[search,setSearch]=useState(''),[view,setView]=useState<View>('daily'),[expanded,setExpanded]=useState<string|null>(null);
  const daily=useApi(signal=>getDailyDesignReport(from,to,signal),[from,to]);
  const report=useApi(signal=>getSkipInsights(from,to,signal),[from,to]);
@@ -37,13 +37,13 @@ export function DailyDesignDashboard(){
  const analysis=useMemo(()=>report.data?.rows.filter(row=>(staff==='all'||String(row.id)===staff)&&`${row.empCode} ${row.fullName}`.toLocaleLowerCase().includes(normalizedSearch))??[],[report.data,staff,normalizedSearch]);
  const totals=sumRows(visible);
  const reviewPending=analysis.reduce((sum,row)=>sum+row.pending,0);
- const choosePeriod=(next:Period)=>{setPeriod(next);if(next==='today'){setFrom(today);setTo(today);}else if(next==='week'){setFrom(weekStart);setTo(today);}};
+ const choosePeriod=(next:DailyPeriod)=>{setPeriod(next);if(next!=='custom'){const range=dailyPeriodRange(next,dhakaToday());setFrom(range.from);setTo(range.to);}};
  const changeFrom=(value:string)=>{if(value&&value<=to){setFrom(value);setPeriod('custom');}};
  const changeTo=(value:string)=>{if(value&&value>=from){setTo(value);setPeriod('custom');}};
  const metrics:[string,number,string,string][]=[['Issued',totals.issued,'Assignments in period',''],['Completed',totals.completed,'Finished designs','good'],['Recorded skips',totals.skipped,'With selected reasons','warn'],['Pending',totals.pending,'Still assigned',''],['Replacement issued',totals.replacementIssued,'1:1 designs delivered','blue'],['Replacement owed',totals.replacementOwed,'Needs allocation','danger']];
  return <div className="daily-dashboard">
   <header className="dd-heading"><div><div className="dd-eyebrow">Production insights</div><h1>Daily designs & skips</h1><p>See output, skip reasons and replacement status for each designer.</p></div></header>
-  <section className="dd-panel dd-filters" aria-label="Report filters"><div><span className="dd-filter-label">Period</span><div className="dd-segmented" role="group" aria-label="Quick date range">{([['today','Today'],['week','Last 7 days'],['custom','Custom']] as const).map(([value,label])=><button key={value} type="button" className={period===value?'active':''} onClick={()=>choosePeriod(value)}>{label}</button>)}</div></div><label><span className="dd-filter-label">From</span><input className="dd-field dd-date" aria-label="Daily report from" type="date" value={from} max={to} onChange={event=>changeFrom(event.target.value)}/></label><label><span className="dd-filter-label">To</span><input className="dd-field dd-date" aria-label="Daily report to" type="date" value={to} min={from} onChange={event=>changeTo(event.target.value)}/></label><label><span className="dd-filter-label">Staff</span><select className="dd-field dd-staff" aria-label="Filter daily report by staff" value={staff} onChange={event=>{setStaff(event.target.value);setExpanded(null);}}><option value="all">All designers</option>{staffOptions.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><span className="dd-filter-spacer"/><button type="button" className="dd-refresh" onClick={()=>{daily.reload();report.reload();}} disabled={daily.loading||report.loading}>↻ &nbsp; Refresh report</button></section>
+  <section className="dd-panel dd-filters" aria-label="Report filters"><div className="dd-period"><span className="dd-filter-label">Period</span><div className="dd-segmented" role="group" aria-label="Quick date range">{dailyPeriodOptions.map(([value,label])=><button key={value} type="button" className={period===value?'active':''} aria-pressed={period===value} onClick={()=>choosePeriod(value)}>{label}</button>)}</div></div><label><span className="dd-filter-label">From</span><input className="dd-field dd-date" aria-label="Daily report from" type="date" value={from} max={to} onChange={event=>changeFrom(event.target.value)}/></label><label><span className="dd-filter-label">To</span><input className="dd-field dd-date" aria-label="Daily report to" type="date" value={to} min={from} onChange={event=>changeTo(event.target.value)}/></label><label><span className="dd-filter-label">Staff</span><select className="dd-field dd-staff" aria-label="Filter daily report by staff" value={staff} onChange={event=>{setStaff(event.target.value);setExpanded(null);}}><option value="all">All designers</option>{staffOptions.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><span className="dd-filter-spacer"/><button type="button" className="dd-refresh" onClick={()=>{daily.reload();report.reload();}} disabled={daily.loading||report.loading}>↻ &nbsp; Refresh report</button></section>
   {daily.loading&&!daily.data?<Loading/>:daily.error?<ErrorBox error={daily.error} retry={daily.reload}/>:<>
    <section className="dd-kpis" aria-label="Report summary">{metrics.map(([label,value,hint,tone])=><div className="dd-panel dd-kpi" key={label}><div className="dd-kpi-label">{label}</div><div className={`dd-kpi-value ${tone}`}>{number(value)}</div><div className="dd-kpi-hint">{hint}</div></div>)}</section>
    <div className="dd-overview"><section className="dd-panel dd-overview-card"><div className="dd-sectionhead"><h2>Output by day</h2><span>Completed vs recorded skips · last 7 shown</span></div><Chart rows={visible} from={from} to={to}/><div className="dd-legend"><span><i className="dd-legend-completed"/>Completed</span><span><i className="dd-legend-skipped"/>Skipped</span></div></section><section className="dd-panel dd-overview-card"><div className="dd-sectionhead"><h2>Needs attention</h2><span>Selected period</span></div><div className="dd-attention"><div className="dd-attention-item"><div><b>Skip reviews waiting</b><p>Event, Copyright or Others</p></div><span className="dd-circle warn">{report.loading?'…':number(reviewPending)}</span></div><div className="dd-attention-item"><div><b>Replacement still owed</b><p>Check available pool stock</p></div><span className="dd-circle blue">{number(totals.replacementOwed)}</span></div></div></section></div>

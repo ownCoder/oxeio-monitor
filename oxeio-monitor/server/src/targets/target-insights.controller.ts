@@ -19,14 +19,13 @@ export class TargetInsightsController {
  constructor(private readonly prisma: PrismaService) {}
  @Get('daily') async daily(@Query('from') from: string, @Query('to') to: string) {
   const {start,end}=insightRange(from,to);
-  if (end.getTime()-start.getTime()>31*86400000) throw new BadRequestException('Choose up to 31 days for the daily report');
   const rows=await this.prisma.$queryRaw<{
    date:string;employeeId:number;empCode:string;fullName:string;completed:number;issued:number;
    skipped:number|null;pending:number|null;notFound:number|null;events:number|null;copyright:number|null;others:number|null;
    replacementIssued:number|null;replacementOwed:number|null;
   }[]>(Prisma.sql`
    WITH days AS (
-    SELECT generate_series(${from}::date,${to}::date,interval '1 day')::date AS report_date
+    SELECT generate_series(${from}::date,LEAST(${to}::date,(now() AT TIME ZONE 'Asia/Dhaka')::date),interval '1 day')::date AS report_date
    ), completed AS (
     SELECT assigned_to_id employee_id,(completed_at AT TIME ZONE 'Asia/Dhaka')::date AS work_date,count(*)::int n
     FROM design_targets
