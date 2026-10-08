@@ -2,6 +2,8 @@
 
 সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
 
+- **Review page filter proposal (implementation বাকি):** pending skip/deleted আলাদা queue chips ও count, reason, waiting age, reliable date basis এবং sort; existing designer/added-by/ASIN filters থাকবে। [Plan](review-filters-plan.md)।
+
 ## Full-system redesign — implementation underway
 
 - অনুমোদিত [clickable HTML mockup](mockups/full-system-redesign.html) অনুযায়ী implementation শুরু হয়েছে। **Release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b` live:** shared sidebar/topbar নতুন blue design, responsive mobile drawer, এবং Live Board-এর নতুন KPI, Team output, Needs attention ও Team snapshot hierarchy। Owner Chrome session-এ Live Board ও Add target navigation দেখা হয়েছে। Existing data, permissions, routes, API ও database অপরিবর্তিত। Worklog, Targets, Team, Oversight, Office ও Production-এর page-specific redesign এখনো বাকি; mockup-এর বাকি sample number live data নয়। [Release record](audits/2026-10-08-system-redesign-phase1.md) · [Scope](full-system-redesign-mockup.md)।
