@@ -2,6 +2,8 @@
 
 সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
 
+- **Daily designs & skips date presets live — release 473 / `6b3575c3eedc3c35d47a072e6970646f072ef5b5`:** `/targets/daily`-তে Today, Yesterday, 7/14/30 days, This month, Year to Date, This Year এবং Custom আছে। Year to Date = ১ জানুয়ারি–আজ; This Year = ১ জানুয়ারি–৩১ ডিসেম্বর, কিন্তু future activity row/chart দেখায় না। API-এর ৩১ দিনের daily-report সীমা ৩৬৬ দিনে বাড়ানো হয়েছে। Web ৩০০/৩০০ tests, typecheck/lint/build ও server typecheck পাস; local API integration test `DATABASE_URL` না থাকায় চালানো যায়নি। VPS API/web healthy, PostgreSQL unchanged, public JS/build verified; Chrome-এ Yesterday ও This Year data load দেখা হয়েছে। Source mirror `.release-salary/oxeio-monitor`; release `/opt/oxeio-releases/daily-periods-20261008`। [Release record](audits/2026-10-08-daily-period-presets.md)।
+
 - **Review filters live — release 471 / `ccbc52b788ebf894c3adcf79f560fa1bbd7f3902`:** Pending skip, Deleted, Other skipped, All queue chips ও count; reason, waiting age, sort, undated legacy এবং সঠিক skip-request/deletion date filter। Existing designer/added-by/ASIN search, saved/shareable views ও CSV আছে। [Release record](audits/2026-10-08-review-filters-release.md) · [মূল plan](review-filters-plan.md)।
 
 ## Full-system redesign — implementation underway
@@ -9,6 +11,8 @@
 - অনুমোদিত [clickable HTML mockup](mockups/full-system-redesign.html) অনুযায়ী implementation শুরু হয়েছে। **Release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b` live:** shared sidebar/topbar নতুন blue design, responsive mobile drawer, এবং Live Board-এর নতুন KPI, Team output, Needs attention ও Team snapshot hierarchy। Owner Chrome session-এ Live Board ও Add target navigation দেখা হয়েছে। Existing data, permissions, routes, API ও database অপরিবর্তিত। Worklog, Targets, Team, Oversight, Office ও Production-এর page-specific redesign এখনো বাকি; mockup-এর বাকি sample number live data নয়। [Release record](audits/2026-10-08-system-redesign-phase1.md) · [Scope](full-system-redesign-mockup.md)।
 
 ## Live
+
+- **সর্বশেষ release 473 / `6b3575c3eedc3c35d47a072e6970646f072ef5b5`**: Daily designs & skips date presets ও পূর্ণ বছরের API report live। [Details](audits/2026-10-08-daily-period-presets.md)।
 
 - **সর্বশেষ release 471 / `ccbc52b788ebf894c3adcf79f560fa1bbd7f3902`**: Review filters ও deletion timestamp live। Isolated API ৯১/৯১, web ২৯৭/২৯৭ tests; encrypted backup restore ও migration rehearsal-এ core counts preserved, ১৮টি deleted record-এর timestamp history থেকে recovered। VPS API/web healthy, PostgreSQL container unchanged, public JS hash matched, anonymous Review API 401। Chrome owner session-এ queue counts ও date behavior verified। [Details](audits/2026-10-08-review-filters-release.md)।
 
