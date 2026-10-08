@@ -1,8 +1,10 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ৭ অক্টোবর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
 
 ## Live
+
+- **সর্বশেষ release 465 / `92f3283ed55bd9feb1196109e556426d093e701c`**: `/targets/daily` page-এ অনুমোদিত HTML mockup-এর layout বসেছে। ছয়টি live KPI, last-7-day output chart, pending skip review/replacement attention, staff filter, designer search, expandable reason details এবং আলাদা Skip analysis tab এখন live API data ব্যবহার করে। আগের historical-coverage ও cohort-rate ব্যাখ্যা রাখা হয়েছে। Web typecheck/lint/build এবং ২৯৬/২৯৬ frontend tests পাস; VPS-এ web/API healthy, PostgreSQL container unchanged, public JS hash matched, protected daily endpoint anonymous-এ 401। Chrome owner session-এ page ও Skip analysis tab দেখা হয়েছে। No migration/seed। VPS release `/opt/oxeio-releases/daily-dashboard-20261008`; source mirror `.release-salary/oxeio-monitor`। [Release record](audits/2026-10-08-daily-dashboard-redesign.md)।
 
 - **সর্বশেষ release 462 / `aefc8d76666e7e486b9c7f1cf12de746a66939dd`**: Daily designs & skips report-এ নতুন pending review design `skipped` হলে Skipped ও Pending দুই column-এ দেখায়, কিন্তু পুরোনো assigned-pending request শুধু Pending-এ দেখায়। আগের assigned-pending request ভুল করে Skipped হয় না; migration-এ পুরোনো status/decision বদলায়নি। ৭ অক্টোবর ১৩:৩৭-এ read-only check-এ ৪টি assigned-pending ও ৩টি নতুন skipped-pending Copyright request ছিল; নতুন তিনটিরই ১:১ replacement issued। VPS code-only release `/opt/oxeio-releases/skip-insights-legacy-20261007`; ৪৩ migrations-সহ isolated DB-তে ১০/১০ report tests পাস। [Release record](audits/2026-10-07-four-reason-skip-review-release.md)।
 
@@ -36,7 +38,7 @@
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **462 / aefc8d7**। Public HTTPS health, protected Design Pool endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। আগের release 451-এ Chrome-এ authenticated Design Pool/Add design targets page দেখা হয়েছিল; release 462-এর authenticated browser UI পরীক্ষা করা হয়নি।
+- Web/API: **465 / 92f3283**। Public HTTPS health, protected Daily designs endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। Release 465-এর Daily designs owner view Chrome-এ দেখা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
