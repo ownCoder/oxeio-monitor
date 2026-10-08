@@ -127,6 +127,21 @@ class ListQueryDto {
   })
   to?: string;
 
+  @IsOptional() @IsIn(['all', 'pending', 'skipped', 'deleted'])
+  reviewType?: 'all' | 'pending' | 'skipped' | 'deleted';
+
+  @IsOptional() @IsIn(['not_found', 'events', 'copyright', 'others'])
+  reviewReason?: DropReason;
+
+  @IsOptional() @IsIn(['today', 'over_24h', 'over_7d'])
+  reviewAge?: 'today' | 'over_24h' | 'over_7d';
+
+  @IsOptional() @IsIn(['pending_first', 'oldest_pending', 'newest', 'newest_deleted'])
+  reviewSort?: 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted';
+
+  @IsOptional() @IsIn(['true'])
+  reviewUndated?: 'true';
+
   /**
    * ⭐⭐ **কাজের ধাপ ধরে ছাঁকনি** *(২৪ আগস্ট ২০২৬)* — গবেষকের রোজকার
    * কিউ দুটো।
@@ -237,6 +252,8 @@ export class TargetsController {
   @Get()
   async list(@CurrentUser() actor: SessionUser, @Query() q: ListQueryDto) {
     await this.targets.assertCanUse(actor);
+    if (q.stage === 'to_review' && actor.role !== UserRole.owner && actor.role !== UserRole.manager)
+      throw new ForbiddenException('Review queue is available to managers and the owner.');
     return this.targets.list(q);
   }
 

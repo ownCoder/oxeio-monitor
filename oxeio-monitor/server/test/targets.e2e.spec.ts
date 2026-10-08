@@ -1788,6 +1788,27 @@ describe('রিভিউ কিউ — বাদ-যাওয়া ডিজ�
   const queue = (session: Session) =>
     session.http.get('/api/v1/design-targets?stage=to_review').expect(200);
 
+  it('queue type, reason and date filter use deletion time and keep counts aligned', async () => {
+    const owner = await seedPool(3);
+    const rows = await h.prisma.designTarget.findMany({ orderBy: { id: 'asc' } });
+    await post(owner, '/api/v1/design-targets/delete', { ids: [rows[0].id], reason: 'not_found' }).expect(201);
+    await post(owner, '/api/v1/design-targets/delete', { ids: [rows[1].id], reason: 'copyright' }).expect(201);
+    await h.prisma.designTarget.update({ where: { id: rows[2].id }, data: {
+      status: 'skipped', skipRequestedAt: dhakaNoon(), dropReason: 'events',
+    } });
+    const all = await owner.http.get('/api/v1/design-targets?stage=to_review&reviewType=all').expect(200);
+    expect(all.body.reviewCounts).toEqual({ all: 3, pending: 0, skipped: 1, deleted: 2 });
+    const deleted = await owner.http.get('/api/v1/design-targets?stage=to_review&reviewType=deleted&reviewReason=copyright').expect(200);
+    expect(deleted.body.rows.map((r: { id: number }) => r.id)).toEqual([rows[1].id]);
+    expect(deleted.body.reviewCounts).toEqual({ all: 1, pending: 0, skipped: 0, deleted: 1 });
+    expect(deleted.body.rows[0].deletedAt).toBeTruthy();
+    const today = workDateOf(dhakaNoon()).toISOString().slice(0, 10);
+    const dated = await owner.http.get(`/api/v1/design-targets?stage=to_review&reviewType=deleted&from=${today}&to=${today}`).expect(200);
+    expect(dated.body.total).toBe(2);
+    const pending = await owner.http.get('/api/v1/design-targets?stage=to_review&reviewType=pending&reviewAge=over_7d').expect(200);
+    expect(pending.body.total).toBe(0);
+  });
+
   it('কারণসহ মোছা সারি কিউতে ওঠে', async () => {
     const owner = await seedPool(2);
     const [first] = (

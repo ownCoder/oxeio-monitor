@@ -1324,6 +1324,11 @@ export class TargetsService {
     from?: string;
     /** ⭐ 'YYYY-MM-DD' — এই দিন পর্যন্ত (দিনটাসহ) */
     to?: string;
+    reviewType?: 'all' | 'pending' | 'skipped' | 'deleted';
+    reviewReason?: DropReason;
+    reviewAge?: 'today' | 'over_24h' | 'over_7d';
+    reviewSort?: 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted';
+    reviewUndated?: 'true';
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
     /** ⚠️ `no_file` ধাপ নয়, একটা **প্রশ্ন** — ৯ সেপ্টেম্বর ২০২৬ */
     stage?:
@@ -1340,8 +1345,12 @@ export class TargetsService {
     pages: number;
     /** ⭐ কোন দিন থেকে শিরোনাম জমা আছে — `fileSec === null` কেন, তার উত্তর */
     traceSince: string | null;
+    reviewCounts?: { all: number; pending: number; skipped: number; deleted: number };
   }> {
     const page = Math.max(1, query.page ?? 1);
+    const isReview = query.stage === 'to_review';
+    if (!isReview && (query.reviewType || query.reviewReason || query.reviewAge || query.reviewSort || query.reviewUndated))
+      throw new BadRequestException('Review filters require the Review queue.');
 
     /**
      * ⭐⭐ **ASIN নাকি Job নম্বর** — পার্থক্যটা এক লাইনে: শুধু অঙ্ক হলে
@@ -1504,15 +1513,59 @@ export class TargetsService {
                   }
                 : {};
 
-    const where = {
+    const reviewFilters: Prisma.DesignTargetWhereInput[] = [];
+    if (isReview) {
+      if (query.reviewReason) reviewFilters.push({ dropReason: query.reviewReason });
+      if (query.reviewAge) {
+        const now = new Date();
+        const cutoff = query.reviewAge === 'today' ? localMidnightOf(now) : new Date(now.getTime() - (query.reviewAge === 'over_24h' ? 1 : 7) * 86_400_000);
+        reviewFilters.push({ skipReviewPending: true, skipRequestedAt: query.reviewAge === 'today' ? { gte: cutoff } : { lt: cutoff } });
+      }
+      if (activity) {
+        reviewFilters.push({ OR: [
+          { status: DesignTargetStatus.deleted, deletedAt: activity },
+          { status: { in: [DesignTargetStatus.assigned, DesignTargetStatus.skipped] }, skipRequestedAt: activity },
+          ...(query.reviewUndated ? [
+            { status: DesignTargetStatus.deleted, deletedAt: null },
+            { status: DesignTargetStatus.skipped, skipRequestedAt: null },
+          ] as Prisma.DesignTargetWhereInput[] : []),
+        ] });
+      } else if (query.reviewUndated) {
+        reviewFilters.push({ OR: [
+          { status: DesignTargetStatus.deleted, deletedAt: null },
+          { status: DesignTargetStatus.skipped, skipRequestedAt: null },
+        ] });
+      }
+    }
+
+    const where: Prisma.DesignTargetWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.stage && query.stage !== 'to_review' ? { status: DesignTargetStatus.done } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(query.addedById ? { addedById: query.addedById } : {}),
-      ...(activity ? (query.stage === 'to_review' || query.status === 'skipped'
+      ...(activity && !isReview ? (query.status === 'skipped'
         ? { skipRequestedAt: activity } : query.status === 'done' ? { completedAt: activity } : { lastActivityAt: activity }) : {}),
-      AND: [match ?? {}, stage],
+      AND: [match ?? {}, stage, ...reviewFilters,
+        ...(isReview && query.reviewType === 'pending' ? [{ skipReviewPending: true }] : []),
+        ...(isReview && query.reviewType === 'skipped' ? [{ status: DesignTargetStatus.skipped, skipReviewPending: false }] : []),
+        ...(isReview && query.reviewType === 'deleted' ? [{ status: DesignTargetStatus.deleted }] : []),
+      ],
     };
+
+    const reviewCounts = isReview ? await Promise.all([
+      this.prisma.designTarget.count({ where: { ...where, AND: [match ?? {}, stage, ...reviewFilters] } }),
+      this.prisma.designTarget.count({ where: { ...where, AND: [match ?? {}, stage, ...reviewFilters, { skipReviewPending: true }] } }),
+      this.prisma.designTarget.count({ where: { ...where, AND: [match ?? {}, stage, ...reviewFilters, { status: DesignTargetStatus.skipped, skipReviewPending: false }] } }),
+      this.prisma.designTarget.count({ where: { ...where, AND: [match ?? {}, stage, ...reviewFilters, { status: DesignTargetStatus.deleted }] } }),
+    ]) : null;
+
+    const reviewOrder: Prisma.DesignTargetOrderByWithRelationInput[] = query.reviewSort === 'oldest_pending'
+      ? [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }]
+      : query.reviewSort === 'newest_deleted'
+        ? [{ deletedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
+        : query.reviewSort === 'newest'
+          ? [{ skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { deletedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
+          : [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { deletedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }];
 
     const [total, rows] = await Promise.all([
       this.prisma.designTarget.count({ where }),
@@ -1529,6 +1582,7 @@ export class TargetsService {
           completedVia: true,
           skipReviewPending: true,
           skipRequestedAt: true,
+          deletedAt: true,
           checkedAt: true,
           errorFoundAt: true,
           fixedAt: true,
@@ -1564,7 +1618,7 @@ export class TargetsService {
          * সারিগুলোর ক্রম যাতে প্রতিবার এক থাকে (নইলে পাতা বদলালে
          * একই সারি দুবার বা শূন্যবার দেখা যেত)।
          */
-        orderBy: query.stage === 'to_review' || query.status === 'skipped'
+        orderBy: isReview ? reviewOrder : query.status === 'skipped'
           ? [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
           : [{ lastActivityAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * TARGET_PAGE_SIZE,
@@ -1582,6 +1636,7 @@ export class TargetsService {
 
     return {
       traceSince,
+      ...(reviewCounts ? { reviewCounts: { all: reviewCounts[0], pending: reviewCounts[1], skipped: reviewCounts[2], deleted: reviewCounts[3] } } : {}),
       rows: rows.map((r) => ({
         id: r.id,
         asin: r.asin,
@@ -1607,6 +1662,7 @@ export class TargetsService {
         dropReason: r.dropReason,
         skipReviewPending: r.skipReviewPending,
         skipRequestedAt: r.skipRequestedAt?.toISOString() ?? null,
+        deletedAt: r.deletedAt?.toISOString() ?? null,
         reviewedAt: r.reviewedAt?.toISOString() ?? null,
         reviewedBy: r.reviewedBy,
       })),
@@ -1747,7 +1803,7 @@ export class TargetsService {
         skipReviewPending: false,
         status: { notIn: [DesignTargetStatus.done, DesignTargetStatus.deleted] },
       },
-      data: { status: DesignTargetStatus.deleted, dropReason: reason },
+      data: { status: DesignTargetStatus.deleted, dropReason: reason, deletedAt: new Date() },
       select: { id: true },
     }));
     const count = deleted.length;

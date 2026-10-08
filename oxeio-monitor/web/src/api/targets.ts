@@ -191,6 +191,7 @@ export interface DeleteResult {
 export interface TargetRow {
   skipReviewPending: boolean;
   skipRequestedAt: string | null;
+  deletedAt: string | null;
   id: number;
   asin: string;
   url: string;
@@ -260,6 +261,7 @@ export interface TargetRow {
 
 export interface TargetPage {
   rows: TargetRow[];
+  reviewCounts?: { all: number; pending: number; skipped: number; deleted: number };
   total: number;
   page: number;
   pages: number;
@@ -296,6 +298,11 @@ export function listTargets(
     /** ⭐ `YYYY-MM-DD` — শেষ কাজের তারিখ এই সীমার ভেতরে */
     from?: string;
     to?: string;
+    reviewType?: 'all' | 'pending' | 'skipped' | 'deleted';
+    reviewReason?: DropReason;
+    reviewAge?: 'today' | 'over_24h' | 'over_7d';
+    reviewSort?: 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted';
+    reviewUndated?: boolean;
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
     /** ⚠️ `to_review` যোগ হয়েছে ৩১ আগস্ট — বাদ-যাওয়া, অথচ কেউ দেখেননি */
     /** ⚠️ `no_file` ধাপ নয়, প্রশ্ন — শেষ বলা, অথচ ফাইল খোলা হয়নি (৯ সেপ্টেম্বর) */
@@ -316,6 +323,11 @@ export function listTargets(
   if (params.addedById) qs.set('addedById', String(params.addedById));
   if (params.from) qs.set('from', params.from);
   if (params.to) qs.set('to', params.to);
+  if (params.reviewType && params.reviewType !== 'all') qs.set('reviewType', params.reviewType);
+  if (params.reviewReason) qs.set('reviewReason', params.reviewReason);
+  if (params.reviewAge) qs.set('reviewAge', params.reviewAge);
+  if (params.reviewSort && params.reviewSort !== 'pending_first') qs.set('reviewSort', params.reviewSort);
+  if (params.reviewUndated) qs.set('reviewUndated', 'true');
   if (params.stage) qs.set('stage', params.stage);
   if (params.page && params.page > 1) qs.set('page', String(params.page));
 

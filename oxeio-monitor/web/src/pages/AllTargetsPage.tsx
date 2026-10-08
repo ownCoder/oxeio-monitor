@@ -148,6 +148,12 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
   const [addedById, setAddedById] = useState(initialView.addedById);
   const [from, setFrom] = useState(initialView.from);
   const [to, setTo] = useState(initialView.to);
+  const isReview = lockedStage === 'to_review';
+  const [reviewType, setReviewType] = useState<'all' | 'pending' | 'skipped' | 'deleted'>(() => isReview ? (initialView.reviewType as 'all' | 'pending' | 'skipped' | 'deleted') || 'pending' : 'all');
+  const [reviewReason, setReviewReason] = useState<DropReason | ''>(() => isReview ? initialView.reviewReason as DropReason || '' : '');
+  const [reviewAge, setReviewAge] = useState<'' | 'today' | 'over_24h' | 'over_7d'>(() => isReview ? initialView.reviewAge as '' | 'today' | 'over_24h' | 'over_7d' || '' : '');
+  const [reviewSort, setReviewSort] = useState<'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted'>(() => isReview ? initialView.reviewSort as 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted' || 'pending_first' : 'pending_first');
+  const [reviewUndated, setReviewUndated] = useState(() => isReview && initialView.reviewUndated === 'true');
   const [page, setPage] = useState(1);
   /** ⭐ বাকি ছাঁকনিগুলো খোলা আছে কি না *(২৫ আগস্ট)* — ডিফল্টে বন্ধ */
   const [showFilters, setShowFilters] = useState(false);
@@ -206,11 +212,12 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           ...(addedById ? { addedById: Number(addedById) } : {}),
           ...(from ? { from } : {}),
           ...(to ? { to } : {}),
+          ...(isReview ? { reviewType, reviewReason: reviewReason || undefined, reviewAge: reviewAge || undefined, reviewSort, reviewUndated } : {}),
           page,
         },
         signal,
       ),
-    [filter, q, staffId, addedById, from, to, page],
+    [filter, q, staffId, addedById, from, to, page, isReview, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated],
   );
 
   /**
@@ -221,7 +228,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
   useEffect(() => {
     setPicked(new Set());
     setKept(0);
-  }, [filter, q, staffId, addedById, from, to, page]);
+  }, [filter, q, staffId, addedById, from, to, page, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated]);
 
   /**
    * ⭐⭐ **গোটানো ছাঁকনির গায়ের সংখ্যাটা** *(২৫ আগস্ট)*।
@@ -231,7 +238,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
    * সেই ফাঁদটা বন্ধ করে — বোতামে সংখ্যা থাকলে সেটা লালও হয়ে থাকে।
    */
   const activeFilters =
-    (staffId ? 1 : 0) + (addedById ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0);
+    (staffId ? 1 : 0) + (addedById ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0) + (reviewReason ? 1 : 0) + (reviewAge ? 1 : 0) + (reviewUndated ? 1 : 0);
 
   /**
    * ⭐ ড্রপডাউনে কী দেখাবে — কিউ-চিপ বাছা থাকলে `all`।
@@ -306,12 +313,13 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
    */
   const looksLikeUrl = /[/:]/.test(q);
 
-  const hasSearchFilters = q.trim() !== '' || activeFilters > 0 || (showQueues && filter !== 'all');
+  const hasSearchFilters = q.trim() !== '' || activeFilters > 0 || (showQueues && filter !== 'all') || (isReview && (reviewType !== 'pending' || reviewSort !== 'pending_first'));
   const resetFilters = () => {
     setPage(1); setQ(''); setStaffId(''); setAddedById(''); setFrom(''); setTo(''); setFilter(lockedStage ?? 'all');
+    setReviewType(isReview ? 'pending' : 'all'); setReviewReason(''); setReviewAge(''); setReviewSort('pending_first'); setReviewUndated(false);
     setPicked(new Set()); setConfirmingBulk(false);
   };
-  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);setPage(1);setPicked(new Set());setConfirmingBulk(false);};
+  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);if(isReview){setReviewType((v.reviewType as typeof reviewType)||'pending');setReviewReason((v.reviewReason as DropReason)||'');setReviewAge((v.reviewAge as typeof reviewAge)||'');setReviewSort((v.reviewSort as typeof reviewSort)||'pending_first');setReviewUndated(v.reviewUndated==='true');}setPage(1);setPicked(new Set());setConfirmingBulk(false);};
   const skipDates = filter === 'to_review' || filter === 'skipped';
 
   const change = (next: () => void) => {
@@ -324,7 +332,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
     <div className="space-y-3">
     {showPipeline && <PipelineCard stats={stats} />}
     <Card
-      title="Every Target"
+      title={isReview ? 'Review queue' : 'Every Target'}
       /*
         ⚠️ "Newest activity first" আগে ছাঁকনির সারিতে একটা আলাদা লেখা
            ছিল — একটা গোটা কন্ট্রোলের জায়গা নিত, অথচ কিছুই করত না।
@@ -332,11 +340,14 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
       */
       hint={
         data.data
-          ? `${data.data.total.toLocaleString()} matching targets · ${skipDates ? 'pending reviews first, then newest skip request' : 'newest activity first'}`
+          ? `${data.data.total.toLocaleString()} matching targets · ${isReview ? 'server-filtered review work' : skipDates ? 'pending reviews first, then newest skip request' : 'newest activity first'}`
           : 'Loading…'
       }
       padded={false}
     >
+      {isReview && <div className="flex flex-wrap gap-2 px-4 pt-4" aria-label="Review queue type">
+        {(['pending','deleted','skipped','all'] as const).map(kind => <button key={kind} type="button" onClick={() => change(() => {setReviewType(kind);if(kind !== 'pending')setReviewAge('');})} className={`rounded-full border px-3 py-1.5 text-xs ${reviewType===kind?'border-data bg-data/15 text-data font-semibold':'border-line text-ink-2 hover:border-data'}`}>{kind==='pending'?'Pending skip decisions':kind==='deleted'?'Deleted to review':kind==='skipped'?'Other skipped':'All to review'} <span className="num">{data.data?.reviewCounts?.[kind] ?? '—'}</span></button>)}
+      </div>}
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
         {showQueues &&
           FILTERS.filter((f) => f.stage !== 'to_upload' && f.stage !== 'to_live').map((f) => (
@@ -479,7 +490,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
       */}
       <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
         <MiniButton disabled={data.loading || edit.busy} onClick={() => { setPicked(new Set()); setConfirmingBulk(false); data.reload(); stats.reload(); }}>Refresh</MiniButton>
-        <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page)}>Export this page · CSV</MiniButton>
+        <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page, isReview ? `Review: ${reviewType}; reason: ${reviewReason || 'any'}; age: ${reviewAge || 'any'}; dates: ${from || 'any'} to ${to || 'any'}; undated: ${reviewUndated ? 'yes' : 'no'}; sort: ${reviewSort}; designer: ${staffId || 'any'}; added by: ${addedById || 'any'}; search: ${q || 'none'}` : undefined)}>Export this page · CSV</MiniButton>
         {hasSearchFilters && <MiniButton onClick={resetFilters}>Reset all filters</MiniButton>}
         {data.loading && <span role="status" className="text-xs text-ink-3">Loading targets…</span>}
       </div>
@@ -492,6 +503,11 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
 
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+          {isReview && <>
+            <select aria-label="Review reason" value={reviewReason} onChange={e=>change(()=>setReviewReason(e.target.value as DropReason | ''))} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="">Any reason</option><option value="not_found">Page Not Found</option><option value="events">Event</option><option value="copyright">Copyright</option><option value="others">Others</option></select>
+            <select aria-label="Waiting time" value={reviewAge} onChange={e=>change(()=>{setReviewAge(e.target.value as typeof reviewAge);if(e.target.value)setReviewType('pending');})} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="">Any waiting time</option><option value="today">Requested today</option><option value="over_24h">Waiting over 24 hours</option><option value="over_7d">Waiting over 7 days</option></select>
+            <select aria-label="Review sort" value={reviewSort} onChange={e=>change(()=>setReviewSort(e.target.value as typeof reviewSort))} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="pending_first">Pending first</option><option value="oldest_pending">Oldest pending first</option><option value="newest">Newest request first</option><option value="newest_deleted">Newest deletion first</option></select>
+          </>}
           <select
             aria-label="Designer"
             value={staffId}
@@ -551,6 +567,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
 
           <MiniButton onClick={() => change(() => { setFrom(today); setTo(today); })}>Today</MiniButton>
           <MiniButton onClick={() => change(() => { setFrom(new Date(Date.now() + 6 * 3_600_000 - 6 * 86_400_000).toISOString().slice(0, 10)); setTo(today); })}>Last 7 days</MiniButton>
+          {isReview && <label className="flex items-center gap-1.5 text-xs text-ink-2"><input type="checkbox" checked={reviewUndated} onChange={e=>change(()=>setReviewUndated(e.target.checked))}/> Undated legacy items</label>}
           {activeFilters > 0 && (
             <button
               type="button"
@@ -560,6 +577,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                   setAddedById('');
                   setFrom('');
                   setTo('');
+                  setReviewReason(''); setReviewAge(''); setReviewUndated(false);
                 })
               }
               className="text-[12px] text-data hover:underline"
@@ -570,11 +588,11 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
         </div>
       )}
 
-      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to}} onApply={applyView}/>
+      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{})}} onApply={applyView}/>
       {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">
-          {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
+          {isReview ? 'Dates use skip-request time for skips and deletion time for deleted designs, in Dhaka time. Choose Undated legacy items to include records without either timestamp.' : skipDates ? 'Dates refer to skip requests in Dhaka time.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
         </p>}
         <ServerError error={edit.error} />
       </div>
@@ -1032,8 +1050,10 @@ function WhenCell({ row }: { row: TargetRow }) {
   if (row.skipReviewPending || row.status === 'skipped') return (
     <span className="num mt-0.5 block text-[11.5px] text-ink-3">
       {row.skipRequestedAt ? `${formatDateTime(row.skipRequestedAt)} · skip requested` : 'Skip time not recorded (legacy)'}
+      {row.skipReviewPending && row.skipRequestedAt && <span className="ml-1 text-idle-ink">· waiting {formatDuration(Math.max(0, (Date.now() - new Date(row.skipRequestedAt).getTime()) / 1000))}</span>}
     </span>
   );
+  if (row.status === 'deleted') return <span className="num mt-0.5 block text-[11.5px] text-ink-3">{row.deletedAt ? `${formatDateTime(row.deletedAt)} · deleted` : 'Deletion time not recorded (legacy)'}</span>;
   const when =
     row.completedAt ?? row.startedAt ?? row.assignedAt ?? row.addedAt;
 

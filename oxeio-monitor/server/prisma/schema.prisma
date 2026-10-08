@@ -733,6 +733,7 @@ model DesignTarget {
   assignmentReason String? @map("assignment_reason") @db.VarChar(500)
   skipReviewPending Boolean @default(false) @map("skip_review_pending")
   skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
   skipRequests DesignSkipRequest[]
   replacementFor DesignSkipRequest[] @relation("skipReplacement")
   history DesignTargetEvent[]
