@@ -1,8 +1,5 @@
-import { Page } from '../components/Page';
-import { DailyDesignInsights } from './targets/Insights';
+import { DailyDesignDashboard } from './targets/DailyDesignDashboard';
 
 export function DailyDesignPage() {
-  return <Page title="Daily designs & skips" subtitle="Daily completed designs, skip decisions and pending reviews by staff">
-    <DailyDesignInsights />
-  </Page>;
+  return <DailyDesignDashboard />;
 }
