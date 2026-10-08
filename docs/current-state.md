@@ -2,13 +2,15 @@
 
 সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
 
-- **Review page filter proposal (implementation বাকি):** pending skip/deleted আলাদা queue chips ও count, reason, waiting age, reliable date basis এবং sort; existing designer/added-by/ASIN filters থাকবে। [Plan](review-filters-plan.md)।
+- **Review filters live — release 471 / `ccbc52b788ebf894c3adcf79f560fa1bbd7f3902`:** Pending skip, Deleted, Other skipped, All queue chips ও count; reason, waiting age, sort, undated legacy এবং সঠিক skip-request/deletion date filter। Existing designer/added-by/ASIN search, saved/shareable views ও CSV আছে। [Release record](audits/2026-10-08-review-filters-release.md) · [মূল plan](review-filters-plan.md)।
 
 ## Full-system redesign — implementation underway
 
 - অনুমোদিত [clickable HTML mockup](mockups/full-system-redesign.html) অনুযায়ী implementation শুরু হয়েছে। **Release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b` live:** shared sidebar/topbar নতুন blue design, responsive mobile drawer, এবং Live Board-এর নতুন KPI, Team output, Needs attention ও Team snapshot hierarchy। Owner Chrome session-এ Live Board ও Add target navigation দেখা হয়েছে। Existing data, permissions, routes, API ও database অপরিবর্তিত। Worklog, Targets, Team, Oversight, Office ও Production-এর page-specific redesign এখনো বাকি; mockup-এর বাকি sample number live data নয়। [Release record](audits/2026-10-08-system-redesign-phase1.md) · [Scope](full-system-redesign-mockup.md)।
 
 ## Live
+
+- **সর্বশেষ release 471 / `ccbc52b788ebf894c3adcf79f560fa1bbd7f3902`**: Review filters ও deletion timestamp live। Isolated API ৯১/৯১, web ২৯৭/২৯৭ tests; encrypted backup restore ও migration rehearsal-এ core counts preserved, ১৮টি deleted record-এর timestamp history থেকে recovered। VPS API/web healthy, PostgreSQL container unchanged, public JS hash matched, anonymous Review API 401। Chrome owner session-এ queue counts ও date behavior verified। [Details](audits/2026-10-08-review-filters-release.md)।
 
 - **সর্বশেষ release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b`**: Full-system redesign phase 1 live। Shared shell ও Live Board implementation, Add target navigation active-state fix। Web typecheck/lint/build, ২৯৬/২৯৬ tests, VPS health/public bundle hash/protected endpoint যাচাই; PostgreSQL container unchanged, no migration/seed। [Details](audits/2026-10-08-system-redesign-phase1.md)।
 
@@ -46,7 +48,7 @@
 - আগের কাজ: My Data-তে clicked/opened design selected থাকে, একই browser/account-এ refresh-এর পর ফিরে আসে; targets number অনুযায়ী ছোট থেকে বড় সাজানো। [Release 424](audits/2026-09-29-my-target-selection.md)।
 - আগের কাজ: skip insights, design history, saved/shareable filters ও independent API/database/backup monitors live। September snapshot-এর ১২ জনের reconciliation-এ zero mismatch; latest local এবং existing offsite backup restore verified। Physical PC acceptance, inbox delivery এবং নতুন offsite upload/daily schedule এখনও pending। [Implementation ও acceptance record](audits/2026-09-28-system-improvements.md)।
 - Site: https://hub.oxeio.com
-- Web/API: **468 / f5dbc7d**। Public HTTPS health, protected Daily designs endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। Release 468-এর Live Board ও Add target owner view Chrome-এ দেখা হয়েছে।
+- Web/API: **471 / ccbc52b**। Public HTTPS health, protected Review endpoint, public JS/container hash এবং API/web/PostgreSQL healthy যাচাই করা হয়েছে। Release 471-এর Review owner view Chrome-এ দেখা হয়েছে।
 - আগের কাজ: Design Pool থেকে To upload/To make live queues এবং row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
 - আগের কাজ: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি tile (In the pool, In hand, Designed) রাখা এবং layout/hint সংশোধন। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
 - আগের কাজ: **Design Pool audit**—delete API permissions, unfixed-error Upload block, dropped-target queues ও completion-date filters corrected. Added reset/refresh, date shortcuts, protected selection and page CSV export. [Audit](audits/2026-09-28-design-pool.md) · [ব্যবহারবিধি](design-pool-operations.md)।
