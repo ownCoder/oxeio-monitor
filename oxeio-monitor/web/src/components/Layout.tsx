@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ import { usePolling } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { Wordmark } from './Brand';
 import '../studio.css';
+import '../system-redesign.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -137,6 +138,7 @@ const NAV: NavItem[] = [
   {
     to: '/targets',
     label: 'Add target design',
+    end: true,
     roles: ['owner', 'manager', 'researcher'],
     section: 'Targets',
     child: true,
@@ -265,7 +267,7 @@ const NAV: NavItem[] = [
     roles: ['owner', 'manager', 'researcher', 'employee'],
   },
   { to: '/settings', label: 'Settings', roles: ['owner', 'manager'] },
-  {to:'/office/today',label:'Office',roles:['owner','manager','employee','researcher']},
+  {to:'/office/today',label:'Office',roles:['owner','manager','employee','researcher'],section:'Operations'},
   {to:'/production',label:'Production',roles:['owner','manager','researcher']},
 ];
 
@@ -303,9 +305,19 @@ const ROLE_LABEL: Record<Role, string> = {
   employee: 'Staff',
 };
 
+const NAV_ICON: Record<string, string> = {
+  '/': '▦', '/worklog': '◷', '/targets': '⊕', '/targets/all': '▤',
+  '/targets/daily': '▥', '/targets/review': '✓', '/me': '◎',
+  '/staff': '♙', '/screenshots': '▧', '/monthly': '▦', '/reports': '◫',
+  '/salary': '৳', '/deposits': '◇', '/alerts': '△', '/security': '⛨',
+  '/settings': '⚙', '/office/today': '⌂', '/production': '◈',
+};
+
 export function Layout() {
   const { user, signOut } = useAuth();
   const { pathname } = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => setMobileNavOpen(false), [pathname]);
   /**
    * ⭐ না-দেখা অ্যালার্টের সংখ্যা — নেভের ব্যাজের জন্য।
    *
@@ -349,15 +361,16 @@ export function Layout() {
 
   return (
     <div className="studio-shell">
-      <aside className="studio-sidebar">
-        <div className="studio-brand"><Wordmark /><small>Workforce<br />Monitor</small></div>
+      {mobileNavOpen && <button type="button" className="studio-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`studio-sidebar${mobileNavOpen ? ' is-open' : ''}`}>
+        <div className="studio-brand"><span className="studio-brandmark" aria-hidden>×</span><span><Wordmark /><small>Office hub</small></span></div>
         <nav className="studio-nav" aria-label="Sections">
           <div className="studio-nav-label">Workspace</div>
           {nav.map((item) => (
             <div key={item.to}>
               {item.section && <div className="studio-nav-label">{item.section}</div>}
               <NavLink to={item.to} end={item.end} className="studio-nav-link">
-                <span className="studio-nav-name"><span className="studio-nav-dot" aria-hidden />{item.label}</span>
+                <span className="studio-nav-name"><span className="studio-nav-icon" aria-hidden>{NAV_ICON[item.to] ?? '•'}</span>{item.label}</span>
                 {item.badge != null && item.badge > 0 && (
                   <span className="num rounded-full bg-brand-bg px-1.5 text-xs text-brand-ink">{item.badge}</span>
                 )}
@@ -372,7 +385,7 @@ export function Layout() {
       </aside>
       <div className="studio-workspace">
         <header className="studio-topbar">
-          <div><span className="text-ink-2">Workspace / </span><span>{currentPage}</span></div>
+          <div className="studio-breadcrumb"><button type="button" className="studio-menu-button" aria-label="Open navigation" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}>☰</button><span className="text-ink-2">Workspace / </span><span>{currentPage}</span></div>
           <div className="studio-topbar-actions">
             <Link className="inline-flex min-h-9 items-center rounded-md border border-line px-3" to="/workspace/search">Search</Link>
             <Link className="inline-flex min-h-9 items-center rounded-md border border-line px-3" to="/workspace/inbox">Inbox{inbox.data?.unread ? ` (${inbox.data.unread})` : ''}</Link>
@@ -381,14 +394,6 @@ export function Layout() {
             <button type="button" onClick={() => void signOut()} className="tap px-3 py-1.5 text-xs">Sign out</button>
           </div>
         </header>
-        <nav className="studio-mobile-nav" aria-label="Mobile sections">
-          {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className="studio-nav-link">
-              {item.label}
-              {item.badge != null && item.badge > 0 && <span className="num text-brand-ink">{item.badge}</span>}
-            </NavLink>
-          ))}
-        </nav>
         <main className="studio-main">
           <ErrorBoundary resetKey={pathname}><Outlet /></ErrorBoundary>
         </main>

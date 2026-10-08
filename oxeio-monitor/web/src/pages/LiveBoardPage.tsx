@@ -60,13 +60,31 @@ export function LiveBoardPage() {
   else if (!cards.length) content = <Empty title="Nobody on the board yet" hint="Add staff and install the agent. Their first heartbeat brings them onto the board." />;
   else content = <>
     {board.error && <p role="status" className="rounded-lg border border-brand/30 bg-brand-bg px-4 py-3 text-sm text-brand-ink">Couldn't refresh — showing the last successful snapshot from {formatTime(board.updatedAt?.toISOString() ?? null)}.</p>}
-    <div className="studio-stats">
+    <div className="studio-stats system-primary-stats">
       <StudioStat label="Working now" value={active} unit={`/ ${cards.length}`} note={<>{idle} idle · {locked} PC locked · {offline} offline<br />{cards.length - withTarget} off / no target today</>} />
       <StudioStat label="Hours today" value={formatDuration(todaySec)} note={<>{worked} staff with recorded time{delta && <><br />{delta}{trend.error && ' · last update'}</>}</>} />
-      <StudioStat label="Average today" value={worked ? formatDuration(todaySec / worked) : '—'} note={<>Across {worked} staff with time<br />{dailyTarget ? `${formatDuration(dailyTarget)} daily target` : 'Individual targets shown below'}</>} />
-      {hasDesigners && <StudioStat label="Designs finished" value={finished} note="Marked complete today" />}
-      <StudioStat label={!observed ? 'Monthly pace' : month!.paceSec < 0 ? 'Behind monthly pace' : 'Ahead of monthly pace'} value={observed ? formatDuration(Math.abs(month!.paceSec)) : '—'} tone={observed ? month!.paceSec < 0 ? 'warning' : 'ok' : undefined} note={trend.error ? 'Refresh failed · last update shown' : observed ? <>Counted from {formatDate(month!.trackedFrom!)}{month!.notObservedStaff > 0 && ` · ${month!.notObservedStaff} not counted yet`}</> : 'No finished day counted yet'} />
+      <StudioStat label="Designs finished" value={hasDesigners ? finished : '—'} tone="ok" note={hasDesigners ? 'Marked complete today' : 'No designers on the board'} />
       {isOwner && <StudioStat label="Open alerts" value={alerts.data?.openCount ?? '—'} tone={alerts.data?.openCount ? 'warning' : undefined} note={<Link to="/alerts" className="underline underline-offset-4">{alerts.error ? 'Refresh failed · view alerts ↗' : alerts.data?.rows[0]?.title ?? 'View alerts ↗'}</Link>} />}
+      {!isOwner && <StudioStat label={!observed ? 'Monthly pace' : month!.paceSec < 0 ? 'Behind monthly pace' : 'Ahead of monthly pace'} value={observed ? formatDuration(Math.abs(month!.paceSec)) : '—'} tone={observed ? month!.paceSec < 0 ? 'warning' : 'ok' : undefined} note={trend.error ? 'Refresh failed · last update shown' : observed ? `Counted from ${formatDate(month!.trackedFrom!)}` : 'No finished day counted yet'} />}
+    </div>
+    <div className="system-feature-grid">
+      <Card title="Team output" hint="Completed designs · last 7 days" padded={false}><DataPanel result={trend}>{trend.data && <StudioWeek days={trend.data.days} metric="designs" />}</DataPanel></Card>
+      <Card title="Needs attention" hint="Prioritized from current data" padded={false}>
+        <div className="system-attention-list">
+          {offline > 0 && <Link to="/worklog" className="system-attention-item"><span><strong>{offline} agent{offline === 1 ? '' : 's'} offline</strong><small>Check connection or device</small></span><span className="system-attention-badge danger">Urgent</span></Link>}
+          {locked > 0 && <Link to="/worklog" className="system-attention-item"><span><strong>{locked} PC{locked === 1 ? '' : 's'} locked</strong><small>Office presence is not confirmed</small></span><span className="system-attention-badge warning">Check</span></Link>}
+          {isOwner && alerts.data?.rows.slice(0, 2).map(alert => <Link to="/alerts" key={alert.id} className="system-attention-item"><span><strong>{alert.title}</strong><small>Open alert · review details</small></span><span className="system-attention-badge warning">Review</span></Link>)}
+          {observed && month!.paceSec < 0 && <Link to="/monthly" className="system-attention-item"><span><strong>Monthly pace behind</strong><small>{formatDuration(Math.abs(month!.paceSec))} behind current pace</small></span><span className="system-attention-badge warning">Watch</span></Link>}
+          {offline === 0 && locked === 0 && (!isOwner || !alerts.data?.rows.length) && (!observed || month!.paceSec >= 0) && <p className="system-attention-empty">No immediate issue in the current snapshot.</p>}
+        </div>
+      </Card>
+    </div>
+    <Card title="Team snapshot" hint={withTarget ? 'Today’s hours, targets and design progress · furthest along first' : 'Day off · recorded hours still count'} actions={<Link className="tap text-xs underline underline-offset-4" to="/worklog">View Worklog ↗</Link>} padded={false}>
+        <TeamTable cards={cards} />
+    </Card>
+    <div className="system-secondary-metrics">
+      <span>Average today: <strong>{worked ? formatDuration(todaySec / worked) : '—'}</strong> · {worked} staff with time</span>
+      <span>Monthly pace: <strong>{observed ? `${month!.paceSec < 0 ? 'Behind' : 'Ahead'} ${formatDuration(Math.abs(month!.paceSec))}` : '—'}</strong>{dailyTarget ? ` · ${formatDuration(dailyTarget)} daily target` : ''}</span>
     </div>
     <div className="studio-overview">
       <Card title="Shape of the Day" hint="Team hours by hour · Dhaka time" padded={false}><DataPanel result={pulse}>{pulse.data && <DayPulse hours={pulse.data.hours} currentHour={dhakaHourNow()} />}</DataPanel></Card>
@@ -76,15 +94,9 @@ export function LiveBoardPage() {
       </Card>
       <Card title="Hours · Last 7 Days" hint="Solid line = usual target · dashed bars = not tracked" padded={false}><DataPanel result={trend}>{trend.data && <WeekBars days={trend.data.days} />}</DataPanel></Card>
     </div>
-    <div className="studio-detail-grid">
-      <Card title="Team Snapshot" hint={withTarget ? 'Today’s hours, targets and design progress · furthest along first' : 'Day off · recorded hours still count'} actions={<Link className="tap text-xs underline underline-offset-4" to="/worklog">View Worklog ↗</Link>} padded={false}>
-        <TeamTable cards={cards} />
-      </Card>
-      <div className="studio-detail-side">
-        {hasDesigners && <Card title="Designs Finished · Last 7 Days" hint="Whole team · today is still in progress" padded={false}><DataPanel result={trend}>{trend.data && <StudioWeek days={trend.data.days} metric="designs" />}</DataPanel></Card>}
-        <Card title="Where Today Went" hint="Whole team · counted app time only" padded={false}><DataPanel result={apps}>{apps.data && <TopApps usage={apps.data.apps} />}</DataPanel></Card>
-        <Card title="Fewest Hours" hint={trend.data ? `Least counted in the last ${trend.data.laggardDays} days` : 'Least counted recently'} padded={false}><DataPanel result={trend}>{trend.data && <FewestHours people={trend.data.laggards} days={trend.data.laggardDays} />}</DataPanel></Card>
-      </div>
+    <div className="studio-pair">
+      <Card title="Where Today Went" hint="Whole team · counted app time only" padded={false}><DataPanel result={apps}>{apps.data && <TopApps usage={apps.data.apps} />}</DataPanel></Card>
+      <Card title="Fewest Hours" hint={trend.data ? `Least counted in the last ${trend.data.laggardDays} days` : 'Least counted recently'} padded={false}><DataPanel result={trend}>{trend.data && <FewestHours people={trend.data.laggards} days={trend.data.laggardDays} />}</DataPanel></Card>
     </div>
     <div className="studio-pair">
       <Card title="Top Performers" hint={leaderWindow === '30d' ? 'Most hours counted in the last 30 days' : 'Most hours counted, all time'} padded={false} actions={<Tabs items={LEADER_WINDOWS} active={leaderWindow} onChange={setLeaderWindow} label="Top performers window" />}><DataPanel result={trend}>{trend.data && <TopPerformers leaders={leaderWindow === '30d' ? trend.data.leaders30 : trend.data.leaders} />}</DataPanel></Card>
@@ -95,7 +107,7 @@ export function LiveBoardPage() {
 
   return <Page><div className="studio-board">
     <div className="studio-board-head">
-      <div><h1>Your team, at a glance.</h1><p>{workDate ? `${formatDate(workDate)} · Asia/Dhaka` : 'Live Board · Asia/Dhaka'}</p></div>
+      <div><span className="system-eyebrow">Workspace overview</span><h1>Live Board</h1><p>Team presence, output and work that needs attention · {workDate ? `${formatDate(workDate)} · Asia/Dhaka` : 'Asia/Dhaka'}</p></div>
       {canViewBoard && <div className="studio-actions"><span className="studio-updated"><strong className={board.error ? 'text-idle-ink' : 'text-ok'}>{board.error ? 'STALE' : board.paused ? 'PAUSED' : board.data ? 'LIVE' : 'CONNECTING'}</strong>{board.updatedAt && ` · Updated ${formatTime(board.updatedAt.toISOString())}`}</span><Link className="tap text-xs underline underline-offset-4" to="/reports">Reports ↗</Link><Button onClick={refresh} disabled={board.loading}>{board.loading ? 'Refreshing…' : 'Refresh'}</Button><Link className="tap rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-ink" to="/worklog">Open Worklog ↗</Link></div>}
     </div>
     {content}
