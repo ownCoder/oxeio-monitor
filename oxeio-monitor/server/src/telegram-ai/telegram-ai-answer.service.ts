@@ -93,6 +93,9 @@ export class TelegramAiAnswerService {
 
  private directTeamAnswer(question:string,facts:Awaited<ReturnType<TelegramAiAnswerService['teamFacts']>>):string|null{
   const text=question.toLowerCase();
+  if(/(?:সংখ্যা|numbers|report|রিপোর্ট)/u.test(text)&&/(?:কীভাবে|কিভাবে|মানে|বুঝ|interpret|understand|explain)/u.test(text)){
+   return `${facts.from}–${facts.to} রিপোর্টে credited hours মানে হিসাবভুক্ত কাজের সময়, completed designs মানে শেষ করা design, আর accepted skips মানে নথিভুক্ত গ্রহণ করা skip। আজকের ঘণ্টা পরে বদলাতে পারে। প্রত্যেকের হিসাব /team-এ দেখুন; বিস্তারিত portal report মিলিয়ে নিন।`;
+  }
   if(/(?:team|দল|সবাই|সবার)/u.test(text)&&/(?:report|রিপোর্ট|সারাংশ|summary|কেমন)/u.test(text)) return this.teamText(facts);
   const metric=/(?:skip|স্কিপ)/u.test(text)?'acceptedSkips':/(?:design|ডিজাইন|complete|সম্পন্ন)/u.test(text)?'completedDesigns':null;
   const highest=/(?:most|highest|top|সবচেয়ে বেশি|সর্বাধিক|কে বেশি)/u.test(text);

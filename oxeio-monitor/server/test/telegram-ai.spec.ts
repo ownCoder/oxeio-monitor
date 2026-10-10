@@ -52,6 +52,21 @@ describe('Telegram AI access', () => {
     }
   });
 
+  it('explains report numbers from definitions without asking a model', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const prisma = { designTarget: { groupBy: vi.fn().mockResolvedValue([]) }, designSkipRequest: { groupBy: vi.fn().mockResolvedValue([]) } } as unknown as PrismaService;
+      const reports = { summary: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as ReportsService;
+      const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'এই সংখ্যাগুলো কীভাবে বুঝব?');
+      expect(answer).toContain('credited hours মানে');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('returns no account after it is disabled, even if Telegram remains linked', async () => {
     const findFirst = vi.fn().mockResolvedValue({ user: { id: 1, fullName: 'Staff', role: UserRole.employee, employeeId: 3, isActive: false, mustChangePw: false } });
     const service = new TelegramAiLinkService({ telegramAiAccount: { findFirst } } as unknown as PrismaService);
@@ -79,7 +94,7 @@ describe('Telegram AI access', () => {
       const rows = Array.from({ length: 11 }, (_, index) => ({ employeeId: index + 1, empCode: `OX-${index + 1}`, fullName: `Designer ${index + 1}`, creditedHours: 30, targetHours: 48, shortfallHours: 18 }));
       const reports = { summary: vi.fn().mockResolvedValue({ rows }) } as unknown as ReportsService;
       const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
-      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'এই সংখ্যাগুলো কীভাবে বুঝব?');
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'পরের সপ্তাহে কীভাবে পরিকল্পনা করব?');
       expect(answer).toContain('portal report');
       const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('http://oxeio-ollama:11434/api/chat');
