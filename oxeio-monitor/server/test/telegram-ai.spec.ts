@@ -67,6 +67,27 @@ describe('Telegram AI access', () => {
     }
   });
 
+  it('answers a planning question from verified team totals without waiting for a model', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const prisma = {
+        designTarget: { groupBy: vi.fn().mockResolvedValue([{ assignedToId: 3, _count: { _all: 8 } }]) },
+        designSkipRequest: { groupBy: vi.fn().mockResolvedValue([{ employeeId: 3, _count: { _all: 2 } }]) },
+      } as unknown as PrismaService;
+      const reports = { summary: vi.fn().mockResolvedValue({ rows: [
+        { employeeId: 3, empCode: 'OX-03', fullName: 'Staff A', creditedHours: 25, targetHours: 40, shortfallHours: 15 },
+      ] }) } as unknown as ReportsService;
+      const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'পরের সপ্তাহে কীভাবে পরিকল্পনা করব?');
+      expect(answer).toContain('8টি design');
+      expect(answer).toContain('2টি accepted skip');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('returns no account after it is disabled, even if Telegram remains linked', async () => {
     const findFirst = vi.fn().mockResolvedValue({ user: { id: 1, fullName: 'Staff', role: UserRole.employee, employeeId: 3, isActive: false, mustChangePw: false } });
     const service = new TelegramAiLinkService({ telegramAiAccount: { findFirst } } as unknown as PrismaService);
@@ -94,13 +115,13 @@ describe('Telegram AI access', () => {
       const rows = Array.from({ length: 11 }, (_, index) => ({ employeeId: index + 1, empCode: `OX-${index + 1}`, fullName: `Designer ${index + 1}`, creditedHours: 30, targetHours: 48, shortfallHours: 18 }));
       const reports = { summary: vi.fn().mockResolvedValue({ rows }) } as unknown as ReportsService;
       const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
-      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'পরের সপ্তাহে কীভাবে পরিকল্পনা করব?');
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'What should I check in the office tomorrow?');
       expect(answer).toContain('portal report');
       const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('http://oxeio-ollama:11434/api/chat');
       expect(request.headers).not.toHaveProperty('authorization');
-      const payload = JSON.parse(request.body as string) as {model:string;stream:boolean;think:boolean;messages:{content:string}[]};
-      expect(payload).toMatchObject({ model: 'qwen3:1.7b', stream: false, think: false });
+      const payload = JSON.parse(request.body as string) as {model:string;stream:boolean;keep_alive:string;messages:{content:string}[]};
+      expect(payload).toMatchObject({ model: 'qwen2.5:1.5b-instruct', stream: false, keep_alive: '24h' });
       expect(payload.messages[1].content.length).toBeLessThan(500);
       expect(payload.messages[1].content).not.toContain('Designer 1');
     } finally {

@@ -19,7 +19,8 @@ export class TelegramAiWorker implements OnApplicationBootstrap,OnModuleDestroy 
 
  onApplicationBootstrap(){
   if(process.env.NODE_ENV==='test'||process.env.TELEGRAM_AI_ENABLED!=='true') return;
-  this.timer=setInterval(()=>{void this.runOnce().catch(()=>this.logger.warn('Telegram AI poll failed'));},10_000);
+  void this.runOnce().catch(()=>this.logger.warn('Telegram AI poll failed'));
+  this.timer=setInterval(()=>{void this.runOnce().catch(()=>this.logger.warn('Telegram AI poll failed'));},2_000);
   this.timer.unref();
   this.logger.log('Telegram AI polling enabled for private chats');
  }
@@ -36,8 +37,8 @@ export class TelegramAiWorker implements OnApplicationBootstrap,OnModuleDestroy 
    let offset=typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
    const res=await fetch(`https://api.telegram.org/bot${settings.botToken}/getUpdates`,{
     method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({offset,limit:20,timeout:0,allowed_updates:['message']}),
-    signal:AbortSignal.timeout(12_000),
+    body:JSON.stringify({offset,limit:20,timeout:20,allowed_updates:['message']}),
+    signal:AbortSignal.timeout(27_000),
    });
    if(!res.ok){this.logger.warn(`Telegram AI poll unavailable (HTTP ${res.status})`);return 0;}
    const payload=await res.json() as TelegramResult<TelegramUpdate[]>;
@@ -80,8 +81,30 @@ export class TelegramAiWorker implements OnApplicationBootstrap,OnModuleDestroy 
    await this.send(token,chatId,'Telegram account বিচ্ছিন্ন হয়েছে।');
    return;
   }
-  const reply=await this.answers.answer(user,text);
+  let typingInterval:NodeJS.Timeout|null=null;
+  const typingDelay=setTimeout(()=>{
+   void this.typing(token,chatId);
+   typingInterval=setInterval(()=>{void this.typing(token,chatId);},4_000);
+   typingInterval.unref();
+  },1_000);
+  typingDelay.unref();
+  const started=Date.now();
+  let reply:string;
+  try{reply=await this.answers.answer(user,text);}
+  finally{clearTimeout(typingDelay);if(typingInterval) clearInterval(typingInterval);}
+  const elapsed=Date.now()-started;
+  if(elapsed>10_000) this.logger.warn(`Telegram AI answer took ${elapsed}ms`);
   await this.send(token,chatId,reply);
+ }
+
+ private async typing(token:string,chatId:string){
+  try{
+   await fetch(`https://api.telegram.org/bot${token}/sendChatAction`,{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({chat_id:chatId,action:'typing'}),
+    signal:AbortSignal.timeout(5_000),
+   });
+  }catch{/* The final answer is still attempted if the indicator fails. */}
  }
 
  private allowed(chatId:string){
