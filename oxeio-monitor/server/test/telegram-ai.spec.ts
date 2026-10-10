@@ -76,14 +76,18 @@ describe('Telegram AI access', () => {
         designTarget: { groupBy: vi.fn().mockResolvedValue([]) },
         designSkipRequest: { groupBy: vi.fn().mockResolvedValue([]) },
       } as unknown as PrismaService;
-      const reports = { summary: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as ReportsService;
+      const rows = Array.from({ length: 11 }, (_, index) => ({ employeeId: index + 1, empCode: `OX-${index + 1}`, fullName: `Designer ${index + 1}`, creditedHours: 30, targetHours: 48, shortfallHours: 18 }));
+      const reports = { summary: vi.fn().mockResolvedValue({ rows }) } as unknown as ReportsService;
       const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
       const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'এই সংখ্যাগুলো কীভাবে বুঝব?');
       expect(answer).toContain('portal report');
       const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('http://oxeio-ollama:11434/api/chat');
       expect(request.headers).not.toHaveProperty('authorization');
-      expect(JSON.parse(request.body as string)).toMatchObject({ model: 'qwen3:1.7b', stream: false, think: false });
+      const payload = JSON.parse(request.body as string) as {model:string;stream:boolean;think:boolean;messages:{content:string}[]};
+      expect(payload).toMatchObject({ model: 'qwen3:1.7b', stream: false, think: false });
+      expect(payload.messages[1].content.length).toBeLessThan(500);
+      expect(payload.messages[1].content).not.toContain('Designer 1');
     } finally {
       vi.unstubAllGlobals();
     }
