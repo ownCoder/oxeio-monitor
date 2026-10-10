@@ -23,6 +23,23 @@ describe('Telegram AI access', () => {
     }
   });
 
+  it('lists actual bot capabilities without inventing other records or waiting for a model', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const summary = vi.fn();
+      const service = new TelegramAiAnswerService({} as PrismaService, {} as MeService, { summary } as unknown as ReportsService);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'তুমি কী কী তথ্য দিতে পারো?');
+      expect(answer).toContain('/today');
+      expect(answer).toContain('/team');
+      expect(answer).not.toContain('academic');
+      expect(summary).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not read team reports for a staff account', async () => {
     const summary = vi.fn();
     const service = new TelegramAiAnswerService({} as PrismaService, {} as MeService, { summary } as unknown as ReportsService);

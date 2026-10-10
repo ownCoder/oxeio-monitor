@@ -23,6 +23,8 @@ export class TelegramAiAnswerService {
   if(['hi','hello','hey','হাই','হ্যালো','সালাম','assalamu alaikum','আসসালামু আলাইকুম'].includes(normalized)){
    return `হ্যালো ${user.fullName}! আমি oXeio AI Manager। /help লিখে কী জানতে পারবেন দেখুন; /today দিয়ে নিজের কাজ${isManager(user.role)?' এবং /team দিয়ে দলের সারাংশ':''} দেখতে পারবেন।`;
   }
+  if(/(?:তুমি|আপনি|tomar|your)\s*(?:নাম|name)|(?:who are you|তুমি কে|আপনি কে)/iu.test(normalized)) return 'আমি oXeio AI Manager—অফিসের কাজ ও অনুমতিপ্রাপ্ত রিপোর্ট বিষয়ে সাহায্য করি। কী জানতে চান? /help লিখে তালিকা দেখুন।';
+  if(/(?:কী কী|কি কি|what|which|ki ki)/iu.test(normalized)&&/(?:তথ্য|info|জানতে|দিতে পার|পারো|can you|help)/iu.test(normalized)) return this.help(user.role);
   const command=question.trim().split(/\s+/)[0]?.toLowerCase().split('@')[0]??'';
   if(command==='/help'||command==='/start') return this.help(user.role);
   if(command==='/team'||command==='/report'){
@@ -42,7 +44,7 @@ export class TelegramAiAnswerService {
  help(role:UserRole):string{
   return ['আমি oXeio AI Manager। বাংলা বা ইংরেজিতে কাজ ও রিপোর্ট নিয়ে প্রশ্ন করুন।',
    '/today — নিজের আজকের কাজ',
-   ...(isManager(role)?['/team — দলের গত ৭ দিনের সারাংশ','/report — রিপোর্ট নিয়ে প্রশ্ন']:[]),
+   ...(isManager(role)?['/team — দলের গত ৭ দিনের সারাংশ','/report — দলের গত ৭ দিনের রিপোর্ট']:[]),
    '/unlink — এই Telegram account বিচ্ছিন্ন করুন',
    'উত্তর শুধু আপনার অনুমতিপ্রাপ্ত system data থেকে দেওয়া হয়। AI ভুল করতে পারে; গুরুত্বপূর্ণ সিদ্ধান্ত portal report মিলিয়ে নিন।'].join('\n');
  }
