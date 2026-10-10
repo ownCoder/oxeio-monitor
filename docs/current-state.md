@@ -2,6 +2,8 @@
 
 সর্বশেষ আপডেট: ১০ অক্টোবর ২০২৬ · Asia/Dhaka
 
+- **Daily designs & skips chart overflow fixed — release 478 / `edf0686eaad7927c23d4fb75f756698268324890`:** `/targets/daily`-এর Output by day chart এখন Completed ও Skipped—দুই series-এর সর্বোচ্চ সংখ্যা দিয়ে scale করে, এবং bar ১০০%-এর বেশি হয় না। আগে Today-তে ১ completed/৭ skips হলে orange bar panel ছাড়িয়ে header-এ উঠত। Live Chrome-এ Today-র ৩ completed/১০ skips bar ৩০%/১০০% এবং 7 days-এর সব bar chart-এর ভেতরে দেখা হয়েছে। Web ৩০৩/৩০৩ tests, typecheck/lint/build পাস; VPS API/web healthy, PostgreSQL unchanged, public health ও JS hash মিলেছে। No migration/seed। Source mirror `.release-salary/oxeio-monitor`, release `/opt/oxeio-releases/daily-chart-scale-20261010`। [Release record](audits/2026-10-10-daily-chart-scale-fix.md)।
+
 - **Design Pool filters live — release 476 / `584de27075252b165d0d36b01d1b5fcd0003e832`:** `/targets/all`-এর Filters-এ In hand কাজ শুরু হয়েছে/হয়নি, Skip/Delete reason, Added from/to এবং activity/added date sort আছে। এগুলো server-side count/page, saved view ও shareable link-এ কাজ করে। Chrome-এ started/not started, Page Not Found, added-date ও sort live data দিয়ে দেখা হয়েছে। Web ৩০১/৩০১ tests; server ১২৫৬টি database-free tests পাস, ১টি skipped; backend integration test লেখা হলেও এই PC-তে test PostgreSQL নেই। No migration/seed; VPS API/web healthy ও PostgreSQL unchanged। Source mirror `.release-salary/oxeio-monitor`, release `/opt/oxeio-releases/design-pool-filters-20261010`। [Release record](audits/2026-10-10-design-pool-filters-release.md) · [Operations](design-pool-operations.md)।
 
 - **১০ অক্টোবর ০৭:৫৪ ঢাকা সময়ের ঐতিহাসিক read-only check:** তখন public health `ok`, database `up`, build **473 / `6b3575c`** এবং সব container healthy ছিল। এরপর release **476** deploy হয়েছে—ওই পুরোনো marker deploy-এর ভিত্তি হিসেবে ব্যবহার করবেন না। Shared handoff এই `/opt/oxeio/docs/current-state.md`; [সকালের status record](audits/2026-10-10-handoff-status.md) কেবল তখনকার snapshot।
@@ -15,6 +17,8 @@
 - অনুমোদিত [clickable HTML mockup](mockups/full-system-redesign.html) অনুযায়ী implementation শুরু হয়েছে। **Release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b` live:** shared sidebar/topbar নতুন blue design, responsive mobile drawer, এবং Live Board-এর নতুন KPI, Team output, Needs attention ও Team snapshot hierarchy। Owner Chrome session-এ Live Board ও Add target navigation দেখা হয়েছে। Existing data, permissions, routes, API ও database অপরিবর্তিত। Worklog, Targets, Team, Oversight, Office ও Production-এর page-specific redesign এখনো বাকি; mockup-এর বাকি sample number live data নয়। [Release record](audits/2026-10-08-system-redesign-phase1.md) · [Scope](full-system-redesign-mockup.md)।
 
 ## Live
+
+- **সর্বশেষ release 478 / `edf0686eaad7927c23d4fb75f756698268324890`**: Daily chart-এর Skipped bar overflow fixed। [Details](audits/2026-10-10-daily-chart-scale-fix.md)।
 
 - **সর্বশেষ release 476 / `584de27075252b165d0d36b01d1b5fcd0003e832`**: Design Pool-এর নতুন progress, reason, added-date ও sort filters live। [Details](audits/2026-10-10-design-pool-filters-release.md)।
 
