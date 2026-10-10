@@ -7,12 +7,49 @@ import type { MeService } from '../src/me/me.service';
 import type { ReportsService } from '../src/reports/reports.service';
 
 describe('Telegram AI access', () => {
+  it('answers a greeting immediately without waiting for a report or model', async () => {
+    const summary = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const service = new TelegramAiAnswerService({} as PrismaService, {} as MeService, { summary } as unknown as ReportsService);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'hello!');
+      expect(answer).toContain('হ্যালো Owner');
+      expect(answer).toContain('/team');
+      expect(summary).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not read team reports for a staff account', async () => {
     const summary = vi.fn();
     const service = new TelegramAiAnswerService({} as PrismaService, {} as MeService, { summary } as unknown as ReportsService);
     const answer = await service.answer({ id: 1, fullName: 'Staff', role: UserRole.employee, employeeId: 3 }, '/team');
     expect(answer).toContain('manager');
     expect(summary).not.toHaveBeenCalled();
+  });
+
+  it('calculates the most completed designs from verified rows without asking a model', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const prisma = {
+        designTarget: { groupBy: vi.fn().mockResolvedValue([{ assignedToId: 3, _count: { _all: 8 } }, { assignedToId: 4, _count: { _all: 15 } }]) },
+        designSkipRequest: { groupBy: vi.fn().mockResolvedValue([]) },
+      } as unknown as PrismaService;
+      const reports = { summary: vi.fn().mockResolvedValue({ rows: [
+        { employeeId: 3, empCode: 'OX-03', fullName: 'Staff A', creditedHours: 25, targetHours: 40, shortfallHours: 15 },
+        { employeeId: 4, empCode: 'OX-04', fullName: 'Staff B', creditedHours: 30, targetHours: 40, shortfallHours: 10 },
+      ] }) } as unknown as ReportsService;
+      const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'কে সবচেয়ে বেশি design complete করেছে?');
+      expect(answer).toContain('OX-04 Staff B — 15টি');
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('returns no account after it is disabled, even if Telegram remains linked', async () => {
@@ -41,12 +78,12 @@ describe('Telegram AI access', () => {
       } as unknown as PrismaService;
       const reports = { summary: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as ReportsService;
       const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
-      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'দলের রিপোর্ট কেমন?');
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'এই সংখ্যাগুলো কীভাবে বুঝব?');
       expect(answer).toContain('portal report');
       const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('http://oxeio-ollama:11434/api/chat');
       expect(request.headers).not.toHaveProperty('authorization');
-      expect(JSON.parse(request.body as string)).toMatchObject({ model: 'qwen3:4b-instruct', stream: false, think: false });
+      expect(JSON.parse(request.body as string)).toMatchObject({ model: 'qwen3:1.7b', stream: false, think: false });
     } finally {
       vi.unstubAllGlobals();
     }
