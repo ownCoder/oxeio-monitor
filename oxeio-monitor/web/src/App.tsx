@@ -22,6 +22,7 @@ import { MyDataPage } from './pages/MyDataPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SalaryPage } from './pages/SalaryPage';
+import { TelegramAiPage } from './pages/TelegramAiPage';
 import { SecurityPage } from './pages/security/SecurityPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { homePathFor, seesEveryone } from './api/auth';
@@ -204,6 +205,7 @@ function Router() {
           পাতাটা সেটাই দেখায়।
         */}
         <Route path="me" element={<MyDataPage />} />
+        <Route path="ai-manager" element={<TelegramAiPage />} />
 
         {/*
           ⭐ Targets *(২২ আগস্ট)* — গবেষক · ম্যানেজার · মালিক।

@@ -25,6 +25,7 @@ import { ScreenshotsModule } from './screenshots/screenshots.module';
 import { SummaryModule } from './summary/summary.module';
 import { TargetsModule } from './targets/targets.module';
 import { UsersModule } from './users/users.module';
+import { TelegramAiModule } from './telegram-ai/telegram-ai.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { UsersModule } from './users/users.module';
     OfficeModule,
     WorkspaceModule,
     ProductionModule,
+    TelegramAiModule,
   ],
 })
 export class AppModule {}

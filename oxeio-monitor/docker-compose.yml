@@ -111,6 +111,11 @@ services:
       #    অ্যালার্ট তাতে আটকায় না — ওতে কারো নাম যায় না।
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
 
+      # Existing alert bot-এর ব্যক্তিগত, portal-linked AI chat। Key শুধু VPS .env-এ।
+      TELEGRAM_AI_ENABLED: ${TELEGRAM_AI_ENABLED:-false}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+
       # ── R3 · সাপ্তাহিক সারাংশ টেলিগ্রামে ───────────────────────────────
       # ⚠️ লাইন দুটো এখানে **স্পষ্ট করে** পাস করতে হয়। compose হোস্টের
       #    পরিবেশ কনটেইনারে নিজে থেকে নেয় না, তাই না থাকলে `.env`-এ

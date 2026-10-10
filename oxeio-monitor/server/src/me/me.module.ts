@@ -18,5 +18,6 @@ import { MeService } from './me.service';
   imports: [AgentModule, DepositsModule],
   controllers: [MeController],
   providers: [MeService],
+  exports: [MeService],
 })
 export class MeModule {}

@@ -1,0 +1,15 @@
+import {Module} from '@nestjs/common';
+import {TelegramChannel} from '../alerts/telegram.channel';
+import {MeModule} from '../me/me.module';
+import {ReportsModule} from '../reports/reports.module';
+import {TelegramAiAnswerService} from './telegram-ai-answer.service';
+import {TelegramAiLinkController} from './telegram-ai-link.controller';
+import {TelegramAiLinkService} from './telegram-ai-link.service';
+import {TelegramAiWorker} from './telegram-ai-worker';
+
+@Module({
+ imports:[MeModule,ReportsModule],
+ controllers:[TelegramAiLinkController],
+ providers:[TelegramChannel,TelegramAiLinkService,TelegramAiAnswerService,TelegramAiWorker],
+})
+export class TelegramAiModule {}

@@ -220,6 +220,7 @@ const NAV: NavItem[] = [
    * ⭐ দুটোর একটাই দেখা যায়, তাই শিরোনাম দুবার বসে না।
    */
   { to: '/staff', label: 'Staff', roles: ['owner', 'manager'], section: 'Team' },
+  { to: '/ai-manager', label: 'AI Manager', roles: ['owner', 'manager', 'researcher', 'employee'] },
   /** ⚠️ গবেষক ও ডিজাইনার এখানে **নিজেরটাই** দেখেন — সার্ভার স্কোপ করে দেয় */
   {
     to: '/screenshots',

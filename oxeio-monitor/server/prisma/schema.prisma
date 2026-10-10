@@ -315,10 +315,25 @@ model User {
   enrollmentCodes    EnrollmentCode[]
   adjustmentsCreated TimeAdjustment[] @relation("AdjustmentCreatedBy")
   adjustmentsRevoked TimeAdjustment[] @relation("AdjustmentRevokedBy")
+  telegramAiAccount TelegramAiAccount?
 
   @@map("users")
   /// ⭐ যে টার্গেটগুলো ইনি জমা দিয়েছেন (২২ আগস্ট)
   addedTargets DesignTarget[] @relation("addedTargets")
+}
+
+/// A private Telegram identity linked through a one-time code generated in the portal.
+/// No chat content or OpenAI credential is stored here.
+model TelegramAiAccount {
+  userId         Int       @id @map("user_id")
+  chatId         String?   @unique @map("chat_id")
+  telegramUserId String?   @unique @map("telegram_user_id")
+  codeHash       String?   @unique @map("code_hash")
+  codeExpiresAt  DateTime? @map("code_expires_at") @db.Timestamptz(3)
+  linkedAt       DateTime? @map("linked_at") @db.Timestamptz(3)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_ai_accounts")
 }
 
 model Device {
