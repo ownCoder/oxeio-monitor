@@ -30,4 +30,25 @@ describe('Telegram AI access', () => {
     expect(await service.link('A1B2C3D4E5F6', '100', '200')).toBe(false);
     expect(updateMany).not.toHaveBeenCalled();
   });
+
+  it('answers a manager question through the local model without transmitting an API key', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'দলের তথ্য portal report থেকে মিলিয়ে দেখুন।' } }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const prisma = {
+        designTarget: { groupBy: vi.fn().mockResolvedValue([]) },
+        designSkipRequest: { groupBy: vi.fn().mockResolvedValue([]) },
+      } as unknown as PrismaService;
+      const reports = { summary: vi.fn().mockResolvedValue({ rows: [] }) } as unknown as ReportsService;
+      const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
+      const answer = await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'দলের রিপোর্ট কেমন?');
+      expect(answer).toContain('portal report');
+      const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('http://oxeio-ollama:11434/api/chat');
+      expect(request.headers).not.toHaveProperty('authorization');
+      expect(JSON.parse(request.body as string)).toMatchObject({ model: 'qwen3:4b-instruct', stream: false, think: false });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
