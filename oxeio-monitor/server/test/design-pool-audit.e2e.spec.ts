@@ -14,6 +14,21 @@ const service = () => h.app.get(TargetsService);
 const row = () => h.prisma.designTarget.create({ data: { asin: 'B000000001', addedById: ownerId } });
 
 describe('Design Pool audit regressions', () => {
+  it('filters progress, skip reason and added date before paging, then sorts stably', async () => {
+    const at = (date: string) => new Date(`${date}T12:00:00+06:00`);
+    const make = (asin: string, addedAt: string, data: { status?: 'assigned' | 'skipped' | 'deleted'; startedAt?: Date; dropReason?: 'copyright' | 'not_found' } = {}) =>
+      h.prisma.designTarget.create({ data: { asin, addedById: ownerId, addedAt: at(addedAt), ...data } });
+    await make('B000000011', '2026-10-01');
+    await make('B000000012', '2026-10-02', { status: 'assigned' });
+    const started = await make('B000000013', '2026-10-03', { status: 'assigned', startedAt: at('2026-10-03') });
+    const skipped = await make('B000000014', '2026-10-04', { status: 'skipped', dropReason: 'copyright' });
+    await make('B000000015', '2026-10-05', { status: 'deleted', dropReason: 'not_found' });
+    expect((await service().list({ poolProgress: 'started' })).rows.map(r => r.id)).toEqual([started.id]);
+    expect((await service().list({ poolProgress: 'not_started' })).total).toBe(1);
+    expect((await service().list({ poolReason: 'copyright' })).rows.map(r => r.id)).toEqual([skipped.id]);
+    expect((await service().list({ addedFrom: '2026-10-03', addedTo: '2026-10-04', poolSort: 'added_oldest' })).rows.map(r => r.asin)).toEqual(['B000000013', 'B000000014']);
+    await expect(service().list({ addedFrom: '2026-10-05', addedTo: '2026-10-04' })).rejects.toThrow('Added from date');
+  });
   it('rejects reversed date ranges with a useful error', async () => {
     await expect(service().list({ from: '2026-09-28', to: '2026-09-27' })).rejects.toThrow('From date');
   });

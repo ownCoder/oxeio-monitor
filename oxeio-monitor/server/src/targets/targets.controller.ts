@@ -142,6 +142,21 @@ class ListQueryDto {
   @IsOptional() @IsIn(['true'])
   reviewUndated?: 'true';
 
+  @IsOptional() @IsIn(['not_started', 'started'])
+  poolProgress?: 'not_started' | 'started';
+
+  @IsOptional() @IsIn(['not_found', 'events', 'copyright', 'others'])
+  poolReason?: DropReason;
+
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  addedFrom?: string;
+
+  @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  addedTo?: string;
+
+  @IsOptional() @IsIn(['activity_newest', 'activity_oldest', 'added_newest', 'added_oldest'])
+  poolSort?: 'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest';
+
   /**
    * ⭐⭐ **কাজের ধাপ ধরে ছাঁকনি** *(২৪ আগস্ট ২০২৬)* — গবেষকের রোজকার
    * কিউ দুটো।

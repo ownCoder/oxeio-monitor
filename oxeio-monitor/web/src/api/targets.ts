@@ -303,6 +303,11 @@ export function listTargets(
     reviewAge?: 'today' | 'over_24h' | 'over_7d';
     reviewSort?: 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted';
     reviewUndated?: boolean;
+    poolProgress?: 'not_started' | 'started';
+    poolReason?: DropReason;
+    addedFrom?: string;
+    addedTo?: string;
+    poolSort?: 'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest';
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
     /** ⚠️ `to_review` যোগ হয়েছে ৩১ আগস্ট — বাদ-যাওয়া, অথচ কেউ দেখেননি */
     /** ⚠️ `no_file` ধাপ নয়, প্রশ্ন — শেষ বলা, অথচ ফাইল খোলা হয়নি (৯ সেপ্টেম্বর) */
@@ -328,6 +333,11 @@ export function listTargets(
   if (params.reviewAge) qs.set('reviewAge', params.reviewAge);
   if (params.reviewSort && params.reviewSort !== 'pending_first') qs.set('reviewSort', params.reviewSort);
   if (params.reviewUndated) qs.set('reviewUndated', 'true');
+  if (params.poolProgress) qs.set('poolProgress', params.poolProgress);
+  if (params.poolReason) qs.set('poolReason', params.poolReason);
+  if (params.addedFrom) qs.set('addedFrom', params.addedFrom);
+  if (params.addedTo) qs.set('addedTo', params.addedTo);
+  if (params.poolSort && params.poolSort !== 'activity_newest') qs.set('poolSort', params.poolSort);
   if (params.stage) qs.set('stage', params.stage);
   if (params.page && params.page > 1) qs.set('page', String(params.page));
 

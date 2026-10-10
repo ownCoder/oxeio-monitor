@@ -148,6 +148,11 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
   const [addedById, setAddedById] = useState(initialView.addedById);
   const [from, setFrom] = useState(initialView.from);
   const [to, setTo] = useState(initialView.to);
+  const [poolProgress, setPoolProgress] = useState<'not_started' | 'started' | ''>((initialView.poolProgress as 'not_started' | 'started') || '');
+  const [poolReason, setPoolReason] = useState<DropReason | ''>((initialView.poolReason as DropReason) || '');
+  const [addedFrom, setAddedFrom] = useState(initialView.addedFrom || '');
+  const [addedTo, setAddedTo] = useState(initialView.addedTo || '');
+  const [poolSort, setPoolSort] = useState<'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest'>((initialView.poolSort as 'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest') || 'activity_newest');
   const isReview = lockedStage === 'to_review';
   const [reviewType, setReviewType] = useState<'all' | 'pending' | 'skipped' | 'deleted'>(() => isReview ? (initialView.reviewType as 'all' | 'pending' | 'skipped' | 'deleted') || 'pending' : 'all');
   const [reviewReason, setReviewReason] = useState<DropReason | ''>(() => isReview ? initialView.reviewReason as DropReason || '' : '');
@@ -212,12 +217,17 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           ...(addedById ? { addedById: Number(addedById) } : {}),
           ...(from ? { from } : {}),
           ...(to ? { to } : {}),
+          ...(!isReview && poolProgress ? { poolProgress } : {}),
+          ...(!isReview && poolReason ? { poolReason } : {}),
+          ...(!isReview && addedFrom ? { addedFrom } : {}),
+          ...(!isReview && addedTo ? { addedTo } : {}),
+          ...(!isReview ? { poolSort } : {}),
           ...(isReview ? { reviewType, reviewReason: reviewReason || undefined, reviewAge: reviewAge || undefined, reviewSort, reviewUndated } : {}),
           page,
         },
         signal,
       ),
-    [filter, q, staffId, addedById, from, to, page, isReview, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated],
+    [filter, q, staffId, addedById, from, to, poolProgress, poolReason, addedFrom, addedTo, poolSort, page, isReview, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated],
   );
 
   /**
@@ -228,7 +238,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
   useEffect(() => {
     setPicked(new Set());
     setKept(0);
-  }, [filter, q, staffId, addedById, from, to, page, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated]);
+  }, [filter, q, staffId, addedById, from, to, poolProgress, poolReason, addedFrom, addedTo, poolSort, page, reviewType, reviewReason, reviewAge, reviewSort, reviewUndated]);
 
   /**
    * ⭐⭐ **গোটানো ছাঁকনির গায়ের সংখ্যাটা** *(২৫ আগস্ট)*।
@@ -238,7 +248,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
    * সেই ফাঁদটা বন্ধ করে — বোতামে সংখ্যা থাকলে সেটা লালও হয়ে থাকে।
    */
   const activeFilters =
-    (staffId ? 1 : 0) + (addedById ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0) + (reviewReason ? 1 : 0) + (reviewAge ? 1 : 0) + (reviewUndated ? 1 : 0);
+    (staffId ? 1 : 0) + (addedById ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0) + (reviewReason ? 1 : 0) + (reviewAge ? 1 : 0) + (reviewUndated ? 1 : 0) + (!isReview && poolProgress ? 1 : 0) + (!isReview && poolReason ? 1 : 0) + (!isReview && addedFrom ? 1 : 0) + (!isReview && addedTo ? 1 : 0);
 
   /**
    * ⭐ ড্রপডাউনে কী দেখাবে — কিউ-চিপ বাছা থাকলে `all`।
@@ -313,13 +323,14 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
    */
   const looksLikeUrl = /[/:]/.test(q);
 
-  const hasSearchFilters = q.trim() !== '' || activeFilters > 0 || (showQueues && filter !== 'all') || (isReview && (reviewType !== 'pending' || reviewSort !== 'pending_first'));
+  const hasSearchFilters = q.trim() !== '' || activeFilters > 0 || (showQueues && filter !== 'all') || (!isReview && poolSort !== 'activity_newest') || (isReview && (reviewType !== 'pending' || reviewSort !== 'pending_first'));
   const resetFilters = () => {
     setPage(1); setQ(''); setStaffId(''); setAddedById(''); setFrom(''); setTo(''); setFilter(lockedStage ?? 'all');
     setReviewType(isReview ? 'pending' : 'all'); setReviewReason(''); setReviewAge(''); setReviewSort('pending_first'); setReviewUndated(false);
+    setPoolProgress('');setPoolReason('');setAddedFrom('');setAddedTo('');setPoolSort('activity_newest');
     setPicked(new Set()); setConfirmingBulk(false);
   };
-  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);if(isReview){setReviewType((v.reviewType as typeof reviewType)||'pending');setReviewReason((v.reviewReason as DropReason)||'');setReviewAge((v.reviewAge as typeof reviewAge)||'');setReviewSort((v.reviewSort as typeof reviewSort)||'pending_first');setReviewUndated(v.reviewUndated==='true');}setPage(1);setPicked(new Set());setConfirmingBulk(false);};
+  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);if(isReview){setReviewType((v.reviewType as typeof reviewType)||'pending');setReviewReason((v.reviewReason as DropReason)||'');setReviewAge((v.reviewAge as typeof reviewAge)||'');setReviewSort((v.reviewSort as typeof reviewSort)||'pending_first');setReviewUndated(v.reviewUndated==='true');}else{setPoolProgress((v.poolProgress as typeof poolProgress)||'');setPoolReason((v.poolReason as DropReason)||'');setAddedFrom(v.addedFrom||'');setAddedTo(v.addedTo||'');setPoolSort((v.poolSort as typeof poolSort)||'activity_newest');}setPage(1);setPicked(new Set());setConfirmingBulk(false);};
   const skipDates = filter === 'to_review' || filter === 'skipped';
 
   const change = (next: () => void) => {
@@ -340,7 +351,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
       */
       hint={
         data.data
-          ? `${data.data.total.toLocaleString()} matching targets · ${isReview ? 'server-filtered review work' : skipDates ? 'pending reviews first, then newest skip request' : 'newest activity first'}`
+          ? `${data.data.total.toLocaleString()} matching targets · ${isReview ? 'server-filtered review work' : poolSort === 'activity_oldest' ? 'oldest activity first' : poolSort === 'added_newest' ? 'newest added first' : poolSort === 'added_oldest' ? 'oldest added first' : skipDates ? 'pending reviews first, then newest skip request' : 'newest activity first'}`
           : 'Loading…'
       }
       padded={false}
@@ -354,7 +365,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           <button
             key={f.key}
             type="button"
-            onClick={() => change(() => setFilter(f.key))}
+            onClick={() => change(() => {setFilter(f.key);setPoolProgress('');setPoolReason('');})}
             title={
               f.stage === 'to_check'
                 ? 'Finished designs whose spelling has not been checked yet'
@@ -411,6 +422,8 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           onChange={(e) =>
             change(() => {
               const v = e.target.value;
+              if(v!=='assigned'&&v!=='all')setPoolProgress('');
+              if(v!=='skipped'&&v!=='deleted'&&v!=='all')setPoolReason('');
               if (v === 'done_today') {
                 setFilter('done');
                 setFrom(dhakaToday());
@@ -508,6 +521,11 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
             <select aria-label="Waiting time" value={reviewAge} onChange={e=>change(()=>{setReviewAge(e.target.value as typeof reviewAge);if(e.target.value)setReviewType('pending');})} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="">Any waiting time</option><option value="today">Requested today</option><option value="over_24h">Waiting over 24 hours</option><option value="over_7d">Waiting over 7 days</option></select>
             <select aria-label="Review sort" value={reviewSort} onChange={e=>change(()=>setReviewSort(e.target.value as typeof reviewSort))} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="pending_first">Pending first</option><option value="oldest_pending">Oldest pending first</option><option value="newest">Newest request first</option><option value="newest_deleted">Newest deletion first</option></select>
           </>}
+          {!isReview && <>
+            <select aria-label="Work progress" value={poolProgress} onChange={e=>change(()=>{const next=e.target.value as typeof poolProgress;setPoolProgress(next);if(next){setFilter('assigned');setPoolReason('');}})} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="">Any work progress</option><option value="not_started">In hand · not started</option><option value="started">In hand · started</option></select>
+            <select aria-label="Skip or delete reason" value={poolReason} onChange={e=>change(()=>{const next=e.target.value as DropReason | '';setPoolReason(next);if(next){setPoolProgress('');if(filter!=='skipped'&&filter!=='deleted')setFilter('all');}})} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="">Any skip/delete reason</option><option value="not_found">Page Not Found</option><option value="events">Event</option><option value="copyright">Copyright</option><option value="others">Others</option></select>
+            <select aria-label="Sort Design Pool" value={poolSort} onChange={e=>change(()=>setPoolSort(e.target.value as typeof poolSort))} className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"><option value="activity_newest">Newest activity first</option><option value="activity_oldest">Oldest activity first</option><option value="added_newest">Newest added first</option><option value="added_oldest">Oldest added first</option></select>
+          </>}
           <select
             aria-label="Designer"
             value={staffId}
@@ -544,7 +562,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           </select>
 
           <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
-            From
+            {isReview ? 'Review from' : 'Activity from'}
             <input
               type="date"
               max={to || undefined}
@@ -555,7 +573,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
           </label>
 
           <label className="flex items-center gap-1.5 text-[12px] text-ink-3">
-            to
+            {isReview ? 'Review to' : 'Activity to'}
             <input
               type="date"
               min={from || undefined}
@@ -567,6 +585,10 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
 
           <MiniButton onClick={() => change(() => { setFrom(today); setTo(today); })}>Today</MiniButton>
           <MiniButton onClick={() => change(() => { setFrom(new Date(Date.now() + 6 * 3_600_000 - 6 * 86_400_000).toISOString().slice(0, 10)); setTo(today); })}>Last 7 days</MiniButton>
+          {!isReview && <>
+            <label className="flex items-center gap-1.5 text-[12px] text-ink-3">Added from<input type="date" max={addedTo || undefined} value={addedFrom} onChange={e=>change(()=>setAddedFrom(e.target.value))} className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"/></label>
+            <label className="flex items-center gap-1.5 text-[12px] text-ink-3">Added to<input type="date" min={addedFrom || undefined} value={addedTo} onChange={e=>change(()=>setAddedTo(e.target.value))} className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"/></label>
+          </>}
           {isReview && <label className="flex items-center gap-1.5 text-xs text-ink-2"><input type="checkbox" checked={reviewUndated} onChange={e=>change(()=>setReviewUndated(e.target.checked))}/> Undated legacy items</label>}
           {activeFilters > 0 && (
             <button
@@ -577,6 +599,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                   setAddedById('');
                   setFrom('');
                   setTo('');
+                  setPoolProgress('');setPoolReason('');setAddedFrom('');setAddedTo('');
                   setReviewReason(''); setReviewAge(''); setReviewUndated(false);
                 })
               }
@@ -588,7 +611,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
         </div>
       )}
 
-      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{})}} onApply={applyView}/>
+      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{poolProgress,poolReason,addedFrom,addedTo,poolSort})}} onApply={applyView}/>
       {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">

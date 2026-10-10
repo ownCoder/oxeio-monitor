@@ -1,7 +1,7 @@
 import {useState} from 'react';
 import {MiniButton} from '../settings/ui';
-export interface PoolView {filter:string;q:string;staffId:string;addedById:string;from:string;to:string;reviewType?:string;reviewReason?:string;reviewAge?:string;reviewSort?:string;reviewUndated?:string}
-const keys=['filter','q','staffId','addedById','from','to','reviewType','reviewReason','reviewAge','reviewSort','reviewUndated'] as const;
+export interface PoolView {filter:string;q:string;staffId:string;addedById:string;from:string;to:string;reviewType?:string;reviewReason?:string;reviewAge?:string;reviewSort?:string;reviewUndated?:string;poolProgress?:string;poolReason?:string;addedFrom?:string;addedTo?:string;poolSort?:string}
+const keys=['filter','q','staffId','addedById','from','to','reviewType','reviewReason','reviewAge','reviewSort','reviewUndated','poolProgress','poolReason','addedFrom','addedTo','poolSort'] as const;
 export function parsePoolView(search:string):PoolView {
  const q=new URLSearchParams(search),allowed=['all','pool','assigned','done','skipped','deleted','to_check','to_fix','no_file','to_review'];
  const result=Object.fromEntries(keys.map(k=>[k,(q.get(k)??'').slice(0,200)])) as unknown as PoolView;
@@ -13,6 +13,10 @@ export function parsePoolView(search:string):PoolView {
  if(!['','today','over_24h','over_7d'].includes(result.reviewAge??''))result.reviewAge='';
  if(!['','pending_first','oldest_pending','newest','newest_deleted'].includes(result.reviewSort??''))result.reviewSort='';
  if(result.reviewUndated!=='true')result.reviewUndated='';
+ if(!['','not_started','started'].includes(result.poolProgress??''))result.poolProgress='';
+ if(!['','not_found','events','copyright','others'].includes(result.poolReason??''))result.poolReason='';
+ for(const key of ['addedFrom','addedTo'] as const) if(!/^\d{4}-\d{2}-\d{2}$/.test(result[key]??''))result[key]='';
+ if(!['','activity_newest','activity_oldest','added_newest','added_oldest'].includes(result.poolSort??''))result.poolSort='';
  return result;
 }
 export function viewSearch(view:PoolView) {return new URLSearchParams(keys.filter(k=>view[k]!==''&&view[k]!==undefined&&!(k==='filter'&&view[k]==='all')).map(k=>[k,view[k]??''])).toString();}

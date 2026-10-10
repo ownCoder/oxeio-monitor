@@ -1329,6 +1329,11 @@ export class TargetsService {
     reviewAge?: 'today' | 'over_24h' | 'over_7d';
     reviewSort?: 'pending_first' | 'oldest_pending' | 'newest' | 'newest_deleted';
     reviewUndated?: 'true';
+    poolProgress?: 'not_started' | 'started';
+    poolReason?: DropReason;
+    addedFrom?: string;
+    addedTo?: string;
+    poolSort?: 'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest';
     /** ⭐ শেকলের কোন ধাপে আটকে — গবেষকের কিউ (২৪ আগস্ট) */
     /** ⚠️ `no_file` ধাপ নয়, একটা **প্রশ্ন** — ৯ সেপ্টেম্বর ২০২৬ */
     stage?:
@@ -1351,6 +1356,8 @@ export class TargetsService {
     const isReview = query.stage === 'to_review';
     if (!isReview && (query.reviewType || query.reviewReason || query.reviewAge || query.reviewSort || query.reviewUndated))
       throw new BadRequestException('Review filters require the Review queue.');
+    if (isReview && (query.poolProgress || query.poolReason || query.addedFrom || query.addedTo || query.poolSort))
+      throw new BadRequestException('Pool filters require Design Pool.');
 
     /**
      * ⭐⭐ **ASIN নাকি Job নম্বর** — পার্থক্যটা এক লাইনে: শুধু অঙ্ক হলে
@@ -1396,6 +1403,8 @@ export class TargetsService {
 
     if (query.from && query.to && query.from > query.to)
       throw new BadRequestException('From date must be on or before the to date.');
+    if (query.addedFrom && query.addedTo && query.addedFrom > query.addedTo)
+      throw new BadRequestException('Added from date must be on or before the added to date.');
 
     const activity =
       query.from || query.to
@@ -1543,9 +1552,15 @@ export class TargetsService {
       ...(query.stage && query.stage !== 'to_review' ? { status: DesignTargetStatus.done } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(query.addedById ? { addedById: query.addedById } : {}),
+      ...(query.addedFrom || query.addedTo ? { addedAt: {
+        ...(query.addedFrom ? { gte: dhakaStart(query.addedFrom) } : {}),
+        ...(query.addedTo ? { lt: nextDay(query.addedTo) } : {}),
+      } } : {}),
       ...(activity && !isReview ? (query.status === 'skipped'
         ? { skipRequestedAt: activity } : query.status === 'done' ? { completedAt: activity } : { lastActivityAt: activity }) : {}),
       AND: [match ?? {}, stage, ...reviewFilters,
+        ...(query.poolProgress ? [{ status: DesignTargetStatus.assigned, startedAt: query.poolProgress === 'started' ? { not: null } : null }] as Prisma.DesignTargetWhereInput[] : []),
+        ...(query.poolReason ? [{ status: { in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted] }, dropReason: query.poolReason }] as Prisma.DesignTargetWhereInput[] : []),
         ...(isReview && query.reviewType === 'pending' ? [{ skipReviewPending: true }] : []),
         ...(isReview && query.reviewType === 'skipped' ? [{ status: DesignTargetStatus.skipped, skipReviewPending: false }] : []),
         ...(isReview && query.reviewType === 'deleted' ? [{ status: DesignTargetStatus.deleted }] : []),
@@ -1618,9 +1633,15 @@ export class TargetsService {
          * সারিগুলোর ক্রম যাতে প্রতিবার এক থাকে (নইলে পাতা বদলালে
          * একই সারি দুবার বা শূন্যবার দেখা যেত)।
          */
-        orderBy: isReview ? reviewOrder : query.status === 'skipped'
-          ? [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
-          : [{ lastActivityAt: 'desc' }, { id: 'desc' }],
+        orderBy: isReview ? reviewOrder : query.poolSort === 'activity_oldest'
+          ? [{ lastActivityAt: 'asc' }, { id: 'asc' }]
+          : query.poolSort === 'added_newest'
+            ? [{ addedAt: 'desc' }, { id: 'desc' }]
+            : query.poolSort === 'added_oldest'
+              ? [{ addedAt: 'asc' }, { id: 'asc' }]
+              : query.status === 'skipped'
+                ? [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
+                : [{ lastActivityAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * TARGET_PAGE_SIZE,
         take: TARGET_PAGE_SIZE,
       }),
