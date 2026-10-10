@@ -120,8 +120,8 @@ describe('Telegram AI access', () => {
       const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('http://oxeio-ollama:11434/api/chat');
       expect(request.headers).not.toHaveProperty('authorization');
-      const payload = JSON.parse(request.body as string) as {model:string;stream:boolean;keep_alive:string;messages:{content:string}[]};
-      expect(payload).toMatchObject({ model: 'qwen2.5:1.5b-instruct', stream: false, keep_alive: '24h' });
+      const payload = JSON.parse(request.body as string) as {model:string;stream:boolean;think:boolean;keep_alive:string;messages:{content:string}[]};
+      expect(payload).toMatchObject({ model: 'qwen3:1.7b', stream: false, think: false, keep_alive: '24h' });
       expect(payload.messages[1].content.length).toBeLessThan(500);
       expect(payload.messages[1].content).not.toContain('Designer 1');
     } finally {
