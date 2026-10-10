@@ -1,6 +1,6 @@
 # Design Pool — ব্যবহারবিধি
 
-৭ অক্টোবর ২০২৬ · Live **462 / aefc8d7** · [Skip/review release](audits/2026-10-07-four-reason-skip-review-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
+১০ অক্টোবর ২০২৬ · Live **476 / 584de27** · [Filter release](audits/2026-10-10-design-pool-filters-release.md) · [Skip/review release](audits/2026-10-07-four-reason-skip-review-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
 
 Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
 
@@ -29,6 +29,9 @@ Report-এ দৈনিক **Issued, Page Not Found, Event, Copyright, Others, R
 - **Search ASIN or job number**-এ ASIN বা job number লিখুন। Amazon URL-এর বদলে ASIN দিতে হবে।
 - **Target status**-এ Waiting, In hand, Done, Done today, no file trace, Skipped ও Deleted আছে। **To check** ও **To fix** বোতাম বানান যাচাই ও সংশোধনের queue দেখায়। Upload/live queues এই পাতায় নেই।
 - **Filters** খুলে Designer, Added by ও date range বাছুন। **Today** ও **Last 7 days** Dhaka calendar day ধরে।
+- **Work progress** দিয়ে In hand-এর কাজ **not started** বা **started** আলাদা করুন। **Skip or delete reason** দিয়ে Page Not Found, Event, Copyright বা Others বাছুন; এটি skipped/deleted target-এ খোঁজে। অন্য queue/status বাছলে বিরোধী progress/reason selection সাফ হয়।
+- **Activity from/to** সর্বশেষ কাজের সময় ধরে; **Added from/to** target প্রথম pool-এ যোগ হওয়ার দিন ধরে। দুই date range একসঙ্গে দিলে দুটো শর্তই লাগবে। **Sort Design Pool**-এ newest/oldest activity অথবা newest/oldest added ক্রম বাছা যায়। সবকটি filter পুরো matching set-এ server-side চলে, তারপর ৫০টি করে page হয়।
+- নতুন filter ও sort saved view/shareable link-এ থাকে। **Reset all filters**-এ এগুলো এবং sort default-এ ফেরে। Review page-এর আলাদা review filters অপরিবর্তিত।
 - Done-এর date হলো completion time; পরে upload/live হলেও ওই দিনের result-এ থাকে। Review/Skipped-এর date হলো skip-request time। অন্য views latest activity ধরে।
 - পুরোনো skip-এর সময় জানা না থাকলে এবং Review-এ deleted target দেখতে date filter clear করুন।
 - **Reset all filters** search, status, people ও date একসঙ্গে clear করে। Review page নিজের review queue-তেই থাকে।

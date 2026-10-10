@@ -2,7 +2,9 @@
 
 সর্বশেষ আপডেট: ১০ অক্টোবর ২০২৬ · Asia/Dhaka
 
-- **১০ অক্টোবর ০৭:৫৪ ঢাকা সময় read-only status check:** Public health `ok`, database `up`, build **473 / `6b3575c`**। VPS-এ web, API ও PostgreSQL container healthy। Deployed app commit এখনো `6b3575c3eedc3c35d47a072e6970646f072ef5b5`; নতুন app deploy হয়নি। Shared handoff এই `/opt/oxeio/docs/current-state.md`; VPS Git HEAD-এ আগের docs commit `75ea931` ছিল, যা app release marker-এর চেয়ে নতুন হওয়া স্বাভাবিক। এই নথি ও [status check](audits/2026-10-10-handoff-status.md) দেখে অন্য PC থেকে কাজ ধরতে হবে।
+- **Design Pool filters live — release 476 / `584de27075252b165d0d36b01d1b5fcd0003e832`:** `/targets/all`-এর Filters-এ In hand কাজ শুরু হয়েছে/হয়নি, Skip/Delete reason, Added from/to এবং activity/added date sort আছে। এগুলো server-side count/page, saved view ও shareable link-এ কাজ করে। Chrome-এ started/not started, Page Not Found, added-date ও sort live data দিয়ে দেখা হয়েছে। Web ৩০১/৩০১ tests; server ১২৫৬টি database-free tests পাস, ১টি skipped; backend integration test লেখা হলেও এই PC-তে test PostgreSQL নেই। No migration/seed; VPS API/web healthy ও PostgreSQL unchanged। Source mirror `.release-salary/oxeio-monitor`, release `/opt/oxeio-releases/design-pool-filters-20261010`। [Release record](audits/2026-10-10-design-pool-filters-release.md) · [Operations](design-pool-operations.md)।
+
+- **১০ অক্টোবর ০৭:৫৪ ঢাকা সময়ের ঐতিহাসিক read-only check:** তখন public health `ok`, database `up`, build **473 / `6b3575c`** এবং সব container healthy ছিল। এরপর release **476** deploy হয়েছে—ওই পুরোনো marker deploy-এর ভিত্তি হিসেবে ব্যবহার করবেন না। Shared handoff এই `/opt/oxeio/docs/current-state.md`; [সকালের status record](audits/2026-10-10-handoff-status.md) কেবল তখনকার snapshot।
 
 - **Daily designs & skips date presets live — release 473 / `6b3575c3eedc3c35d47a072e6970646f072ef5b5`:** `/targets/daily`-তে Today, Yesterday, 7/14/30 days, This month, Year to Date, This Year এবং Custom আছে। Year to Date = ১ জানুয়ারি–আজ; This Year = ১ জানুয়ারি–৩১ ডিসেম্বর, কিন্তু future activity row/chart দেখায় না। API-এর ৩১ দিনের daily-report সীমা ৩৬৬ দিনে বাড়ানো হয়েছে। Web ৩০০/৩০০ tests, typecheck/lint/build ও server typecheck পাস; local API integration test `DATABASE_URL` না থাকায় চালানো যায়নি। VPS API/web healthy, PostgreSQL unchanged, public JS/build verified; Chrome-এ Yesterday ও This Year data load দেখা হয়েছে। Source mirror `.release-salary/oxeio-monitor`; release `/opt/oxeio-releases/daily-periods-20261008`। [Release record](audits/2026-10-08-daily-period-presets.md)।
 
@@ -13,6 +15,8 @@
 - অনুমোদিত [clickable HTML mockup](mockups/full-system-redesign.html) অনুযায়ী implementation শুরু হয়েছে। **Release 468 / `f5dbc7de60c15e646a84b4244b3a647b0af24c1b` live:** shared sidebar/topbar নতুন blue design, responsive mobile drawer, এবং Live Board-এর নতুন KPI, Team output, Needs attention ও Team snapshot hierarchy। Owner Chrome session-এ Live Board ও Add target navigation দেখা হয়েছে। Existing data, permissions, routes, API ও database অপরিবর্তিত। Worklog, Targets, Team, Oversight, Office ও Production-এর page-specific redesign এখনো বাকি; mockup-এর বাকি sample number live data নয়। [Release record](audits/2026-10-08-system-redesign-phase1.md) · [Scope](full-system-redesign-mockup.md)।
 
 ## Live
+
+- **সর্বশেষ release 476 / `584de27075252b165d0d36b01d1b5fcd0003e832`**: Design Pool-এর নতুন progress, reason, added-date ও sort filters live। [Details](audits/2026-10-10-design-pool-filters-release.md)।
 
 - **সর্বশেষ release 473 / `6b3575c3eedc3c35d47a072e6970646f072ef5b5`**: Daily designs & skips date presets ও পূর্ণ বছরের API report live। [Details](audits/2026-10-08-daily-period-presets.md)।
 
