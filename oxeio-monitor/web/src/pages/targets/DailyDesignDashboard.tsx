@@ -6,6 +6,7 @@ import {ErrorBox,Loading} from '../../components/States';
 import {formatDateTime} from '../../lib/format';
 import {dailyPeriodOptions,dailyPeriodRange,dhakaToday} from './daily-periods';
 import type {DailyPeriod} from './daily-periods';
+import {chartBarHeight,chartMaximum} from './daily-chart-scale';
 import './daily-design-dashboard.css';
 
 type View='daily'|'analysis';
@@ -21,8 +22,8 @@ function DailyRow({row,expanded,onToggle}:{row:DailyDesignRow;expanded:boolean;o
 function Chart({rows,from,to}:{rows:DailyDesignRow[];from:string;to:string}){
  const days=useMemo(()=>{const end=new Date(`${to>dhakaToday()?dhakaToday():to}T12:00:00Z`);const start=new Date(`${from}T12:00:00Z`);if(Number.isNaN(end.getTime())||Number.isNaN(start.getTime())||end<start)return [];
   const count=Math.min(7,Math.max(1,Math.round((end.getTime()-start.getTime())/86400000)+1));return Array.from({length:count},(_,index)=>{const date=new Date(end.getTime()-(count-1-index)*86400000).toISOString().slice(0,10);const matches=rows.filter(row=>row.date===date);return {date,completed:matches.reduce((n,row)=>n+row.completed,0),skipped:matches.reduce((n,row)=>n+(row.skipped??0),0)};});},[rows,from,to]);
- const max=Math.max(1,...days.map(day=>day.completed));
- return <div className="dd-chart" role="img" aria-label="Completed designs and recorded skips by day">{days.map(day=><div className="dd-chart-day" key={day.date} title={`${day.date}: ${day.completed} completed, ${day.skipped} skips`}><div className="dd-bars"><div className="dd-bar dd-bar-completed" style={{height:`${Math.max(day.completed?5:0,day.completed/max*100)}%`}}/><div className="dd-bar dd-bar-skipped" style={{height:`${Math.max(day.skipped?5:0,day.skipped/max*100)}%`}}/></div><span>{new Date(`${day.date}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'})}</span></div>)}</div>;
+ const max=chartMaximum(days);
+ return <div className="dd-chart" role="img" aria-label="Completed designs and recorded skips by day">{days.map(day=><div className="dd-chart-day" key={day.date} title={`${day.date}: ${day.completed} completed, ${day.skipped} skips`}><div className="dd-bars"><div className="dd-bar dd-bar-completed" style={{height:`${chartBarHeight(day.completed,max)}%`}}/><div className="dd-bar dd-bar-skipped" style={{height:`${chartBarHeight(day.skipped,max)}%`}}/></div><span>{new Date(`${day.date}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'})}</span></div>)}</div>;
 }
 
 export function DailyDesignDashboard(){
