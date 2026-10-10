@@ -1,6 +1,8 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ৮ অক্টোবর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ১০ অক্টোবর ২০২৬ · Asia/Dhaka
+
+- **১০ অক্টোবর ০৭:৫৪ ঢাকা সময় read-only status check:** Public health `ok`, database `up`, build **473 / `6b3575c`**। VPS-এ web, API ও PostgreSQL container healthy। Deployed app commit এখনো `6b3575c3eedc3c35d47a072e6970646f072ef5b5`; নতুন app deploy হয়নি। Shared handoff এই `/opt/oxeio/docs/current-state.md`; VPS Git HEAD-এ আগের docs commit `75ea931` ছিল, যা app release marker-এর চেয়ে নতুন হওয়া স্বাভাবিক। এই নথি ও [status check](audits/2026-10-10-handoff-status.md) দেখে অন্য PC থেকে কাজ ধরতে হবে।
 
 - **Daily designs & skips date presets live — release 473 / `6b3575c3eedc3c35d47a072e6970646f072ef5b5`:** `/targets/daily`-তে Today, Yesterday, 7/14/30 days, This month, Year to Date, This Year এবং Custom আছে। Year to Date = ১ জানুয়ারি–আজ; This Year = ১ জানুয়ারি–৩১ ডিসেম্বর, কিন্তু future activity row/chart দেখায় না। API-এর ৩১ দিনের daily-report সীমা ৩৬৬ দিনে বাড়ানো হয়েছে। Web ৩০০/৩০০ tests, typecheck/lint/build ও server typecheck পাস; local API integration test `DATABASE_URL` না থাকায় চালানো যায়নি। VPS API/web healthy, PostgreSQL unchanged, public JS/build verified; Chrome-এ Yesterday ও This Year data load দেখা হয়েছে। Source mirror `.release-salary/oxeio-monitor`; release `/opt/oxeio-releases/daily-periods-20261008`। [Release record](audits/2026-10-08-daily-period-presets.md)।
 
