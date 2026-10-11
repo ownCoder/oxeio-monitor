@@ -1,9 +1,10 @@
-import {Injectable,Logger} from '@nestjs/common';
+import {ForbiddenException,Injectable,Logger,Optional} from '@nestjs/common';
 import {UserRole} from '@prisma/client';
 import type {SessionUser} from '../auth/types';
 import {MeService} from '../me/me.service';
 import {PrismaService} from '../prisma/prisma.service';
 import {ReportsService} from '../reports/reports.service';
+import {TelegramAiDataService,type DataTopic} from './telegram-ai-data.service';
 
 type LinkedUser={id:number;fullName:string;role:UserRole;employeeId:number|null};
 const dayInDhaka=(date=new Date())=>new Date(date.getTime()+6*3600_000).toISOString().slice(0,10);
@@ -15,18 +16,23 @@ const hours=(seconds:number)=>Math.round(seconds/360)/10;
 @Injectable()
 export class TelegramAiAnswerService {
  private readonly logger=new Logger(TelegramAiAnswerService.name);
- constructor(private readonly prisma:PrismaService,private readonly me:MeService,private readonly reports:ReportsService){}
+ constructor(private readonly prisma:PrismaService,private readonly me:MeService,private readonly reports:ReportsService,@Optional() private readonly data?:TelegramAiDataService){}
 
  async answer(user:LinkedUser,question:string):Promise<string>{
   const today=dayInDhaka();
   const normalized=question.trim().toLowerCase().replace(/[!.?।\s]+$/u,'');
   if(['hi','hello','hey','হাই','হ্যালো','সালাম','assalamu alaikum','আসসালামু আলাইকুম'].includes(normalized)){
-   return `হ্যালো ${user.fullName}! আমি oXeio AI Manager। /help লিখে কী জানতে পারবেন দেখুন; /today দিয়ে নিজের কাজ${isManager(user.role)?' এবং /team দিয়ে দলের সারাংশ':''} দেখতে পারবেন।`;
+   return `হ্যালো ${user.fullName}! আমি KIA। /help লিখে কী জানতে পারবেন দেখুন; /today দিয়ে নিজের কাজ${isManager(user.role)?' এবং /team দিয়ে দলের সারাংশ':''} দেখতে পারবেন।`;
   }
-  if(/(?:তুমি|আপনি|tomar|your)\s*(?:নাম|name)|(?:who are you|তুমি কে|আপনি কে)/iu.test(normalized)) return 'আমি oXeio AI Manager—অফিসের কাজ ও অনুমতিপ্রাপ্ত রিপোর্ট বিষয়ে সাহায্য করি। কী জানতে চান? /help লিখে তালিকা দেখুন।';
+  if(/(?:তুমি|আপনি|tomar|your)\s*(?:নাম|name)|(?:who are you|তুমি কে|আপনি কে)/iu.test(normalized)) return 'আমি KIA—অফিসের কাজ ও অনুমতিপ্রাপ্ত রিপোর্ট বিষয়ে সাহায্য করি। কী জানতে চান? /help লিখে তালিকা দেখুন।';
   if(/(?:কী কী|কি কি|what|which|ki ki)/iu.test(normalized)&&/(?:তথ্য|info|জানতে|দিতে পার|পারো|can you|help)/iu.test(normalized)) return this.help(user.role);
   const command=question.trim().split(/\s+/)[0]?.toLowerCase().split('@')[0]??'';
   if(command==='/help'||command==='/start') return this.help(user.role);
+  const dataTopic=this.dataTopic(question);
+  if(dataTopic&&this.data){
+   try{return this.data.render(await this.data.read(user,dataTopic));}
+   catch(error){if(error instanceof ForbiddenException) return 'এই তথ্য দেখার অনুমতি আপনার নেই।';throw error;}
+  }
   if(command==='/team'||command==='/report'){
    if(!isManager(user.role)) return 'Team report শুধু manager ও owner দেখতে পারেন। নিজের কাজ জানতে /today লিখুন।';
    const facts=await this.teamFacts(today);
@@ -62,11 +68,32 @@ export class TelegramAiAnswerService {
  }
 
  help(role:UserRole):string{
-  return ['আমি oXeio AI Manager। বাংলা বা ইংরেজিতে কাজ ও রিপোর্ট নিয়ে প্রশ্ন করুন।',
+  return ['আমি KIA। বাংলা বা ইংরেজিতে কাজ ও রিপোর্ট নিয়ে প্রশ্ন করুন।',
    '/today — নিজের আজকের কাজ',
+   '/office — নিজের assigned design ও open blocker',
+   ...(role!==UserRole.employee?['/production — live production queues']:[]),
    ...(isManager(role)?['/team — দলের গত ৭ দিনের সারাংশ','/report — দলের গত ৭ দিনের রিপোর্ট']:[]),
+   ...(isManager(role)?['/pool — live Design Pool','/review — pending skip review ও replacement']:[]),
+   ...(role===UserRole.owner?['/alerts — open alerts','/salary — এই মাসের payment record status']:[]),
    '/unlink — এই Telegram account বিচ্ছিন্ন করুন',
    'উত্তর শুধু আপনার অনুমতিপ্রাপ্ত system data থেকে দেওয়া হয়। AI ভুল করতে পারে; গুরুত্বপূর্ণ সিদ্ধান্ত portal report মিলিয়ে নিন।'].join('\n');
+ }
+
+ private dataTopic(question:string):DataTopic|null{
+  const command=question.trim().split(/\s+/)[0]?.toLowerCase().split('@')[0]??'';
+  if(command==='/pool') return 'pool';
+  if(command==='/review') return 'review';
+  if(command==='/office') return 'office';
+  if(command==='/production') return 'production';
+  if(command==='/alerts') return 'alerts';
+  if(command==='/salary') return 'salary';
+  if(/(?:design pool|ডিজাইন পুল|pool stock|পুলে কত)/iu.test(question)) return 'pool';
+  if(/(?:skip review|স্কিপ রিভিউ|replacement owed|রিভিউ পেন্ডিং)/iu.test(question)) return 'review';
+  if(/(?:open blocker|office blocker|অফিস ব্লকার)/iu.test(question)) return 'office';
+  if(/(?:production queue|production board|প্রোডাকশন কিউ|প্রোডাকশন বোর্ড)/iu.test(question)) return 'production';
+  if(/(?:open alert|critical alert|কত alert|কত অ্যালার্ট)/iu.test(question)) return 'alerts';
+  if(/(?:salary payment|বেতন দেওয়া|বেতন দেয়া|salary status)/iu.test(question)) return 'salary';
+  return null;
  }
 
  private async myFacts(user:LinkedUser,today:string){

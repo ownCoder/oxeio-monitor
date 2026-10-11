@@ -3,13 +3,15 @@ import {TelegramChannel} from '../alerts/telegram.channel';
 import {MeModule} from '../me/me.module';
 import {ReportsModule} from '../reports/reports.module';
 import {TelegramAiAnswerService} from './telegram-ai-answer.service';
+import {TelegramAiDataController} from './telegram-ai-data.controller';
+import {TelegramAiDataService} from './telegram-ai-data.service';
 import {TelegramAiLinkController} from './telegram-ai-link.controller';
 import {TelegramAiLinkService} from './telegram-ai-link.service';
 import {TelegramAiWorker} from './telegram-ai-worker';
 
 @Module({
  imports:[MeModule,ReportsModule],
- controllers:[TelegramAiLinkController],
- providers:[TelegramChannel,TelegramAiLinkService,TelegramAiAnswerService,TelegramAiWorker],
+ controllers:[TelegramAiLinkController,TelegramAiDataController],
+ providers:[TelegramChannel,TelegramAiLinkService,TelegramAiAnswerService,TelegramAiDataService,TelegramAiWorker],
 })
 export class TelegramAiModule {}
