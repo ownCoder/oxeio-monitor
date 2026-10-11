@@ -21,7 +21,7 @@ export class TargetInsightsController {
   const {start,end}=insightRange(from,to);
   const rows=await this.prisma.$queryRaw<{
    date:string;employeeId:number;empCode:string;fullName:string;completed:number;issued:number;
-   skipped:number|null;pending:number|null;notFound:number|null;events:number|null;copyright:number|null;others:number|null;
+   skipped:number|null;pending:number|null;notFound:number|null;events:number|null;copyright:number|null;birthday:number|null;others:number|null;
    replacementIssued:number|null;replacementOwed:number|null;
   }[]>(Prisma.sql`
    WITH days AS (
@@ -44,6 +44,7 @@ export class TargetInsightsController {
      count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='not_found')::int not_found,
      count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='events')::int events,
      count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='copyright')::int copyright,
+     count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='birthday')::int birthday,
      count(*) FILTER (WHERE (decision IN ('automatic','approved') OR (decision='pending' AND target.status='skipped')) AND reason='others')::int others,
      count(*) FILTER (WHERE replacement_target_id IS NOT NULL)::int replacement_issued,
      count(*) FILTER (WHERE replacement_due)::int replacement_owed
@@ -58,6 +59,7 @@ export class TargetInsightsController {
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.not_found,0)::int END "notFound",
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.events,0)::int END events,
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.copyright,0)::int END copyright,
+    CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.birthday,0)::int END birthday,
     CASE WHEN d.report_date<DATE '2026-09-28' THEN NULL ELSE coalesce(s.others,0)::int END others,
     coalesce(s.replacement_issued,0)::int "replacementIssued",
     coalesce(s.replacement_owed,0)::int "replacementOwed"

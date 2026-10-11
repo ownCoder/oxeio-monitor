@@ -37,6 +37,16 @@ async function addPool(count: number) {
 }
 
 describe('Reason-based immediate skip replacement', () => {
+  it('records Birthday as a pending skip and issues its replacement', async () => {
+    await addPool(1);
+    expect(await service.skip(employeeId, ids[0], 'birthday', now, actorId)).toEqual({ ok: true });
+    expect(await h.prisma.designSkipRequest.findFirstOrThrow()).toMatchObject({
+      reason: 'birthday', decision: 'pending', replacementDue: false,
+    });
+    expect(await h.prisma.designTarget.findUniqueOrThrow({ where: { id: ids[0] } })).toMatchObject({
+      status: 'skipped', dropReason: 'birthday', skipReviewPending: true,
+    });
+  });
   it('shows only Page Not Found as automatic; all other reasons queue for manager review', async () => {
     await Promise.all(reasons.map((reason, n) => service.skip(employeeId, ids[n], reason, now, actorId)));
     const requests = await h.prisma.designSkipRequest.findMany({ orderBy: { id: 'asc' } });

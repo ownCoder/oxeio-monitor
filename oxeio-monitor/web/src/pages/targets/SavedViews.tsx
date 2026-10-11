@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {DROP_REASONS} from '../../api/targets';
 import {MiniButton} from '../settings/ui';
 export interface PoolView {filter:string;q:string;staffId:string;addedById:string;from:string;to:string;reviewType?:string;reviewReason?:string;reviewAge?:string;reviewSort?:string;reviewUndated?:string;poolProgress?:string;poolReason?:string;addedFrom?:string;addedTo?:string;poolSort?:string}
 const keys=['filter','q','staffId','addedById','from','to','reviewType','reviewReason','reviewAge','reviewSort','reviewUndated','poolProgress','poolReason','addedFrom','addedTo','poolSort'] as const;
@@ -9,12 +10,12 @@ export function parsePoolView(search:string):PoolView {
  for(const key of ['staffId','addedById'] as const) if(!/^[1-9]\d{0,8}$/.test(result[key]))result[key]='';
  for(const key of ['from','to'] as const) if(!/^\d{4}-\d{2}-\d{2}$/.test(result[key]))result[key]='';
  if(!['','all','pending','skipped','deleted'].includes(result.reviewType??''))result.reviewType='';
- if(!['','not_found','events','copyright','others'].includes(result.reviewReason??''))result.reviewReason='';
+ if(!['',...DROP_REASONS].includes(result.reviewReason??''))result.reviewReason='';
  if(!['','today','over_24h','over_7d'].includes(result.reviewAge??''))result.reviewAge='';
  if(!['','pending_first','oldest_pending','newest','newest_deleted'].includes(result.reviewSort??''))result.reviewSort='';
  if(result.reviewUndated!=='true')result.reviewUndated='';
  if(!['','not_started','started'].includes(result.poolProgress??''))result.poolProgress='';
- if(!['','not_found','events','copyright','others'].includes(result.poolReason??''))result.poolReason='';
+ if(!['',...DROP_REASONS].includes(result.poolReason??''))result.poolReason='';
  for(const key of ['addedFrom','addedTo'] as const) if(!/^\d{4}-\d{2}-\d{2}$/.test(result[key]??''))result[key]='';
  if(!['','activity_newest','activity_oldest','added_newest','added_oldest'].includes(result.poolSort??''))result.poolSort='';
  return result;

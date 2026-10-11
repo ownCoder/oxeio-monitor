@@ -130,7 +130,7 @@ class ListQueryDto {
   @IsOptional() @IsIn(['all', 'pending', 'skipped', 'deleted'])
   reviewType?: 'all' | 'pending' | 'skipped' | 'deleted';
 
-  @IsOptional() @IsIn(['not_found', 'events', 'copyright', 'others'])
+  @IsOptional() @IsIn([...DROP_REASONS])
   reviewReason?: DropReason;
 
   @IsOptional() @IsIn(['today', 'over_24h', 'over_7d'])
@@ -145,7 +145,7 @@ class ListQueryDto {
   @IsOptional() @IsIn(['not_started', 'started'])
   poolProgress?: 'not_started' | 'started';
 
-  @IsOptional() @IsIn(['not_found', 'events', 'copyright', 'others'])
+  @IsOptional() @IsIn([...DROP_REASONS])
   poolReason?: DropReason;
 
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)

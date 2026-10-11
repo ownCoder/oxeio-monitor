@@ -167,7 +167,7 @@ export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
  * ⚠️ ক্রমটাই পর্দার ক্রম, আর **`not_found` প্রথমে** — মাঠে ওটাই সবচেয়ে
  * বেশি ঘটে (Amazon-এ পাতাটাই নেই)। বেশি-ব্যবহৃতটা হাতের কাছে থাকে।
  */
-export const DROP_REASONS = ['not_found', 'events', 'copyright', 'others'] as const;
+export const DROP_REASONS = ['not_found', 'events', 'copyright', 'birthday', 'others'] as const;
 
 export type DropReason = (typeof DROP_REASONS)[number];
 
@@ -179,6 +179,7 @@ export const DROP_REASON_LABEL: Record<DropReason, string> = {
   not_found: 'Page Not Found',
   events: 'Event',
   copyright: 'Copyright',
+  birthday: 'Birthday',
   others: 'Others',
 };
 

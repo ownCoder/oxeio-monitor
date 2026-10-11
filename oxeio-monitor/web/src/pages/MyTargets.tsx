@@ -118,7 +118,7 @@ export function MyTargets() {
     >
       <div className="space-y-3 p-4">
         <Notice>
-          Choose Page Not Found, Event, Copyright or Others after pressing Skip. Page Not Found needs no review; the other reasons go to owner or manager review. Every skip receives one random replacement immediately when the pool and daily limit allow it.
+          Choose Page Not Found, Event, Copyright, Birthday or Others after pressing Skip. Page Not Found needs no review; the other reasons go to owner or manager review. Every skip receives one random replacement immediately when the pool and daily limit allow it.
         </Notice>
         {!!allowance.data?.replacementOwed && <Notice tone="attention">
           Replacement designs owed: {allowance.data.replacementOwed}. They will be issued before ordinary top-ups when capacity is available.
