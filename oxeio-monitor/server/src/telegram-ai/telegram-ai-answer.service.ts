@@ -139,7 +139,7 @@ export class TelegramAiAnswerService {
   try{
    const modelFacts=this.compactFacts(facts,question);
    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{
-    method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${key}`},
+    method:'POST',headers:{'content-type':'application/json','user-agent':'oXeio-Office/1.0',authorization:`Bearer ${key}`},
     body:JSON.stringify({model:process.env.GROQ_MODEL?.trim()||'qwen/qwen3.8-27b',stream:false,
      reasoning_effort:'none',max_completion_tokens:128,temperature:0.5,
      messages:[
