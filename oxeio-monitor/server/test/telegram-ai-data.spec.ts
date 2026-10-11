@@ -33,9 +33,9 @@ describe('KIA live data boundary',()=>{
   const data=new TelegramAiDataService({employee:{count:employeeCount},salaryPayment:{count:paymentCount}} as unknown as PrismaService);
   await expect(data.read({role:UserRole.manager,employeeId:null},'salary')).rejects.toMatchObject({status:403});
   const result=await data.read({role:UserRole.owner,employeeId:null},'salary');
-  expect(result).toMatchObject({topic:'salary',paid:5,partial:2,unpaid:1,unknown:2});
+  expect(result).toMatchObject({topic:'salary',staffInPeriod:10,paid:5,partial:2,unpaid:1,unknown:2});
   expect(JSON.stringify(result)).not.toContain('paidAmount');
-  expect(paymentCount.mock.calls[0][0].where.employee.status).toBe('active');
+  expect(paymentCount.mock.calls[0][0].where.employee.OR[1].leftOn.gte).toBeInstanceOf(Date);
  });
 
  it('uses the same live data service for private bot commands',async()=>{

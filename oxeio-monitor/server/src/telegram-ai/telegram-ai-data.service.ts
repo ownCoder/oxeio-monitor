@@ -61,15 +61,16 @@ export class TelegramAiDataService {
   }
   if(reader.role!==UserRole.owner) throw new ForbiddenException('Salary payment status is owner-only.');
   const month=day.slice(0,7);
-  const activePayment={yearMonth:month,employee:{status:'active' as const}};
-  const [activeStaff,recorded,paid,partial,unpaid]=await Promise.all([
-   this.db.employee.count({where:{status:'active'}}),
-   this.db.salaryPayment.count({where:activePayment}),
-   this.db.salaryPayment.count({where:{...activePayment,status:'paid'}}),
-   this.db.salaryPayment.count({where:{...activePayment,status:'partial'}}),
-   this.db.salaryPayment.count({where:{...activePayment,status:'unpaid'}}),
+  const eligible={OR:[{status:'active' as const},{leftOn:{gte:new Date(`${month}-01T00:00:00Z`)}}]};
+  const paymentWhere={yearMonth:month,employee:eligible};
+  const [staffInPeriod,recorded,paid,partial,unpaid]=await Promise.all([
+   this.db.employee.count({where:eligible}),
+   this.db.salaryPayment.count({where:paymentWhere}),
+   this.db.salaryPayment.count({where:{...paymentWhere,status:'paid'}}),
+   this.db.salaryPayment.count({where:{...paymentWhere,status:'partial'}}),
+   this.db.salaryPayment.count({where:{...paymentWhere,status:'unpaid'}}),
   ]);
-  return {topic,asOf:day,month,activeStaff,recorded,paid,partial,unpaid,unknown:Math.max(0,activeStaff-recorded),note:'Payment records show recorded state; missing rows are unknown, not unpaid.'};
+  return {topic,asOf:day,month,staffInPeriod,recorded,paid,partial,unpaid,unknown:Math.max(0,staffInPeriod-recorded),note:'Payment records show recorded state; missing rows are unknown, not unpaid.'};
  }
 
  render(data:Awaited<ReturnType<TelegramAiDataService['read']>>):string{
@@ -79,7 +80,7 @@ export class TelegramAiDataService {
    case 'pool':return `Design Pool · ${data.asOf}\nPool ${data.available}, in hand ${data.inHand}, done ${data.completed}, skipped ${data.skipped}, deleted ${data.deleted}।`;
    case 'review':return `Review · ${data.asOf}\nPending skip review ${data.pendingSkipReviews}, replacement owed ${data.replacementsOwed}। আজ complete ${data.completedToday}, accepted skip ${data.acceptedSkipsToday}।`;
    case 'alerts':return `Alerts · ${data.asOf}\nOpen ${data.openAlerts}, critical ${data.criticalAlerts}। বিস্তারিত portal-এর Alerts page-এ দেখুন।`;
-   case 'salary':return `Salary payment · ${data.month}\nActive staff ${data.activeStaff}, paid record ${data.paid}, partial ${data.partial}, unpaid record ${data.unpaid}, record নেই ${data.unknown}। Record নেই মানে unpaid নয়; portal-এর Salary page মিলিয়ে দেখুন।`;
+   case 'salary':return `Salary payment · ${data.month}\nএই মাসে অন্তর্ভুক্ত staff ${data.staffInPeriod}, paid record ${data.paid}, partial ${data.partial}, unpaid record ${data.unpaid}, record নেই ${data.unknown}। Record নেই মানে unpaid নয়; portal-এর Salary page মিলিয়ে দেখুন।`;
   }
  }
 }
