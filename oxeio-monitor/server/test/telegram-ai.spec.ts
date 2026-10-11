@@ -145,4 +145,34 @@ describe('Telegram AI access', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('sends only compact verified facts to the configured fast provider', async () => {
+    vi.stubEnv('TELEGRAM_AI_PROVIDER', 'groq');
+    vi.stubEnv('GROQ_API_KEY', 'test-only-key');
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: 'এই তথ্যটি রিপোর্টে নেই।' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const prisma = {
+        designTarget: { groupBy: vi.fn().mockResolvedValue([]) },
+        designSkipRequest: { groupBy: vi.fn().mockResolvedValue([]) },
+      } as unknown as PrismaService;
+      const reports = { summary: vi.fn().mockResolvedValue({ rows: [
+        { employeeId: 3, empCode: 'OX-03', fullName: 'Staff A', creditedHours: 25, targetHours: 40, shortfallHours: 15 },
+      ] }) } as unknown as ReportsService;
+      const service = new TelegramAiAnswerService(prisma, {} as MeService, reports);
+      expect(await service.answer({ id: 1, fullName: 'Owner', role: UserRole.owner, employeeId: null }, 'কাল কে অফিসে থাকবে?')).toBe('এই তথ্যটি রিপোর্টে নেই।');
+      const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
+      expect(request.headers).toMatchObject({ authorization: 'Bearer test-only-key' });
+      const payload = JSON.parse(request.body as string) as { model: string; reasoning_effort: string; messages: { content: string }[] };
+      expect(payload.model).toBe('qwen/qwen3.8-27b');
+      expect(payload.reasoning_effort).toBe('none');
+      expect(payload.messages[1].content).toContain('1 staff');
+      expect(payload.messages[1].content).not.toContain('Staff A');
+      expect(payload.messages[1].content).not.toContain('test-only-key');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
 });
