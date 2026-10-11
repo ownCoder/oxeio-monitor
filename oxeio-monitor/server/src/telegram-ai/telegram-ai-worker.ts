@@ -147,8 +147,11 @@ export class TelegramAiWorker implements OnApplicationBootstrap,OnModuleDestroy 
     await reply('Group চালু করতে linked owner/manager-কে Telegram group admin হতে হবে। আগে bot-এর private chat-এ portal থেকে /link CODE দিয়ে যুক্ত হন।');return;
    }
    const existing=await this.groupConfig();
-   if(existing?.enabled&&existing.chatId!==chatId){await reply('AI Manager ইতিমধ্যে অন্য group-এ চালু আছে। পুরোনো group-এর manager-কে আগে /groupoff দিতে হবে।');return;}
-   const config:GroupConfig=existing?.chatId===chatId?{...existing,title:(chat.title||existing.title).slice(0,100),enabled:true}:
+   if(existing?.enabled&&existing.chatId!==chatId){
+    const ownerRebind=user.role==='owner'&&existing.title===chat.title&&/^\/setup(?:@\w+)?\s+migrate$/i.test(raw);
+    if(!ownerRebind){await reply('AI Manager অন্য chat ID-তে চালু আছে। Telegram group upgrade হলে linked owner এই group-এ /setup@'+bot+' migrate দিন; অন্য group হলে পুরোনো group-এ /groupoff দিন।');return;}
+   }
+   const config:GroupConfig=existing?.enabled||existing?.chatId===chatId?{...existing,chatId,title:(chat.title||existing.title).slice(0,100),enabled:true}:
     {chatId,title:(chat.title||'oXeio Office').slice(0,100),startTime:'09:00',graceMinutes:15,enabled:true};
    await this.prisma.setting.upsert({where:{key:GROUP_KEY},create:{key:GROUP_KEY,value:config,updatedById:user.id},update:{value:config,updatedById:user.id}});
    await reply('oXeio AI Manager এই group-এ চালু। প্রশ্ন করতে @'+bot+' লিখুন বা /guide@'+bot+' দিন। ব্যক্তিগত account আগে bot-এর private chat-এ link করতে হবে। সকাল, tracked-start, skip-review এবং সন্ধ্যার কাজের reminder চালু আছে; /schedule দিয়ে start time বদলানো যায়।');
