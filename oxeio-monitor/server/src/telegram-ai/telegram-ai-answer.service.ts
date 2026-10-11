@@ -138,7 +138,8 @@ export class TelegramAiAnswerService {
   if(!key){this.logger.warn('Telegram AI cloud key missing');return 'AI সংযোগ এখন পাওয়া যাচ্ছে না। /today ও /team দিয়ে সরাসরি তথ্য দেখুন।';}
   try{
    const modelFacts=this.compactFacts(facts,question);
-   const replyLanguage=/[\u0980-\u09FF]/.test(question)?'Bengali script only':'English';
+   const romanizedBangla=/(?:^|\W)(?:ami|amar|amader|tumi|tomar|apni|koto|koy|ki|keno|kobe|mase|mashe|mash|din|ajke|kalke|hoyeche|koreche|dibe|parbe)(?:\W|$)/i.test(question);
+   const replyLanguage=/[\u0980-\u09FF]/.test(question)||romanizedBangla?'Bengali script only':'English';
    const response=await fetch('https://api.groq.com/openai/v1/chat/completions',{
     method:'POST',headers:{'content-type':'application/json','user-agent':'oXeio-Office/1.0',authorization:`Bearer ${key}`},
     body:JSON.stringify({model:process.env.GROQ_MODEL?.trim()||'qwen/qwen3.8-27b',stream:false,
