@@ -42,6 +42,25 @@ export class TelegramAiAnswerService {
   return this.aiAnswer(user,question,facts);
  }
 
+ async groupAnswer(user:LinkedUser,question:string):Promise<string>{
+  const text=question.trim();
+  if(/(?:^|\s)\/(?:today|me|team|report|unlink|link)(?:@\w+)?\b/i.test(text))
+   return 'ব্যক্তিগত কাজ ও team report জানতে bot-এর private chat-এ /today বা /team লিখুন। Group-এ ব্যক্তিগত রিপোর্ট দেখানো হয় না।';
+  if(/(?:salary|বেতন|deposit|জমা|late|দেরি|gap|অনুপস্থিতি|attendance|উপস্থিতি|hours|ঘণ্টা|কতক্ষণ|credited|OX-\d+)/iu.test(text))
+   return 'ব্যক্তিগত attendance, ঘণ্টা ও বেতনের তথ্য group-এ দেখানো হয় না। নিজের তথ্য bot-এর private chat-এ /today লিখে দেখুন; manager/owner private chat-এ /team দেখতে পারেন।';
+  if(/(?:^|\s)\/(?:guide|help)(?:@\w+)?\b|(?:নিয়ম|নিয়ম|workflow|কীভাবে কাজ|কিভাবে কাজ)/iu.test(text))
+   return 'কাজের নির্দেশনা: portal-এর My Data-তে assigned design দেখুন। Skip করলে সঠিক কারণ বেছে নিন; Page Not Found ছাড়া অন্য কারণ manager review-এ যায়। Replacement pool stock থাকলে 1:1 দেওয়া হয়। নিজের কাজের হিসাব bot-এর private chat-এ /today দিয়ে দেখুন।';
+  return this.aiAnswer(user,text,{
+   scope:'Shared group guidance only; no employee, salary, attendance, or private report facts are available here.',
+   verifiedRules:[
+    'Assigned designs are visible in the portal My Data page.',
+    'A designer must select a reason when skipping a design. Page Not Found requires no manager review. Event, Copyright, Others and Birthday go to manager review.',
+    'A skipped design is not returned to the pool. A 1:1 replacement is attempted when stock is available.',
+    'Personal work data belongs in the bot private chat using /today. Managers can use /team privately.',
+   ],
+  });
+ }
+
  help(role:UserRole):string{
   return ['আমি oXeio AI Manager। বাংলা বা ইংরেজিতে কাজ ও রিপোর্ট নিয়ে প্রশ্ন করুন।',
    '/today — নিজের আজকের কাজ',

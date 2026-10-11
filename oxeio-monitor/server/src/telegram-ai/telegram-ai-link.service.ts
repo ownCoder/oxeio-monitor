@@ -53,4 +53,13 @@ export class TelegramAiLinkService {
   if(!row?.user.isActive||row.user.mustChangePw) return null;
   return row.user;
  }
+
+ async linkedUserByTelegramId(telegramUserId:string){
+  const row=await this.prisma.telegramAiAccount.findFirst({
+   where:{telegramUserId,linkedAt:{not:null}},
+   include:{user:{select:{id:true,fullName:true,role:true,employeeId:true,isActive:true,mustChangePw:true}}},
+  });
+  if(!row?.user.isActive||row.user.mustChangePw) return null;
+  return row.user;
+ }
 }
