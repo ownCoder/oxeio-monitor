@@ -1,6 +1,8 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ১১ অক্টোবর ২০২৬ · Asia/Dhaka
+সর্বশেষ আপডেট: ১৪ অক্টোবর ২০২৬ · Asia/Dhaka
+
+- **VPS disk 81% — ১৪ অক্টোবর:** `/dev/vda1` 77G-এর মধ্যে 62G used, 16G available। Docker-এ 103 image / 46.07GB, যার 32.39GB reclaimable; পুরোনো tagged rollback image জমেছে (API-র `before-*` tag প্রায় ৫০টি)। Build cache 1.335GB হলেও reclaimable 0B। Daily cache-prune timer enabled/active এবং ১৩ অক্টোবরের run সফল, তাই পুরোনো cache নয়—image retention-ই ৮০% alert আবার আসার প্রধান কারণ। App `.data/storage` 7.7GB, backups 687MB, PostgreSQL volume 301MB। API/web/PostgreSQL healthy। এই audit-এ image/backup/storage মুছে দেওয়া হয়নি; rollback retention policy ঠিক করে বাছাই করা image cleanup প্রয়োজন। [Audit](audits/2026-10-14-vps-disk-81-percent.md)।
 
 - **KIA live data API — release 502 / `62be943497961841edeb1e810ae5d9354a6dee1c`:** Authenticated read-only `GET /api/v1/me/telegram-ai/data?topic=pool|review|office|production|alerts|salary` চালু। Telegram worker ও HTTP endpoint একই permission-checked service ব্যবহার করে; bot-এর আলাদা API key বা নিজের server-এ HTTP call লাগে না। `/office` কর্মীর নিজের assigned design/blocker, `/production` owner/manager/researcher, `/pool` ও `/review` owner/manager, `/alerts` ও `/salary` owner-only; Salary-তে কেবল payment-record status count, amount নয়। Salary count মাসের মধ্যে চাকরি ছেড়েছেন এমন staff-ও Salary page-এর মতো অন্তর্ভুক্ত করে; `not recorded`-কে unpaid বলে না। Group reply-তে ব্যক্তিগত report নয়। Owner private chat-এ `/pool`, `/review`, `/salary` live যাচাই হয়েছে; API health build 502, anonymous data request 401, PostgreSQL container অপরিবর্তিত। Local typecheck/lint ও ২১টি focused test পাস। Build শেষে unused builder cache পরিষ্কার; VPS disk 80% used, 16 GiB free—পুরোনো tagged images review ছাড়া মুছিনি। [Operations](telegram-ai-operations.md)। VPS releases `/opt/oxeio-releases/telegram-ai-live-data-20261011` ও `/opt/oxeio-releases/telegram-ai-live-data-salary-20261011`।
 
