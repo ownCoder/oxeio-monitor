@@ -1,6 +1,6 @@
 # oXeio Workforce Monitor
 
-> **3 November 2026 — prepared, not deployed:** office-only agent access (`144.79.106.62`) and shared-PC staff login, with separate historical ownership and safe account handoff. See [implementation/validation/rollout status](docs/office-agent-access.md).
+> **3 November 2026 — prepared, not deployed:** agent access from any IP and shared-PC staff login (office-IP restriction deferred by the owner), with separate historical ownership and safe account handoff. See [implementation/validation/rollout status](docs/office-agent-access.md).
 
 > **Continue from another PC:** read [current state](docs/current-state.md) and [standing instructions](docs/work-preferences.md) first. Update these records after each completed task.
 

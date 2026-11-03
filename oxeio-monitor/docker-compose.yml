@@ -48,8 +48,9 @@ services:
       LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-2}
       # ⚠️ G116 — IP-প্রতি সীমা। জোড়া-কাউন্টার এক IP থেকে বহু ইমেইল ধরত না
       LOGIN_IP_MAX_FAILS: ${LOGIN_IP_MAX_FAILS:-50}
-      # Agent access is restricted to the office public network.
-      AGENT_OFFICE_NETWORKS: ${AGENT_OFFICE_NETWORKS:-144.79.106.62}
+      # Any IP for now; use office mode with an allowlist to restrict later.
+      AGENT_ACCESS_MODE: ${AGENT_ACCESS_MODE:-any}
+      AGENT_OFFICE_NETWORKS: ${AGENT_OFFICE_NETWORKS:-}
       PORT: 3000
       STORAGE_ROOT: /data/storage
       # ⚠️ ড্যাশবোর্ড `web` সার্ভিস দিয়ে চললে এটা কার্যত অব্যবহৃত — Caddy

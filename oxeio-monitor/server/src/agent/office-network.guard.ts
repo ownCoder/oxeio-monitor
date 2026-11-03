@@ -37,8 +37,14 @@ export function isOfficeAddress(
 @Injectable()
 export class OfficeNetworkGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
+    // IP filtering is opt-in; account/device authentication still runs separately.
+    const mode = process.env.AGENT_ACCESS_MODE ?? 'any';
+    if (mode === 'any') return true;
     const request = context.switchToHttp().getRequest<Request>();
-    if (isOfficeAddress(request.ip, process.env.AGENT_OFFICE_NETWORKS ?? ''))
+    if (
+      mode === 'office' &&
+      isOfficeAddress(request.ip, process.env.AGENT_OFFICE_NETWORKS ?? '')
+    )
       return true;
     // Existing agents retry 503, retaining their queue and credentials. A generic
     // 403 would be treated as a permanent rejection and discard captured work.
