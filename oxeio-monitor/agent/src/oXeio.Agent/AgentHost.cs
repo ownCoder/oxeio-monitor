@@ -322,7 +322,29 @@ internal sealed class AgentHost : IAsyncDisposable
         // ── পরিচয় ও টোকেন ──────────────────────────────────────────────────
         var identity = MachineIdentity.Collect();
         var tokenStore = new DeviceTokenStore(log: _log.Info);
-        _credentials = DeviceCredentials.Open(tokenStore, identity, _log.Info);
+        // Recover a crashed/finished sign-out before loading a persisted token.
+        var handoffPaths = OutboxPaths.Default;
+        try
+        {
+            _skipEnrollmentCode = AccountHandoff.Pending(handoffPaths);
+            if (_skipEnrollmentCode && !tokenStore.TryDelete("account handoff"))
+            {
+                error = "Could not clear the previous login. Restart after checking folder permissions.";
+                return false;
+            }
+            _credentials = DeviceCredentials.Open(tokenStore, identity, _log.Info);
+            if (!_credentials.IsEnrolled)
+            {
+                var archive = AccountHandoff.Quarantine(handoffPaths);
+                if (archive is not null) _log.Info($"Previous account's unsent data retained at {archive}");
+            }
+            AccountHandoff.Complete(handoffPaths);
+        }
+        catch (Exception ex)
+        {
+            error = $"Could not isolate the previous account's data: {ex.Message}";
+            return false;
+        }
 
         // ── সার্ভারের সাথে কথা ─────────────────────────────────────────────
         _sync = new HttpSyncClient(
@@ -1183,22 +1205,11 @@ internal sealed class AgentHost : IAsyncDisposable
     /// </summary>
     private int _signOutOpen;
 
-    /// <summary>
-    /// tray-র "Sign out" থেকে — টোকেন মুছে মেশিনটাকে "কেউ সাইন ইন করেনি"
-    /// অবস্থায় ফিরিয়ে দেওয়া।
-    ///
-    /// ⚠️⚠️ <b>ক্রমটাই এখানকার আসল সিদ্ধান্ত: আগে সাইন আউট, তারপর কিউ সাফ।</b>
-    /// উল্টো করলে দুটোর মাঝের মুহূর্তে ট্র্যাকিং লুপ তখনো চালু (স্টাফ তখনো
-    /// enrolled), তাই একটা নতুন সারি ঢুকে পড়তে পারত — আর সেটা সাইন আউটের
-    /// পরেও কিউতে থেকে যেত। পরের জন সাইন ইন করলে ওটা <b>তার</b> টোকেনে
-    /// চলে যেত। সাইন আউট আগে করলে <see cref="TrackingGate"/> সাথে সাথেই
-    /// নতুন সারি ঢোকা বন্ধ করে দেয়।
-    ///
-    /// ⚠️ তবু নিখুঁত নয়: ঠিক ওই মুহূর্তে <b>ধার নেওয়া</b> (leased) সারি
-    /// থাকলে সেটা এই ঝাড়ুতে পড়ে না (<c>EvictAsync</c> ইচ্ছাকৃতভাবে leased
-    /// সারি ছোঁয় না)। জানালাটা ছোট, কিন্তু আছে — তাই সাফ করার পর গভীরতা
-    /// আবার মেপে অবশিষ্ট থাকলে লগে <b>জোরে</b> লেখা হয়, নীরবে নয়।
-    /// </summary>
+    // Switching accounts uses a fresh process, so in-flight work cannot inherit
+    // a different token. Startup retains the previous outbox separately.
+    private volatile bool _accountRestartRequired;
+    private bool _skipEnrollmentCode;
+
     private async Task SignOutOnDemandAsync()
     {
         if (_credentials is null || _outbox is null) return;
@@ -1235,21 +1246,21 @@ internal sealed class AgentHost : IAsyncDisposable
                 return;
             }
 
+            AccountHandoff.Begin(_outbox.Paths, _credentials.DeviceId);
+            _accountRestartRequired = true;
             _credentials.SignOut("staff chose Sign out from the tray menu");
 
-            var discarded = await DiscardOutboxAsync();
-            if (discarded > 0)
-                _log.Info($"Discarded {discarded} unsent item(s) so they cannot be counted for the next person");
-
-            var left = await _outbox.GetDepthAsync(_stopping.Token);
-            if (left.Total > 0)
+            // A fresh process prevents in-flight captures, leases and tracker state
+            // from crossing the account boundary. Startup quarantines the old queue.
+            var restart = new ProcessStartInfo(Application.ExecutablePath)
             {
-                // ⚠️ এটা নীরবে গিলে ফেলা যায় না — অবশিষ্ট সারি মানে পরের
-                //    জনের খাতায় ভুল ঘণ্টা বসার সম্ভাবনা।
-                _log.Error(
-                    $"⚠ {left.Total} item(s) were still leased and could not be discarded at sign-out. "
-                    + "They may upload under the next person who signs in on this PC.");
-            }
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            restart.ArgumentList.Add("--wait-for-pid");
+            restart.ArgumentList.Add(Environment.ProcessId.ToString());
+            using var next = Process.Start(restart) ?? throw new InvalidOperationException("Agent restart failed");
+            tray.Post(() => Application.Exit());
 
             tray.UpdateOptions(BuildTrayOptions());
             PublishStatus();
@@ -1261,7 +1272,8 @@ internal sealed class AgentHost : IAsyncDisposable
         }
         catch (Exception ex)
         {
-            _log.Error("Sign out failed", ex);
+            _log.Error("Sign out failed; close and reopen the agent before signing in", ex);
+            tray.Post(() => MessageBox.Show("Close and reopen oXeio to finish signing out safely.", "oXeio — sign out"));
         }
         finally
         {
@@ -1303,22 +1315,6 @@ internal sealed class AgentHost : IAsyncDisposable
         });
 
         return completion.Task;
-    }
-
-    /// <summary>
-    /// কিউয়ের সব <b>অ-ধার-নেওয়া</b> সারি ফেলে দেয়। ফাইলসহ — <c>EvictAsync</c>
-    /// .webp-গুলোও মুছে দেয় আর drop-log-এ কারণ লিখে রাখে, তাই পরে
-    /// "কী হারাল" প্রশ্নের উত্তর থাকে।
-    /// </summary>
-    private async Task<int> DiscardOutboxAsync()
-    {
-        if (_outbox is null) return 0;
-
-        var entries = await _outbox.SurveyAsync(_stopping.Token);
-        var rowIds = entries.Where(e => !e.Leased).Select(e => e.RowId).ToList();
-        if (rowIds.Count == 0) return 0;
-
-        return await _outbox.EvictAsync(rowIds, "sign out", _stopping.Token);
     }
 
     /**
@@ -1375,6 +1371,7 @@ internal sealed class AgentHost : IAsyncDisposable
     private async Task SignInOnDemandAsync()
     {
         if (_credentials is null || _sync is null) return;
+        if (_accountRestartRequired || Volatile.Read(ref _signOutOpen) != 0) return;
 
         // ⚠️ ইতিমধ্যে সাইন ইন হয়ে থাকলে চুপচাপ ফিরে যাওয়া — মেনু আইটেমটা
         //    তখন লুকানো থাকে, কিন্তু মেনু খোলা অবস্থায় স্টার্টআপের সাইন-ইন
@@ -1442,7 +1439,7 @@ internal sealed class AgentHost : IAsyncDisposable
          * বার্তাটা যেত এমন এক লগে যা তখনো লেখাই হতো না (H08)। এখন সেই
          * জায়গায় স্টাফকে সরাসরি জিজ্ঞেস করা হয়।
          */
-        if (!string.IsNullOrWhiteSpace(_settings.EnrollmentCode))
+        if (!_skipEnrollmentCode && !string.IsNullOrWhiteSpace(_settings.EnrollmentCode))
         {
             var byCode = await enroller.EnrollWithRetryAsync(
                 new SecretText(_settings.EnrollmentCode), monitors, ct: ct);

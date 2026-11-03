@@ -14,6 +14,7 @@ import {
   type Harness,
   uniqueSuffix,
 } from './setup/harness';
+import { DevicesService } from '../src/admin/devices.service';
 import { resolveThrottle } from '../src/auth/login-throttle.config';
 
 /** ⚠️ চলমান কনফিগ থেকেই — টেস্টে সংখ্যা হার্ডকোড করলে সেটিং বদলালেই ভাঙত */
@@ -48,6 +49,11 @@ const facts = (overrides: Record<string, unknown> = {}) => ({
   agentVersion: '0.2.0',
   monitors: 2,
   ...overrides,
+});
+
+const identity = (value: ReturnType<typeof facts>) => ({
+  hostname: value.hostname,
+  windowsUsername: value.windowsUsername,
 });
 
 const enrollLogin = (body: Record<string, unknown>) =>
@@ -249,49 +255,56 @@ describe('POST /agent/enroll-login — রক্ষাকবচ', () => {
    * পাসওয়ার্ড অনুমান করার সবচেয়ে সহজ দরজা এটাই হতে পারত। যাচাইটা
    * `AuthService.login()`-এ হওয়ায় লগইনের throttle-টাও আপনাআপনি প্রযোজ্য।
    */
-  it.skipIf(!THROTTLE.enabled)('বারবার ভুল দিলে অ্যাকাউন্ট তালাবন্ধ হয়', async () => {
-    /**
-     * ⚠️ এই টেস্টের জন্য **আলাদা ও অনন্য** একটা ইমেইল। throttle-এর
-     * কাউন্টার ইন-মেমরিতে (`email|ip`), আর `resetDatabase()` সেটা মোছে না
-     * — তাই সাধারণ স্টাফ অ্যাকাউন্টটা তালাবন্ধ করে দিলে **পরের প্রতিটা
-     * টেস্ট** ৪২৯ পেত। `auth.e2e.spec.ts`-ও ঠিক এই কৌশলেই চলে।
-     */
-    const email = `locked-${uniqueSuffix()}@test.local`;
-    const password = 'another-password-123';
+  it.skipIf(!THROTTLE.enabled)(
+    'বারবার ভুল দিলে অ্যাকাউন্ট তালাবন্ধ হয়',
+    async () => {
+      /**
+       * ⚠️ এই টেস্টের জন্য **আলাদা ও অনন্য** একটা ইমেইল। throttle-এর
+       * কাউন্টার ইন-মেমরিতে (`email|ip`), আর `resetDatabase()` সেটা মোছে না
+       * — তাই সাধারণ স্টাফ অ্যাকাউন্টটা তালাবন্ধ করে দিলে **পরের প্রতিটা
+       * টেস্ট** ৪২৯ পেত। `auth.e2e.spec.ts`-ও ঠিক এই কৌশলেই চলে।
+       */
+      const email = `locked-${uniqueSuffix()}@test.local`;
+      const password = 'another-password-123';
 
-    await h.prisma.user.create({
-      data: {
-        email,
-        passwordHash: await hashPassword(password),
-        fullName: 'Locked Out',
-        role: UserRole.employee,
-        employeeId,
-        mustChangePw: false,
-      },
-    });
+      await h.prisma.user.create({
+        data: {
+          email,
+          passwordHash: await hashPassword(password),
+          fullName: 'Locked Out',
+          role: UserRole.employee,
+          employeeId,
+          mustChangePw: false,
+        },
+      });
 
-    /**
-     * ⚠️⚠️ সংখ্যাটা আর হার্ডকোড নয় — এটা এখন `.env`-এর সেটিং। আগে "৫"
-     * বসানো ছিল, তাই ডিফল্ট নরম করার সাথে সাথেই টেস্ট ভেঙেছে, অথচ
-     * আচরণ ঠিকই ছিল। টেস্ট নিয়ম পাহারা দিক, একটা সংখ্যা নয়।
-     */
-    const codes: number[] = [];
-    for (let i = 0; i <= THROTTLE.maxFails; i++) {
-      const res = await enrollLogin({ ...facts(), email, password: `guess-${i}` });
-      codes.push(res.status);
-    }
+      /**
+       * ⚠️⚠️ সংখ্যাটা আর হার্ডকোড নয় — এটা এখন `.env`-এর সেটিং। আগে "৫"
+       * বসানো ছিল, তাই ডিফল্ট নরম করার সাথে সাথেই টেস্ট ভেঙেছে, অথচ
+       * আচরণ ঠিকই ছিল। টেস্ট নিয়ম পাহারা দিক, একটা সংখ্যা নয়।
+       */
+      const codes: number[] = [];
+      for (let i = 0; i <= THROTTLE.maxFails; i++) {
+        const res = await enrollLogin({
+          ...facts(),
+          email,
+          password: `guess-${i}`,
+        });
+        codes.push(res.status);
+      }
 
-    expect(codes.slice(0, THROTTLE.maxFails)).toEqual(
-      Array(THROTTLE.maxFails).fill(401),
-    );
-    expect(codes[THROTTLE.maxFails]).toBe(429);
+      expect(codes.slice(0, THROTTLE.maxFails)).toEqual(
+        Array(THROTTLE.maxFails).fill(401),
+      );
+      expect(codes[THROTTLE.maxFails]).toBe(429);
 
-    // ⚠️ তালা পড়ার পর **ঠিক পাসওয়ার্ডও** আটকায় — নইলে তালাটার মানেই থাকত না
-    const right = await enrollLogin({ ...facts(), email, password });
-    expect(right.status).toBe(429);
+      // ⚠️ তালা পড়ার পর **ঠিক পাসওয়ার্ডও** আটকায় — নইলে তালাটার মানেই থাকত না
+      const right = await enrollLogin({ ...facts(), email, password });
+      expect(right.status).toBe(429);
 
-    expect(await h.prisma.device.count()).toBe(0);
-  });
+      expect(await h.prisma.device.count()).toBe(0);
+    },
+  );
 
   it('ব্যর্থ চেষ্টা audit_log-এ ওঠে', async () => {
     await h.prisma.auditLog.deleteMany({});
@@ -309,7 +322,10 @@ describe('POST /agent/enroll-login — রক্ষাকবচ', () => {
   });
 
   it('ঘর বাদ দিলে ৪০০', async () => {
-    const res = await enrollLogin({ email: STAFF_EMAIL, password: STAFF_PASSWORD });
+    const res = await enrollLogin({
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
     expect(res.status).toBe(400);
   });
 
@@ -393,7 +409,11 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
   const addOtherStaff = async (): Promise<number> => {
     const policy = await h.prisma.workPolicy.findFirstOrThrow();
     const other = await h.prisma.employee.create({
-      data: { empCode: 'OX-002', fullName: 'Sadia Akther', policyId: policy.id },
+      data: {
+        empCode: 'OX-002',
+        fullName: 'Sadia Akther',
+        policyId: policy.id,
+      },
     });
 
     await h.prisma.user.create({
@@ -419,14 +439,22 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
     const guid = randomUUID();
 
     const first = await enrollLogin({
-      ...facts({ machineGuid: guid, hostname: 'PC-07', windowsUsername: 'Intern' }),
+      ...facts({
+        machineGuid: guid,
+        hostname: 'PC-07',
+        windowsUsername: 'Intern',
+      }),
       email: STAFF_EMAIL,
       password: STAFF_PASSWORD,
     });
     expect(first.status).toBe(200);
 
     const second = await enrollLogin({
-      ...facts({ machineGuid: guid, hostname: 'PC-07', windowsUsername: 'Intern 2' }),
+      ...facts({
+        machineGuid: guid,
+        hostname: 'PC-07',
+        windowsUsername: 'Intern 2',
+      }),
       email: OTHER_EMAIL,
       password: OTHER_PASSWORD,
     });
@@ -437,7 +465,9 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
 
     // ⭐ দুজনের ঘণ্টা আলাদা সারিতে — কেউ কারোটা কাড়ে না
     expect(await h.prisma.device.count({ where: { employeeId } })).toBe(1);
-    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(1);
+    expect(
+      await h.prisma.device.count({ where: { employeeId: otherId } }),
+    ).toBe(1);
   });
 
   /**
@@ -455,20 +485,23 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
     }).expect(200);
 
     await enrollLogin({
-      ...facts({ machineGuid: guid, hostname: 'PC-09', windowsUsername: 'sadia' }),
+      ...facts({
+        machineGuid: guid,
+        hostname: 'PC-09',
+        windowsUsername: 'sadia',
+      }),
       email: OTHER_EMAIL,
       password: OTHER_PASSWORD,
     }).expect(200);
 
     expect(await h.prisma.device.count()).toBe(2);
-    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(1);
+    expect(
+      await h.prisma.device.count({ where: { employeeId: otherId } }),
+    ).toBe(1);
   });
 
-  /**
-   * ⚠️ যেটা এখনো আটকানো: **একই Windows অ্যাকাউন্ট** দুজন ভাগ করে নিলে।
-   * তখন দুজনের ঘণ্টা এক সারিতে মিশে যেত আর আলাদা করা যেত না।
-   */
-  it('একই Windows অ্যাকাউন্টে দ্বিতীয় কর্মী এলে ৪০৯, প্রথমজনের সব অটুট', async () => {
+  // Shared Windows accounts permit authenticated handoff without changing history.
+  it('shared Windows account allows a new employee and preserves the former owner', async () => {
     const otherId = await addOtherStaff();
     const same = facts({ hostname: 'PC-07', windowsUsername: 'shared' });
 
@@ -490,15 +523,87 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
       password: OTHER_PASSWORD,
     });
 
-    expect(second.status).toBe(409);
+    expect(second.status).toBe(200);
+    expect(second.body.deviceId).not.toBe(first.body.deviceId);
 
     const after = await h.prisma.device.findUniqueOrThrow({
       where: { id: first.body.deviceId },
     });
     expect(after.employeeId).toBe(employeeId);
-    // ⭐ টোকেনও বদলায়নি — প্রথমজনের এজেন্ট চলতেই থাকে
+    // Historical ownership is retained; the former token no longer authorizes ingestion.
     expect(after.tokenHash).toBe(before.tokenHash);
-    expect(await h.prisma.device.count({ where: { employeeId: otherId } })).toBe(0);
+    expect(after.status).toBe('revoked');
+    await expect(
+      h.app
+        .get(DevicesService)
+        .restore(
+          {
+            userId: 1,
+            email: OWNER_EMAIL,
+            role: UserRole.owner,
+            employeeId: null,
+            mustChangePw: false,
+            issuedAt: 0,
+          },
+          first.body.deviceId,
+          { reason: 'test restore' },
+          '144.79.106.62',
+        ),
+    ).rejects.toThrow('Another employee is using this Windows account');
+    expect(
+      await h.prisma.device.count({ where: { employeeId: otherId } }),
+    ).toBe(1);
+    const history = await h.prisma.event.findMany({
+      where: { deviceId: first.body.deviceId },
+    });
+    expect(history.length).toBeGreaterThan(0);
+    expect(history.every((event) => event.employeeId === employeeId)).toBe(
+      true,
+    );
+    await h
+      .http()
+      .get('/api/v1/agent/config')
+      .set('Authorization', `Bearer ${first.body.deviceToken}`)
+      .expect(403);
+    const returning = await enrollLogin({
+      ...same,
+      email: STAFF_EMAIL,
+      password: STAFF_PASSWORD,
+    });
+    expect(returning.status).toBe(200);
+    expect(returning.body.deviceId).toBe(first.body.deviceId);
+    expect(returning.body.deviceToken).not.toBe(first.body.deviceToken);
+    expect(
+      await h.prisma.device.count({
+        where: { ...identity(same), status: 'active' },
+      }),
+    ).toBe(1);
+    expect(
+      (
+        await h.prisma.device.findUniqueOrThrow({
+          where: { id: second.body.deviceId },
+        })
+      ).status,
+    ).toBe('revoked');
+  });
+
+  it('serializes simultaneous logins to a shared Windows slot', async () => {
+    await addOtherStaff();
+    const same = facts({
+      hostname: 'CONCURRENT-PC',
+      windowsUsername: 'shared',
+    });
+    const responses = await Promise.all([
+      enrollLogin({ ...same, email: STAFF_EMAIL, password: STAFF_PASSWORD }),
+      enrollLogin({ ...same, email: OTHER_EMAIL, password: OTHER_PASSWORD }),
+    ]);
+    expect(responses.map((res) => res.status)).toEqual([200, 200]);
+    expect(
+      await h.prisma.device.count({
+        where: { ...identity(same), status: 'active' },
+      }),
+    ).toBe(1);
+    expect(await h.prisma.device.count({ where: identity(same) })).toBe(2);
   });
 
   /** ⭐ একই কর্মী আবার বসালে আগের মতোই চলে — এটা ভাঙা যাবে না */
@@ -529,10 +634,7 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
     expect(device.monitors).toBe(3);
   });
 
-  /**
-   * ⭐ বৈধ হস্তান্তর — একই Windows অ্যাকাউন্ট অন্য কেউ পেলে মালিক আগে
-   * revoke করবেন, তারপর নতুন কর্মী নিতে পারেন।
-   */
+  // A revoked registration also retains its historical owner.
   it('revoke করা ডিভাইস নতুন কর্মী নিতে পারেন', async () => {
     const otherId = await addOtherStaff();
     const same = facts({ hostname: 'PC-07', windowsUsername: 'shared' });
@@ -560,7 +662,49 @@ describe('POST /agent/enroll-login — ডিভাইসের পরিচয�
     const device = await h.prisma.device.findUniqueOrThrow({
       where: { id: first.body.deviceId },
     });
-    expect(device.employeeId).toBe(otherId);
-    expect(device.status).toBe('active');
+    expect(device.employeeId).toBe(employeeId);
+    expect(device.status).toBe('revoked');
+    expect(handover.body.deviceId).not.toBe(first.body.deviceId);
+    expect(handover.body.employee.id).toBe(otherId);
+  });
+});
+
+describe('office network access', () => {
+  it('blocks enrollment and token routes outside the office, including spoofed forwarded prefixes', async () => {
+    for (const ip of ['203.0.113.10', '144.79.106.62, 203.0.113.10']) {
+      const denied = await h
+        .http()
+        .post('/api/v1/agent/enroll-login')
+        .set('X-Forwarded-For', ip)
+        .send({ ...facts(), email: STAFF_EMAIL, password: STAFF_PASSWORD });
+      expect(denied.status).toBe(503);
+      expect(denied.body.code).toBe('office_network_required');
+      await h
+        .http()
+        .post('/api/v1/agent/enroll')
+        .set('X-Forwarded-For', ip)
+        .send({})
+        .expect(503);
+      await h
+        .http()
+        .get('/api/v1/agent/config')
+        .set('X-Forwarded-For', ip)
+        .expect(503);
+    }
+    expect(await h.prisma.device.count()).toBe(0);
+  });
+
+  it('accepts the office address but still checks authentication', async () => {
+    await h
+      .http()
+      .post('/api/v1/agent/enroll-login')
+      .set('X-Forwarded-For', '144.79.106.62')
+      .send({ ...facts(), email: STAFF_EMAIL, password: STAFF_PASSWORD })
+      .expect(200);
+    await h
+      .http()
+      .get('/api/v1/agent/config')
+      .set('X-Forwarded-For', '144.79.106.62')
+      .expect(401);
   });
 });

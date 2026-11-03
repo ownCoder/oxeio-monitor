@@ -20,6 +20,8 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { Response } from 'express';
 
+import { OfficeNetworkGuard } from './office-network.guard';
+
 import { Public } from '../auth/decorators';
 import { PrismaService } from '../prisma/prisma.service';
 import { MAX_SCREENSHOT_BYTES } from './agent.constants';
@@ -65,6 +67,7 @@ type AgentCommand =
  */
 @Public()
 @Controller('agent')
+@UseGuards(OfficeNetworkGuard)
 export class AgentController {
   constructor(
     private readonly enrollment: EnrollmentService,

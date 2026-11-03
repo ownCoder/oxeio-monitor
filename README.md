@@ -1,5 +1,7 @@
 # oXeio Workforce Monitor
 
+> **3 November 2026 — prepared, not deployed:** office-only agent access (`144.79.106.62`) and shared-PC staff login, with separate historical ownership and safe account handoff. See [implementation/validation/rollout status](docs/office-agent-access.md).
+
 > **Continue from another PC:** read [current state](docs/current-state.md) and [standing instructions](docs/work-preferences.md) first. Update these records after each completed task.
 
 > **Working preference — 27 September 2026:** use the owner's Google Chrome and installed ChatGPT extension for browser work. Do not use the internal/in-app browser. See [persistent working instructions](docs/work-preferences.md).

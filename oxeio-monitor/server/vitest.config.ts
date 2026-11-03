@@ -25,6 +25,7 @@ export default defineConfig({
     testTimeout: 30_000,
     env: {
       NODE_ENV: 'test',
+      AGENT_OFFICE_NETWORKS: '127.0.0.1,::1,144.79.106.62',
       DATABASE_URL: testDatabaseUrl(),
       // স্ক্রিনশট টেস্ট যেন সত্যিকারের storage-এ ফাইল না ফেলে
       STORAGE_ROOT: resolve(import.meta.dirname, '.tmp-test-storage'),

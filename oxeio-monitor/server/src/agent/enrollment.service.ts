@@ -19,15 +19,7 @@ import type { EnrollDto, EnrollLoginDto } from './dto';
 /** দুটো পথেরই সাধারণ অংশ — মেশিনটা কে, কোথায় */
 type EnrollFacts = Omit<EnrollDto, 'enrollmentCode'>;
 
-/**
- * ⭐⭐ **ডিভাইসের পরিচয়: মেশিন + যিনি বসেছেন।**
- *
- * ⚠️ `machineGuid` একা নয় — ওটা **মেশিনের**, ব্যবহারকারীর নয়। একই PC-তে
- * দুজন স্টাফ আলাদা Windows অ্যাকাউন্টে কাজ করলে দুজনের আলাদা সারি দরকার,
- * অথচ তাঁদের GUID হুবহু এক। schema-তে `@@unique([hostname,
- * windowsUsername])` আগে থেকেই ছিল; এটাই আসল পরিচয় ছিল, শুধু enroll
- * ওটা ব্যবহার করত না।
- */
+/** A Windows slot can be used by different authenticated employees. */
 const identityOf = (dto: EnrollFacts) => ({
   hostname: dto.hostname,
   windowsUsername: dto.windowsUsername,
@@ -112,7 +104,12 @@ export class EnrollmentService {
     dto: EnrollLoginDto,
     ip: string,
   ): Promise<EnrollLoginResult> {
-    const outcome = await this.auth.login(dto.email, dto.password, ip, dto.totp);
+    const outcome = await this.auth.login(
+      dto.email,
+      dto.password,
+      ip,
+      dto.totp,
+    );
 
     if (outcome.status === 'needs_totp') return { status: 'needs_totp' };
 
@@ -134,88 +131,6 @@ export class EnrollmentService {
   }
 
   /**
-   * ⭐⭐ **একটা ডিভাইস-সারি একজনেরই — নীরবে হাতবদল হবে না।**
-   *
-   * ⚠️⚠️ যে বাগটা এটা সারায়: `upsert`-এর চাবি ছিল কেবল `machineGuid`, আর
-   * সংঘাত হলে `employeeId` ও `tokenHash` **দুটোই লিখে দেওয়া হতো**। ফলে
-   * একই `machineGuid` পাঠানো দুটো এজেন্টের মধ্যে একটাই সারি হাতবদল করত,
-   * আর প্রতিবার:
-   *
-   *   · আগের সেশনের টোকেন অচল হয়ে যেত → তার এজেন্ট চুপচাপ ৪০১ খেয়ে
-   *     **কিছুই পাঠাতে পারত না** (মালিকের চোখে "হঠাৎ offline")
-   *   · আগের কর্মীর ডিভাইস-সংখ্যা **শূন্য** হয়ে যেত → Staff পর্দায়
-   *     "Ready to install", Live Board-এ "No agent yet"
-   *
-   * ⚠️ পুরো ব্যাপারটা **নীরব** ছিল: কোনো এরর নয়, কোনো লগ নয়। ধরা পড়ত
-   *    কেবল ওই কর্মীর হারানো ঘণ্টা দিয়ে, দিন পেরিয়ে যাওয়ার পর।
-   *
-   * ⭐⭐ পরিচয়টা এখন **(hostname, windowsUsername)** — মেশিন **ও** যিনি
-   *    বসেছেন, দুটো মিলে। `machineGuid` একা যথেষ্ট নয়, কারণ ওটা
-   *    **মেশিনের, ব্যবহারকারীর নয়**: একই PC-তে দুজন স্টাফ আলাদা Windows
-   *    অ্যাকাউন্টে কাজ করলে দুজনের আলাদা সারি দরকার, অথচ GUID এক।
-   *
-   * ⚠️ এই দাবিটা অনুমান নয় — অফিসের লগেই ধরা পড়েছে: `DESKTOP-BJNQ6OF`-এ
-   *    "Intern" ও "Intern 2", আর `DESKTOP-KP1DT93`-এ "Sumaiya" ও "user"।
-   *
-   * ⭐ **বৈধ হস্তান্তরের পথ খোলা:** ডিভাইসটা `revoked` হলে নতুন কর্মী
-   *    নিতে পারেন। অর্থাৎ একই Windows অ্যাকাউন্ট হাতবদল হলে মালিক
-   *    Settings → Devices-এ একবার revoke করবেন — সচেতন একটা ধাপ।
-   */
-  private async assertNotSomeoneElses(
-    tx: Prisma.TransactionClient,
-    dto: EnrollFacts,
-    employeeId: number,
-  ): Promise<void> {
-    const existing = await tx.device.findUnique({
-      where: { hostname_windowsUsername: identityOf(dto) },
-      select: {
-        status: true,
-        hostname: true,
-        windowsUsername: true,
-        employeeId: true,
-        employee: { select: { empCode: true } },
-      },
-    });
-
-    // নতুন মেশিন · আগেরটা কারো নামে নেই · একই কর্মী আবার বসাচ্ছেন —
-    // তিনটেই স্বাভাবিক
-    if (
-      !existing ||
-      existing.employeeId === null ||
-      existing.employeeId === employeeId
-    ) {
-      return;
-    }
-
-    // ⭐ revoke করা মানে মালিক ইচ্ছে করে ছেড়ে দিয়েছেন — তখন নেওয়া যায়
-    if (existing.status !== 'active') return;
-
-    /**
-     * ⚠️ এখানে পৌঁছানো মানে **একই মেশিনের একই Windows অ্যাকাউন্টে** দুজন
-     * ভিন্ন স্টাফ সাইন ইন করছেন — অর্থাৎ তাঁরা একটা লগইন ভাগ করে নিচ্ছেন।
-     * সেটা নীরবে মেনে নেওয়া যায় না: তখন দুজনের ঘণ্টা এক সারিতে মিশে যেত
-     * আর কোনটা কার তা আর আলাদা করা যেত না।
-     */
-    this.logger.warn(
-      `enrol refused: "${existing.hostname}\\${existing.windowsUsername}" ` +
-        `already belongs to ${existing.employee?.empCode ?? `employee #${existing.employeeId}`} — ` +
-        `attempt for employee #${employeeId} (machineGuid ${dto.machineGuid}). ` +
-        'Two staff are sharing one Windows account: give the second person their own Windows login, ' +
-        'or revoke the device first (Settings → Devices).',
-    );
-
-    /**
-     * ⚠️ বার্তায় **নাম নয়, empCode** — এটা স্টাফের পর্দায় ভেসে ওঠে, আর
-     * স্টাফ সাধারণত সহকর্মীদের তালিকা দেখে না। কোডটা মালিকের কাছে
-     * যথেষ্ট, আর তিনিই পরের ধাপটা করবেন।
-     */
-    throw new ConflictException(
-      `This Windows account is already registered to ${existing.employee?.empCode ?? 'another staff member'}. ` +
-        'Sign in to your own Windows account on this PC, or ask the owner to revoke it first (Settings → Devices).',
-    );
-  }
-
-  /**
    * দুটো পথেরই শেষ ধাপ — ডিভাইসের সারি, `agent_start` ইভেন্ট, আর কনফিগ।
    *
    * ⚠️ এক জায়গায় রাখা হয়েছে ইচ্ছাকৃতভাবে। দুবার লিখলে একদিন একটা পথে
@@ -233,15 +148,26 @@ export class EnrollmentService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await this.assertNotSomeoneElses(tx, dto, employeeId);
+        // Serialize ownership changes, including simultaneous first enrollments.
+        const slot = JSON.stringify([dto.hostname, dto.windowsUsername]);
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${slot}, 0))`;
+        await tx.device.updateMany({
+          where: {
+            ...identityOf(dto),
+            status: 'active',
+            OR: [{ employeeId: { not: employeeId } }, { employeeId: null }],
+          },
+          data: { status: 'revoked' },
+        });
 
-        // ⭐ একই মেশিনের একই Windows অ্যাকাউন্টে আবার ইনস্টল করলে নতুন সারি
-        //    নয়, আগেরটাই হালনাগাদ। অন্য অ্যাকাউন্ট = অন্য সারি।
-        // ⚠️ `machineGuid` **update-এও** বসে: Windows রিইনস্টল বা GUID
-        //    বদলালে মানটা পুরোনো থেকে যেত, আর H04-এর rollout bucket ভুল
-        //    মেশিনের হিসাব করত।
+        // Never reassign an old device row: its historical records keep their owner.
         const device = await tx.device.upsert({
-          where: { hostname_windowsUsername: identityOf(dto) },
+          where: {
+            hostname_windowsUsername_employeeId: {
+              ...identityOf(dto),
+              employeeId,
+            },
+          },
           update: {
             employeeId,
             machineGuid: dto.machineGuid,
@@ -269,10 +195,15 @@ export class EnrollmentService {
 
         // একবার ব্যবহার্য — এখানেই বন্ধ হয়ে যায়
         if (codeId !== null) {
-          await tx.enrollmentCode.update({
-            where: { id: codeId },
+          const consumed = await tx.enrollmentCode.updateMany({
+            where: { id: codeId, usedAt: null, expiresAt: { gt: now } },
             data: { usedAt: now, usedByDeviceId: device.id },
           });
+          if (consumed.count !== 1) {
+            throw new UnauthorizedException(
+              'Enrolment code is invalid or expired',
+            );
+          }
         }
 
         await tx.event.create({

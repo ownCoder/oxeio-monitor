@@ -96,7 +96,7 @@ public class SignOutGateTests
         var text = SignOutGate.Confirm(SignOutGate.Verdict.PendingUpload, Something);
 
         Assert.Contains("7", text, StringComparison.Ordinal);
-        Assert.Contains("discard", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recover", text, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Sync now", text, StringComparison.Ordinal);
     }
 

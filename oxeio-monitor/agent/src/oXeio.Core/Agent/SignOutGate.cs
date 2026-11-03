@@ -88,17 +88,17 @@ public static class SignOutGate
         Verdict.Ready =>
             "Sign out of oXeio?\n\n"
             + "Your hours stop being counted until someone signs in again. "
-            + "Everything measured so far has already reached the office.",
+            + "The agent will restart so another person can sign in safely.",
 
         // ⚠️⚠️ সংখ্যাটা বাক্যের **শুরুতে**, কারণ এটাই একমাত্র জিনিস যা
         //    স্টাফের সিদ্ধান্ত বদলাতে পারে। আর "Sync now" বলে দেওয়া হয়,
         //    নইলে বার্তাটা শুধু ক্ষতির খবর দিত, বাঁচার পথ নয়।
         Verdict.PendingUpload =>
             $"{Describe(pendingItems)} not reached the office yet.\n\n"
-            + "Signing out now will discard them — they cannot be sent later, "
-            + "because the next person to sign in would get them counted as theirs.\n\n"
+            + "Signing out will keep them aside on this PC for office IT to recover, "
+            + "but will not upload them under the next person. The agent will restart.\n\n"
             + "If you are online, close this and choose \"Sync now\" first.\n\n"
-            + "Sign out and discard?",
+            + "Sign out and restart?",
 
         _ => throw new ArgumentOutOfRangeException(
             nameof(verdict), verdict, "Sign out is not available in this state"),

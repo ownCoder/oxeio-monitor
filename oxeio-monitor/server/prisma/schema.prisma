@@ -345,7 +345,7 @@ model Device {
   /// ⚠️⚠️ **আর UNIQUE নয়** — একই PC-তে দুজন স্টাফ আলাদা Windows
   /// অ্যাকাউন্টে কাজ করলে দুটো সারি লাগে, অথচ `MachineGuid` মেশিনের,
   /// ব্যবহারকারীর নয়। ডিভাইসের পরিচয় এখন `@@unique([hostname,
-  /// windowsUsername])` (নিচে) — মেশিন **ও** যিনি বসেছেন, দুটো মিলে।
+  /// windowsUsername, employeeId])` (নিচে) — মেশিন **ও** যিনি বসেছেন, দুটো মিলে।
   /// ⭐ মানটা রাখা আছে: H04-এর rollout bucket এটা দিয়েই গোনা হয়, আর
   /// এজেন্ট নিজের `device.dat` এর সাথে মিলিয়ে ক্লোন ধরে।
   machineGuid     String        @map("machine_guid")
@@ -387,7 +387,7 @@ model Device {
   /** ⭐ যেসব রিলিজে এই PC-টাই পাইলট *(১ সেপ্টেম্বর ২০২৬)* */
   pilotForVersions AgentVersion[] @relation("agentVersionPilot")
 
-  @@unique([hostname, windowsUsername])
+  @@unique([hostname, windowsUsername, employeeId])
   @@map("devices")
 }
 

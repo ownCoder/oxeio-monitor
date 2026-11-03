@@ -11,6 +11,7 @@ import { DeviceAuthGuard } from './device-auth.guard';
 import { DeviceRateLimitService } from './device-rate-limit.service';
 import { EnrollmentService } from './enrollment.service';
 import { IngestService } from './ingest.service';
+import { OfficeNetworkGuard } from './office-network.guard';
 import { ProgressService } from './progress.service';
 import { RolloutAdvanceJob } from './rollout-advance.job';
 import { ScreenshotIngestService } from './screenshot-ingest.service';
@@ -24,6 +25,7 @@ import { UpdateService } from './update.service';
   imports: [ActivityModule, AuditModule, AuthModule],
   controllers: [AgentController],
   providers: [
+    OfficeNetworkGuard,
     ProgressService,
     AgentConfigService,
     RolloutAdvanceJob,
@@ -43,6 +45,11 @@ import { UpdateService } from './update.service';
    *    আটকায় (storage-এর বাইরের ফাইল দেওয়া যাবে না), আর ওই পাহারাটা দুই
    *    জায়গায় থাকলে একদিন একটায় ঠিক হতো, অন্যটায় নয়।
    */
-  exports: [AgentConfigService, ClockDriftService, ProgressService, UpdateService],
+  exports: [
+    AgentConfigService,
+    ClockDriftService,
+    ProgressService,
+    UpdateService,
+  ],
 })
 export class AgentModule {}

@@ -78,6 +78,16 @@ internal static partial class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--wait-for-pid" && int.TryParse(args[1], out var previousPid))
+        {
+            try
+            {
+                using var previous = System.Diagnostics.Process.GetProcessById(previousPid);
+                if (!previous.WaitForExit(30_000)) return 4;
+            }
+            catch (ArgumentException) { /* The previous process already exited. */ }
+        }
+
         if (args.Any(a => a.Equals("--diagnose", StringComparison.OrdinalIgnoreCase)))
         {
             AttachOrAllocConsole();

@@ -140,7 +140,9 @@ export class DevicesService {
       meta: { hostname: before.hostname, reason: dto.reason },
     });
 
-    this.logger.warn(`device ${id} (${before.hostname}) revoke — ${dto.reason}`);
+    this.logger.warn(
+      `device ${id} (${before.hostname}) revoke — ${dto.reason}`,
+    );
     return row;
   }
 
@@ -181,11 +183,23 @@ export class DevicesService {
       }
     }
 
-    const row = await this.prisma.device.update({
-      where: { id },
-      data: { status: 'active' },
-      select: DEVICE_SELECT,
-    });
+    const row = await this.prisma.device
+      .update({
+        where: { id },
+        data: { status: 'active' },
+        select: DEVICE_SELECT,
+      })
+      .catch((error: unknown) => {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            'Another employee is using this Windows account. Sign in through the agent to switch accounts.',
+          );
+        }
+        throw error;
+      });
 
     await this.audit.record({
       userId: actor.userId,
