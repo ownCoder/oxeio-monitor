@@ -1,6 +1,10 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
-সর্বশেষ আপডেট: ১৪ অক্টোবর ২০২৬ · Asia/Dhaka
+> **3 November 2026 — new local implementation:** office IP `144.79.106.62`, any-PC authenticated agent login. Source is isolated in `C:\Users\Mamunur Rasid\.codex\worktrees\office-agent-login\oXeio Office`, branch `codex/office-agent-login`, based on live VPS source `82fd8a4`. 107 server + 534 agent tests passed. **Not deployed, no MSI published, no VPS/GitHub sync.** Read [office agent access](office-agent-access.md) before continuing; do not deploy this older original checkout.
+
+সর্বশেষ আপডেট: ৪ নভেম্বর ২০২৬ · Asia/Dhaka
+
+- **Deposits UX live — release 505 / `5547f97febe528e2d8b570e9053cc1c8ebf45849`:** Owner-only Deposits page-এ name/OX-code search, Open/Settled/All filter ও count, held/open/settled summary, inactive staff-এর open settlement indicator, modal-এর ভেতর save error, inline success feedback এবং form validation যোগ হয়েছে। `window.alert` বাদ। Deposit rules বা ledger calculation বদলায়নি। Web build/lint/typecheck ও ৩০৪টি existing frontend test পাস; live web/API healthy, public JS-এ search text পাওয়া গেছে। Browser tab control ব্যর্থ হওয়ায় visual screenshot QA হয়নি। Web-only release; API/PostgreSQL container অপরিবর্তিত। Build cache cleanup-এর পর disk 86% used, 12 GiB free; পুরোনো tagged rollback images রয়ে গেছে। [Release note](audits/2026-11-04-deposits-smooth.md)। VPS release `/opt/oxeio-releases/deposits-smooth-20261104`।
 
 - **VPS disk 81% — ১৪ অক্টোবর:** `/dev/vda1` 77G-এর মধ্যে 62G used, 16G available। Docker-এ 103 image / 46.07GB, যার 32.39GB reclaimable; পুরোনো tagged rollback image জমেছে (API-র `before-*` tag প্রায় ৫০টি)। Build cache 1.335GB হলেও reclaimable 0B। Daily cache-prune timer enabled/active এবং ১৩ অক্টোবরের run সফল, তাই পুরোনো cache নয়—image retention-ই ৮০% alert আবার আসার প্রধান কারণ। App `.data/storage` 7.7GB, backups 687MB, PostgreSQL volume 301MB। API/web/PostgreSQL healthy। এই audit-এ image/backup/storage মুছে দেওয়া হয়নি; rollback retention policy ঠিক করে বাছাই করা image cleanup প্রয়োজন। [Audit](audits/2026-10-14-vps-disk-81-percent.md)।
 
