@@ -85,7 +85,9 @@ export function DepositsTab() {
         title="Security Deposit"
         hint={
           data
-            ? `${data.policy.amount} a month · refundable with ${data.policy.noticeDays} days' notice`
+            ? data.policy.active
+              ? `${data.policy.amount} a month · refundable with ${data.policy.noticeDays} days' notice`
+              : 'Collection paused · existing balances are still held until paid back'
             : 'Held from salary each month, refunded when someone leaves'
         }
         padded={false}
@@ -105,6 +107,11 @@ export function DepositsTab() {
           <Empty title="No staff yet" />
         ) : (
           <>
+            {!data.policy.active && (
+              <div role="status" className="border-b border-line bg-brand-bg px-4 py-3 text-[13px] text-brand-ink">
+                No new deposit instalments will be added. Existing balances are awaiting refund; record each refund only after payment.
+              </div>
+            )}
             {/*
               ⭐ মোটটা উপরে, একবার। মালিকের প্রথম প্রশ্নটা "সব মিলিয়ে কত
                  টাকা আমার হাতে জমা আছে" — সারি গুনে যোগ করতে হলে ওই
