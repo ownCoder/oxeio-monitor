@@ -45,6 +45,9 @@ export function DepositsTab() {
     [],
   );
   const mutation = useMutation();
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'settled'>('open');
+  const [feedback, setFeedback] = useState('');
 
   const [editingRule, setEditingRule] = useState(false);
   const [settling, setSettling] = useState<DepositBalance | null>(null);
@@ -54,6 +57,13 @@ export function DepositsTab() {
 
   const rows = data?.rows ?? [];
   const open = rows.filter((r) => !r.settlement);
+  const settledCount = rows.length - open.length;
+  const search = query.trim().toLocaleLowerCase();
+  const visibleRows = rows.filter((row) => {
+    if (statusFilter === 'open' && row.settlement) return false;
+    if (statusFilter === 'settled' && !row.settlement) return false;
+    return !search || `${row.fullName} ${row.empCode}`.toLocaleLowerCase().includes(search);
+  });
 
   /**
    * ⚠️ মোট জমা **পয়সা থেকে** যোগ হয়, `balance` স্ট্রিং পার্স করে নয় —
@@ -65,6 +75,11 @@ export function DepositsTab() {
   return (
     <>
       <ServerError error={mutation.error} />
+      {feedback && (
+        <div role="status" className="mb-3 rounded-md border border-brand/30 bg-brand-bg px-3 py-2 text-xs text-brand-ink">
+          {feedback}
+        </div>
+      )}
 
       <Card
         title="Security Deposit"
@@ -76,7 +91,7 @@ export function DepositsTab() {
         padded={false}
         actions={
           <RowActions>
-            <MiniButton disabled={!data} onClick={() => setEditingRule(true)}>
+            <MiniButton disabled={!data} onClick={() => { mutation.reset(); setFeedback(''); setEditingRule(true); }}>
               Edit rule
             </MiniButton>
           </RowActions>
@@ -97,18 +112,51 @@ export function DepositsTab() {
               ⚠️ নিষ্পত্তি হয়ে যাওয়া কর্মীদের বাদ দিয়ে — ওই টাকা আর
                  হাতে নেই, ফেরত (বা বাজেয়াপ্ত) হয়ে গেছে।
             */}
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-line px-4 py-3">
-              <span className="num text-[19px] font-semibold">
-                {takaOf(heldPaisa)}
-              </span>
-              <span className="text-[12px] text-ink-2">
-                held from {open.length}{' '}
-                {open.length === 1 ? 'person' : 'people'}
-              </span>
+            <div className="grid gap-2 border-b border-line px-4 py-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-line bg-paper px-3 py-2">
+                <span className="block text-[11px] text-ink-3">Currently held</span>
+                <strong className="num text-[19px]">৳{takaOf(heldPaisa)}</strong>
+              </div>
+              <div className="rounded-lg border border-line bg-paper px-3 py-2">
+                <span className="block text-[11px] text-ink-3">Open ledgers</span>
+                <strong className="num text-[19px]">{open.length}</strong>
+              </div>
+              <div className="rounded-lg border border-line bg-paper px-3 py-2">
+                <span className="block text-[11px] text-ink-3">Settled</span>
+                <strong className="num text-[19px]">{settledCount}</strong>
+              </div>
             </div>
 
-            <ul className="divide-y divide-line">
-              {rows.map((row) => (
+            <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+              <label className="sr-only" htmlFor="deposit-search">Search staff deposits</label>
+              <input
+                id="deposit-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search name or OX code"
+                className="min-w-[190px] flex-1 rounded-md border border-line bg-surface px-3 py-2 text-[13px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25"
+              />
+              <div className="flex rounded-md border border-line p-0.5" aria-label="Deposit status">
+                {(['open', 'settled', 'all'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={statusFilter === filter}
+                    onClick={() => setStatusFilter(filter)}
+                    className={`rounded px-3 py-1.5 text-xs capitalize transition ${statusFilter === filter ? 'bg-brand-bg font-semibold text-brand-ink' : 'text-ink-2 hover:bg-paper'}`}
+                  >
+                    {filter} {filter === 'open' ? open.length : filter === 'settled' ? settledCount : rows.length}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-ink-3">Showing {visibleRows.length}</span>
+            </div>
+
+            {visibleRows.length === 0 ? (
+              <Empty title="No matching deposits" hint="Try another name, code or status." />
+            ) : <ul className="divide-y divide-line">
+              {visibleRows.map((row) => (
                 <li
                   key={row.employeeId}
                   className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
@@ -118,6 +166,11 @@ export function DepositsTab() {
                     <span className="num ml-2 text-[12px] text-ink-3">
                       {row.empCode}
                     </span>
+                    {row.status === 'inactive' && !row.settlement && (
+                      <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-2">
+                        Former staff · settlement open
+                      </span>
+                    )}
 
                     {row.settlement ? (
                       <span className="block text-[12px] text-ink-2">
@@ -177,23 +230,23 @@ export function DepositsTab() {
                          একসাথে পড়লে অর্থহীন। ⚠️ নিষ্পত্তির পরেও দেখা
                          যায়: খাতা বন্ধ মানে বদলানো যায় না, পড়া যায় না নয়।
                     */}
-                    <MiniButton onClick={() => setMonthsFor(row)}>
+                    <MiniButton onClick={() => { mutation.reset(); setFeedback(''); setMonthsFor(row); }}>
                       Months
                     </MiniButton>
                     {!row.settlement && (
-                      <MiniButton onClick={() => setStartFor(row)}>
+                      <MiniButton onClick={() => { mutation.reset(); setFeedback(''); setStartFor(row); }}>
                         Start month
                       </MiniButton>
                     )}
                     {!row.settlement && row.balancePaisa > 0 && (
-                      <MiniButton onClick={() => setSettling(row)}>
+                      <MiniButton onClick={() => { mutation.reset(); setFeedback(''); setSettling(row); }}>
                         Settle
                       </MiniButton>
                     )}
                   </RowActions>
                 </li>
               ))}
-            </ul>
+            </ul>}
           </>
         )}
 
@@ -217,6 +270,7 @@ export function DepositsTab() {
         <StartMonthDialog
           row={startFor}
           busy={mutation.busy}
+          error={mutation.error}
           onClose={() => setStartFor(null)}
           onSubmit={(yearMonth) =>
             mutation.run(async () => {
@@ -229,12 +283,7 @@ export function DepositsTab() {
                * সারি মুছে ফেলা যাবে না। মালিক যদি ভুল মাস বসিয়ে থাকেন,
                * এই এক লাইনই তাঁকে সাথে সাথে জানায় কী ঘটেছে।
                */
-              if (result.removed > 0 || result.added > 0) {
-                window.alert(
-                  `Ledger updated — ${result.removed} instalment(s) removed, ` +
-                    `${result.added} added.`,
-                );
-              }
+              setFeedback(`Ledger updated for ${startFor.fullName}: ${result.removed} instalment(s) removed, ${result.added} added.`);
             })
           }
         />
@@ -244,12 +293,14 @@ export function DepositsTab() {
         <EditRule
           policy={data.policy}
           busy={mutation.busy}
+          error={mutation.error}
           onClose={() => setEditingRule(false)}
           onSubmit={(body) =>
             mutation.run(async () => {
               await updateDepositPolicy(body);
               setEditingRule(false);
               reload();
+              setFeedback('Security deposit rule updated. Existing instalments stayed unchanged.');
             })
           }
         />
@@ -260,12 +311,14 @@ export function DepositsTab() {
           row={settling}
           noticeDays={data?.policy.noticeDays ?? 30}
           busy={mutation.busy}
+          error={mutation.error}
           onClose={() => setSettling(null)}
           onSubmit={(body) =>
             mutation.run(async () => {
               await settleDeposit(settling.employeeId, body);
               setSettling(null);
               reload();
+              setFeedback(`${settling.fullName}'s deposit was ${body.outcome}.`);
             })
           }
         />
@@ -282,6 +335,7 @@ function takaOf(paisa: number): string {
 function EditRule({
   policy,
   busy,
+  error,
   onClose,
   onSubmit,
 }: {
@@ -292,6 +346,7 @@ function EditRule({
     active: boolean;
   };
   busy: boolean;
+  error: Error | null;
   onClose: () => void;
   onSubmit: (body: {
     amountPaisa?: number;
@@ -310,9 +365,10 @@ function EditRule({
    *    কিন্তু দেয়ালে পাঠানোর চেয়ে দেখিয়ে দেওয়াই ভালো। ⚠️ `Number('')`
    *    শূন্য হয়, তাই খালি ঘরটা আলাদা করে দেখা দরকার।
    */
-  const badAmount = amount.trim() === '' || !(Number(amount) > 0);
+  const badAmount = !/^\d+(?:\.\d{1,2})?$/.test(amount.trim()) || !(Number(amount) > 0);
   const badNotice =
-    noticeDays.trim() === '' || !Number.isInteger(Number(noticeDays));
+    noticeDays.trim() === '' || !Number.isInteger(Number(noticeDays)) || Number(noticeDays) < 0 || Number(noticeDays) > 365;
+  const badStart = !/^\d{4}-(0[1-9]|1[0-2])$/.test(startYearMonth);
 
   return (
     <Modal
@@ -322,7 +378,7 @@ function EditRule({
         <RowActions>
           <MiniButton onClick={onClose}>Cancel</MiniButton>
           <MiniButton
-            disabled={busy || badAmount || badNotice}
+            disabled={busy || badAmount || badNotice || badStart}
             onClick={() =>
               onSubmit({
                 // ⭐ পর্দা টাকায় নেয়, API পয়সায় — রূপান্তরটা এই এক জায়গায়
@@ -333,23 +389,26 @@ function EditRule({
               })
             }
           >
-            Save
+            {busy ? 'Saving…' : 'Save rule'}
           </MiniButton>
         </RowActions>
       }
     >
+      <ServerError error={error} />
       <FormGrid>
-        <TextField label="Amount a month" value={amount} onChange={setAmount} />
+        <TextField label="Amount a month (৳)" value={amount} onChange={setAmount} hint={badAmount ? 'Enter a positive amount with up to two decimal places.' : undefined} />
         <TextField
           label="Notice required (days)"
           value={noticeDays}
           onChange={setNotice}
+          hint={badNotice ? 'Enter a whole number from 0 to 365.' : undefined}
         />
         <TextField
-          label="Collect from"
+          label="Collect from (YYYY-MM)"
           value={startYearMonth}
           onChange={setStart}
           placeholder="2026-08"
+          hint={badStart ? 'Choose a valid month, for example 2026-08.' : undefined}
         />
         <SelectField
           label="Collecting"
@@ -386,12 +445,14 @@ function SettleDialog({
   row,
   noticeDays,
   busy,
+  error,
   onClose,
   onSubmit,
 }: {
   row: DepositBalance;
   noticeDays: number;
   busy: boolean;
+  error: Error | null;
   onClose: () => void;
   onSubmit: (body: {
     outcome: 'refunded' | 'forfeited';
@@ -414,6 +475,7 @@ function SettleDialog({
             86_400_000,
         )
       : null;
+  const invalidDates = Boolean(noticeGivenOn && lastWorkingDay && daysGiven !== null && daysGiven < 0);
 
   return (
     <Modal
@@ -424,7 +486,7 @@ function SettleDialog({
           <MiniButton onClick={onClose}>Cancel</MiniButton>
           <MiniButton
             tone={outcome === 'forfeited' ? 'danger' : undefined}
-            disabled={busy}
+            disabled={busy || invalidDates}
             onClick={() =>
               onSubmit({
                 outcome,
@@ -434,11 +496,12 @@ function SettleDialog({
               })
             }
           >
-            {outcome === 'refunded' ? 'Refund' : 'Forfeit'}
+            {busy ? 'Saving…' : outcome === 'refunded' ? 'Record refund' : 'Record forfeiture'}
           </MiniButton>
         </RowActions>
       }
     >
+      <ServerError error={error} />
       <FormGrid>
         <FullWidth>
           <Notice>
@@ -479,7 +542,9 @@ function SettleDialog({
              মেলেনি" এক কথা নয়।
         */}
         <FullWidth>
-          {daysGiven === null ? (
+          {invalidDates ? (
+            <Notice tone="attention">Last working day must be on or after the notice date.</Notice>
+          ) : daysGiven === null ? (
             <Notice>
               Without both dates the notice period is not recorded — the
               settlement still goes through, and the ledger simply says the
@@ -512,15 +577,18 @@ function SettleDialog({
 function StartMonthDialog({
   row,
   busy,
+  error,
   onClose,
   onSubmit,
 }: {
   row: DepositBalance;
   busy: boolean;
+  error: Error | null;
   onClose: () => void;
   onSubmit: (yearMonth: string | null) => void;
 }) {
   const [month, setMonth] = useState(row.startYearMonth ?? row.effectiveStart ?? '');
+  const validMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
 
   return (
     <Modal
@@ -540,7 +608,7 @@ function StartMonthDialog({
             </MiniButton>
           )}
           <MiniButton
-            disabled={busy || month === '' || month === row.startYearMonth}
+            disabled={busy || !validMonth || month === row.startYearMonth}
             onClick={() => onSubmit(month)}
           >
             {busy ? 'Saving…' : 'Save'}
@@ -549,6 +617,7 @@ function StartMonthDialog({
       }
     >
       <div className="space-y-3.5">
+        <ServerError error={error} />
         <Notice>
           Moving this <b>later</b> deletes the instalments before it, and moving
           it <b>earlier</b> adds the missing ones. The ledger is rebuilt to match
