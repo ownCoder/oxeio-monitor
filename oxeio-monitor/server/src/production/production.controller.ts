@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Header,
+  Ip,
   Param,
   ParseIntPipe,
   Patch,
@@ -33,6 +35,7 @@ import { ProductResultsService } from './product-results.service';
 import { QUEUES, type Queue } from './production.rules';
 import { ActionDigestService } from './action-digest.service';
 import { MonitorService } from './monitor.service';
+import { TargetEvidenceService } from './target-evidence.service';
 
 class DigestDto {
   @IsBoolean() enabled!: boolean;
@@ -128,7 +131,14 @@ export class ProductionController {
     private readonly products: ProductResultsService,
     private readonly digest: ActionDigestService,
     private readonly monitor: MonitorService,
+    private readonly evidence: TargetEvidenceService,
   ) {}
+  @Roles(UserRole.owner, UserRole.manager, UserRole.researcher, UserRole.employee)
+  @Get('targets/:id/evidence')
+  @Header('Cache-Control', 'private, no-store')
+  evidenceView(@CurrentUser() actor: SessionUser, @Param('id', ParseIntPipe) id: number, @Ip() ip: string) {
+    return this.evidence.read(actor, id, ip);
+  }
   @Roles(UserRole.owner) @Get('digest') digestPreview() {
     return this.digest.preview();
   }

@@ -12,6 +12,7 @@ import {
   type Workload,
 } from '../../api/production';
 import './production.css';
+import { TargetEvidence } from './TargetEvidence';
 
 function historyValue(key: string, value: unknown): string {
   if (value === null || value === undefined) return '—';
@@ -22,7 +23,7 @@ function historyValue(key: string, value: unknown): string {
 
 export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState('history');
+  const [tab, setTab] = useState('evidence');
   const [before, setBefore] = useState<number | undefined>();
   const history = useApi(
     (signal) =>
@@ -34,6 +35,8 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
   );
   const { user } = useAuth();
   const canPlan = user?.role === 'owner' || user?.role === 'manager';
+  const canEvidence = canPlan || (user?.employeeId != null && history.data?.target.assignedToId === user.employeeId);
+  const activeTab = tab === 'evidence' && !canEvidence ? 'history' : tab;
   useEffect(() => {
     const element = dialog.current;
     element?.showModal();
@@ -64,14 +67,14 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
         </button>
       </div>
       <div className="production-actions">
-        {['history', 'proofs', ...(canPlan ? ['planning'] : [])].map(
+        {[...(canEvidence ? ['evidence'] : []), 'history', 'proofs', ...(canPlan ? ['planning'] : [])].map(
           (value) => (
             <button
               key={value}
               onClick={() => setTab(value)}
-              aria-pressed={value === tab}
+              aria-pressed={value === activeTab}
             >
-              {value === 'history'
+              {value === 'evidence' ? 'Design evidence' : value === 'history'
                 ? 'Target history'
                 : value === 'proofs'
                   ? 'Design review'
@@ -86,7 +89,8 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
         </p>
       )}
       {history.loading && <p role="status">Loading target…</p>}
-      {history.data && tab === 'history' && (
+      {history.data && activeTab === 'evidence' && canEvidence && <TargetEvidence id={id} review={() => setTab('proofs')} history={() => setTab('history')} />}
+      {history.data && activeTab === 'history' && (
         <>
           <p>
             Recorded history since {stamp(history.data.since)}. Earlier changes
@@ -144,10 +148,10 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
           </div>
         </>
       )}
-      {history.data && tab === 'planning' && canPlan && (
+      {history.data && activeTab === 'planning' && canPlan && (
         <Planning key={id} target={history.data.target} done={() => { history.reload(); setTab('history'); }} />
       )}
-      {history.data && tab === 'proofs' && <Proofs key={id} id={id} />}
+      {history.data && activeTab === 'proofs' && <Proofs key={id} id={id} />}
     </dialog>
   );
 }

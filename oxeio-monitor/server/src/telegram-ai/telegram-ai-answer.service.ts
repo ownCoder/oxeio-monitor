@@ -50,6 +50,8 @@ export class TelegramAiAnswerService {
 
  async groupAnswer(user:LinkedUser,question:string):Promise<string>{
   const text=question.trim();
+  if(/(?:^|\s)\/(?:roadmap|development)(?:@\w+)?\b|development roadmap|ডেভেলপমেন্ট রোডম্যাপ/iu.test(text))
+   return 'Development roadmap শুধু owner-এর private chat-এ পাওয়া যায়। সেখানে /roadmap লিখুন।';
   if(/(?:^|\s)\/(?:today|me|team|report|unlink|link)(?:@\w+)?\b/i.test(text))
    return 'ব্যক্তিগত কাজ ও team report জানতে bot-এর private chat-এ /today বা /team লিখুন। Group-এ ব্যক্তিগত রিপোর্ট দেখানো হয় না।';
   if(/(?:salary|বেতন|deposit|জমা|late|দেরি|gap|অনুপস্থিতি|attendance|উপস্থিতি|hours|ঘণ্টা|কতক্ষণ|credited|OX-\d+)/iu.test(text))
@@ -74,13 +76,14 @@ export class TelegramAiAnswerService {
    ...(role!==UserRole.employee?['/production — live production queues']:[]),
    ...(isManager(role)?['/team — দলের গত ৭ দিনের সারাংশ','/report — দলের গত ৭ দিনের রিপোর্ট']:[]),
    ...(isManager(role)?['/pool — live Design Pool','/review — pending skip review ও replacement']:[]),
-   ...(role===UserRole.owner?['/alerts — open alerts','/salary — এই মাসের payment record status']:[]),
+   ...(role===UserRole.owner?['/alerts — open alerts','/salary — এই মাসের payment record status','/roadmap — development assistant-এর verified কাজ ও next steps']:[]),
    '/unlink — এই Telegram account বিচ্ছিন্ন করুন',
    'উত্তর শুধু আপনার অনুমতিপ্রাপ্ত system data থেকে দেওয়া হয়। AI ভুল করতে পারে; গুরুত্বপূর্ণ সিদ্ধান্ত portal report মিলিয়ে নিন।'].join('\n');
  }
 
  private dataTopic(question:string):DataTopic|null{
   const command=question.trim().split(/\s+/)[0]?.toLowerCase().split('@')[0]??'';
+  if(command==='/roadmap'||command==='/development') return 'development';
   if(command==='/pool') return 'pool';
   if(command==='/review') return 'review';
   if(command==='/office') return 'office';
@@ -93,6 +96,7 @@ export class TelegramAiAnswerService {
   if(/(?:production queue|production board|প্রোডাকশন কিউ|প্রোডাকশন বোর্ড)/iu.test(question)) return 'production';
   if(/(?:open alert|critical alert|কত alert|কত অ্যালার্ট)/iu.test(question)) return 'alerts';
   if(/(?:salary payment|বেতন দেওয়া|বেতন দেয়া|salary status)/iu.test(question)) return 'salary';
+  if(/(?:development roadmap|ডেভেলপমেন্ট রোডম্যাপ|new feature status|নতুন ফিচারের কাজ)/iu.test(question)) return 'development';
   return null;
  }
 

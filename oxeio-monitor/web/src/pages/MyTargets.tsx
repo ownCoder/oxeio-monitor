@@ -282,7 +282,7 @@ function TargetRow({
            চুপচাপ কিছুই করে না — তাই আগে দেখে নেওয়া হয়।
       */}
       <Link className="text-xs text-brand" to={`/office/help?target=${target.id}`}>Details &amp; help</Link>
-      <Link className="text-xs text-brand" to={`/production/board?target=${target.id}`}>Design review</Link>
+      <Link className="text-xs text-brand" to={`/production/board?target=${target.id}`}>Design details &amp; review</Link>
       {target.jobNumber !== null && typeof navigator.clipboard !== 'undefined' && (
         <MiniButton
           onClick={() => void navigator.clipboard.writeText(String(target.jobNumber))}

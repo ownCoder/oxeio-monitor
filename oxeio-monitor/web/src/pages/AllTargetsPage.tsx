@@ -43,7 +43,7 @@ import {
 } from './targets/filters';
 import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 import { downloadTargetsCsv } from './targets/export';
-import { HistoryDrawer } from './targets/Insights';
+import { TargetDrawer } from './production/TargetDrawer';
 import { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';
 
 /**
@@ -612,7 +612,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
       )}
 
       <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{poolProgress,poolReason,addedFrom,addedTo,poolSort})}} onApply={applyView}/>
-      {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}
+      {historyId!==null&&<TargetDrawer id={historyId} close={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">
           {isReview ? 'Dates use skip-request time for skips and deletion time for deleted designs, in Dhaka time. Choose Undated legacy items to include records without either timestamp.' : skipDates ? 'Dates refer to skip requests in Dhaka time.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
@@ -872,7 +872,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                 header: '',
                 render: (r) => (
                   <span className="flex flex-wrap items-center justify-end gap-1.5">
-                  {mayDelete&&<MiniButton title={'History for '+r.asin} onClick={()=>setHistoryId(r.id)}>History</MiniButton>}
+                  {mayDelete&&<MiniButton title={'Details and history for '+r.asin} onClick={()=>setHistoryId(r.id)}>Details</MiniButton>}
                   <RowActions
                     row={r}
                     busy={edit.busy}

@@ -67,6 +67,24 @@ export interface History {
   }[];
   nextBefore: number | null;
 }
+export interface TargetEvidence {
+  targetId: number;
+  jobNumber: number | null;
+  generatedAt: string;
+  scope: 'team' | 'self';
+  foregroundSec: number;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  observations: number;
+  tracesLimited: boolean;
+  byPerson: { employeeId: number; empCode: string; fullName: string; foregroundSec: number; observations: number }[];
+  timeline: { employeeId: number; empCode: string; fullName: string; processName: string; deviceId: number; startedAt: string; endedAt: string }[];
+  screenshots: { id: string; employeeId: number; empCode: string; fullName: string; capturedAt: string; monitorIndex: number; width: number | null; height: number | null; thumbUrl: string; fullUrl: string }[];
+  screenshotTotal: number;
+  officeEntries: { id: number; kind: string; title: string; content: Record<string, unknown>; updatedAt: string }[];
+  previewVersions: number;
+  unresolvedComments: number;
+}
 export interface Preview {
   id: number;
   version: number;

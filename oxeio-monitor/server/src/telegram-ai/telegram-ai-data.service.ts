@@ -1,9 +1,10 @@
-import {ForbiddenException,Injectable} from '@nestjs/common';
+import {ForbiddenException,Injectable,Optional} from '@nestjs/common';
 import {UserRole} from '@prisma/client';
 import {PrismaService} from '../prisma/prisma.service';
 import {QUEUES,queueWhere} from '../production/production.rules';
+import {DevelopmentRoadmapService} from './development-roadmap.service';
 
-export const DATA_TOPICS=['pool','review','office','production','alerts','salary'] as const;
+export const DATA_TOPICS=['pool','review','office','production','alerts','salary','development'] as const;
 export type DataTopic=typeof DATA_TOPICS[number];
 type Reader={role:UserRole;employeeId:number|null};
 const manager=(role:UserRole)=>role===UserRole.owner||role===UserRole.manager;
@@ -12,12 +13,16 @@ const dhakaDay=()=>new Date(Date.now()+6*3600_000).toISOString().slice(0,10);
 /** One permission boundary for the portal endpoint and the Telegram worker. */
 @Injectable()
 export class TelegramAiDataService {
- constructor(private readonly db:PrismaService){}
+ constructor(private readonly db:PrismaService,@Optional() private readonly development?:DevelopmentRoadmapService){}
 
  async read(reader:Reader,topic:DataTopic){
   const day=dhakaDay();
   const start=new Date(`${day}T00:00:00+06:00`);
   const end=new Date(start.getTime()+86400_000);
+  if(topic==='development'){
+   if(reader.role!==UserRole.owner) throw new ForbiddenException('Development roadmap is owner-only.');
+   return {topic,asOf:day,roadmap:await this.development?.read()??null};
+  }
   if(topic==='office'){
    const own=manager(reader.role)?{}:{employeeId:reader.employeeId??-1};
    const [openHelp,assigned]=await Promise.all([
@@ -75,6 +80,21 @@ export class TelegramAiDataService {
 
  render(data:Awaited<ReturnType<TelegramAiDataService['read']>>):string{
   switch(data.topic){
+   case 'development':{
+    const r=data.roadmap;
+    if(!r) return 'Development roadmap এখন পাওয়া যাচ্ছে না। সর্বশেষ verified release portal/docs-এ দেখুন।';
+    const current=r.tasks.find(t=>t.id===r.currentTaskId);
+    const done=r.tasks.filter(t=>t.status==='deployed').length;
+    const blocked=r.tasks.filter(t=>t.status==='blocked').length;
+    const next=r.tasks.filter(t=>t.status==='queued').slice(0,3);
+    const stale=Date.now()-Date.parse(r.updatedAt)>3*86400_000;
+    return [`oXeio Development Assistant · ${r.updatedAt.slice(0,10)}${stale?' · পুরোনো snapshot':''}`,
+     `Live ${done}/${r.tasks.length} কাজ · blocked ${blocked}`,
+     ...(current?[`বর্তমান: ${current.id} · ${current.title} (${current.status})`,current.note]:[]),
+     ...(r.lastRelease?[`সর্বশেষ verified release #${r.lastRelease.build} · ${r.lastRelease.summary}`]:[]),
+     ...next.map(t=>`পরবর্তী: ${t.id} · ${t.title}`),
+     `Schedule: ${r.schedule}`,'এটি সংরক্ষিত roadmap status; live background activity-এর প্রমাণ নয়।'].join('\n');
+   }
    case 'office':return `${data.asOf} · ${data.scope==='self'?'আপনার':'দলের'} Office: ${data.assignedDesigns}টি assigned design, ${data.openHelp}টি open blocker।`;
    case 'production':return `Production · ${data.asOf}\nUnstarted ${data.queues.unstarted}, in progress ${data.queues.in_progress}, to check ${data.queues.to_check}, to fix ${data.queues.to_fix}, to upload ${data.queues.to_upload}, to live ${data.queues.to_live}।`;
    case 'pool':return `Design Pool · ${data.asOf}\nPool ${data.available}, in hand ${data.inHand}, done ${data.completed}, skipped ${data.skipped}, deleted ${data.deleted}।`;

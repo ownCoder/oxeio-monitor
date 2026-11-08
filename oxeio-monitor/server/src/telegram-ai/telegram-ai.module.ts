@@ -8,10 +8,11 @@ import {TelegramAiDataService} from './telegram-ai-data.service';
 import {TelegramAiLinkController} from './telegram-ai-link.controller';
 import {TelegramAiLinkService} from './telegram-ai-link.service';
 import {TelegramAiWorker} from './telegram-ai-worker';
+import {DevelopmentRoadmapService} from './development-roadmap.service';
 
 @Module({
  imports:[MeModule,ReportsModule],
  controllers:[TelegramAiLinkController,TelegramAiDataController],
- providers:[TelegramChannel,TelegramAiLinkService,TelegramAiAnswerService,TelegramAiDataService,TelegramAiWorker],
+ providers:[TelegramChannel,TelegramAiLinkService,TelegramAiAnswerService,TelegramAiDataService,TelegramAiWorker,DevelopmentRoadmapService],
 })
 export class TelegramAiModule {}
