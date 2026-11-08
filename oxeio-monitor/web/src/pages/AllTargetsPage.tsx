@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
+  changeReviewReason,
   decideSkip,
   deleteTargets,
   listTargetAdders,
@@ -11,6 +12,7 @@ import {
   markChecked,
   markFixed,
   markReviewed,
+  returnReviewedTargetToPool,
   targetStats,
   type DropReason,
   type TargetRow,
@@ -915,6 +917,16 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                       data.reload();
                       stats.reload();
                     })}
+                    onReviewReason={(reason) => edit.run(async () => {
+                      await changeReviewReason(r.id, reason);
+                      data.reload();
+                      stats.reload();
+                    })}
+                    onReturnToPool={() => edit.run(async () => {
+                      await returnReviewedTargetToPool(r.id);
+                      data.reload();
+                      stats.reload();
+                    })}
                     mayProofread={user?.canProofread === true}
                     onDelete={(reason) =>
                       edit.run(async () => {
@@ -1162,6 +1174,8 @@ function RowActions({
   onUndo,
   onReviewed,
   onSkipDecision,
+  onReviewReason,
+  onReturnToPool,
   onDelete,
   mayDelete,
   mayProofread,
@@ -1177,6 +1191,8 @@ function RowActions({
   /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
   onReviewed: () => void;
   onSkipDecision: (approve: boolean) => void;
+  onReviewReason: (reason: DropReason) => void;
+  onReturnToPool: () => void;
   onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
@@ -1202,11 +1218,22 @@ function RowActions({
    * ধরা, কি-বোর্ড সামলানো — তিনটে নতুন ফাঁদ, একটাও দরকার নেই।
    */
   const [open, setOpen] = useState(false);
+  const [changingReason, setChangingReason] = useState(false);
+
+  if (changingReason) return (
+    <DropReasonPicker
+      busy={busy}
+      onPick={(reason) => { setChangingReason(false); onReviewReason(reason); }}
+      onCancel={() => setChangingReason(false)}
+    />
+  );
 
   if (row.skipReviewPending) return mayDelete ? (
     <span className="flex flex-wrap justify-end gap-1.5">
       <MiniButton tone="good" disabled={busy} onClick={() => onSkipDecision(true)}>Approve skip</MiniButton>
       <MiniButton disabled={busy} onClick={() => onSkipDecision(false)}>Reject · return to designer</MiniButton>
+      <MiniButton disabled={busy} onClick={() => setChangingReason(true)}>Change reason</MiniButton>
+      <MiniButton disabled={busy} onClick={onReturnToPool}>Send to Design Pool</MiniButton>
     </span>
   ) : <span className="text-xs text-ink-3">Waiting for owner or manager</span>;
 
@@ -1269,8 +1296,11 @@ function RowActions({
             Reviewed
           </MiniButton>
         )}
-        <MiniButton disabled={busy} onClick={() => onChange('pool')}>
-          {row.status === 'deleted' ? 'Undelete' : 'Un-skip'}
+        {mayDelete && row.status === 'skipped' && row.dropReason !== null && (
+          <MiniButton disabled={busy} onClick={() => setChangingReason(true)}>Change reason</MiniButton>
+        )}
+        <MiniButton disabled={busy} onClick={mayDelete ? onReturnToPool : () => onChange('pool')}>
+          Send to Design Pool
         </MiniButton>
       </span>
     );

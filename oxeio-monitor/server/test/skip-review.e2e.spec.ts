@@ -139,4 +139,52 @@ describe('Reason-based immediate skip replacement', () => {
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
     expect(await h.prisma.designSkipRequest.count({ where: { targetId: ids[0], decision: 'pending' } })).toBe(0);
   });
+
+  it('lets an owner correct the reason and automatically closes Page Not Found review', async () => {
+    await service.skip(employeeId, ids[0], 'events', now, actorId);
+    await expect(service.changeReviewReason(ids[0], 'copyright', ownerId, now)).resolves.toEqual({
+      ok: true, reviewPending: true,
+    });
+    expect(await h.prisma.designSkipRequest.findFirstOrThrow({ where: { targetId: ids[0] } })).toMatchObject({
+      reason: 'copyright', decision: 'pending',
+    });
+    await expect(service.changeReviewReason(ids[0], 'not_found', ownerId, now)).resolves.toEqual({
+      ok: true, reviewPending: false,
+    });
+    expect(await h.prisma.designTarget.findUniqueOrThrow({ where: { id: ids[0] } })).toMatchObject({
+      status: 'skipped', dropReason: 'not_found', skipReviewPending: false,
+      reviewedById: ownerId,
+    });
+    expect(await h.prisma.designSkipRequest.findFirstOrThrow({ where: { targetId: ids[0] } })).toMatchObject({
+      reason: 'not_found', decision: 'automatic', reviewerUserId: ownerId,
+    });
+  });
+
+  it('returns pending skipped and deleted review items to the pool without erasing skip audit', async () => {
+    await service.skip(employeeId, ids[0], 'others', now, actorId);
+    await service.returnReviewedTargetToPool(ids[0], ownerId, now);
+    expect(await h.prisma.designTarget.findUniqueOrThrow({ where: { id: ids[0] } })).toMatchObject({
+      status: 'pool', assignedToId: null, dropReason: null, skipReviewPending: false,
+    });
+    expect(await h.prisma.designSkipRequest.findFirstOrThrow({ where: { targetId: ids[0] } })).toMatchObject({
+      reason: 'others', decision: 'rejected', reviewerUserId: ownerId,
+    });
+
+    await h.prisma.designTarget.update({ where: { id: ids[1] }, data: {
+      status: 'deleted', dropReason: 'copyright', deletedAt: now,
+    } });
+    await service.returnReviewedTargetToPool(ids[1], ownerId, now);
+    expect(await h.prisma.designTarget.findUniqueOrThrow({ where: { id: ids[1] } })).toMatchObject({
+      status: 'pool', assignedToId: null, dropReason: null, deletedAt: null,
+    });
+  });
+
+  it('rejects staff and invalid reasons on the review correction routes', async () => {
+    await service.skip(employeeId, ids[0], 'events', now, actorId);
+    const staff = await loginReady(h, 'skip@test.local', 'skip-password-123');
+    await staff.http.post(`/api/v1/design-targets/${ids[0]}/review-reason`).set('X-CSRF-Token', staff.csrf).send({ reason: 'copyright' }).expect(403);
+    await staff.http.post(`/api/v1/design-targets/${ids[0]}/return-to-pool`).set('X-CSRF-Token', staff.csrf).send().expect(403);
+    const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    await owner.http.post(`/api/v1/design-targets/${ids[0]}/review-reason`).set('X-CSRF-Token', owner.csrf).send({ reason: 'made_up' }).expect(400);
+  });
 });

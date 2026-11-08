@@ -236,6 +236,11 @@ class SkipDecisionDto {
   approve!: boolean;
 }
 
+class ReviewReasonDto {
+  @IsIn([...DROP_REASONS])
+  reason!: DropReason;
+}
+
 /**
  * **ডিজাইন-টার্গেট** *(২২ আগস্ট ২০২৬)*।
  *
@@ -437,6 +442,25 @@ export class TargetsController {
     @Body() dto: SkipDecisionDto,
   ) {
     return this.targets.decideSkip(id, dto.approve, actor.userId);
+  }
+
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post(':id/review-reason')
+  changeReviewReason(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReviewReasonDto,
+  ) {
+    return this.targets.changeReviewReason(id, dto.reason, actor.userId);
+  }
+
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post(':id/return-to-pool')
+  returnToPool(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.targets.returnReviewedTargetToPool(id, actor.userId);
   }
 
   @Post(':id/uploaded')

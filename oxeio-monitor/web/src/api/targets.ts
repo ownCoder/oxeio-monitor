@@ -159,6 +159,16 @@ export function decideSkip(id: number, approve: boolean) {
   return api<{ ok: boolean }>(`/design-targets/${id}/skip-decision`, { method: 'POST', body: { approve } });
 }
 
+export function changeReviewReason(id: number, reason: DropReason) {
+  return api<{ ok: boolean; reviewPending: boolean }>(`/design-targets/${id}/review-reason`, {
+    method: 'POST', body: { reason },
+  });
+}
+
+export function returnReviewedTargetToPool(id: number) {
+  return api<{ ok: boolean }>(`/design-targets/${id}/return-to-pool`, { method: 'POST' });
+}
+
 export type TargetStatus = 'pool' | 'assigned' | 'done' | 'skipped' | 'deleted';
 
 /**

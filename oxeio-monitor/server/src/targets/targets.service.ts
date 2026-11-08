@@ -914,6 +914,75 @@ export class TargetsService {
     return { ok: true };
   }
 
+  async changeReviewReason(
+    id: number,
+    reason: DropReason,
+    userId: number,
+    now = new Date(),
+  ): Promise<{ ok: boolean; reviewPending: boolean }> {
+    return targetWrite(this.prisma, userId, 'review_reason_changed', async tx => {
+      await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
+      const row = await tx.designTarget.findUnique({ where: { id } });
+      if (!row || row.status !== DesignTargetStatus.skipped || row.dropReason === null) {
+        throw new ConflictException('Only a skipped design in Review can have its skip reason changed.');
+      }
+      const request = await tx.designSkipRequest.findFirst({
+        where: { targetId: id }, orderBy: { id: 'desc' },
+      });
+      if (!request) throw new ConflictException('No skip request exists for this design.');
+
+      const automatic = row.skipReviewPending && reason === 'not_found';
+      await tx.designSkipRequest.update({
+        where: { id: request.id },
+        data: {
+          reason,
+          ...(automatic ? { decision: 'automatic', decidedAt: now, reviewerUserId: userId } : {}),
+        },
+      });
+      await tx.designTarget.update({
+        where: { id },
+        data: {
+          dropReason: reason,
+          ...(automatic ? {
+            skipReviewPending: false, reviewedAt: now, reviewedById: userId,
+          } : {}),
+        },
+      });
+      return { ok: true, reviewPending: row.skipReviewPending && !automatic };
+    });
+  }
+
+  async returnReviewedTargetToPool(
+    id: number,
+    userId: number,
+    now = new Date(),
+  ): Promise<{ ok: boolean }> {
+    return targetWrite(this.prisma, userId, 'review_returned_to_pool', async tx => {
+      await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
+      const row = await tx.designTarget.findUnique({ where: { id } });
+      if (!row || (row.status !== DesignTargetStatus.skipped && row.status !== DesignTargetStatus.deleted)) {
+        throw new ConflictException('Only a skipped or deleted design in Review can be returned to the pool.');
+      }
+      if (row.skipReviewPending) {
+        const decision = await tx.designSkipRequest.updateMany({
+          where: { targetId: id, decision: 'pending' },
+          data: { decision: 'rejected', decidedAt: now, reviewerUserId: userId },
+        });
+        if (decision.count !== 1) throw new ConflictException('No pending skip request exists. Refresh the list.');
+      }
+      await tx.designTarget.update({ where: { id }, data: {
+        status: DesignTargetStatus.pool,
+        assignedToId: null, assignedAt: null, startedAt: null,
+        completedAt: null, completedVia: null, completedById: null,
+        dropReason: null, skipReviewPending: false, skipRequestedAt: null,
+        reviewedAt: null, reviewedById: null, deletedAt: null,
+        checkedAt: null, checkedById: null, errorFoundAt: null,
+        fixedAt: null, fixedById: null, uploadedAt: null, liveAt: null, liveAsin: null,
+      } });
+      return { ok: true };
+    });
+  }
+
   /**
    * "শেষ করেছি" — হাতে চিহ্ন।
    *
