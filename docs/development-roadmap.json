@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-08T07:29:53Z",
+  "updatedAt": "2026-11-08T07:52:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D02",
   "lastRelease": {
-    "build": "514",
-    "commit": "c50da8f4488c318ff34facf9329216ffd16e2870",
-    "summary": "Unified design evidence and private KIA roadmap"
+    "build": "516",
+    "commit": "8e93f5e3bfe6d43dcfe37df7c47e2342e57571f5",
+    "summary": "Review reason correction and Design Pool return controls"
   },
   "tasks": [
     {
@@ -20,8 +20,8 @@
       "id": "D02",
       "title": "Manager Action Center ও সরাসরি next action",
       "priority": 1,
-      "status": "queued",
-      "note": "Skip review, replacement, overdue, rework ও missing agent data এক queue-তে।"
+      "status": "in_progress",
+      "note": "Release 516-এ Review queue থেকে reason correction ও safe Design Pool return live; unified Action Center-এর বাকি queue ও next-action কাজ চলবে।"
     },
     {
       "id": "D03",
