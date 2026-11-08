@@ -25,3 +25,7 @@ Release 483-এর ঐতিহাসিক live check: Telegram bot reachable, 
 এই কাজের জন্য তৈরি চারটি OpenAI key-ই owner-এর action-time অনুমতি নিয়ে **OpenAI Platform-এ revoked**; key list-এ চারটি row-র status `Revoked` দেখা হয়েছে। VPS `.env` ও API container-এ OpenAI key নেই; local model কোনো API key ব্যবহার করে না। Local encrypted handoff-এর private key মুছে দেওয়া হয়েছে।
 
 Release source: local `.release-salary/oxeio-monitor`; current VPS release `/opt/oxeio-releases/telegram-ai-fast-cloud-20261011`। Latest API rollback tag `oxeio-api:before-groq-leave-20261011` (release 493); local-only baseline tag `oxeio-api:before-telegram-ai-fast-cloud-20261011` (release 489)। Rollback-এ `.env`-এর `TELEGRAM_AI_PROVIDER=local` ফিরিয়ে API recreate করুন; secret value docs/log-এ আনবেন না। Migration `20261010150000_telegram_ai_accounts` additive; rollback-এ table drop করবেন না। Shared handoff `/opt/oxeio/docs/current-state.md`; অন্য PC-তে local mirror স্বয়ংক্রিয়ভাবে sync হয় না।
+
+## Development status: release 514
+
+Owner private `/roadmap` or `/development` reads validated `STORAGE_ROOT/ops/development-roadmap.json` without a model call. Other roles are denied; group requests receive private-chat guidance. Snapshot is saved progress, not proof a worker is running. Update atomically, mode 640 root:1000. Endpoint: `GET /api/v1/me/telegram-ai/data?topic=development`. See [guide](development-assistant.md).

@@ -1,5 +1,7 @@
 # Current state — অন্য PC থেকে কাজ চালু করার নোট
 
+- **Development assistant ACTIVE; release 514 / `c50da8f4488c318ff34facf9329216ffd16e2870`:** 08:00 Asia/Dhaka Saturday–Thursday, while local PC/Codex run. D01 unified design evidence deployed; 35 isolated integration tests passed. API/web healthy. Owner private KIA `/roadmap` reports saved progress without an AI call. D02 Manager Action Center next; 17 items queued. No schema, payroll or deposit change. Browser visual QA not completed. [Guide](development-assistant.md) / [Roadmap](development-roadmap.json) / [Release](audits/2026-11-08-development-assistant-evidence.md).
+
 > **3 November 2026 — new local implementation:** office IP `144.79.106.62`, any-PC authenticated agent login. Source is isolated in `C:\Users\Mamunur Rasid\.codex\worktrees\office-agent-login\oXeio Office`, branch `codex/office-agent-login`, based on live VPS source `82fd8a4`. 107 server + 534 agent tests passed. **Not deployed, no MSI published, no VPS/GitHub sync.** Read [office agent access](office-agent-access.md) before continuing; do not deploy this older original checkout.
 
 সর্বশেষ আপডেট: ৮ নভেম্বর ২০২৬ · Asia/Dhaka

@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-08T07:29:53Z",
+  "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
+  "currentTaskId": "D02",
+  "lastRelease": {
+    "build": "514",
+    "commit": "c50da8f4488c318ff34facf9329216ffd16e2870",
+    "summary": "Unified design evidence and private KIA roadmap"
+  },
+  "tasks": [
+    {
+      "id": "D01",
+      "title": "এক design-এ সময়, screenshots, checklist ও review evidence",
+      "priority": 1,
+      "status": "deployed",
+      "note": "Release 514 live; 35 isolated integration tests passed. File observations, private screenshots, checklist and timeline in Design details."
+    },
+    {
+      "id": "D02",
+      "title": "Manager Action Center ও সরাসরি next action",
+      "priority": 1,
+      "status": "queued",
+      "note": "Skip review, replacement, overdue, rework ও missing agent data এক queue-তে।"
+    },
+    {
+      "id": "D03",
+      "title": "Storage usage, growth ও retention dashboard",
+      "priority": 1,
+      "status": "queued",
+      "note": "Screenshots, database, backups ও Docker আলাদা; existing disk alerts-এর সঙ্গে মিল।"
+    },
+    {
+      "id": "D04",
+      "title": "Missing-time request ও owner approval",
+      "priority": 1,
+      "status": "queued",
+      "note": "Overlap check, reason, limits ও audit; default disabled, raw tracking অক্ষত।"
+    },
+    {
+      "id": "D05",
+      "title": "Account অনুযায়ী table columns ও consistent filter controls",
+      "priority": 1,
+      "status": "queued",
+      "note": "Existing saved filters-এর সঙ্গে sync; নতুন duplicate view system নয়।"
+    },
+    {
+      "id": "D06",
+      "title": "Design estimate বনাম actual time ও task planning",
+      "priority": 2,
+      "status": "queued",
+      "note": "Comparable design type, custom board/task fields, subtasks ও mentions।"
+    },
+    {
+      "id": "D07",
+      "title": "Calendar ও day অনুযায়ী staff/design drill-down",
+      "priority": 2,
+      "status": "queued",
+      "note": "Configured holiday ও leave rules বজায় রেখে existing report totals ব্যবহার।"
+    },
+    {
+      "id": "D08",
+      "title": "Bulk staff tracking-policy grid",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing work policies, individual differences ও visible tracking changes।"
+    },
+    {
+      "id": "D09",
+      "title": "Staff-এর নিজের monthly PDF ও timesheet highlighter",
+      "priority": 2,
+      "status": "queued",
+      "note": "Own-data scope, identical report figures, clear recorded-time labels।"
+    },
+    {
+      "id": "D10",
+      "title": "Personal summary ও notification preferences",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing digest/KIA delivery reuse; unchanged reminder flood নয়।"
+    },
+    {
+      "id": "D11",
+      "title": "Quality-aware performance map ও monthly recognition",
+      "priority": 2,
+      "status": "queued",
+      "note": "Accepted output, target, rework ও hours একসঙ্গে; input percentage একা quality নয়।"
+    },
+    {
+      "id": "D12",
+      "title": "Team-scoped manager ও approved invitations",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing manager access migration-এর আগে explicit team assignment ও permission tests।"
+    },
+    {
+      "id": "D13",
+      "title": "Getting started ও agent sync/update guidance",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing updater রেখে clearer offline, permission ও recovery messages।"
+    },
+    {
+      "id": "D14",
+      "title": "Read-only external client portal",
+      "priority": 3,
+      "status": "queued",
+      "note": "Disabled by default; client/project scope ও actual invite recipient ছাড়া access দেওয়া হবে না।"
+    },
+    {
+      "id": "D15",
+      "title": "Browser toolbar team monitor",
+      "priority": 3,
+      "status": "queued",
+      "note": "Authenticated read-only prototype; install/publish আলাদা acceptance ধাপ।"
+    },
+    {
+      "id": "D16",
+      "title": "macOS/Linux agent support",
+      "priority": 3,
+      "status": "queued",
+      "note": "Protocol parity, platform implementation ও real-device acceptance প্রয়োজন।"
+    },
+    {
+      "id": "D17",
+      "title": "Private S3-compatible screenshot storage",
+      "priority": 3,
+      "status": "queued",
+      "note": "Private URLs, retry ও migration plan; provider credentials ছাড়া live storage switch নয়।"
+    },
+    {
+      "id": "D18",
+      "title": "Explicit task timing ও task-linked capture context",
+      "priority": 3,
+      "status": "queued",
+      "note": "Existing filename matching থেকে আলাদা explicit task context; agent rollout ও office pilot প্রয়োজন।"
+    }
+  ],
+  "nextActions": [
+    "D02 Manager Action Center implementation and acceptance checks",
+    "D03 storage growth and retention dashboard",
+    "D04 owner-reviewed missing-time requests"
+  ]
+}
