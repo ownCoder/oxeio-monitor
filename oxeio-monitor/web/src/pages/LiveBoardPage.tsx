@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { getTopUsage } from '../api/activity';
 import { listAlerts } from '../api/alerts';
@@ -11,6 +11,7 @@ import { Empty, ErrorBox, Loading } from '../components/States';
 import { Tabs } from '../components/Tabs';
 import { dhakaHourNow, formatDate, formatDateShort, formatDuration, formatTime, weekdayOf } from '../lib/format';
 import { DayPulse } from './live/DayPulse';
+import { DesignOutputPopover } from './live/DesignOutputPopover';
 import { TopApps } from './live/TopApps';
 import { StatusStrip } from './live/TeamBars';
 import { TeamTable } from './live/TeamTable';
@@ -127,6 +128,18 @@ function DataPanel({ result, children }: { result: Pick<ApiResult<unknown>, 'dat
 
 function StudioWeek({ days, metric }: { days: TrendDay[]; metric: 'designs' | 'hours' }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const popupId = useId();
+  const keepOpen = useCallback(() => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+  const close = useCallback(() => { keepOpen(); setAnchor(null); }, [keepOpen]);
+  const leave = () => { keepOpen(); closeTimer.current = setTimeout(close, 180); };
+  const show = (day: TrendDay, button: HTMLButtonElement) => {
+    keepOpen();
+    setSelected(day.date);
+    if (metric === 'designs') setAnchor(button);
+  };
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
   const valueOf = (day: TrendDay) => metric === 'designs' ? day.designsFinished : day.workedSec;
   const labelOf = (day: TrendDay) => metric === 'designs' ? `${day.designsFinished}` : formatDuration(day.workedSec);
   const peak = Math.max(...days.filter((day) => day.tracked).map(valueOf), 1);
@@ -135,7 +148,13 @@ function StudioWeek({ days, metric }: { days: TrendDay[]; metric: 'designs' | 'h
   const tracked = days.filter((day) => day.tracked);
   return <div className="studio-chart">
     <div className="studio-chart-columns" aria-label={metric === 'designs' ? 'Completed designs by day' : 'Active hours by day'}>
-      {days.map((day) => <button type="button" key={day.date} className="studio-chart-day" onMouseEnter={() => setSelected(day.date)} onFocus={() => setSelected(day.date)} onClick={() => setSelected(day.date)} aria-label={`${formatDate(day.date)}: ${day.tracked ? `${labelOf(day)} ${metric === 'designs' ? 'designs finished' : 'active time'}${day.expectedStaff === 0 ? ', day off' : ''}` : 'not tracked yet'}`}>
+      {days.map((day) => <button type="button" key={day.date} className="studio-chart-day"
+        onMouseEnter={(event) => show(day, event.currentTarget)} onMouseLeave={leave}
+        onFocus={(event) => show(day, event.currentTarget)} onBlur={leave}
+        onClick={(event) => show(day, event.currentTarget)}
+        aria-expanded={metric === 'designs' ? Boolean(anchor && selected === day.date) : undefined}
+        aria-controls={anchor && selected === day.date ? popupId : undefined}
+        aria-label={`${formatDate(day.date)}: ${day.tracked ? `${labelOf(day)} ${metric === 'designs' ? 'designs finished' : 'active time'}${day.expectedStaff === 0 ? ', day off' : ''}` : 'not tracked yet'}`}>
         <span className="studio-chart-value">{day.tracked ? labelOf(day) : '—'}</span>
         <span className={`studio-chart-bar${day.tracked ? '' : ' is-untracked'}`} style={{ height: day.tracked ? `${Math.max(2, valueOf(day) / peak * 135)}px` : '35px' }} />
       </button>)}
@@ -143,18 +162,6 @@ function StudioWeek({ days, metric }: { days: TrendDay[]; metric: 'designs' | 'h
     <div className="studio-chart-dates" aria-hidden>{days.map((day) => <span key={day.date}>{weekdayOf(day.date).slice(0, 3)}<br />{Number(day.date.slice(-2))}</span>)}</div>
     <p className="studio-chart-total"><strong>{tracked.length ? tracked.reduce((sum, day) => sum + day.designsFinished, 0) : '—'}</strong> designs finished · {tracked.length} of {days.length} days tracked</p>
     <p className="studio-chart-note" aria-live="polite">{shown ? `${formatDateShort(shown.date)} · ${shown.tracked ? `${labelOf(shown)} ${metric === 'designs' ? 'finished' : 'active'}${shown.expectedStaff === 0 ? ' · day off' : ''}` : 'not tracked yet'}` : 'Today is still in progress. Dashed bars mean not tracked yet.'}</p>
-    {metric === 'designs' && (
-      <div className="studio-chart-breakdown" aria-live="polite">
-        {shown ? <>
-          <strong>{formatDateShort(shown.date)} · Assigned designer breakdown</strong>
-          {!shown.tracked ? <p>Not tracked yet.</p> : shown.designers.length === 0 ? <p>No designs completed.</p> : (
-            <ul>{shown.designers.map((person) => <li key={person.employeeId ?? 'unassigned'}>
-              <span>{person.fullName}{person.empCode && <small> · {person.empCode}</small>}</span>
-              <b>{person.designsFinished}</b>
-            </li>)}</ul>
-          )}
-        </> : <p>Hover, focus or tap a bar to see who completed the designs.</p>}
-      </div>
-    )}
+    {metric === 'designs' && anchor && shown && <DesignOutputPopover id={popupId} day={shown} anchor={anchor} onClose={close} onEnter={keepOpen} onLeave={leave} />}
   </div>;
 }
