@@ -60,7 +60,7 @@ function atDhakaHour(dayLabel: Date, hour: number): Date {
 }
 
 let asinCounter = 0;
-async function finishedAt(when: Date | null): Promise<void> {
+async function finishedAt(when: Date | null, assignedToId?: number): Promise<void> {
   const owner = await h.prisma.user.findFirstOrThrow();
   asinCounter += 1;
 
@@ -71,6 +71,7 @@ async function finishedAt(when: Date | null): Promise<void> {
       addedById: owner.id,
       status: when === null ? 'pool' : 'done',
       completedAt: when,
+      assignedToId,
     },
   });
 }
@@ -78,6 +79,32 @@ async function finishedAt(when: Date | null): Promise<void> {
 const daysOf = async () => (await dashboard.teamTrend()).days;
 
 describe('সাত দিনের ফিতে — কতগুলো ডিজাইন শেষ হয়েছে', () => {
+  it('hover breakdown shows each assigned designer and reconciles with the daily total', async () => {
+    const policy = await h.prisma.workPolicy.findFirstOrThrow();
+    const arina = await h.prisma.employee.create({ data: {
+      empCode: 'OX-101', fullName: 'Arina Islam', policyId: policy.id,
+      joinedOn: new Date('2026-01-01T00:00:00Z'),
+    } });
+    const belal = await h.prisma.employee.create({ data: {
+      empCode: 'OX-102', fullName: 'Belal Rahman', policyId: policy.id,
+      joinedOn: new Date('2026-01-01T00:00:00Z'),
+    } });
+    const when = atDhakaHour(today(), 12);
+    await finishedAt(when, arina.id);
+    await finishedAt(when, arina.id);
+    await finishedAt(when, belal.id);
+    await finishedAt(when);
+
+    const day = (await daysOf()).at(-1)!;
+    expect(day.designsFinished).toBe(4);
+    expect(day.designers).toEqual([
+      { employeeId: arina.id, empCode: 'OX-101', fullName: 'Arina Islam', designsFinished: 2 },
+      { employeeId: belal.id, empCode: 'OX-102', fullName: 'Belal Rahman', designsFinished: 1 },
+      { employeeId: null, empCode: null, fullName: 'Unassigned', designsFinished: 1 },
+    ]);
+    expect(day.designers.reduce((sum, person) => sum + person.designsFinished, 0)).toBe(day.designsFinished);
+  });
+
   it('আজ শেষ হওয়া ডিজাইন আজকের ঘরে বসে', async () => {
     await finishedAt(atDhakaHour(today(), 11));
     await finishedAt(atDhakaHour(today(), 15));

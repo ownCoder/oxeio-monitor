@@ -52,6 +52,13 @@
 .studio-chart-dates { display:flex; gap:14px; padding-top:10px; color:var(--color-ink-2); font-size:11px; }
 .studio-chart-dates span { min-width:0; flex:1; text-align:center; }
 .studio-chart-note { margin-top:16px; min-height:18px; color:var(--color-ink-2); font-size:11px; }
+.studio-chart-breakdown { margin-top:12px; min-height:78px; max-height:178px; overflow:auto; border:1px solid var(--color-line); border-radius:8px; padding:10px 12px; background:var(--color-paper); font-size:11px; }
+.studio-chart-breakdown > strong { display:block; margin-bottom:6px; font-size:11px; }
+.studio-chart-breakdown p { color:var(--color-ink-2); }
+.studio-chart-breakdown ul { display:grid; gap:4px; }
+.studio-chart-breakdown li { display:flex; justify-content:space-between; gap:12px; }
+.studio-chart-breakdown small { color:var(--color-ink-3); }
+.studio-chart-breakdown b { font-variant-numeric:tabular-nums; }
 .studio-connection-note { margin:12px 20px 20px; padding-top:15px; border-top:1px solid var(--color-line); color:var(--color-ink-2); font-size:12px; line-height:1.6; }
 .studio-secondary-stat { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; color:var(--color-ink-2); font-size:12px; border-top:1px solid var(--color-line); }
 .studio-footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; color:var(--color-ink-2); font-size:11px; }

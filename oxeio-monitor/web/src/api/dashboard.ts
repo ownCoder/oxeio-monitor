@@ -163,6 +163,13 @@ export interface TrendDay {
    * "১৬" দেখাত।
    */
   designsFinished: number;
+  /** Same completed designs, grouped by the staff member assigned to each design. */
+  designers: {
+    employeeId: number | null;
+    empCode: string | null;
+    fullName: string;
+    designsFinished: number;
+  }[];
 
   /** কতজনের সত্যিই টার্গেট ছিল — শূন্য মানে সবারই ছুটি */
   expectedStaff: number;

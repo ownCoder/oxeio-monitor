@@ -202,6 +202,13 @@ export interface TrendDay {
    * একই ফাংশন, যেটা দিয়ে গোটা সিস্টেমের "কোন দিন" ঠিক হয়।
    */
   designsFinished: number;
+  /** Completed designs attributed to the assigned staff member; null means unassigned. */
+  designers: {
+    employeeId: number | null;
+    empCode: string | null;
+    fullName: string;
+    designsFinished: number;
+  }[];
 
   /** ওই দিনে কতজনের সত্যিই টার্গেট ছিল — শূন্য মানে সবারই ছুটি */
   expectedStaff: number;
@@ -876,7 +883,11 @@ export class DashboardService {
             lt: new Date(today.getTime() + 86_400_000 - DHAKA_OFFSET_MS),
           },
         },
-        select: { completedAt: true },
+        select: {
+          completedAt: true,
+          assignedToId: true,
+          assignedTo: { select: { empCode: true, fullName: true } },
+        },
       }),
     ]);
 
@@ -950,10 +961,22 @@ export class DashboardService {
      *    ঠিক — অসম্পূর্ণ টার্গেট "আজ শেষ হয়েছে" নয়।
      */
     const finishedByDay = new Map<number, number>();
+    const designersByDay = new Map<number, Map<number, TrendDay['designers'][number]>>();
     for (const d of finishedRows) {
       if (d.completedAt === null) continue;
       const key = workDateOf(d.completedAt).getTime();
       finishedByDay.set(key, (finishedByDay.get(key) ?? 0) + 1);
+      const people = designersByDay.get(key) ?? new Map<number, TrendDay['designers'][number]>();
+      const personKey = d.assignedToId ?? 0;
+      const person = people.get(personKey);
+      if (person) person.designsFinished += 1;
+      else people.set(personKey, {
+        employeeId: d.assignedToId,
+        empCode: d.assignedTo?.empCode ?? null,
+        fullName: d.assignedTo?.fullName ?? 'Unassigned',
+        designsFinished: 1,
+      });
+      designersByDay.set(key, people);
     }
 
     const days: TrendDay[] = [];
@@ -972,6 +995,8 @@ export class DashboardService {
         date: formatWorkDate(date),
         workedSec,
         designsFinished: finishedByDay.get(ms) ?? 0,
+        designers: [...(designersByDay.get(ms)?.values() ?? [])]
+          .sort((a, b) => b.designsFinished - a.designsFinished || a.fullName.localeCompare(b.fullName)),
         // ⚠️ সারি থাকা নয়, **তারিখটা ট্র্যাকিং শুরুর পরে কি না** — সেটাই
         //    মাপকাঠি। নইলে ভবিষ্যতের কোনো ফাঁকা দিনও "দেখা হয়নি" হয়ে যেত।
         tracked: trackedFromMs !== null && ms >= trackedFromMs,

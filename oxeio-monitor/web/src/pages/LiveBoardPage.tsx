@@ -143,5 +143,18 @@ function StudioWeek({ days, metric }: { days: TrendDay[]; metric: 'designs' | 'h
     <div className="studio-chart-dates" aria-hidden>{days.map((day) => <span key={day.date}>{weekdayOf(day.date).slice(0, 3)}<br />{Number(day.date.slice(-2))}</span>)}</div>
     <p className="studio-chart-total"><strong>{tracked.length ? tracked.reduce((sum, day) => sum + day.designsFinished, 0) : '—'}</strong> designs finished · {tracked.length} of {days.length} days tracked</p>
     <p className="studio-chart-note" aria-live="polite">{shown ? `${formatDateShort(shown.date)} · ${shown.tracked ? `${labelOf(shown)} ${metric === 'designs' ? 'finished' : 'active'}${shown.expectedStaff === 0 ? ' · day off' : ''}` : 'not tracked yet'}` : 'Today is still in progress. Dashed bars mean not tracked yet.'}</p>
+    {metric === 'designs' && (
+      <div className="studio-chart-breakdown" aria-live="polite">
+        {shown ? <>
+          <strong>{formatDateShort(shown.date)} · Assigned designer breakdown</strong>
+          {!shown.tracked ? <p>Not tracked yet.</p> : shown.designers.length === 0 ? <p>No designs completed.</p> : (
+            <ul>{shown.designers.map((person) => <li key={person.employeeId ?? 'unassigned'}>
+              <span>{person.fullName}{person.empCode && <small> · {person.empCode}</small>}</span>
+              <b>{person.designsFinished}</b>
+            </li>)}</ul>
+          )}
+        </> : <p>Hover, focus or tap a bar to see who completed the designs.</p>}
+      </div>
+    )}
   </div>;
 }
