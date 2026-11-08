@@ -4,7 +4,7 @@ The owner asked on 8 November 2026 to implement the Timodesk findings one by one
 
 ## Work to pursue
 
-Use [the approved roadmap](development-roadmap.json), [Timodesk comparison](2026-11-08-timodesk-review.md), and [current deployment state](current-state.md). The 18 roadmap items are an ordered programme, not a claim that all features are live. Finish one cohesive, usable feature at a time, including appropriate checks, deployment evidence and documentation. If a task needs unavailable hardware, provider setup or an access decision, record the exact dependency and continue independent queued work. Do not silently drop it.
+Use [the step-by-step workflow](development-workflow.md), [approved roadmap](development-roadmap.json), [Timodesk comparison](2026-11-08-timodesk-review.md), and [current deployment state](current-state.md). The 18 roadmap items are an ordered programme, not a claim that all features are live. Follow the workflow's nine delivery gates and one-active-release rule. If a task needs unavailable hardware, provider setup or an access decision, record the exact dependency and continue independent queued work. Do not silently drop it.
 
 The live KIA roadmap is a read-only copy at `STORAGE_ROOT/ops/development-roadmap.json`. Update it atomically after meaningful progress. The owner can query it privately using `/roadmap` or `/development`; staff and managers cannot read the development roadmap. KIA reports saved status, not unverified claims of work running. This status command must work without a generative AI call.
 

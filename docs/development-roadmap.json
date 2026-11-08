@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-08T07:52:00Z",
+  "updatedAt": "2026-11-08T12:47:28Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D02",
   "lastRelease": {
@@ -137,7 +137,7 @@
     }
   ],
   "nextActions": [
-    "D02 Manager Action Center implementation and acceptance checks",
+    "D02 finish unified Action Center queue and exact-record links",
     "D03 storage growth and retention dashboard",
     "D04 owner-reviewed missing-time requests"
   ]
