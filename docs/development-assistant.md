@@ -38,4 +38,4 @@ When the owner corrects a behaviour or priority, implement the correction and up
 
 Automation `oxeio-development-assistant` is ACTIVE: `FREQ=WEEKLY;BYDAY=SU,MO,TU,WE,TH,SA;BYHOUR=8;BYMINUTE=0;BYSECOND=0`, Asia/Dhaka. Local scheduled runs require this PC and the Codex app to be running. Research is reviewed on Mondays and when a queued decision needs fresh sources. Notify only meaningful releases, actionable blockers or proposals.
 
-D01 was deployed as release 514 (`c50da8f4488c318ff34facf9329216ffd16e2870`). D02 is next and queued; the other 17 items are not yet delivered. See [release evidence](audits/2026-11-08-development-assistant-evidence.md).
+D01 was deployed as release 514 (`c50da8f4488c318ff34facf9329216ffd16e2870`). D02 Manager Action Center was completed in release 519 (`47ed5386a1cbda7b56f39cc2902e83f7fbdc5eff`). D03 storage usage, growth and retention dashboard is next; D04–D18 remain queued. See [Action Center evidence](audits/2026-11-09-action-center.md).

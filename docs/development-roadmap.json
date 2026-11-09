@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-08T12:47:28Z",
+  "updatedAt": "2026-11-09T02:12:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
-  "currentTaskId": "D02",
+  "currentTaskId": "D03",
   "lastRelease": {
-    "build": "516",
-    "commit": "8e93f5e3bfe6d43dcfe37df7c47e2342e57571f5",
-    "summary": "Review reason correction and Design Pool return controls"
+    "build": "519",
+    "commit": "47ed5386a1cbda7b56f39cc2902e83f7fbdc5eff",
+    "summary": "Unified Production Action Center with exact-record links"
   },
   "tasks": [
     {
@@ -20,8 +20,8 @@
       "id": "D02",
       "title": "Manager Action Center ও সরাসরি next action",
       "priority": 1,
-      "status": "in_progress",
-      "note": "Release 516-এ Review queue থেকে reason correction ও safe Design Pool return live; unified Action Center-এর বাকি queue ও next-action কাজ চলবে।"
+      "status": "deployed",
+      "note": "Release 519 live: skip review, replacement owed, rework, overdue, stale unstarted work এবং missing agent setup এক owner/manager queue-তে; প্রতিটি item exact record খোলে।"
     },
     {
       "id": "D03",
@@ -137,8 +137,8 @@
     }
   ],
   "nextActions": [
-    "D02 finish unified Action Center queue and exact-record links",
     "D03 storage growth and retention dashboard",
-    "D04 owner-reviewed missing-time requests"
+    "D04 owner-reviewed missing-time requests",
+    "D05 account-synced table and filter controls"
   ]
 }
