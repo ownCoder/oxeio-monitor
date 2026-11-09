@@ -177,6 +177,158 @@ export class ProductionService {
     });
   }
 
+  async actionCenter(now = new Date()) {
+    const stored = await this.prisma.setting.findUnique({
+      where: { key: 'production.digest.config' },
+      select: { value: true },
+    });
+    const configured = (stored?.value as { staleHours?: unknown } | null)?.staleHours;
+    const staleHours =
+      typeof configured === 'number' && Number.isInteger(configured) && configured >= 1 && configured <= 720
+        ? configured
+        : 48;
+    const cutoff = new Date(now.getTime() - staleHours * 3600000);
+    const targetSelect = {
+      id: true,
+      asin: true,
+      jobNumber: true,
+      assignedAt: true,
+      dueAt: true,
+      errorFoundAt: true,
+      skipRequestedAt: true,
+      assignedTo: { select: { id: true, fullName: true, empCode: true } },
+    } as const;
+    const [
+      skipReviewCount,
+      skipReview,
+      replacementCount,
+      replacements,
+      overdueCount,
+      overdue,
+      unstartedCount,
+      unstarted,
+      reworkCount,
+      rework,
+      staff,
+    ] = await this.prisma.$transaction([
+      this.prisma.designTarget.count({ where: { status: 'skipped', skipReviewPending: true } }),
+      this.prisma.designTarget.findMany({
+        where: { status: 'skipped', skipReviewPending: true },
+        select: targetSelect,
+        orderBy: [{ skipRequestedAt: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
+        take: 25,
+      }),
+      this.prisma.designSkipRequest.count({ where: { replacementDue: true } }),
+      this.prisma.designSkipRequest.findMany({
+        where: { replacementDue: true },
+        select: { id: true, requestedAt: true, target: { select: targetSelect } },
+        orderBy: [{ requestedAt: 'asc' }, { id: 'asc' }],
+        take: 25,
+      }),
+      this.prisma.designTarget.count({
+        where: { status: 'assigned', skipReviewPending: false, dueAt: { lt: now } },
+      }),
+      this.prisma.designTarget.findMany({
+        where: { status: 'assigned', skipReviewPending: false, dueAt: { lt: now } },
+        select: targetSelect,
+        orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+        take: 25,
+      }),
+      this.prisma.designTarget.count({
+        where: {
+          status: 'assigned', skipReviewPending: false, startedAt: null,
+          assignedAt: { not: null, lt: cutoff },
+        },
+      }),
+      this.prisma.designTarget.findMany({
+        where: {
+          status: 'assigned', skipReviewPending: false, startedAt: null,
+          assignedAt: { not: null, lt: cutoff },
+        },
+        select: targetSelect,
+        orderBy: [{ assignedAt: 'asc' }, { id: 'asc' }],
+        take: 25,
+      }),
+      this.prisma.designTarget.count({
+        where: { status: 'done', errorFoundAt: { not: null }, fixedAt: null },
+      }),
+      this.prisma.designTarget.findMany({
+        where: { status: 'done', errorFoundAt: { not: null }, fixedAt: null },
+        select: targetSelect,
+        orderBy: [{ errorFoundAt: 'asc' }, { id: 'asc' }],
+        take: 25,
+      }),
+      this.prisma.employee.findMany({
+        where: { status: 'active', staffType: { in: [...DESIGN_WORK_STAFF_TYPES] } },
+        select: {
+          id: true, fullName: true, empCode: true,
+          devices: { where: { status: 'active' }, select: { lastSeenAt: true } },
+        },
+        orderBy: { empCode: 'asc' },
+      }),
+    ]);
+    const agentMissing = staff.filter(
+      (person) => person.devices.length === 0 || person.devices.every((device) => device.lastSeenAt === null),
+    );
+    const key = (row: { jobNumber: number | null; asin: string }) => row.jobNumber ?? row.asin;
+    const person = (row: { assignedTo: { id: number; fullName: string; empCode: string } | null }) =>
+      row.assignedTo ? { employeeId: row.assignedTo.id, fullName: row.assignedTo.fullName, empCode: row.assignedTo.empCode } : null;
+    const rows = [
+      ...skipReview.map((row) => ({
+        id: `skip:${row.id}`, type: 'skip_review' as const, priority: 1,
+        title: `Skip review · ${key(row)}`, detail: 'Approve, correct the reason, return to the designer, or send to Design Pool.',
+        at: row.skipRequestedAt, targetId: row.id, person: person(row),
+        href: `/targets/review?q=${encodeURIComponent(String(key(row)))}`, action: 'Review skip',
+      })),
+      ...replacements.map(({ id, requestedAt, target: row }) => ({
+        id: `replacement:${id}`, type: 'replacement_owed' as const, priority: 1,
+        title: `Replacement owed · ${key(row)}`, detail: 'The recorded skip still needs its 1:1 replacement allocation.',
+        at: requestedAt, targetId: row.id, person: person(row),
+        href: `/targets/review?q=${encodeURIComponent(String(key(row)))}`, action: 'Open skip record',
+      })),
+      ...rework.map((row) => ({
+        id: `rework:${row.id}`, type: 'rework' as const, priority: 1,
+        title: `Rework open · ${key(row)}`, detail: 'A quality check found an error and no fix is recorded yet.',
+        at: row.errorFoundAt, targetId: row.id, person: person(row),
+        href: `/production/action-center?target=${row.id}`, action: 'Open design',
+      })),
+      ...overdue.map((row) => ({
+        id: `overdue:${row.id}`, type: 'overdue' as const, priority: 2,
+        title: `Overdue · ${key(row)}`, detail: 'The assigned design has passed its recorded due time.',
+        at: row.dueAt, targetId: row.id, person: person(row),
+        href: `/production/action-center?target=${row.id}`, action: 'Open design',
+      })),
+      ...unstarted.map((row) => ({
+        id: `unstarted:${row.id}`, type: 'unstarted' as const, priority: 3,
+        title: `Unstarted over ${staleHours}h · ${key(row)}`, detail: 'Assigned time is old and no file-start signal is recorded.',
+        at: row.assignedAt, targetId: row.id, person: person(row),
+        href: `/production/action-center?target=${row.id}`, action: 'Open design',
+      })),
+      ...agentMissing.slice(0, 25).map((row) => ({
+        id: `agent:${row.id}`, type: 'agent_data_missing' as const, priority: 4,
+        title: `Agent setup missing · ${row.empCode}`, detail: row.devices.length === 0
+          ? 'No active agent device is linked to this design staff member.'
+          : 'An active device is linked, but it has never reported data.',
+        at: null, targetId: null, person: { employeeId: row.id, fullName: row.fullName, empCode: row.empCode },
+        href: `/staff/${row.id}`, action: 'Open staff',
+      })),
+    ];
+    const counts = {
+      skip_review: skipReviewCount,
+      replacement_owed: replacementCount,
+      rework: reworkCount,
+      overdue: overdueCount,
+      unstarted: unstartedCount,
+      agent_data_missing: agentMissing.length,
+    };
+    return {
+      generatedAt: now.toISOString(), staleHours, counts,
+      total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+      limited: Object.values(counts).some((count) => count > 25),
+      rows,
+    };
+  }
+
   async plan(
     actor: SessionUser,
     id: number,

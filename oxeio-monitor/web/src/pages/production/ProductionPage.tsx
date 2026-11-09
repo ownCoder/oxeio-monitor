@@ -19,6 +19,7 @@ import {
 } from '../../api/production';
 import { TargetDrawer } from './TargetDrawer';
 import { ProductResults } from './ProductResults';
+import { ActionCenterView } from './ActionCenter';
 import './production.css';
 
 export function ProductionPage() {
@@ -31,6 +32,7 @@ export function ProductionPage() {
     ['board', 'Production Board'],
     ...(manager
       ? [
+          ['action-center', 'Action Center'],
           ['workload', 'Workload'],
           ['quality', 'Quality & flow'],
         ]
@@ -75,6 +77,7 @@ export function ProductionPage() {
       {section === 'board' && user?.role !== 'employee' && (
         <Board open={open} />
       )}
+      {section === 'action-center' && manager && <ActionCenterView open={open} />}
       {section === 'workload' && manager && <WorkloadView />}
       {section === 'quality' && manager && <QualityView />}
       {section === 'digest' && user?.role === 'owner' && <DigestView />}

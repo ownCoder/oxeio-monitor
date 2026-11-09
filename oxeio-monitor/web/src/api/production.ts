@@ -42,6 +42,26 @@ export interface Workload {
   highPriority: number;
   overdue: number;
 }
+export type ActionType = 'skip_review' | 'replacement_owed' | 'rework' | 'overdue' | 'unstarted' | 'agent_data_missing';
+export interface ActionCenter {
+  generatedAt: string;
+  staleHours: number;
+  total: number;
+  limited: boolean;
+  counts: Record<ActionType, number>;
+  rows: {
+    id: string;
+    type: ActionType;
+    priority: number;
+    title: string;
+    detail: string;
+    at: string | null;
+    targetId: number | null;
+    person: { employeeId: number; fullName: string; empCode: string } | null;
+    href: string;
+    action: string;
+  }[];
+}
 export interface Target {
   id: number;
   jobNumber: number | null;

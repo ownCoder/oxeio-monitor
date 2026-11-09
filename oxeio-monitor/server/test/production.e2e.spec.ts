@@ -259,6 +259,56 @@ describe('durable target workspace', () => {
     expect((await production.workload())[0].dailyDesignTarget).toBe(25);
 
   });
+  it('unifies actionable production facts and links each item to its exact record', async () => {
+    const now = dhakaNoon();
+    const a = await staff('ACTION');
+    const skip = await target('B000000101');
+    const overdue = await target('B000000102');
+    const rework = await target('B000000103');
+    await h.prisma.designTarget.update({
+      where: { id: skip.id },
+      data: {
+        status: 'skipped', assignedToId: a.id, dropReason: 'others',
+        skipReviewPending: true, skipRequestedAt: now,
+      },
+    });
+    await h.prisma.designSkipRequest.create({ data: {
+      targetId: skip.id, employeeId: a.id, actorUserId: owner.userId,
+      reason: 'others', requestedAt: now, decision: 'pending', replacementDue: true,
+    } });
+    await h.prisma.designTarget.update({
+      where: { id: overdue.id },
+      data: {
+        status: 'assigned', assignedToId: a.id,
+        assignedAt: new Date(now.getTime() - 72 * 3600000),
+        dueAt: new Date(now.getTime() - 3600000),
+      },
+    });
+    await h.prisma.designTarget.update({
+      where: { id: rework.id },
+      data: {
+        status: 'done', assignedToId: a.id, completedAt: now,
+        errorFoundAt: new Date(now.getTime() - 2 * 3600000),
+      },
+    });
+    const center = await production.actionCenter(now);
+    expect(center.counts).toMatchObject({
+      skip_review: 1, replacement_owed: 1, overdue: 1, unstarted: 1, rework: 1,
+    });
+    expect(center.rows.find((row) => row.type === 'skip_review')).toMatchObject({
+      targetId: skip.id, href: `/targets/review?q=${skip.asin}`,
+    });
+    expect(center.rows.find((row) => row.type === 'replacement_owed')).toMatchObject({
+      targetId: skip.id,
+    });
+    expect(center.rows.find((row) => row.type === 'overdue')).toMatchObject({
+      targetId: overdue.id, href: `/production/action-center?target=${overdue.id}`,
+    });
+    expect(center.rows.find((row) => row.type === 'rework')).toMatchObject({ targetId: rework.id });
+    expect(center.rows.find((row) => row.id === `agent:${a.id}`)).toMatchObject({
+      href: `/staff/${a.id}`, detail: expect.stringMatching(/No active agent device/),
+    });
+  });
   it('counts first observed check once and computes elapsed median with samples', async () => {
     const row = await target();
     const complete = new Date('2026-09-25T06:00:00Z'),
@@ -341,6 +391,7 @@ describe('monthly own-product results', () => {
     const manager = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
     await manager.http.get('/api/v1/production/sales').expect(403);
     await manager.http.get('/api/v1/production/monitor').expect(403);
+    await manager.http.get('/api/v1/production/action-center').expect(200);
     await manager.http
       .post('/api/v1/production/sales/preview')
       .set('X-CSRF-Token', manager.csrf)
@@ -369,6 +420,7 @@ describe('monthly own-product results', () => {
       'test-password-123',
     );
     await employee.http.get('/api/v1/production/board').expect(403);
+    await employee.http.get('/api/v1/production/action-center').expect(403);
     const row = await target();
     await employee.http
       .get(`/api/v1/production/targets/${row.id}/history`)

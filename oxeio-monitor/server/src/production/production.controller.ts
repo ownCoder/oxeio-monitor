@@ -165,6 +165,9 @@ export class ProductionController {
   @Roles(UserRole.owner, UserRole.manager) @Get('workload') workload() {
     return this.production.workload();
   }
+  @Roles(UserRole.owner, UserRole.manager) @Get('action-center') actionCenter() {
+    return this.production.actionCenter();
+  }
   @Roles(UserRole.owner, UserRole.manager) @Get('quality') quality(
     @Query() q: RangeQuery,
   ) {
