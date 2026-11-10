@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-09T02:12:00Z",
+  "updatedAt": "2026-11-10T02:12:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D03",
   "lastRelease": {
-    "build": "519",
-    "commit": "47ed5386a1cbda7b56f39cc2902e83f7fbdc5eff",
-    "summary": "Unified Production Action Center with exact-record links"
+    "build": "521",
+    "commit": "d2f0235eb786b629eef4bd75211ae5c5533715be",
+    "summary": "Storage and retention overview first slice"
   },
   "tasks": [
     {
@@ -27,8 +27,8 @@
       "id": "D03",
       "title": "Storage usage, growth ও retention dashboard",
       "priority": 1,
-      "status": "queued",
-      "note": "Screenshots, database, backups ও Docker আলাদা; existing disk alerts-এর সঙ্গে মিল।"
+      "status": "in_progress",
+      "note": "Release 521 live: screenshots, database, backups ও other storage current usage এবং retention candidates দেখা যায়। Host-only Docker image/cache measurement, daily growth snapshots ও last-cleanup evidence পরের slice।"
     },
     {
       "id": "D04",
@@ -137,7 +137,7 @@
     }
   ],
   "nextActions": [
-    "D03 storage growth and retention dashboard",
+    "D03 add host Docker/cache metrics, daily growth snapshots and last-cleanup evidence",
     "D04 owner-reviewed missing-time requests",
     "D05 account-synced table and filter controls"
   ]
