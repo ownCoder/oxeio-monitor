@@ -289,3 +289,30 @@ describe('POST /ops/retention/run', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /ops/storage', () => {
+  it('owner current categories and retention facts দেখতে পারে', async () => {
+    await makeShot({
+      daysAgo: 120,
+      filePath: `screenshots/legacy/${randomUUID()}.webp`,
+    });
+    const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
+    const res = await s.http.get('/api/v1/ops/storage');
+
+    expect(res.status).toBe(200);
+    expect(res.body.categories.database.bytes).toBeGreaterThan(0);
+    expect(res.body.categories.screenshots.bytes).toBeGreaterThan(0);
+    expect(res.body.retention.screenshotDays).toBe(90);
+    expect(res.body.retention.eligibleNow).toBe(1);
+    expect(res.body.categories.docker.available).toBe(false);
+  });
+
+  it('manager infrastructure breakdown দেখতে পারে না', async () => {
+    const s = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
+    expect((await s.http.get('/api/v1/ops/storage')).status).toBe(403);
+  });
+
+  it('anonymous request 401 পায়', async () => {
+    expect((await h.http().get('/api/v1/ops/storage')).status).toBe(401);
+  });
+});

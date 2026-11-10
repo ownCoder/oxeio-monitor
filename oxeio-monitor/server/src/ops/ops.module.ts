@@ -10,6 +10,7 @@ import { BackupStateStore } from './backup.state';
 import { OpsController } from './ops.controller';
 import { OpsHealthService } from './ops.health.service';
 import { OpsScheduler } from './ops.scheduler';
+import { StorageOverviewService } from './storage-overview.service';
 import { OffsiteSettingsController } from './offsite.controller';
 
 /**
@@ -42,6 +43,7 @@ import { OffsiteSettingsController } from './offsite.controller';
     BackupJob,
     OpsHealthService,
     OpsScheduler,
+    StorageOverviewService,
   ],
   // টেস্ট বা ভবিষ্যতের admin endpoint যেন `runOnce()` ডাকতে পারে
   exports: [BackupService, BackupJob, BackupStateStore, OpsHealthService, OpsScheduler],

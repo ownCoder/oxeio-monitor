@@ -6,6 +6,7 @@ import type { SessionUser } from '../auth/types';
 import { RetentionJob, type RetentionResult } from '../summary/retention.job';
 import { BackupJob } from './backup.job';
 import { OpsHealthService, type OpsHealth } from './ops.health.service';
+import { StorageOverviewService, type StorageOverview } from './storage-overview.service';
 
 /** হাতে চালানো ব্যাকআপের উত্তর — ⚠️ কোনো পাথ বা পাসফ্রেজ নয় */
 export interface ManualBackupResponse {
@@ -42,11 +43,17 @@ export class OpsController {
     private readonly health: OpsHealthService,
     private readonly backup: BackupJob,
     private readonly retention: RetentionJob,
+    private readonly storage: StorageOverviewService,
   ) {}
 
   @Get('health')
   check(): Promise<OpsHealth> {
     return this.health.check();
+  }
+
+  @Get('storage')
+  storageOverview(): Promise<StorageOverview> {
+    return this.storage.check();
   }
 
   /**

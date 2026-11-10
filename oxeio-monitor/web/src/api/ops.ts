@@ -72,6 +72,23 @@ export function getOpsHealth(signal?: AbortSignal): Promise<OpsHealth> {
   return api<OpsHealth>('/ops/health', { signal });
 }
 
+export interface StorageOverview {
+  checkedAt: string;
+  categories: {
+    screenshots: { bytes: number; display: string; files: number };
+    backups: { bytes: number; display: string; files: number };
+    database: { bytes: number; display: string };
+    otherStorage: { bytes: number; display: string; files: number };
+    docker: { available: false; reason: string };
+  };
+  retention: { screenshotDays: number; activeRows: number; awaitingPurge: number; eligibleNow: number; oldestCapturedAt: string | null };
+  growth: { available: false; reason: string };
+}
+
+export function getStorageOverview(signal?: AbortSignal): Promise<StorageOverview> {
+  return api<StorageOverview>('/ops/storage', { signal });
+}
+
 /** ⚠️ উত্তরে কোনো ফাইল-পাথ বা পাসফ্রেজ আসে না, ইচ্ছাকৃতভাবে */
 export interface ManualBackupResult {
   ok: boolean;

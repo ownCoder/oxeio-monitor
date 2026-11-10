@@ -9,7 +9,7 @@ import {
   type AlertRow,
   type AlertType,
 } from '../api/alerts';
-import { getOpsHealth, runBackupNow, runRetentionNow } from '../api/ops';
+import { getOpsHealth, getStorageOverview, runBackupNow, runRetentionNow } from '../api/ops';
 import { usePolling, useApi } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../api/client';
@@ -48,6 +48,7 @@ export function AlertsPage() {
   );
 
   const health = useApi((signal) => getOpsHealth(signal), []);
+  const storage = useApi((signal) => getStorageOverview(signal), []);
   const ackAll = useMutation();
 
   if (user?.role !== 'owner') {
@@ -81,6 +82,8 @@ export function AlertsPage() {
           error={health.error}
           reload={health.reload}
         />
+
+        <StorageCard data={storage.data} loading={storage.loading} error={storage.error} reload={storage.reload} />
 
         <Card
           title={showAll ? 'All Alerts' : 'Open Alerts'}
@@ -138,6 +141,33 @@ export function AlertsPage() {
         </Card>
       </div>
     </Page>
+  );
+}
+
+function StorageCard({ data, loading, error, reload }: {
+  data: import('../api/ops').StorageOverview | null;
+  loading: boolean;
+  error: Error | null;
+  reload: () => void;
+}) {
+  return (
+    <Card title="Storage & retention" hint={data ? `Measured ${formatAgo(data.checkedAt)}` : 'Current server usage by category'} actions={<MiniButton onClick={reload}>Refresh</MiniButton>}>
+      {loading && !data && <Loading />}
+      {error && <ErrorBox error={error} retry={reload} />}
+      {data && <div className="space-y-3">
+        <StatRow>
+          <Stat label="Screenshots" value={data.categories.screenshots.display} unit={`${data.categories.screenshots.files} files`} />
+          <Stat label="Database" value={data.categories.database.display} unit="live PostgreSQL" />
+          <Stat label="Backups" value={data.categories.backups.display} unit={`${data.categories.backups.files} files`} />
+          <Stat label="Other storage" value={data.categories.otherStorage.display} unit={`${data.categories.otherStorage.files} files`} />
+        </StatRow>
+        <div className="grid gap-2 md:grid-cols-3">
+          <Notice>{data.retention.screenshotDays}-day screenshot policy · {data.retention.activeRows} active rows</Notice>
+          <Notice tone={data.retention.eligibleNow > 0 || data.retention.awaitingPurge > 0 ? 'attention' : undefined}>{data.retention.eligibleNow} eligible now · {data.retention.awaitingPurge} awaiting purge</Notice>
+          <Notice>Docker: host measurement pending · Growth: first daily snapshot pending</Notice>
+        </div>
+      </div>}
+    </Card>
   );
 }
 
