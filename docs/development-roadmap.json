@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-10T02:12:00Z",
+  "updatedAt": "2026-11-12T03:29:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D03",
   "lastRelease": {
-    "build": "521",
-    "commit": "d2f0235eb786b629eef4bd75211ae5c5533715be",
-    "summary": "Storage and retention overview first slice"
+    "build": "523",
+    "commit": "d0454d575743314da594867f4dbcbcba0cc6569b",
+    "summary": "Least-privilege Docker, cleanup and daily storage snapshots"
   },
   "tasks": [
     {
@@ -28,7 +28,7 @@
       "title": "Storage usage, growth ও retention dashboard",
       "priority": 1,
       "status": "in_progress",
-      "note": "Release 521 live: screenshots, database, backups ও other storage current usage এবং retention candidates দেখা যায়। Host-only Docker image/cache measurement, daily growth snapshots ও last-cleanup evidence পরের slice।"
+      "note": "Release 523 live: current storage/retention-এর সঙ্গে least-privilege host collector থেকে Docker images/cache, reclaimable space, last cleanup এবং 31-day daily snapshot history। প্রথম baseline saved; দ্বিতীয় daily sample-এর পরে growth comparison verify করে D03 close হবে।"
     },
     {
       "id": "D04",
@@ -137,7 +137,7 @@
     }
   ],
   "nextActions": [
-    "D03 add host Docker/cache metrics, daily growth snapshots and last-cleanup evidence",
+    "D03 verify the second daily snapshot and close growth acceptance",
     "D04 owner-reviewed missing-time requests",
     "D05 account-synced table and filter controls"
   ]
