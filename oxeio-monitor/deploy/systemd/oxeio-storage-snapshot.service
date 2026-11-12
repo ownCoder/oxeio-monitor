@@ -1,0 +1,13 @@
+[Unit]
+Description=oXeio aggregate storage snapshot
+After=docker.service
+ConditionPathExists=/var/run/docker.sock
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/oxeio-storage-snapshot
+User=root
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=5min

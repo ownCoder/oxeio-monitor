@@ -296,6 +296,21 @@ describe('GET /ops/storage', () => {
       daysAgo: 120,
       filePath: `screenshots/legacy/${randomUUID()}.webp`,
     });
+    await mkdir(resolve(root, 'ops'), { recursive: true });
+    await writeFile(resolve(root, 'ops', 'host-storage.json'), JSON.stringify({
+      capturedAt: '2026-11-12T02:00:00Z',
+      docker: {
+        images: { totalCount: 10, active: 4, size: '12GB', reclaimable: '4GB' },
+        containers: { totalCount: 4, active: 4, size: '40kB', reclaimable: '0B' },
+        volumes: { totalCount: 5, active: 4, size: '5GB', reclaimable: '100MB' },
+        buildCache: { totalCount: 3, active: 0, size: '1GB', reclaimable: '1GB' },
+      },
+      cleanup: { result: 'success', exitStatus: 0, lastRun: 'Wed 2026-11-11 21:41:44 UTC' },
+      history: [
+        { date: '2026-11-11', usedBytes: 1000 },
+        { date: '2026-11-12', usedBytes: 1250 },
+      ],
+    }));
     const s = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     const res = await s.http.get('/api/v1/ops/storage');
 
@@ -304,7 +319,10 @@ describe('GET /ops/storage', () => {
     expect(res.body.categories.screenshots.bytes).toBeGreaterThan(0);
     expect(res.body.retention.screenshotDays).toBe(90);
     expect(res.body.retention.eligibleNow).toBe(1);
-    expect(res.body.categories.docker.available).toBe(false);
+    expect(res.body.categories.docker.available).toBe(true);
+    expect(res.body.categories.docker.images.reclaimable).toBe('4GB');
+    expect(res.body.growth.changeBytes).toBe(250);
+    expect(res.body.cleanup.result).toBe('success');
   });
 
   it('manager infrastructure breakdown দেখতে পারে না', async () => {

@@ -79,10 +79,11 @@ export interface StorageOverview {
     backups: { bytes: number; display: string; files: number };
     database: { bytes: number; display: string };
     otherStorage: { bytes: number; display: string; files: number };
-    docker: { available: false; reason: string };
+    docker: ({ available: true; capturedAt: string } & Record<'images' | 'containers' | 'volumes' | 'buildCache', { totalCount: number; active: number; size: string; reclaimable: string }>) | { available: false; reason: string };
   };
   retention: { screenshotDays: number; activeRows: number; awaitingPurge: number; eligibleNow: number; oldestCapturedAt: string | null };
-  growth: { available: false; reason: string };
+  growth: { available: true; samples: Array<{ date: string; usedBytes: number }>; changeBytes: number | null; change: string | null } | { available: false; reason: string };
+  cleanup: { result: string | null; exitStatus: number; lastRun: string | null } | null;
 }
 
 export function getStorageOverview(signal?: AbortSignal): Promise<StorageOverview> {

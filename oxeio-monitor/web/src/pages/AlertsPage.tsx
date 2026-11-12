@@ -164,7 +164,25 @@ function StorageCard({ data, loading, error, reload }: {
         <div className="grid gap-2 md:grid-cols-3">
           <Notice>{data.retention.screenshotDays}-day screenshot policy · {data.retention.activeRows} active rows</Notice>
           <Notice tone={data.retention.eligibleNow > 0 || data.retention.awaitingPurge > 0 ? 'attention' : undefined}>{data.retention.eligibleNow} eligible now · {data.retention.awaitingPurge} awaiting purge</Notice>
-          <Notice>Docker: host measurement pending · Growth: first daily snapshot pending</Notice>
+          <Notice>
+            {data.categories.docker.available
+              ? `Docker images ${data.categories.docker.images.size} (${data.categories.docker.images.reclaimable} reclaimable) · cache ${data.categories.docker.buildCache.size}`
+              : `Docker: ${data.categories.docker.reason}`}
+          </Notice>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          <Notice>
+            {data.growth.available
+              ? data.growth.change === null
+                ? 'Growth baseline saved · comparison available after the next daily snapshot'
+                : `${data.growth.samples.length}-day disk change ${data.growth.change}`
+              : data.growth.reason}
+          </Notice>
+          <Notice tone={data.cleanup && (data.cleanup.result !== 'success' || data.cleanup.exitStatus !== 0) ? 'attention' : undefined}>
+            {data.cleanup?.lastRun
+              ? `Last cache cleanup ${data.cleanup.result ?? 'unknown'} · ${data.cleanup.lastRun}`
+              : 'No cache-cleanup result recorded'}
+          </Notice>
         </div>
       </div>}
     </Card>

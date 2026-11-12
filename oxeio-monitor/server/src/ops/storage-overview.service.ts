@@ -1,4 +1,4 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import { Injectable } from '@nestjs/common';
@@ -16,7 +16,7 @@ export interface StorageOverview {
     backups: { bytes: number; display: string; files: number };
     database: { bytes: number; display: string };
     otherStorage: { bytes: number; display: string; files: number };
-    docker: { available: false; reason: string };
+    docker: HostSnapshot['docker'] & { available: true; capturedAt: string } | { available: false; reason: string };
   };
   retention: {
     screenshotDays: number;
@@ -25,7 +25,15 @@ export interface StorageOverview {
     eligibleNow: number;
     oldestCapturedAt: string | null;
   };
-  growth: { available: false; reason: string };
+  growth: { available: true; samples: HostSnapshot['history']; changeBytes: number | null; change: string | null } | { available: false; reason: string };
+  cleanup: HostSnapshot['cleanup'] | null;
+}
+
+interface HostSnapshot {
+  capturedAt: string;
+  docker: Record<'images' | 'containers' | 'volumes' | 'buildCache', { totalCount: number; active: number; size: string; reclaimable: string }>;
+  cleanup: { result: string | null; exitStatus: number; lastRun: string | null };
+  history: Array<{ date: string; usedBytes: number }>;
 }
 
 @Injectable()
@@ -40,12 +48,13 @@ export class StorageOverviewService {
 
   async check(now = new Date()): Promise<StorageOverview> {
     const screenshotRoot = join(this.root, 'screenshots');
-    const [screenshots, backups, storageTotal, databaseRows, retention] = await Promise.all([
+    const [screenshots, backups, storageTotal, databaseRows, retention, host] = await Promise.all([
       measureTree(screenshotRoot),
       measureTree(this.backups),
       measureTree(this.root),
       this.prisma.$queryRaw<Array<{ bytes: bigint }>>`SELECT pg_database_size(current_database())::bigint AS bytes`,
       this.retentionFacts(now),
+      this.hostSnapshot(),
     ]);
     const database = Number(databaseRows[0]?.bytes ?? 0n);
     const otherBytes = Math.max(0, storageTotal.bytes - screenshots.bytes);
@@ -58,17 +67,22 @@ export class StorageOverviewService {
         backups: view(backups),
         database: { bytes: database, display: humanBytes(database) },
         otherStorage: { bytes: otherBytes, display: humanBytes(otherBytes), files: otherFiles },
-        docker: {
-          available: false,
-          reason: 'Docker images and build cache are host-only; the API has no Docker socket access.',
-        },
+        docker: host ? { ...host.docker, available: true, capturedAt: host.capturedAt } : { available: false, reason: 'Host snapshot has not run yet.' },
       },
       retention,
-      growth: {
-        available: false,
-        reason: 'Growth starts after daily storage snapshots are enabled.',
-      },
+      growth: host ? growth(host.history) : { available: false, reason: 'Host snapshot has not run yet.' },
+      cleanup: host?.cleanup ?? null,
     };
+  }
+
+  private async hostSnapshot(): Promise<HostSnapshot | null> {
+    try {
+      const value = JSON.parse(await readFile(join(this.root, 'ops', 'host-storage.json'), 'utf8')) as HostSnapshot;
+      if (!value.capturedAt || !value.docker || !Array.isArray(value.history)) return null;
+      return value;
+    } catch {
+      return null;
+    }
   }
 
   private async retentionFacts(now: Date) {
@@ -118,4 +132,11 @@ async function measureTree(root: string): Promise<{ bytes: number; files: number
 
 function view(value: { bytes: number; files: number }) {
   return { ...value, display: humanBytes(value.bytes) };
+}
+
+function growth(samples: HostSnapshot['history']): StorageOverview['growth'] {
+  const first = samples[0];
+  const last = samples.at(-1);
+  const changeBytes = first && last && first.date !== last.date ? last.usedBytes - first.usedBytes : null;
+  return { available: true, samples, changeBytes, change: changeBytes === null ? null : `${changeBytes >= 0 ? '+' : '-'}${humanBytes(Math.abs(changeBytes))}` };
 }
