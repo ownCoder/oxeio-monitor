@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-12T03:29:00Z",
+  "updatedAt": "2026-11-14T02:04:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
-  "currentTaskId": "D03",
+  "currentTaskId": "D05",
   "lastRelease": {
     "build": "523",
     "commit": "d0454d575743314da594867f4dbcbcba0cc6569b",
@@ -27,15 +27,15 @@
       "id": "D03",
       "title": "Storage usage, growth ও retention dashboard",
       "priority": 1,
-      "status": "in_progress",
-      "note": "Release 523 live: current storage/retention-এর সঙ্গে least-privilege host collector থেকে Docker images/cache, reclaimable space, last cleanup এবং 31-day daily snapshot history। প্রথম baseline saved; দ্বিতীয় daily sample-এর পরে growth comparison verify করে D03 close হবে।"
+      "status": "deployed",
+      "note": "Release 523 live: current storage/retention, Docker images/cache, reclaimable space, last cleanup এবং 31-day daily history। 12–13 November-এর দুই automatic sample ও -173,314,048 byte growth delta verified; D03 complete।"
     },
     {
       "id": "D04",
       "title": "Missing-time request ও owner approval",
       "priority": 1,
-      "status": "queued",
-      "note": "Overlap check, reason, limits ও audit; default disabled, raw tracking অক্ষত।"
+      "status": "blocked",
+      "note": "Owner policy approval required before enabling manual missing-time requests: eligible date window, maximum hours/request and acceptable reasons. Raw tracking will remain immutable."
     },
     {
       "id": "D05",
@@ -137,8 +137,8 @@
     }
   ],
   "nextActions": [
-    "D03 verify the second daily snapshot and close growth acceptance",
-    "D04 owner-reviewed missing-time requests",
-    "D05 account-synced table and filter controls"
+    "D05 account-synced table and filter controls",
+    "D06 estimate versus actual and task planning",
+    "D07 calendar and day drill-down"
   ]
 }
