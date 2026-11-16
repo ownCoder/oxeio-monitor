@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-14T02:04:00Z",
+  "updatedAt": "2026-11-16T02:18:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D05",
   "lastRelease": {
-    "build": "523",
-    "commit": "d0454d575743314da594867f4dbcbcba0cc6569b",
-    "summary": "Least-privilege Docker, cleanup and daily storage snapshots"
+    "build": "526",
+    "commit": "80d4ce3332fe094bb77f3de69a3308e3a5ff96fa",
+    "summary": "Account-synced saved views for Design Pool and Review"
   },
   "tasks": [
     {
@@ -41,8 +41,8 @@
       "id": "D05",
       "title": "Account অনুযায়ী table columns ও consistent filter controls",
       "priority": 1,
-      "status": "queued",
-      "note": "Existing saved filters-এর সঙ্গে sync; নতুন duplicate view system নয়।"
+      "status": "in_progress",
+      "note": "Release 526-এ প্রথম slice live: Design Pool ও Review saved views account অনুযায়ী server-side sync, old browser views one-time migrate, অন্য PC-তে একই login-এ পাওয়া যায়। Isolated PostgreSQL 15/15 tests, encrypted backup restore/migration drill, live health/401/assets pass। Screenshots/reports, visible columns এবং consistent active-filter chips/reset controls পরের slices; D05 in progress।"
     },
     {
       "id": "D06",
