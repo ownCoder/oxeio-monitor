@@ -116,3 +116,14 @@ export interface MyDeposit {
 export function getMyDeposit(signal?: AbortSignal): Promise<MyDeposit> {
   return api<MyDeposit>('/me/deposit', { signal });
 }
+
+export interface SavedPreferenceView { name: string; view: Record<string, string>; }
+export interface SavedViewPreferences { scope: string; views: SavedPreferenceView[]; updatedAt: string | null; }
+
+export function getSavedViewPreferences(scope: string, signal?: AbortSignal): Promise<SavedViewPreferences> {
+  return api<SavedViewPreferences>(`/me/preferences/${encodeURIComponent(scope)}`, {signal});
+}
+
+export function saveSavedViewPreferences(scope: string, views: SavedPreferenceView[]): Promise<SavedViewPreferences> {
+  return api<SavedViewPreferences>(`/me/preferences/${encodeURIComponent(scope)}`, {method: 'PUT', body: {views}});
+}

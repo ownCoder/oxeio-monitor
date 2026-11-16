@@ -13,6 +13,7 @@ import { parseWorkDate, toIsoDate } from '../reports/reports.range';
 import { SCREENSHOT_RETENTION_DAYS } from '../summary/retention.job';
 import { isWorkday } from '../summary/summary.math';
 import type { SessionUser } from '../auth/types';
+import type { Prisma } from '@prisma/client';
 
 /** কর্মীর নিজের পাতার উপরের অংশ */
 export interface MySummary {
@@ -80,6 +81,29 @@ export class MeService {
     private readonly progress: ProgressService,
     private readonly deposits: DepositsService,
   ) {}
+
+  async preferences(actor: SessionUser, scope: string) {
+    const safeScope = preferenceScope(scope);
+    const row = await this.prisma.userPreference.findUnique({ where: { userId_scope: { userId: actor.userId, scope: safeScope } } });
+    return { scope: safeScope, views: row ? sanitizeViews(row.value) : [], updatedAt: row?.updatedAt.toISOString() ?? null };
+  }
+
+  async savePreferences(actor: SessionUser, scope: string, views: Array<{ name: string; view: Record<string, unknown> }>) {
+    const safeScope = preferenceScope(scope);
+    const safeViews = sanitizeViews(views);
+    const row = await this.prisma.userPreference.upsert({
+      where: { userId_scope: { userId: actor.userId, scope: safeScope } },
+      create: { userId: actor.userId, scope: safeScope, value: safeViews as Prisma.InputJsonValue },
+      update: { value: safeViews as Prisma.InputJsonValue },
+    });
+    return { scope: safeScope, views: safeViews, updatedAt: row.updatedAt.toISOString() };
+  }
+
+  async deletePreferences(actor: SessionUser, scope: string) {
+    const safeScope = preferenceScope(scope);
+    await this.prisma.userPreference.deleteMany({ where: { userId: actor.userId, scope: safeScope } });
+    return { scope: safeScope, views: [], updatedAt: null };
+  }
 
   /**
    * ⭐⭐ **R21 — নিজের জামানত কত জমল।**
@@ -279,4 +303,36 @@ export class MeService {
 /** `@db.Date` → `YYYY-MM-DD`, null হলে null */
 function isoDate(value: Date | null): string | null {
   return value === null ? null : value.toISOString().slice(0, 10);
+}
+
+const PREFERENCE_SCOPES = new Set(['pool', 'review']);
+const PREFERENCE_VIEW_KEYS = new Set([
+  'filter', 'q', 'staffId', 'addedById', 'from', 'to', 'reviewType',
+  'reviewReason', 'reviewAge', 'reviewSort', 'reviewUndated', 'poolProgress',
+  'poolReason', 'addedFrom', 'addedTo', 'poolSort',
+]);
+
+function preferenceScope(scope: string): string {
+  if (!PREFERENCE_SCOPES.has(scope)) throw new BadRequestException('Unknown saved-view scope.');
+  return scope;
+}
+
+function sanitizeViews(value: unknown): Array<{ name: string; view: Record<string, string> }> {
+  if (!Array.isArray(value)) return [];
+  const names = new Set<string>();
+  const result: Array<{ name: string; view: Record<string, string> }> = [];
+  for (const raw of value) {
+    if (result.length >= 10) break;
+    if (raw === null || typeof raw !== 'object') continue;
+    const candidate = raw as { name?: unknown; view?: unknown };
+    const name = typeof candidate.name === 'string' ? candidate.name.trim().slice(0, 60) : '';
+    if (!name || names.has(name) || candidate.view === null || typeof candidate.view !== 'object' || Array.isArray(candidate.view)) continue;
+    const view: Record<string, string> = {};
+    for (const [key, item] of Object.entries(candidate.view)) {
+      if (PREFERENCE_VIEW_KEYS.has(key) && typeof item === 'string') view[key] = item.slice(0, 200);
+    }
+    names.add(name);
+    result.push({ name, view });
+  }
+  return result;
 }

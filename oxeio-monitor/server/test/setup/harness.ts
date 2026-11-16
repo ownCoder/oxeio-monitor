@@ -81,7 +81,7 @@ export async function resetDatabase(
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
       time_adjustments, audit_log, alerts, screenshots, app_usage, events,
-      activity_segments, work_sessions, enrollment_codes, devices,
+      activity_segments, work_sessions, enrollment_codes, devices, user_preferences,
       daily_summary, monthly_summary, users, employees, work_policies,
       app_categories, holidays, agent_versions, settings,
       deposit_policy, security_deposits, deposit_settlements,

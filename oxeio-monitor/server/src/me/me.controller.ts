@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put, Query } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
 import { MyDaysQuery } from './me.dto';
+import { SaveViewsDto } from './preferences.dto';
 import { MeService, type MyDay, type MySummary } from './me.service';
 
 /**
@@ -50,5 +51,20 @@ export class MeController {
     @Query() query: MyDaysQuery,
   ): Promise<MyDay[]> {
     return this.me.days(actor, query.from, query.to);
+  }
+
+  @Get('preferences/:scope')
+  preferences(@CurrentUser() actor: SessionUser, @Param('scope') scope: string) {
+    return this.me.preferences(actor, scope);
+  }
+
+  @Put('preferences/:scope')
+  savePreferences(@CurrentUser() actor: SessionUser, @Param('scope') scope: string, @Body() body: SaveViewsDto) {
+    return this.me.savePreferences(actor, scope, body.views);
+  }
+
+  @Delete('preferences/:scope')
+  deletePreferences(@CurrentUser() actor: SessionUser, @Param('scope') scope: string) {
+    return this.me.deletePreferences(actor, scope);
   }
 }

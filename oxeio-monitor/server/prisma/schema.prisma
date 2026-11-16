@@ -316,10 +316,22 @@ model User {
   adjustmentsCreated TimeAdjustment[] @relation("AdjustmentCreatedBy")
   adjustmentsRevoked TimeAdjustment[] @relation("AdjustmentRevokedBy")
   telegramAiAccount TelegramAiAccount?
+  preferences       UserPreference[]
 
   @@map("users")
   /// ⭐ যে টার্গেটগুলো ইনি জমা দিয়েছেন (২২ আগস্ট)
   addedTargets DesignTarget[] @relation("addedTargets")
+}
+
+model UserPreference {
+  userId    Int      @map("user_id")
+  scope     String   @db.VarChar(40)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, scope])
+  @@map("user_preferences")
 }
 
 /// A private Telegram identity linked through a one-time code generated in the portal.

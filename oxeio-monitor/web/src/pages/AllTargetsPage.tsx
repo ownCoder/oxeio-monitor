@@ -613,7 +613,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
         </div>
       )}
 
-      <SavedViews scope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{poolProgress,poolReason,addedFrom,addedTo,poolSort})}} onApply={applyView}/>
+      <SavedViews scope={isReview?'review':'pool'} legacyScope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{poolProgress,poolReason,addedFrom,addedTo,poolSort})}} onApply={applyView}/>
       {historyId!==null&&<TargetDrawer id={historyId} close={()=>setHistoryId(null)}/>}
       <div className="px-4">
         {(from || to) && <p className="pb-2 text-xs text-ink-3">
