@@ -18,7 +18,7 @@ The implementation extends release 526's existing account preference record; it 
 - Live API, web and PostgreSQL are healthy; PostgreSQL container identity is unchanged.
 - Public health reports build `529`, commit `2597d72`; anonymous preference access returns 401 and the public JavaScript matches the staged asset byte-for-byte.
 - Rollback images: `oxeio-api:before-table-columns-20261117` and `oxeio-web:before-table-columns-20261117`.
-- Disposable validation images were removed. Disk is 94% used with about 5.1 GiB free; storage cleanup/retention action is now urgent, but rollback images were not deleted automatically.
+- Disposable validation images were removed. A scoped `docker builder prune --filter until=24h` then reclaimed old build cache without deleting images, containers, volumes, backups or production data; disk fell from 94% / 5.1 GiB free to 90% / 8.1 GiB free. The 33.03 GB of reclaimable images is mainly retained rollback history and was not deleted automatically.
 
 D05 remains in progress. Next slices: consistent active-filter chips/reset controls, then appropriate Screenshots/report controls.
 
