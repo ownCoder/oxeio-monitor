@@ -3,7 +3,7 @@ import { Body, Controller, Delete, Get, Param, Put, Query } from '@nestjs/common
 import { CurrentUser } from '../auth/decorators';
 import type { SessionUser } from '../auth/types';
 import { MyDaysQuery } from './me.dto';
-import { SaveViewsDto } from './preferences.dto';
+import { SaveColumnsDto, SaveViewsDto } from './preferences.dto';
 import { MeService, type MyDay, type MySummary } from './me.service';
 
 /**
@@ -61,6 +61,11 @@ export class MeController {
   @Put('preferences/:scope')
   savePreferences(@CurrentUser() actor: SessionUser, @Param('scope') scope: string, @Body() body: SaveViewsDto) {
     return this.me.savePreferences(actor, scope, body.views);
+  }
+
+  @Put('preferences/:scope/columns')
+  saveColumns(@CurrentUser() actor: SessionUser, @Param('scope') scope: string, @Body() body: SaveColumnsDto) {
+    return this.me.saveColumns(actor, scope, body.columns);
   }
 
   @Delete('preferences/:scope')

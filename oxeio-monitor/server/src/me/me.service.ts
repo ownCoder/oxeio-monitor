@@ -85,24 +85,39 @@ export class MeService {
   async preferences(actor: SessionUser, scope: string) {
     const safeScope = preferenceScope(scope);
     const row = await this.prisma.userPreference.findUnique({ where: { userId_scope: { userId: actor.userId, scope: safeScope } } });
-    return { scope: safeScope, views: row ? sanitizeViews(row.value) : [], updatedAt: row?.updatedAt.toISOString() ?? null };
+    const data = preferenceData(row?.value);
+    return { scope: safeScope, ...data, updatedAt: row?.updatedAt.toISOString() ?? null };
   }
 
   async savePreferences(actor: SessionUser, scope: string, views: Array<{ name: string; view: Record<string, unknown> }>) {
     const safeScope = preferenceScope(scope);
     const safeViews = sanitizeViews(views);
+    const existing = await this.prisma.userPreference.findUnique({ where: { userId_scope: { userId: actor.userId, scope: safeScope } } });
+    const value = { ...preferenceData(existing?.value), views: safeViews };
     const row = await this.prisma.userPreference.upsert({
       where: { userId_scope: { userId: actor.userId, scope: safeScope } },
-      create: { userId: actor.userId, scope: safeScope, value: safeViews as Prisma.InputJsonValue },
-      update: { value: safeViews as Prisma.InputJsonValue },
+      create: { userId: actor.userId, scope: safeScope, value: value as Prisma.InputJsonValue },
+      update: { value: value as Prisma.InputJsonValue },
     });
-    return { scope: safeScope, views: safeViews, updatedAt: row.updatedAt.toISOString() };
+    return { scope: safeScope, ...value, updatedAt: row.updatedAt.toISOString() };
+  }
+
+  async saveColumns(actor: SessionUser, scope: string, columns: string[]) {
+    const safeScope = preferenceScope(scope);
+    const existing = await this.prisma.userPreference.findUnique({ where: { userId_scope: { userId: actor.userId, scope: safeScope } } });
+    const value = { ...preferenceData(existing?.value), columns: sanitizeColumns(columns) };
+    const row = await this.prisma.userPreference.upsert({
+      where: { userId_scope: { userId: actor.userId, scope: safeScope } },
+      create: { userId: actor.userId, scope: safeScope, value: value as Prisma.InputJsonValue },
+      update: { value: value as Prisma.InputJsonValue },
+    });
+    return { scope: safeScope, ...value, updatedAt: row.updatedAt.toISOString() };
   }
 
   async deletePreferences(actor: SessionUser, scope: string) {
     const safeScope = preferenceScope(scope);
     await this.prisma.userPreference.deleteMany({ where: { userId: actor.userId, scope: safeScope } });
-    return { scope: safeScope, views: [], updatedAt: null };
+    return { scope: safeScope, views: [], columns: DEFAULT_COLUMNS, updatedAt: null };
   }
 
   /**
@@ -311,6 +326,20 @@ const PREFERENCE_VIEW_KEYS = new Set([
   'reviewReason', 'reviewAge', 'reviewSort', 'reviewUndated', 'poolProgress',
   'poolReason', 'addedFrom', 'addedTo', 'poolSort',
 ]);
+const DEFAULT_COLUMNS = ['design', 'stage', 'file', 'people'];
+const PREFERENCE_COLUMNS = new Set(DEFAULT_COLUMNS);
+
+function preferenceData(value: unknown) {
+  if (Array.isArray(value)) return { views: sanitizeViews(value), columns: DEFAULT_COLUMNS };
+  const object = value !== null && typeof value === 'object' ? value as { views?: unknown; columns?: unknown } : {};
+  return { views: sanitizeViews(object.views), columns: sanitizeColumns(object.columns) };
+}
+
+function sanitizeColumns(value: unknown): string[] {
+  if (!Array.isArray(value)) return DEFAULT_COLUMNS;
+  const columns = [...new Set(value.filter((item): item is string => typeof item === 'string' && PREFERENCE_COLUMNS.has(item)))];
+  return ['design', ...columns.filter((item) => item !== 'design')];
+}
 
 function preferenceScope(scope: string): string {
   if (!PREFERENCE_SCOPES.has(scope)) throw new BadRequestException('Unknown saved-view scope.');

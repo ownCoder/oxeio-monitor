@@ -22,6 +22,7 @@ import {
 } from '../api/targets';
 import { useApi, type ApiResult } from '../api/useApi';
 import { useAuth } from '../auth/AuthContext';
+import { getSavedViewPreferences, saveTableColumns } from '../api/me';
 import { Card } from '../components/Card';
 import { Page } from '../components/Page';
 import { ErrorBox, Loading } from '../components/States';
@@ -47,6 +48,9 @@ import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
 import { downloadTargetsCsv } from './targets/export';
 import { TargetDrawer } from './production/TargetDrawer';
 import { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';
+
+const TABLE_COLUMNS = ['design', 'stage', 'file', 'people'] as const;
+type TableColumnKey = typeof TABLE_COLUMNS[number];
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -156,6 +160,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
   const [addedTo, setAddedTo] = useState(initialView.addedTo || '');
   const [poolSort, setPoolSort] = useState<'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest'>((initialView.poolSort as 'activity_newest' | 'activity_oldest' | 'added_newest' | 'added_oldest') || 'activity_newest');
   const isReview = lockedStage === 'to_review';
+  const [visibleColumns, setVisibleColumns] = useState<TableColumnKey[]>([...TABLE_COLUMNS]);
   const [reviewType, setReviewType] = useState<'all' | 'pending' | 'skipped' | 'deleted'>(() => isReview ? (initialView.reviewType as 'all' | 'pending' | 'skipped' | 'deleted') || 'pending' : 'all');
   const [reviewReason, setReviewReason] = useState<DropReason | ''>(() => isReview ? initialView.reviewReason as DropReason || '' : '');
   const [reviewAge, setReviewAge] = useState<'' | 'today' | 'over_24h' | 'over_7d'>(() => isReview ? initialView.reviewAge as '' | 'today' | 'over_24h' | 'over_7d' || '' : '');
@@ -613,6 +618,9 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
         </div>
       )}
 
+      <div className="border-b border-line px-4 py-2">
+        <ColumnPicker scope={isReview?'review':'pool'} onColumns={setVisibleColumns}/>
+      </div>
       <SavedViews scope={isReview?'review':'pool'} legacyScope={String(user?.userId)+'.'+(lockedStage??'all')} current={{filter,q,staffId,addedById,from,to,...(isReview?{reviewType,reviewReason,reviewAge,reviewSort,reviewUndated:reviewUndated?'true':''}:{poolProgress,poolReason,addedFrom,addedTo,poolSort})}} onApply={applyView}/>
       {historyId!==null&&<TargetDrawer id={historyId} close={()=>setHistoryId(null)}/>}
       <div className="px-4">
@@ -780,7 +788,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
               {
                 key: 'design',
                 header: 'Design',
-                render: (r) => (
+                render: (r: TargetRow) => (
                   <span className="block">
                     <a
                       href={r.url}
@@ -808,7 +816,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
               {
                 key: 'stage',
                 header: 'Stage',
-                render: (r) => (
+                render: (r: TargetRow) => (
                   <span className="block">
                     {/*
                       ⭐ কারণটা চিপের **পাশে**, নিচে নয় *(৩১ আগস্ট)* — নিচের
@@ -851,7 +859,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                 key: 'file',
                 header: 'File',
                 className: 'hidden sm:table-cell',
-                render: (r) => <FileCell sec={r.fileSec} />,
+                render: (r: TargetRow) => <FileCell sec={r.fileSec} />,
               },
               {
                 key: 'people',
@@ -867,12 +875,12 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                      ডিজাইনারের নামটাই বেশি দরকার হয়, তাই ওজনটা সেদিকে।
                 */
                 className: 'hidden sm:table-cell',
-                render: (r) => <PeopleCell row={r} />,
+                render: (r: TargetRow) => <PeopleCell row={r} />,
               },
               {
                 key: 'edit',
                 header: '',
-                render: (r) => (
+                render: (r: TargetRow) => (
                   <span className="flex flex-wrap items-center justify-end gap-1.5">
                   {mayDelete&&<MiniButton title={'Details and history for '+r.asin} onClick={()=>setHistoryId(r.id)}>Details</MiniButton>}
                   <RowActions
@@ -942,7 +950,7 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
                   </span>
                 ),
               },
-            ]}
+            ].filter((column) => column.key === 'pick' || column.key === 'edit' || visibleColumns.includes(column.key as TableColumnKey))}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[12.5px] text-ink-3">
@@ -969,6 +977,26 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
     </Card>
     </div>
   );
+}
+
+function ColumnPicker({scope,onColumns}:{scope:'pool'|'review';onColumns:(columns:TableColumnKey[])=>void}) {
+  const [columns,setColumns]=useState<TableColumnKey[]>([...TABLE_COLUMNS]);
+  const [busy,setBusy]=useState(true);
+  const [message,setMessage]=useState('');
+  useEffect(()=>{const controller=new AbortController();setBusy(true);void getSavedViewPreferences(scope,controller.signal).then(result=>{
+    const next=TABLE_COLUMNS.filter(column=>result.columns.includes(column));
+    const safe=(next.includes('design')?next:['design',...next]) as TableColumnKey[];
+    setColumns(safe);onColumns(safe);
+  }).catch(err=>{if(!(err instanceof Error&&err.name==='AbortError'))setMessage('Column settings could not be loaded.');}).finally(()=>setBusy(false));return()=>controller.abort();},[scope,onColumns]);
+  const save=async(next:TableColumnKey[])=>{setBusy(true);try{const result=await saveTableColumns(scope,next);const safe=TABLE_COLUMNS.filter(column=>result.columns.includes(column));setColumns([...safe]);onColumns([...safe]);setMessage('Columns saved to your account.');}catch{setMessage('Column settings could not be saved.');}finally{setBusy(false);}};
+  return <details className="relative inline-block text-xs"><summary className="cursor-pointer list-none rounded-md border border-line bg-paper px-2.5 py-1.5 text-ink-2">Manage columns · {columns.length}/{TABLE_COLUMNS.length}</summary>
+    <div className="absolute z-30 mt-1 w-52 rounded-lg border border-line bg-surface p-3 shadow-xl">
+      <p className="mb-2 font-semibold text-ink">Visible columns</p>
+      {TABLE_COLUMNS.map(column=><label key={column} className="flex items-center gap-2 py-1 capitalize"><input type="checkbox" checked={columns.includes(column)} disabled={busy||column==='design'} onChange={event=>{const next=event.target.checked?[...columns,column]:columns.filter(item=>item!==column);void save(TABLE_COLUMNS.filter(item=>next.includes(item)));}}/>{column}</label>)}
+      <button type="button" disabled={busy||columns.length===TABLE_COLUMNS.length} className="mt-2 text-data hover:underline disabled:text-ink-3" onClick={()=>void save([...TABLE_COLUMNS])}>Reset to default</button>
+      {message&&<p role="status" className="mt-2 text-ink-3">{message}</p>}
+    </div>
+  </details>;
 }
 
 /**

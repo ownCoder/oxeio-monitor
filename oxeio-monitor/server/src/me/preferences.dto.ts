@@ -1,4 +1,4 @@
-import { IsArray, IsObject, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsIn, IsObject, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SavedViewDto {
@@ -15,4 +15,12 @@ export class SaveViewsDto {
   @ValidateNested({ each: true })
   @Type(() => SavedViewDto)
   views!: SavedViewDto[];
+}
+
+export class SaveColumnsDto {
+  @IsArray()
+  @ArrayMaxSize(4)
+  @IsString({ each: true })
+  @IsIn(['design', 'stage', 'file', 'people'], { each: true })
+  columns!: string[];
 }

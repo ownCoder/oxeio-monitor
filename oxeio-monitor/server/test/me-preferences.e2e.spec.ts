@@ -26,6 +26,17 @@ describe('account-synced saved views', () => {
       .expect(200);
 
     expect(saved.body.views).toEqual([{ name: 'My queue', view: { filter: 'pool', q: 'shirt' } }]);
+    expect(saved.body.columns).toEqual(['design', 'stage', 'file', 'people']);
+
+    const columns = await owner.http.put('/api/v1/me/preferences/pool/columns')
+      .set('X-CSRF-Token', owner.csrf)
+      .send({ columns: ['people', 'design'] })
+      .expect(200);
+    expect(columns.body.columns).toEqual(['design', 'people']);
+    expect(columns.body.views).toEqual(saved.body.views);
+
+    const reread = await owner.http.get('/api/v1/me/preferences/pool').expect(200);
+    expect(reread.body.columns).toEqual(['design', 'people']);
 
     const manager = await loginReady(h, MANAGER_EMAIL, MANAGER_PASSWORD);
     const privateView = await manager.http.get('/api/v1/me/preferences/pool').expect(200);
@@ -37,5 +48,6 @@ describe('account-synced saved views', () => {
     await h.http().get('/api/v1/me/preferences/pool').expect(401);
     const owner = await loginReady(h, OWNER_EMAIL, OWNER_PASSWORD);
     await owner.http.put('/api/v1/me/preferences/pool').send({ views: [] }).expect(403);
+    await owner.http.put('/api/v1/me/preferences/pool/columns').send({ columns: ['design'] }).expect(403);
   });
 });

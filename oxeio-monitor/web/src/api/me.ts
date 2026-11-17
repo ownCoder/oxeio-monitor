@@ -118,7 +118,7 @@ export function getMyDeposit(signal?: AbortSignal): Promise<MyDeposit> {
 }
 
 export interface SavedPreferenceView { name: string; view: Record<string, string>; }
-export interface SavedViewPreferences { scope: string; views: SavedPreferenceView[]; updatedAt: string | null; }
+export interface SavedViewPreferences { scope: string; views: SavedPreferenceView[]; columns: string[]; updatedAt: string | null; }
 
 export function getSavedViewPreferences(scope: string, signal?: AbortSignal): Promise<SavedViewPreferences> {
   return api<SavedViewPreferences>(`/me/preferences/${encodeURIComponent(scope)}`, {signal});
@@ -126,4 +126,8 @@ export function getSavedViewPreferences(scope: string, signal?: AbortSignal): Pr
 
 export function saveSavedViewPreferences(scope: string, views: SavedPreferenceView[]): Promise<SavedViewPreferences> {
   return api<SavedViewPreferences>(`/me/preferences/${encodeURIComponent(scope)}`, {method: 'PUT', body: {views}});
+}
+
+export function saveTableColumns(scope: string, columns: string[]): Promise<SavedViewPreferences> {
+  return api<SavedViewPreferences>(`/me/preferences/${encodeURIComponent(scope)}/columns`, {method: 'PUT', body: {columns}});
 }
