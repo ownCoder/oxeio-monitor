@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-17T02:18:00Z",
+  "updatedAt": "2026-11-18T02:08:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D05",
   "lastRelease": {
-    "build": "529",
-    "commit": "2597d724ff16d1b5ff6d7e5c766ba0950638db53",
-    "summary": "Account-synced visible columns for Design Pool and Review"
+    "build": "532",
+    "commit": "f89b39e48efe611247758450a4aa61deba48d1e7",
+    "summary": "Removable active-filter chips for Design Pool and Review"
   },
   "tasks": [
     {
@@ -42,7 +42,7 @@
       "title": "Account অনুযায়ী table columns ও consistent filter controls",
       "priority": 1,
       "status": "in_progress",
-      "note": "Release 526-এ account-synced saved views এবং release 529-এ Pool/Review Manage columns live: Stage/File/People hide-show, visible count, reset default এবং অন্য PC-তে same-account sync; colleagues unaffected। Isolated PostgreSQL permission/CSRF/preservation test ও live health/401/assets pass। Consistent active-filter chips/reset এবং Screenshots/reports controls next; D05 in progress।"
+      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns এবং 532 Pool/Review removable active-filter chips + exact count + Reset all live। Existing filter engine reused; 15 focused frontend tests ও live health/401/assets pass। Screenshots এবং appropriate report controls next; D05 in progress।"
     },
     {
       "id": "D06",
