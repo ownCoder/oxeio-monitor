@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
+  DROP_REASON_LABEL,
   changeReviewReason,
   decideSkip,
   deleteTargets,
@@ -346,6 +347,28 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
     next();
   };
 
+  const filterChips: {key:string;label:string;clear:()=>void}[] = [];
+  const addChip = (key:string,label:string,clear:()=>void) => filterChips.push({key,label,clear});
+  if(q.trim()) addChip('q',`Search: ${q.trim()}`,()=>change(()=>setQ('')));
+  if(showQueues&&filter!=='all') addChip('filter',`Status: ${FILTERS.find(item=>item.key===filter)?.label??STATUS_OPTIONS.find(item=>item.value===filter)?.label??filter}`,()=>change(()=>setFilter('all')));
+  if(staffId) addChip('staff',`Designer: ${designers.data?.find(item=>String(item.id)===staffId)?.fullName??staffId}`,()=>change(()=>setStaffId('')));
+  if(addedById) addChip('adder',`Added by: ${adders.data?.find(item=>String(item.id)===addedById)?.fullName??addedById}`,()=>change(()=>setAddedById('')));
+  if(from) addChip('from',`${isReview?'Review':'Activity'} from: ${from}`,()=>change(()=>setFrom('')));
+  if(to) addChip('to',`${isReview?'Review':'Activity'} to: ${to}`,()=>change(()=>setTo('')));
+  if(isReview){
+    if(reviewType!=='pending') addChip('reviewType',`Queue: ${reviewType}`,()=>change(()=>setReviewType('pending')));
+    if(reviewReason) addChip('reviewReason',`Reason: ${DROP_REASON_LABEL[reviewReason]}`,()=>change(()=>setReviewReason('')));
+    if(reviewAge) addChip('reviewAge',`Age: ${reviewAge.replaceAll('_',' ')}`,()=>change(()=>setReviewAge('')));
+    if(reviewSort!=='pending_first') addChip('reviewSort',`Sort: ${reviewSort.replaceAll('_',' ')}`,()=>change(()=>setReviewSort('pending_first')));
+    if(reviewUndated) addChip('reviewUndated','Undated legacy items',()=>change(()=>setReviewUndated(false)));
+  }else{
+    if(poolProgress) addChip('poolProgress',`Progress: ${poolProgress.replaceAll('_',' ')}`,()=>change(()=>setPoolProgress('')));
+    if(poolReason) addChip('poolReason',`Reason: ${DROP_REASON_LABEL[poolReason]}`,()=>change(()=>setPoolReason('')));
+    if(addedFrom) addChip('addedFrom',`Added from: ${addedFrom}`,()=>change(()=>setAddedFrom('')));
+    if(addedTo) addChip('addedTo',`Added to: ${addedTo}`,()=>change(()=>setAddedTo('')));
+    if(poolSort!=='activity_newest') addChip('poolSort',`Sort: ${poolSort.replaceAll('_',' ')}`,()=>change(()=>setPoolSort('activity_newest')));
+  }
+
   return (
     <div className="space-y-3">
     {showPipeline && <PipelineCard stats={stats} />}
@@ -618,6 +641,11 @@ export function TargetList({ lockedStage, showPipeline = false }: { lockedStage?
         </div>
       )}
 
+      {filterChips.length>0&&<div className="flex flex-wrap items-center gap-2 border-b border-line bg-paper/40 px-4 py-2" aria-label="Active filters">
+        <span className="text-xs font-semibold text-ink-2">Active filters · {filterChips.length}</span>
+        {filterChips.map(chip=><button key={chip.key} type="button" onClick={chip.clear} className="rounded-full border border-data/40 bg-data/10 px-2.5 py-1 text-xs text-data hover:border-data" aria-label={'Remove '+chip.label}>{chip.label} <span aria-hidden="true">×</span></button>)}
+        <button type="button" onClick={resetFilters} className="text-xs text-data hover:underline">Reset all</button>
+      </div>}
       <div className="border-b border-line px-4 py-2">
         <ColumnPicker scope={isReview?'review':'pool'} onColumns={setVisibleColumns}/>
       </div>
