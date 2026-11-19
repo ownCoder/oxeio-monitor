@@ -80,7 +80,13 @@ export function GalleryPage() {
   const urls = useFreshUrls(query);
 
   const items = data?.items ?? [];
-  const hasFilters = range.from !== range.to || employeeId !== null || timeBand !== 'all' || !!app || monitorIndex !== undefined;
+  const today = todayInDhaka();
+  const hasFilters = range.from !== today || range.to !== today || employeeId !== null || timeBand !== 'all' || !!app || monitorIndex !== undefined;
+  const activeFilterCount = Number(range.from !== today || range.to !== today)
+    + Number(employeeId !== null)
+    + Number(timeBand !== 'all')
+    + Number(!!app)
+    + Number(monitorIndex !== undefined);
 
   /** ফিল্টার বদলালে পাতা ১-এ ফেরা — নইলে "Page 3" খালি দেখাত */
   const changeRange = (next: { from: string; to: string }) => {
@@ -213,6 +219,27 @@ export function GalleryPage() {
           <Button type="submit">Apply</Button>
           <Button onClick={clearFilters}>Clear filters</Button>
         </form>
+        {activeFilterCount > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3" aria-label="Active filters">
+            <span className="text-xs font-semibold text-ink-2">Active filters · {activeFilterCount}</span>
+            {(range.from !== today || range.to !== today) && (
+              <FilterChip label={range.from === range.to ? formatDate(range.from) : `${formatDate(range.from)} – ${formatDate(range.to)}`} onRemove={() => changeRange({ from: today, to: today })} />
+            )}
+            {employeeId !== null && (
+              <FilterChip label={`Staff #${employeeId}`} onRemove={() => changeEmployee(null)} />
+            )}
+            {timeBand !== 'all' && (
+              <FilterChip label={`Time ${timeBand.replace('-', ':00–')}:00`} onRemove={() => changeTimeBand('all')} />
+            )}
+            {!!app && (
+              <FilterChip label={`App: ${app}`} onRemove={() => { setApp(''); setAppDraft(''); setPage(1); setOpenIndex(null); }} />
+            )}
+            {monitorIndex !== undefined && (
+              <FilterChip label={`Monitor ${monitorIndex + 1}`} onRemove={() => { setMonitorIndex(undefined); setMonitorDraft(''); setPage(1); setOpenIndex(null); }} />
+            )}
+            <button type="button" onClick={clearFilters} className="text-xs text-data hover:underline">Reset all</button>
+          </div>
+        )}
         <p className="mt-2 text-xs text-ink-3">Up to 7 days. App and monitor filters apply when you press Apply.</p>
       </div>
 
@@ -272,6 +299,19 @@ export function GalleryPage() {
         />
       )}
     </Page>
+  );
+}
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove filter ${label}`}
+      className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-1 text-xs text-ink-2 hover:border-data hover:text-ink"
+    >
+      <span>{label}</span><span aria-hidden="true">×</span>
+    </button>
   );
 }
 
