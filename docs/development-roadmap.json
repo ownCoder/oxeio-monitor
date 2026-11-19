@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-18T02:08:00Z",
+  "updatedAt": "2026-11-19T02:18:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D05",
   "lastRelease": {
-    "build": "532",
-    "commit": "f89b39e48efe611247758450a4aa61deba48d1e7",
-    "summary": "Removable active-filter chips for Design Pool and Review"
+    "build": "534",
+    "commit": "c14bd136b1c3c00620244130812b5549753d8e73",
+    "summary": "Removable active-filter chips, count and reset for Screenshots"
   },
   "tasks": [
     {
@@ -42,7 +42,7 @@
       "title": "Account অনুযায়ী table columns ও consistent filter controls",
       "priority": 1,
       "status": "in_progress",
-      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns এবং 532 Pool/Review removable active-filter chips + exact count + Reset all live। Existing filter engine reused; 15 focused frontend tests ও live health/401/assets pass। Screenshots এবং appropriate report controls next; D05 in progress।"
+      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns, 532 Pool/Review active-filter chips এবং 534 Screenshots removable chips + exact count + Reset all live। Screenshot query/role scope unchanged; 310 frontend tests ও live health/401/assets pass। Appropriate report controls next; D05 in progress।"
     },
     {
       "id": "D06",
