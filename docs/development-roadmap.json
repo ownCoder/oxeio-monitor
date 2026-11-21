@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-19T02:18:00Z",
+  "updatedAt": "2026-11-21T02:11:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
-  "currentTaskId": "D05",
+  "currentTaskId": "D06",
   "lastRelease": {
-    "build": "534",
-    "commit": "c14bd136b1c3c00620244130812b5549753d8e73",
-    "summary": "Removable active-filter chips, count and reset for Screenshots"
+    "build": "536",
+    "commit": "5cee8bf479fd8c58036138137a353e7f2b18b342",
+    "summary": "Report shortcuts and removable active-filter controls; D05 complete"
   },
   "tasks": [
     {
@@ -41,8 +41,8 @@
       "id": "D05",
       "title": "Account অনুযায়ী table columns ও consistent filter controls",
       "priority": 1,
-      "status": "in_progress",
-      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns, 532 Pool/Review active-filter chips এবং 534 Screenshots removable chips + exact count + Reset all live। Screenshot query/role scope unchanged; 310 frontend tests ও live health/401/assets pass। Appropriate report controls next; D05 in progress।"
+      "status": "deployed",
+      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns, 532 Pool/Review chips, 534 Screenshots controls এবং 536 report shortcuts/removable filters/reset live। Report query/export/permissions unchanged; 313 frontend tests ও live health/401/assets pass। D05 complete।"
     },
     {
       "id": "D06",
@@ -137,8 +137,8 @@
     }
   ],
   "nextActions": [
-    "D05 account-synced table and filter controls",
     "D06 estimate versus actual and task planning",
-    "D07 calendar and day drill-down"
+    "D07 calendar and day drill-down",
+    "D08 bulk tracking-policy grid"
   ]
 }
