@@ -9,12 +9,13 @@ import { Button, Page } from '../components/Page';
 import { Empty } from '../components/States';
 import { Tabs, type TabItem } from '../components/Tabs';
 import { useXlsxDownload } from '../lib/download';
-import { formatDate, formatMonth, thisMonthRange, todayInDhaka } from '../lib/format';
+import { formatDate, formatMonth, shiftWorkDate, thisMonthRange, todayInDhaka } from '../lib/format';
 import { AttendanceTab } from './reports/AttendanceTab';
 import { PayrollTab } from './reports/PayrollTab';
 import { ProductivityTab } from './reports/ProductivityTab';
 import { SummaryTab } from './reports/SummaryTab';
 import { MAX_REPORT_DAYS, rangeDays } from './reports/shared';
+import { activeReportFilters, type ReportTab } from './reports/reportFilterState';
 import { seesEveryone } from '../api/auth';
 
 /**
@@ -32,7 +33,7 @@ import { seesEveryone } from '../api/auth';
  *    ঠিক যা পর্দায় দেখা যাচ্ছে তারই — দুটো আলাদা হয়ে যাওয়ার পথ নেই।
  */
 
-type TabId = 'attendance' | 'summary' | 'productivity' | 'payroll';
+type TabId = ReportTab;
 
 interface TabDef extends TabItem<TabId> {
   /** ⭐ পে-রোল ছাড়া বাকি সব owner + manager দুজনেরই */
@@ -85,6 +86,9 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
   const [groupBy, setGroupBy] = useState<GroupBy>('month');
   const [limit, setLimit] = useState(TOP_LIMITS[0]);
   const [month, setMonth] = useState(() => todayInDhaka().slice(0, 7));
+  const today = todayInDhaka();
+  const defaultRange = thisMonthRange();
+  const currentMonth = today.slice(0, 7);
 
   const download = useXlsxDownload();
 
@@ -94,6 +98,29 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
   //    নিশ্চিত-ব্যর্থ রিকোয়েস্ট পাঠাতেই না হয় — বড় রেঞ্জে ওটা কয়েক
   //    সেকেন্ড অপেক্ষার পর ৪০০ হতো।
   const tooLong = !isPayroll && days > MAX_REPORT_DAYS;
+  const activeFilters = activeReportFilters({
+    tab,
+    from: range.from,
+    to: range.to,
+    defaultFrom: defaultRange.from,
+    defaultTo: defaultRange.to,
+    employeeId,
+    groupBy,
+    limit,
+    defaultLimit: TOP_LIMITS[0],
+    month,
+    currentMonth,
+  });
+  const hasFilter = (key: (typeof activeFilters)[number]) => activeFilters.includes(key);
+
+  const resetFilters = () => {
+    setRange(defaultRange);
+    setEmployeeId(null);
+    setGroupBy('month');
+    setLimit(TOP_LIMITS[0]);
+    setMonth(currentMonth);
+    download.clear();
+  };
 
   const startDownload = (): void => {
     // ⚠️ `isPayroll` দিয়ে নয়, সরাসরি তুলনা — এতে TypeScript নিজেই নিশ্চিত
@@ -158,6 +185,9 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
               to={range.to}
               onChange={setRange}
             />
+            <Button onClick={() => setRange({ from: today, to: today })}>Today</Button>
+            <Button onClick={() => setRange({ from: shiftWorkDate(today, -6), to: today })}>Last 7 days</Button>
+            <Button onClick={() => setRange(defaultRange)}>This month</Button>
             <EmployeePicker
               value={employeeId}
               onChange={setEmployeeId}
@@ -195,6 +225,28 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
         )}
       </div>
 
+      {activeFilters.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3" aria-label="Active report filters">
+          <span className="text-xs font-semibold text-ink-2">Active filters · {activeFilters.length}</span>
+          {hasFilter('date') && (
+            <FilterChip label={range.from === range.to ? formatDate(range.from) : `${formatDate(range.from)} – ${formatDate(range.to)}`} onRemove={() => setRange(defaultRange)} />
+          )}
+          {hasFilter('staff') && (
+            <FilterChip label={`Staff #${employeeId}`} onRemove={() => setEmployeeId(null)} />
+          )}
+          {hasFilter('group') && (
+            <FilterChip label={`Group by: ${groupBy}`} onRemove={() => setGroupBy('month')} />
+          )}
+          {hasFilter('limit') && (
+            <FilterChip label={`Top ${limit}`} onRemove={() => setLimit(TOP_LIMITS[0])} />
+          )}
+          {hasFilter('month') && (
+            <FilterChip label={formatMonth(month)} onRemove={() => setMonth(currentMonth)} />
+          )}
+          <button type="button" onClick={resetFilters} className="text-xs text-data hover:underline">Reset all</button>
+        </div>
+      )}
+
       {download.error && (
         <div className="mt-3">
           <ErrorNote>{download.error}</ErrorNote>
@@ -230,6 +282,19 @@ function ReportsBoard({ isOwner }: { isOwner: boolean }) {
         )}
       </div>
     </Page>
+  );
+}
+
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onRemove}
+      aria-label={`Remove report filter ${label}`}
+      className="inline-flex items-center gap-1 rounded-full border border-line bg-paper px-2.5 py-1 text-xs text-ink-2 hover:border-data hover:text-ink"
+    >
+      <span>{label}</span><span aria-hidden="true">×</span>
+    </button>
   );
 }
 
