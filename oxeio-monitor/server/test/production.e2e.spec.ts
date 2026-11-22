@@ -134,6 +134,17 @@ describe('durable target workspace', () => {
       await h.prisma.designTargetEvent.count({ where: { targetId: row.id } }),
     ).toBe(2);
   });
+  it('records a controlled work type and estimate in planning history', async () => {
+    const row = await target('B000000099');
+    await production.plan(owner, row.id, 1, null, 'Initial estimate', 'illustration', 90);
+    const saved = await h.prisma.designTarget.findUniqueOrThrow({ where: { id: row.id } });
+    expect(saved).toMatchObject({ workType: 'illustration', estimatedMinutes: 90 });
+    const event = await h.prisma.designTargetEvent.findFirstOrThrow({
+      where: { targetId: row.id, source: 'planning' },
+      orderBy: { id: 'desc' },
+    });
+    expect(event.afterState).toMatchObject({ work_type: 'illustration', estimated_minutes: 90 });
+  });
   it('paginates stable history without duplicate cursor records', async () => {
     const row = await target();
     for (let n = 0; n < 52; n++)

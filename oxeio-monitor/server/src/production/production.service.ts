@@ -335,6 +335,8 @@ export class ProductionService {
     priority: number,
     dueDay: string | null,
     reason: string,
+    workType?: string | null,
+    estimatedMinutes?: number | null,
   ) {
     await this.target(actor, id);
     const dueAt =
@@ -344,7 +346,13 @@ export class ProductionService {
     await targetWrite(this.prisma, actor.userId, 'planning', (tx) =>
       tx.designTarget.update({
         where: { id },
-        data: { priority, dueAt, assignmentReason: reason },
+        data: {
+          priority,
+          dueAt,
+          assignmentReason: reason,
+          ...(workType !== undefined ? { workType } : {}),
+          ...(estimatedMinutes !== undefined ? { estimatedMinutes } : {}),
+        },
       }),
     );
     return { ok: true };

@@ -64,7 +64,9 @@ export class TargetEvidenceService {
       meta: { source: 'design_evidence', screenshotIds: shots.map(s => s.id.toString()), matching: 'design_app_window_number' },
     });
     return {
-      targetId: id, jobNumber: target.jobNumber, generatedAt: new Date().toISOString(),
+      targetId: id, jobNumber: target.jobNumber,
+      workType: target.workType, estimatedMinutes: target.estimatedMinutes,
+      generatedAt: new Date().toISOString(),
       scope: manager ? 'team' : 'self', matching: 'design_app_window_number',
       ...summarizeEvidence(included),
       observations: included.length, tracesLimited: traces.length > 5000,

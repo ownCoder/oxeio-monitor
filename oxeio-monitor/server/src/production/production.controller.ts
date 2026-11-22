@@ -76,6 +76,11 @@ class ReasonDto {
 class PlanDto extends ReasonDto {
   @IsInt() @Min(0) @Max(2) priority!: number;
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) dueDay?: string | null;
+  @IsOptional()
+  @IsIn(['typography', 'graphic', 'illustration', 'seasonal', 'other'])
+  workType?: string | null;
+  @IsOptional() @IsInt() @Min(5) @Max(1440)
+  estimatedMinutes?: number | null;
 }
 class AssignDto extends ReasonDto {
   @IsInt() @Min(1) employeeId!: number;
@@ -184,6 +189,8 @@ export class ProductionController {
       dto.priority,
       dto.dueDay ?? null,
       dto.reason,
+      dto.workType,
+      dto.estimatedMinutes,
     );
   }
   @Roles(UserRole.owner, UserRole.manager)

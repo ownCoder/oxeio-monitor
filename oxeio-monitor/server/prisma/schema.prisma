@@ -758,6 +758,10 @@ model DesignTarget {
   priority Int @default(0)
   dueAt DateTime? @map("due_at") @db.Timestamptz(3)
   assignmentReason String? @map("assignment_reason") @db.VarChar(500)
+  /// Owner/manager planning category; controlled values keep comparisons meaningful.
+  workType String? @map("work_type") @db.VarChar(24)
+  /// Planned effort, not payroll credit and not a quality score.
+  estimatedMinutes Int? @map("estimated_minutes")
   skipReviewPending Boolean @default(false) @map("skip_review_pending")
   skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)

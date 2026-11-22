@@ -65,6 +65,8 @@ export interface ActionCenter {
 export interface Target {
   id: number;
   jobNumber: number | null;
+  workType: string | null;
+  estimatedMinutes: number | null;
   asin: string;
   status: string;
   priority: number;
@@ -90,6 +92,8 @@ export interface History {
 export interface TargetEvidence {
   targetId: number;
   jobNumber: number | null;
+  workType: string | null;
+  estimatedMinutes: number | null;
   generatedAt: string;
   scope: 'team' | 'self';
   foregroundSec: number;

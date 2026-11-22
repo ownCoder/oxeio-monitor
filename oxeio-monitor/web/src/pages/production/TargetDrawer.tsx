@@ -163,6 +163,8 @@ function Planning({ target, done }: { target: Target; done: () => void }) {
   );
   const [priority, setPriority] = useState(target.priority),
     [dueDay, setDueDay] = useState(target.dueAt ? dhakaDate(target.dueAt) : '');
+  const [workType, setWorkType] = useState(target.workType ?? ''),
+    [estimatedMinutes, setEstimatedMinutes] = useState(target.estimatedMinutes ? String(target.estimatedMinutes) : '');
   const [staff, setStaff] = useState(target.assignedToId ?? 0),
     [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false),
@@ -175,7 +177,13 @@ function Planning({ target, done }: { target: Target; done: () => void }) {
         `targets/${target.id}/${reassign ? 'reassign' : 'plan'}`,
         reassign
           ? { employeeId: staff, reason }
-          : { priority, dueDay: dueDay || null, reason },
+          : {
+              priority,
+              dueDay: dueDay || null,
+              workType: workType || null,
+              estimatedMinutes: estimatedMinutes ? Number(estimatedMinutes) : null,
+              reason,
+            },
         reassign ? 'POST' : 'PATCH',
       );
       setMessage('Saved.');
@@ -188,7 +196,7 @@ function Planning({ target, done }: { target: Target; done: () => void }) {
   }
   return (
     <section className="production-panel">
-      <h2>Priority & assignment</h2>
+      <h2>Plan work</h2>
       <p>
         A deadline ends at 23:59 Dhaka time. Reassignment is allowed before work
         starts.
@@ -213,6 +221,29 @@ function Planning({ target, done }: { target: Target; done: () => void }) {
             onChange={(e) => setDueDay(e.target.value)}
           />
         </label>
+        <label>
+          Work type
+          <select value={workType} onChange={(e) => setWorkType(e.target.value)}>
+            <option value="">Not classified</option>
+            <option value="typography">Typography</option>
+            <option value="graphic">Graphic</option>
+            <option value="illustration">Illustration</option>
+            <option value="seasonal">Seasonal</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>
+          Estimated minutes
+          <input
+            type="number"
+            min={5}
+            max={1440}
+            step={5}
+            value={estimatedMinutes}
+            placeholder="Not estimated"
+            onChange={(e) => setEstimatedMinutes(e.target.value)}
+          />
+        </label>
       </div>
       <label>
         Reason
@@ -225,10 +256,10 @@ function Planning({ target, done }: { target: Target; done: () => void }) {
       </label>
       <div className="production-actions">
         <button
-          disabled={busy || reason.trim().length < 3}
+          disabled={busy || reason.trim().length < 3 || (!!estimatedMinutes && (Number(estimatedMinutes) < 5 || Number(estimatedMinutes) > 1440))}
           onClick={() => void save(false)}
         >
-          Save priority & date
+          Save plan
         </button>
       </div>
       <label>

@@ -3,6 +3,12 @@ import { getProduction, stamp, type TargetEvidence as Evidence } from '../../api
 import { formatDuration } from '../../lib/format';
 
 const kinds: Record<string, string> = { brief: 'Design brief', blocker: 'Help request', submission: 'Submission checklist' };
+const workTypes: Record<string, string> = { typography: 'Typography', graphic: 'Graphic', illustration: 'Illustration', seasonal: 'Seasonal', other: 'Other' };
+function variance(estimateMinutes: number, observedSec: number): string {
+  const delta = Math.round(observedSec / 60) - estimateMinutes;
+  if (Math.abs(delta) < 5) return 'Observed time is close to plan';
+  return `${formatDuration(Math.abs(delta) * 60)} ${delta > 0 ? 'over' : 'under'} plan`;
+}
 function detail(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
   if (Array.isArray(value)) return value.map(item => typeof item === 'boolean' ? item ? '✓' : '○' : String(item)).join(' · ');
@@ -18,12 +24,13 @@ export function TargetEvidence({ id, review, history }: { id: number; review: ()
     {!data && result.loading && <p role="status">Loading design activity…</p>}
     {data && <>
       <div className="design-evidence-stats">
+        <article><small>Planned time</small><strong>{data.estimatedMinutes ? formatDuration(data.estimatedMinutes * 60) : '—'}</strong><span>{data.estimatedMinutes ? `${data.workType ? workTypes[data.workType] ?? data.workType : 'Unclassified'} · ${variance(data.estimatedMinutes, data.foregroundSec)}` : 'Not estimated yet'}</span></article>
         <article><small>File foreground time</small><strong>{formatDuration(data.foregroundSec)}</strong><span>{data.observations} active observations{data.tracesLimited ? ' · latest 5,000 only' : ''}</span></article>
         <article><small>Matched screenshots</small><strong>{data.screenshotTotal}</strong><span>From retained captures</span></article>
         <article><small>Preview versions</small><strong>{data.previewVersions}</strong><button type="button" onClick={review}>Open design review ↗</button></article>
         <article><small>Open review comments</small><strong>{data.unresolvedComments}</strong><button type="button" onClick={review}>Review comments ↗</button></article>
       </div>
-      <p className="design-evidence-note">Matched from the job number at the start of an Illustrator/Photoshop window title. Time overlaps on the same person's devices count once. This is file activity, not payroll credit or a quality verdict. {data.scope === 'self' && 'Only your activity is shown.'}</p>
+      <p className="design-evidence-note">Planned time is a manager estimate. Observed time is matched from the job number at the start of an Illustrator/Photoshop window title; overlaps on the same person's devices count once. It is file activity, not payroll credit or a quality verdict. {data.scope === 'self' && 'Only your activity is shown.'}</p>
       <div className="design-evidence-columns">
         <section><h2>Who worked on this file</h2>
           {data.byPerson.length ? <ul className="design-evidence-people">{data.byPerson.map(person => <li key={person.employeeId}><span><strong>{person.fullName}</strong><small>{person.empCode} · {person.observations} observations</small></span><b>{formatDuration(person.foregroundSec)}</b></li>)}</ul> : <p>No matching file activity. Unsaved files, different names or other design apps may leave no match.</p>}
