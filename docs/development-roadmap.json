@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-21T02:11:00Z",
+  "updatedAt": "2026-11-22T02:29:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D06",
   "lastRelease": {
-    "build": "536",
-    "commit": "5cee8bf479fd8c58036138137a353e7f2b18b342",
-    "summary": "Report shortcuts and removable active-filter controls; D05 complete"
+    "build": "538",
+    "commit": "a734487ff09b4a71d7951f472201e8c0c0eb0c84",
+    "summary": "Audited design work type and estimate versus observed file time"
   },
   "tasks": [
     {
@@ -48,8 +48,8 @@
       "id": "D06",
       "title": "Design estimate বনাম actual time ও task planning",
       "priority": 2,
-      "status": "queued",
-      "note": "Comparable design type, custom board/task fields, subtasks ও mentions।"
+      "status": "in_progress",
+      "note": "Release 538 live: owner/manager controlled work type + planned minutes, audited history, and per-design estimate versus honestly labelled observed file foreground time। Existing targets not guessed/backfilled; 14 isolated lifecycle + 313 frontend tests pass। Next: work-type comparison with sample counts, then checklist/subtasks and mentions।"
     },
     {
       "id": "D07",
