@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-22T02:29:00Z",
+  "updatedAt": "2026-11-23T02:30:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D06",
   "lastRelease": {
-    "build": "538",
-    "commit": "a734487ff09b4a71d7951f472201e8c0c0eb0c84",
-    "summary": "Audited design work type and estimate versus observed file time"
+    "build": "540",
+    "commit": "66a71cb762e1e62998c717548912cca94d2b089d",
+    "summary": "Sample-aware design estimate comparison by controlled work type"
   },
   "tasks": [
     {
@@ -49,7 +49,7 @@
       "title": "Design estimate বনাম actual time ও task planning",
       "priority": 2,
       "status": "in_progress",
-      "note": "Release 538 live: owner/manager controlled work type + planned minutes, audited history, and per-design estimate versus honestly labelled observed file foreground time। Existing targets not guessed/backfilled; 14 isolated lifecycle + 313 frontend tests pass। Next: work-type comparison with sample counts, then checklist/subtasks and mentions।"
+      "note": "Release 538 added audited work type/planned minutes and per-design observed-file comparison। Release 540 adds owner/manager work-type medians with visible matched/missing sample counts, variance and over-plan count; observed file time remains explicitly separate from payroll, attendance and quality। Isolated 15/15 + frontend 313/313 pass। Next: checklist/subtasks and mentions।"
     },
     {
       "id": "D07",
