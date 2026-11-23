@@ -1,4 +1,5 @@
 import { PrismaService } from '../src/prisma/prisma.service';
+import { randomUUID } from 'node:crypto';
 import {
   afterAll,
   beforeAll,
@@ -322,6 +323,8 @@ describe('durable target workspace', () => {
   });
   it('counts first observed check once and computes elapsed median with samples', async () => {
     const row = await target();
+    const designer = await staff('EST');
+    const device = await h.prisma.device.create({ data: { hostname: 'EST-PC', windowsUsername: 'est', employeeId: designer.id, machineGuid: randomUUID(), tokenHash: randomUUID(), status: 'active' } });
     const complete = new Date('2026-09-25T06:00:00Z'),
       uploaded = new Date('2026-09-25T08:00:00Z');
     await h.prisma.designTarget.update({
@@ -331,12 +334,26 @@ describe('durable target workspace', () => {
         uploadedAt: uploaded,
         checkedAt: complete,
         errorFoundAt: complete,
+        jobNumber: 1000999,
+        assignedToId: designer.id,
+        workType: 'graphic',
+        estimatedMinutes: 60,
       },
     });
-    // Only one event action per atomic change; above is classified as checked.
-    await h.prisma.designTargetEvent.updateMany({
-      where: { targetId: row.id, action: 'checked' },
-      data: { recordedAt: complete },
+    await h.prisma.appUsage.create({ data: {
+      employeeId: designer.id, deviceId: device.id, clientUuid: randomUUID(),
+      workDate: new Date('2026-09-25T00:00:00Z'), startedAt: complete,
+      endedAt: new Date(complete.getTime() + 7200000), durationSec: 7200,
+      processName: 'Illustrator.exe', windowTitle: '1000999-design.ai', segmentState: 'active',
+    } });
+    await h.prisma.designTargetEvent.create({
+      data: {
+        targetId: row.id,
+        action: 'checked',
+        source: 'fixture',
+        afterState: { error_found_at: complete.toISOString() },
+        recordedAt: complete,
+      },
     });
     const result = await production.quality('2026-09-25', '2026-09-25');
     expect(result.reviewed).toBe(1);
@@ -345,6 +362,8 @@ describe('durable target workspace', () => {
     expect(result.completeToUploadHours).toBe(2);
     expect(result.uploadSamples).toBe(1);
     expect(result.liveSamples).toBe(0);
+    expect(result.estimates).toMatchObject({ planned: 1, matched: 1, missingObserved: 0 });
+    expect(result.estimates.byType).toEqual([{ workType: 'graphic', samples: 1, medianEstimateMinutes: 60, medianObservedMinutes: 120, medianVariancePct: 100, overEstimate: 1 }]);
   });
 });
 describe('monthly own-product results', () => {

@@ -392,6 +392,14 @@ function QualityView() {
             check. Durations are elapsed time, not labor hours. Missing
             timestamps are excluded and shown through sample counts.
           </p>
+          <section className="production-panel">
+            <h2>Estimate accuracy by work type</h2>
+            <p>{data.estimates.matched} of {data.estimates.planned} planned completed designs have matched file activity.{data.estimates.missingObserved > 0 && ` ${data.estimates.missingObserved} without matched activity are excluded.`}{data.estimates.tracesLimited && ' Latest 50,000 observations only.'}</p>
+            {data.estimates.byType.length ? <div className="production-scroll"><table><thead><tr><th>Work type</th><th>Samples</th><th>Median plan</th><th>Median observed</th><th>Median variance</th><th>Over plan</th></tr></thead><tbody>
+              {data.estimates.byType.map(row => <tr key={row.workType}><td>{({ typography: 'Typography', graphic: 'Graphic', illustration: 'Illustration', seasonal: 'Seasonal', other: 'Other' } as Record<string, string>)[row.workType] ?? row.workType}</td><td>{row.samples}</td><td>{row.medianEstimateMinutes}m</td><td>{row.medianObservedMinutes}m</td><td>{row.medianVariancePct > 0 ? '+' : ''}{row.medianVariancePct}%</td><td>{row.overEstimate} / {row.samples}</td></tr>)}
+            </tbody></table></div> : <p>No completed designs have both an estimate and matched file activity in this period.</p>}
+            <p>Observed means matched design-file foreground time, not payroll credit or quality. Medians reduce the effect of unusually long files; sample counts stay visible.</p>
+          </section>
         </>
       )}
     </>

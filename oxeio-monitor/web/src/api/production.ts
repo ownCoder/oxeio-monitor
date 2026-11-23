@@ -136,6 +136,13 @@ export interface Quality {
   uploadToLiveHours: number | null;
   uploadSamples: number;
   liveSamples: number;
+  estimates: {
+    planned: number;
+    matched: number;
+    missingObserved: number;
+    tracesLimited: boolean;
+    byType: { workType: string; samples: number; medianEstimateMinutes: number; medianObservedMinutes: number; medianVariancePct: number; overEstimate: number }[];
+  };
 }
 export interface Sale {
   id: number;

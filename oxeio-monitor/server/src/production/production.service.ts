@@ -11,7 +11,9 @@ import type { SessionUser } from '../auth/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { targetWrite } from '../targets/target-history.context';
 import { DESIGN_WORK_STAFF_TYPES } from '../targets/targets.rules';
-import { designTargetOf } from '../summary/design.rules';
+import { DESIGN_APPS_SQL, DESIGN_ID_SQL_EXPR, designTargetOf } from '../summary/design.rules';
+import { summarizeEstimates } from './estimate.math';
+import { summarizeEvidence, type EvidenceTrace } from './target-evidence.math';
 import {
   QUEUES,
   WAIT_FIELD,
@@ -577,6 +579,42 @@ export class ProductionService {
 
   async quality(from: string, to: string) {
     const { start, end } = reportRange(from, to);
+    const planned = await this.prisma.designTarget.groupBy({
+      by: ['workType'],
+      where: {
+        completedAt: { gte: start, lt: end },
+        workType: { not: null },
+        estimatedMinutes: { not: null },
+      },
+      _count: { _all: true },
+    });
+    type EstimateTrace = EvidenceTrace & {
+      targetId: number;
+      workType: string;
+      estimatedMinutes: number;
+    };
+    const traces = await this.prisma.$queryRaw<EstimateTrace[]>`
+      SELECT t.id AS "targetId", t.work_type AS "workType", t.estimated_minutes AS "estimatedMinutes",
+        a.employee_id AS "employeeId", e.full_name AS "fullName", e.emp_code AS "empCode",
+        a.device_id AS "deviceId", a.process_name AS "processName", a.work_date AS "workDate",
+        a.started_at AS "startedAt", a.ended_at AS "endedAt"
+      FROM design_targets t
+      JOIN app_usage a ON ${Prisma.raw(DESIGN_ID_SQL_EXPR)} = t.job_number::text
+      JOIN employees e ON e.id = a.employee_id
+      WHERE t.completed_at >= ${start} AND t.completed_at < ${end}
+        AND t.work_type IS NOT NULL AND t.estimated_minutes IS NOT NULL
+        AND ${Prisma.raw(DESIGN_APPS_SQL)} AND a.segment_state = 'active' AND a.ended_at > a.started_at
+      ORDER BY t.id, a.started_at, a.id LIMIT 50001`;
+    const byTarget = new Map<number, EstimateTrace[]>();
+    for (const trace of traces.slice(0, 50000)) {
+      byTarget.set(trace.targetId, [...(byTarget.get(trace.targetId) ?? []), trace]);
+    }
+    const samples = [...byTarget.values()].map((rows) => ({
+      workType: rows[0].workType,
+      estimatedMinutes: rows[0].estimatedMinutes,
+      observedSec: summarizeEvidence(rows).foregroundSec,
+    }));
+    const plannedCount = planned.reduce((sum, row) => sum + row._count._all, 0);
     const review = await this.prisma.$queryRaw<
       { reviewed: number; accepted: number; rework: number }[]
     >`
@@ -615,6 +653,13 @@ export class ProductionService {
       firstPassRate: review[0].reviewed
         ? review[0].accepted / review[0].reviewed
         : null,
+      estimates: {
+        planned: plannedCount,
+        matched: samples.length,
+        missingObserved: plannedCount - samples.length,
+        tracesLimited: traces.length > 50000,
+        byType: summarizeEstimates(samples),
+      },
     };
   }
 }
