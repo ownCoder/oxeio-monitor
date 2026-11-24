@@ -1,3 +1,5 @@
+> **24 November 2026 — local, not a release:** One Telegram message when a design is first marked done, via the existing alert bot and chat. Not deployed. Live hub is still build 542. Ship only after disk cleanup, on top of the deployed source — this snapshot branch is not that history.
+
 > **Current release — 28 September 2026:** **414 / 352682c** is live. Design Pool audit fixes, simpler filters and page CSV export are verified; skip-review controls remain active. [Audit record](audits/2026-09-28-design-pool.md) · [Usage guide](design-pool-operations.md).
 
 > **27 September 2026 — Production expansion:** আটটি অনুমোদিত Production feature-এর code প্রস্তুত; phase-by-phase [status](production-expansion-plan.md) ও [verification](audits/2026-09-27-production-expansion.md) আলাদা। পরবর্তী operational কাজ: verified production backup, migration/API/web rollout, external monitor account/URLs ও notification verification। Synthetic এবং VPS-এর retained production backup—দুটির isolated restore verified; ভবিষ্যৎ backup-এ drill পুনরাবৃত্তি করতে হবে।

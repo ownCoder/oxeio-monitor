@@ -1,3 +1,5 @@
+> **24 November 2026 — not deployed:** Design-done Telegram notice is in source only. The first time a design target becomes done, the existing alert bot posts one message to the existing alert chat. Undo does not send a second done message. `DESIGN_DONE_TELEGRAM` defaults on. Do not deploy until the VPS disk (~96.6% full) is cleaned, and do not replace the live checkout (public health **542 / `6a16977`**) with this snapshot branch.
+
 > **Current release — 28 September 2026:** **418 / e559b45** is live. Design Pool audit fixes, simpler filters and page CSV export are verified; skip-review controls remain active. [Audit record](audits/2026-09-28-design-pool.md) · [Usage guide](design-pool-operations.md).
 
 ২৮ সেপ্টেম্বর: Design Pool-এর To upload/To make live queues ও row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।

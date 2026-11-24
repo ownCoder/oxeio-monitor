@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { AlertsModule } from '../alerts/alerts.module';
 import { AuditModule } from '../audit/audit.module';
+import { DesignDoneNoticeService } from './design-done-notice.service';
 import { FileTraceService } from './file-trace.service';
 import { MyTargetsController, TargetsController } from './targets.controller';
 import { TargetsJob } from './targets.job';
@@ -14,9 +16,14 @@ import { TargetsService } from './targets.service';
  * `@Cron` দুবার রেজিস্টার করত, আর তখন বণ্টন দিনে দুবার চলত।
  */
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, AlertsModule],
   controllers: [TargetsController, MyTargetsController],
-  providers: [TargetsService, TargetsJob, FileTraceService],
+  providers: [
+    TargetsService,
+    TargetsJob,
+    FileTraceService,
+    DesignDoneNoticeService,
+  ],
   // ⭐ `SummaryService` এটা ডাকে — ফাইলের নাম থেকে টার্গেট বন্ধ করতে
   exports: [TargetsService],
 })

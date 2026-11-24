@@ -40,6 +40,52 @@ type SweepAlert = Prisma.AlertGetPayload<{ select: typeof SWEEP_SELECT }>;
 export type TelegramOutcome = 'sent' | 'not_configured' | 'failed';
 
 /**
+ * ⚠️ Telegram `429` এর `retry_after` সেকেন্ডে আসে। ডিজাইন-নোটিশ সেটা
+ * মেনে ঘুমায়, কিন্তু অ্যালার্ট sweep ঘুমায় না — একটা লম্বা অপেক্ষা
+ * পরের অ্যালার্টের ব্যাচ আটকে রাখত।
+ *
+ * ৩০ সেকেন্ডের ছাদ: `retry_after` এক ঘণ্টা হলেও সেভের পেছনের কাজটা
+ * ঘণ্টাখানেক ঝুলে থাকবে না। ছাদের পরেও 429 এলে চেষ্টা শেষ।
+ */
+export const TELEGRAM_RETRY_AFTER_CAP_MS = 30_000;
+
+export function telegramRetryWaitMs(
+  status: number,
+  body: string,
+  retryAfterHeader: string | null,
+): number | null {
+  if (status !== 429) return null;
+  const seconds =
+    retryAfterSeconds(body) ?? headerSeconds(retryAfterHeader) ?? 1;
+  return Math.min(
+    TELEGRAM_RETRY_AFTER_CAP_MS,
+    Math.max(0, Math.round(seconds * 1000)),
+  );
+}
+
+function retryAfterSeconds(body: string): number | null {
+  try {
+    const parsed = JSON.parse(body) as {
+      parameters?: { retry_after?: unknown };
+    };
+    return finiteSeconds(parsed.parameters?.retry_after);
+  } catch {
+    return null;
+  }
+}
+
+function headerSeconds(header: string | null): number | null {
+  if (!header) return null;
+  return finiteSeconds(Number(header));
+}
+
+function finiteSeconds(value: unknown): number | null {
+  const seconds = typeof value === 'number' ? value : Number.NaN;
+  if (!Number.isFinite(seconds) || seconds < 0) return null;
+  return seconds;
+}
+
+/**
  * **G08** — অ্যালার্টের টেলিগ্রাম চ্যানেল।
  *
  * ⭐ **ইমেইলের প্রতিদ্বন্দ্বী নয়, দ্বিতীয় স্তর।** `AlertDispatcher` আগে
@@ -149,7 +195,9 @@ export class TelegramChannel {
          */
         type: { notIn: [...TELEGRAM_MUTED_TYPES] },
         NOT: {
-          channelsSent: { hasSome: [TELEGRAM_CHANNEL_TAG, TELEGRAM_FAILED_TAG] },
+          channelsSent: {
+            hasSome: [TELEGRAM_CHANNEL_TAG, TELEGRAM_FAILED_TAG],
+          },
         },
         createdAt: {
           gte: new Date(now.getTime() - TELEGRAM_MAX_AGE_HOURS * 3_600_000),
@@ -193,6 +241,36 @@ export class TelegramChannel {
   }
 
   /**
+   * ডিজাইন শেষের নোটিশের জন্য। `send()`-এর মতোই কখনো throw করে না,
+   * কিন্তু 429 এলে `retry_after` মেনে কয়েকবার চেষ্টা করে।
+   *
+   * ⚠️ অ্যালার্ট sweep এই মেথড ব্যবহার করে না। ওখানে ঘুমালে এক মিনিটের
+   * টিকটাই আটকে যেত।
+   */
+  async sendRespectingRetryAfter(text: string): Promise<TelegramOutcome> {
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const result = await this.deliver(text, null);
+      const waitMs = telegramRetryWaitMs(
+        result.status,
+        result.body,
+        result.retryAfterHeader,
+      );
+      if (result.outcome !== 'failed') return result.outcome;
+      if (waitMs === null || attempt === maxAttempts) {
+        this.logFailure(result);
+        return 'failed';
+      }
+      this.logger.warn(
+        `Telegram rate limit — waiting ${waitMs}ms before retrying ` +
+          `(attempt ${attempt} of ${maxAttempts})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+    return 'failed';
+  }
+
+  /**
    * ⭐⭐ **monospace বার্তা** *(১৮ আগস্ট)* — কেবল দৈনিক রিপোর্টের জন্য।
    *
    * ⚠️⚠️ **কেন `send()`-এর ভেতরে একটা ফ্ল্যাগ নয়, আলাদা মেথড:** উপরের
@@ -206,11 +284,16 @@ export class TelegramChannel {
    * জন্য `<pre>` মোড়কটা কলার খুলে দেয় (`plainFallback`), নইলে পাঠক
    * কাঁচা ট্যাগ দেখতেন।
    */
-  async sendHtml(html: string, plainFallback: string): Promise<TelegramOutcome> {
+  async sendHtml(
+    html: string,
+    plainFallback: string,
+  ): Promise<TelegramOutcome> {
     const outcome = await this.post(html, 'HTML');
     if (outcome !== 'failed') return outcome;
 
-    this.logger.warn('Telegram rejected the formatted message — retrying as plain text');
+    this.logger.warn(
+      'Telegram rejected the formatted message — retrying as plain text',
+    );
     return this.post(plainFallback, null);
   }
 
@@ -224,8 +307,35 @@ export class TelegramChannel {
     text: string,
     parseMode: 'HTML' | null,
   ): Promise<TelegramOutcome> {
+    const result = await this.deliver(text, parseMode);
+    if (result.outcome === 'failed') this.logFailure(result);
+    return result.outcome;
+  }
+
+  /**
+   * একবার পাঠানো। লগ করে না — কলার ঠিক করে এটা চূড়ান্ত ব্যর্থতা,
+   * নাকি 429-এর অপেক্ষা।
+   */
+  private async deliver(
+    text: string,
+    parseMode: 'HTML' | null,
+  ): Promise<{
+    outcome: TelegramOutcome;
+    status: number;
+    body: string;
+    retryAfterHeader: string | null;
+    token: string;
+  }> {
     const settings = await this.resolve();
-    if (settings === null) return 'not_configured';
+    if (settings === null) {
+      return {
+        outcome: 'not_configured',
+        status: 0,
+        body: '',
+        retryAfterHeader: null,
+        token: '',
+      };
+    }
 
     try {
       const res = await fetch(
@@ -247,19 +357,47 @@ export class TelegramChannel {
 
       if (!res.ok) {
         const body = await res.text().catch(() => '');
-        this.logger.error(
-          `Could not send to Telegram (HTTP ${res.status}): ${TelegramChannel.scrub(body, settings.botToken).slice(0, 200)}`,
-        );
-        return 'failed';
+        return {
+          outcome: 'failed',
+          status: res.status,
+          body,
+          retryAfterHeader: res.headers.get('retry-after'),
+          token: settings.botToken,
+        };
       }
 
-      return 'sent';
+      return {
+        outcome: 'sent',
+        status: res.status,
+        body: '',
+        retryAfterHeader: null,
+        token: settings.botToken,
+      };
     } catch (err) {
-      this.logger.error(
-        `Could not send to Telegram: ${TelegramChannel.scrub(err instanceof Error ? err.message : 'unknown error', settings.botToken)}`,
-      );
-      return 'failed';
+      return {
+        outcome: 'failed',
+        status: 0,
+        body: err instanceof Error ? err.message : 'unknown error',
+        retryAfterHeader: null,
+        token: settings.botToken,
+      };
     }
+  }
+
+  private logFailure(result: {
+    status: number;
+    body: string;
+    token: string;
+  }): void {
+    if (result.status === 0) {
+      this.logger.error(
+        `Could not send to Telegram: ${TelegramChannel.scrub(result.body, result.token)}`,
+      );
+      return;
+    }
+    this.logger.error(
+      `Could not send to Telegram (HTTP ${result.status}): ${TelegramChannel.scrub(result.body, result.token).slice(0, 200)}`,
+    );
   }
 
   /**

@@ -40,6 +40,6 @@ import { NoActivityCheck } from './no-activity.check';
     NoActivityCheck,
     AlertsScheduler,
   ],
-  exports: [AlertsService],
+  exports: [AlertsService, TelegramChannel],
 })
 export class AlertsModule {}

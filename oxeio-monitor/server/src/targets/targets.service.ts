@@ -18,6 +18,7 @@ import {
   designTargetOf,
   hasDesignTarget,
 } from '../summary/design.rules';
+import { DesignDoneNoticeService } from './design-done-notice.service';
 import { FileTraceService } from './file-trace.service';
 import {
   allocationSizes,
@@ -246,6 +247,7 @@ export class TargetsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly trace: FileTraceService,
+    private readonly doneNotices: DesignDoneNoticeService,
   ) {}
 
   /**
@@ -691,6 +693,8 @@ export class TargetsService {
       },
     }));
     if (count === 0) return 0;
+    // কমিট হয়ে গেছে। বার্তা সেভকে অপেক্ষা করায় না, আর ব্যর্থ হলেও Undo থাকে।
+    this.doneNotices.afterCommit(before.id);
 
     /**
      * ⭐⭐ **এটাই একমাত্র মুছে-ফেলা কাজ যার নিজের চিহ্ন থাকে না** — তাই
@@ -937,7 +941,10 @@ export class TargetsService {
           `cannot be marked done — leave it in your list and finish it tomorrow.`,
       );
     }
-    if (completion.count > 0) await this.topUp(employeeId, now);
+    if (completion.count > 0) {
+      this.doneNotices.afterCommit(id);
+      await this.topUp(employeeId, now);
+    }
 
     return { ok: completion.count > 0 };
   }
@@ -1595,7 +1602,12 @@ export class TargetsService {
       },
       data,
     }));
-    if (count > 0) return { ok: true };
+    if (count > 0) {
+      // শুধু নতুন করে done হলে। আগের অবস্থাই আবার সেভ করলে এখানে আসে না,
+      // আর done ছাড়া অন্য অবস্থা এই নোটিশের বিষয় নয়।
+      if (status === DesignTargetStatus.done) this.doneNotices.afterCommit(id);
+      return { ok: true };
+    }
     if (status === DesignTargetStatus.done) {
       const existing = await this.prisma.designTarget.findUnique({
         where: { id }, select: { status: true },
