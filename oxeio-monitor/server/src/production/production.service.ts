@@ -577,6 +577,65 @@ export class ProductionService {
     return { ok: true };
   }
 
+  async tasks(actor: SessionUser, targetId: number) {
+    await this.target(actor, targetId);
+    return this.prisma.designTaskItem.findMany({
+      where: { targetId },
+      orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    });
+  }
+
+  async addTask(actor: SessionUser, targetId: number, text: string) {
+    await this.target(actor, targetId);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${targetId} FOR UPDATE`;
+      const last = await tx.designTaskItem.aggregate({
+        where: { targetId },
+        _max: { position: true },
+        _count: { _all: true },
+      });
+      if (last._count._all >= 50)
+        throw new BadRequestException('This target already has 50 checklist items.');
+      return tx.designTaskItem.create({
+        data: {
+          targetId,
+          text,
+          position: (last._max.position ?? 0) + 1,
+          createdById: actor.userId,
+        },
+      });
+    });
+  }
+
+  async taskState(actor: SessionUser, id: number, completed: boolean) {
+    const item = await this.prisma.designTaskItem.findUnique({
+      where: { id },
+      include: { target: { select: { assignedToId: true } } },
+    });
+    if (!item) throw new NotFoundException('Checklist item not found.');
+    if (
+      actor.role === 'employee' &&
+      (!actor.employeeId || item.target.assignedToId !== actor.employeeId)
+    )
+      throw new ForbiddenException('This target is not assigned to you.');
+    await this.prisma.designTaskItem.update({
+      where: { id },
+      data: {
+        completedAt: completed ? new Date() : null,
+        completedById: completed ? actor.userId : null,
+      },
+    });
+    return { ok: true };
+  }
+
+  async deleteTask(actor: SessionUser, id: number) {
+    const item = await this.prisma.designTaskItem.findUnique({ where: { id } });
+    if (!item) throw new NotFoundException('Checklist item not found.');
+    await this.target(actor, item.targetId);
+    await this.prisma.designTaskItem.delete({ where: { id } });
+    return { ok: true };
+  }
+
   async quality(from: string, to: string) {
     const { start, end } = reportRange(from, to);
     const planned = await this.prisma.designTarget.groupBy({

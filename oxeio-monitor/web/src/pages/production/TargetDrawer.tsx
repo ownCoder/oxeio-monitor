@@ -8,6 +8,7 @@ import {
   stamp,
   type History,
   type Preview,
+  type TaskItem,
   type Target,
   type Workload,
 } from '../../api/production';
@@ -67,14 +68,16 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
         </button>
       </div>
       <div className="production-actions">
-        {[...(canEvidence ? ['evidence'] : []), 'history', 'proofs', ...(canPlan ? ['planning'] : [])].map(
+        {[...(canEvidence ? ['evidence'] : []), 'tasks', 'history', 'proofs', ...(canPlan ? ['planning'] : [])].map(
           (value) => (
             <button
               key={value}
               onClick={() => setTab(value)}
               aria-pressed={value === activeTab}
             >
-              {value === 'evidence' ? 'Design evidence' : value === 'history'
+              {value === 'evidence' ? 'Design evidence' : value === 'tasks'
+                ? 'Checklist'
+                : value === 'history'
                 ? 'Target history'
                 : value === 'proofs'
                   ? 'Design review'
@@ -148,11 +151,82 @@ export function TargetDrawer({ id, close }: { id: number; close: () => void }) {
           </div>
         </>
       )}
+      {history.data && activeTab === 'tasks' && (
+        <TaskChecklist key={id} id={id} canManage={canPlan} />
+      )}
       {history.data && activeTab === 'planning' && canPlan && (
         <Planning key={id} target={history.data.target} done={() => { history.reload(); setTab('history'); }} />
       )}
       {history.data && activeTab === 'proofs' && <Proofs key={id} id={id} />}
     </dialog>
+  );
+}
+
+function TaskChecklist({ id, canManage }: { id: number; canManage: boolean }) {
+  const tasks = useApi(
+    (signal) => getProduction<TaskItem[]>(`targets/${id}/tasks`, signal),
+    [id],
+  );
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  async function act(fn: () => Promise<unknown>) {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+      tasks.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Request failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  const done = tasks.data?.filter((item) => item.completedAt).length ?? 0;
+  return (
+    <section className="production-panel">
+      <div className="production-task-head">
+        <div>
+          <h2>Task checklist</h2>
+          <p>Small, visible steps for this design. Completion is task progress, not payroll credit or design approval.</p>
+        </div>
+        <strong>{done}/{tasks.data?.length ?? 0}</strong>
+      </div>
+      {(error || tasks.error) && <p role="alert" className="production-error">{error || tasks.error?.message}</p>}
+      {tasks.loading && <p role="status">Loading checklist…</p>}
+      <div className="production-task-list">
+        {tasks.data?.map((item) => (
+          <div key={item.id} className={item.completedAt ? 'production-task done' : 'production-task'}>
+            <label>
+              <input
+                type="checkbox"
+                checked={Boolean(item.completedAt)}
+                disabled={busy}
+                onChange={(event) => void act(() => changeProduction(`tasks/${item.id}`, { completed: event.target.checked }, 'PATCH'))}
+              />
+              <span>{item.text}</span>
+            </label>
+            {canManage && <button disabled={busy} onClick={() => void act(() => changeProduction(`tasks/${item.id}`, {}, 'DELETE'))}>Remove</button>}
+          </div>
+        ))}
+        {!tasks.loading && tasks.data?.length === 0 && <p>No checklist items yet.</p>}
+      </div>
+      {canManage && (
+        <form onSubmit={(event) => {
+          event.preventDefault();
+          void act(async () => {
+            await changeProduction(`targets/${id}/tasks`, { text });
+            setText('');
+          });
+        }}>
+          <label>
+            Add a step
+            <input value={text} maxLength={200} onChange={(event) => setText(event.target.value)} placeholder="Example: Export print-ready PNG" />
+          </label>
+          <button disabled={busy || !text.trim()}>Add checklist item</button>
+        </form>
+      )}
+    </section>
   );
 }
 

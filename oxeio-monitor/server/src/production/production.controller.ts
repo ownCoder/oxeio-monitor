@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   Ip,
@@ -111,6 +112,18 @@ class CommentDto {
 }
 class ResolveDto {
   @IsBoolean() resolved!: boolean;
+}
+class TaskItemDto {
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  text!: string;
+}
+class TaskStateDto {
+  @IsBoolean() completed!: boolean;
 }
 class CsvDto {
   @IsString() @MinLength(1) @MaxLength(1000000) csv!: string;
@@ -296,6 +309,45 @@ export class ProductionController {
     @Body() dto: ResolveDto,
   ) {
     return this.production.resolve(actor, id, dto.resolved);
+  }
+  @Roles(
+    UserRole.owner,
+    UserRole.manager,
+    UserRole.researcher,
+    UserRole.employee,
+  )
+  @Get('targets/:id/tasks')
+  tasks(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.production.tasks(actor, id);
+  }
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post('targets/:id/tasks')
+  addTask(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TaskItemDto,
+  ) {
+    return this.production.addTask(actor, id, dto.text);
+  }
+  @Roles(UserRole.owner, UserRole.manager, UserRole.employee)
+  @Patch('tasks/:id')
+  taskState(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: TaskStateDto,
+  ) {
+    return this.production.taskState(actor, id, dto.completed);
+  }
+  @Roles(UserRole.owner, UserRole.manager)
+  @Delete('tasks/:id')
+  deleteTask(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.production.deleteTask(actor, id);
   }
 
   @Roles(UserRole.owner) @Post('sales/preview') csvPreview(

@@ -146,6 +146,43 @@ describe('durable target workspace', () => {
     });
     expect(event.afterState).toMatchObject({ work_type: 'illustration', estimated_minutes: 90 });
   });
+  it('keeps a target checklist scoped to management and the assigned designer', async () => {
+    const designer = await staff('TASK');
+    const other = await staff('OTHER');
+    const user = await h.prisma.user.create({
+      data: {
+        email: 'task@example.com',
+        passwordHash: 'test',
+        fullName: 'Task Designer',
+        role: 'employee',
+        employeeId: designer.id,
+      },
+    });
+    const row = await target('B000000099');
+    await h.prisma.designTarget.update({
+      where: { id: row.id },
+      data: { status: 'assigned', assignedToId: designer.id },
+    });
+    const item = await production.addTask(owner, row.id, 'Export print-ready PNG');
+    expect(await production.tasks(owner, row.id)).toMatchObject([
+      { id: item.id, position: 1, text: 'Export print-ready PNG', completedAt: null },
+    ]);
+    const actor: SessionUser = {
+      userId: user.id,
+      email: user.email,
+      role: 'employee',
+      employeeId: designer.id,
+      mustChangePw: false,
+      issuedAt: 0,
+    };
+    await production.taskState(actor, item.id, true);
+    expect((await production.tasks(actor, row.id))[0].completedById).toBe(user.id);
+    await expect(
+      production.taskState({ ...actor, employeeId: other.id }, item.id, false),
+    ).rejects.toThrow(/not assigned/);
+    await production.deleteTask(owner, item.id);
+    expect(await production.tasks(owner, row.id)).toEqual([]);
+  });
   it('paginates stable history without duplicate cursor records', async () => {
     const row = await target();
     for (let n = 0; n < 52; n++)

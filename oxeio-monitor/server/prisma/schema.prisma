@@ -753,6 +753,7 @@ model AgentVersion {
 model DesignTarget {
   officeEntries OfficeEntry[]
   previews DesignPreview[]
+  taskItems DesignTaskItem[]
   sales ProductSale[]
   costs ProductCost[]
   priority Int @default(0)
@@ -1347,6 +1348,22 @@ model DesignTargetEvent {
   @@index([targetId, id])
   @@index([recordedAt, action])
   @@map("design_target_events")
+}
+
+model DesignTaskItem {
+  id            Int       @id @default(autoincrement())
+  targetId      Int       @map("target_id")
+  text          String    @db.VarChar(200)
+  position      Int
+  createdById   Int       @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
+  completedById Int?      @map("completed_by_id")
+  target        DesignTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([targetId, position])
+  @@index([targetId, completedAt])
+  @@map("design_task_items")
 }
 
 model DesignPreview {

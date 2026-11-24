@@ -126,6 +126,16 @@ export interface Preview {
     resolvedAt: string | null;
   }[];
 }
+export interface TaskItem {
+  id: number;
+  targetId: number;
+  text: string;
+  position: number;
+  createdById: number;
+  createdAt: string;
+  completedAt: string | null;
+  completedById: number | null;
+}
 export interface Quality {
   reviewed: number;
   accepted: number;
