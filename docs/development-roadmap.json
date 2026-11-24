@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-23T02:30:00Z",
+  "updatedAt": "2026-11-24T02:23:00Z",
   "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
   "currentTaskId": "D06",
   "lastRelease": {
-    "build": "540",
-    "commit": "66a71cb762e1e62998c717548912cca94d2b089d",
-    "summary": "Sample-aware design estimate comparison by controlled work type"
+    "build": "542",
+    "commit": "6a16977214fa800017b0d2694eefb60497eb9ced",
+    "summary": "Permission-scoped per-design task checklist"
   },
   "tasks": [
     {
@@ -49,7 +49,7 @@
       "title": "Design estimate বনাম actual time ও task planning",
       "priority": 2,
       "status": "in_progress",
-      "note": "Release 538 added audited work type/planned minutes and per-design observed-file comparison। Release 540 adds owner/manager work-type medians with visible matched/missing sample counts, variance and over-plan count; observed file time remains explicitly separate from payroll, attendance and quality। Isolated 15/15 + frontend 313/313 pass। Next: checklist/subtasks and mentions।"
+      "note": "Release 538 added audited estimate/observed-file comparison; release 540 added sample-aware work-type medians। Release 542 adds a target-owned 50-step checklist: owner/manager add/remove, assigned designer and management complete/reopen, researcher read-only; task progress is not payroll/approval। Isolated 15/15 + frontend 313/313 pass। Next: permission-safe targeted mentions and inbox delivery।"
     },
     {
       "id": "D07",
