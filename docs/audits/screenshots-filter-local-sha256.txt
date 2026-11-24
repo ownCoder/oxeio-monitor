@@ -1,0 +1,6 @@
+4253568e55dd66da7087dfff071fb893032717ac1aa2c656822424699a157d9f  server/src/screenshots/dto.ts
+42a9f82a38ee334f51ba7329c108be13786f30f9ba91d011f0cf645d443ce222  server/src/screenshots/gallery.filters.ts
+c28b12935190bead1f0e01bb1838177187d1a2e25f0ffec157f76ea81cb1baa3  server/src/screenshots/screenshots.service.ts
+1844c4d83c077815270827229a5db967d0a85af22d5189c4f6198ad9370815c3  server/test/screenshots-filters.e2e.spec.ts
+4eca1fca040f3e41174e05c0fa5e8a0e6fab0188d57146678b17d9747b17869f  web/src/api/screenshots.ts
+20c18c6b1f85d341dc677643057d9978647cce5015467741e53318050ffd963c  web/src/pages/GalleryPage.tsx

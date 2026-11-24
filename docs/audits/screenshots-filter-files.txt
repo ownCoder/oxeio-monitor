@@ -1,0 +1,6 @@
+server/src/screenshots/dto.ts
+server/src/screenshots/gallery.filters.ts
+server/src/screenshots/screenshots.service.ts
+server/test/screenshots-filters.e2e.spec.ts
+web/src/api/screenshots.ts
+web/src/pages/GalleryPage.tsx

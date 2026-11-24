@@ -1,0 +1,67 @@
+# Design Pool — ব্যবহারবিধি
+
+১০ অক্টোবর ২০২৬ · Live **476 / 584de27** · [Filter release](audits/2026-10-10-design-pool-filters-release.md) · [Skip/review release](audits/2026-10-07-four-reason-skip-review-release.md) · [Pipeline panel release](audits/2026-10-07-pipeline-panel.md)
+
+Design Pool-এর উপরে **The Pipeline** panel-এ In the pool, In hand ও Designed-এর live সংখ্যা এবং বাদ যাওয়া Skipped/Deleted সংখ্যা দেখা যায়। Panel-টি **Every Target** তালিকার আগে থাকে; Add design targets পাতায় শুধু **Add Links** থাকে। Design Pool-এর Refresh বা target action-এর পরে panel-এর সংখ্যাও আবার আনা হয়।
+
+## পুল থেকে বণ্টন
+
+প্রতিদিন **সকাল ৮:০০ (ঢাকা সময়)** active designer ও manager-দের হাতে সর্বোচ্চ **৩০টি করে** রাখার জন্য পুল থেকে random design দেওয়া হয়। আগে থেকেই চলমান design থাকলে কেবল খালি জায়গা পূরণ হয়। Recipient order-ও প্রতি run-এ random হয়; pool কম থাকলে সেই random order-এ একবারে একটি করে round-robin ভাগ হয়। Add design targets পাতায় **Distribute now** button নেই; owner/manager-এর backend manual route আছে, তবে স্বাভাবিক কাজের জন্য সেটি লাগে না।
+
+Hourly top-up এবং owed-replacement sweep-এও eligible recipient order প্রতি run-এ random হয়। Owed replacement সাধারণ target top-up-এর আগে পূরণ করার চেষ্টা চলে।
+
+Designer-এর দৈনিক completion target এখনও বাকি থাকলে এবং হাতে থাকা design দিয়ে সেটি পূরণ সম্ভব না হলে কাজের সময় **০৯:০৫–১৯:০৫** প্রতি ঘণ্টায় check হয়; complete-এর পরে goal-based top-up হতে পারে। Skip click কেবল ১:১ replacement trigger করে; সাধারণ top-up নিজের সময়সূচিতে চলে। একজনকে দিনে সর্বোচ্চ **৬০টি issue** করার cap আছে। **২৩:৫৫**-এ না-শুরু-করা assigned design পুলে ফেরে; শুরু হওয়া design হাতে থাকে। Pending skip-review design আগেই `skipped`, তাই end-of-day return-এ যায় না। ৭ অক্টোবরের [live distribution audit](audits/2026-10-07-design-distribution-status.md)-এ scheduled assignment ও return কার্যকর দেখা গেছে।
+
+**Skip পুলে নিজে থেকে ফেরে না।** Designer Skip-এ **Page Not Found, Event, Copyright, Others**—চারটি কারণ আছে। Page Not Found review ছাড়াই accepted; অন্য তিনটি সঙ্গে সঙ্গে `skipped` হয়ে manager review-তে যায়। চার কারণেই একই designer-কে Ready pool থেকে **ঠিক ১টি random replacement** দেওয়ার চেষ্টা একই transaction-এ তাৎক্ষণিক হয়; owner-এর একদিনের extra workload-এ হাতে ৩০-এর বেশি থাকলেও skip-এর ১:১ swap হয়। Pool খালি বা দিনে ৬০টি issue হয়ে গেলে replacement `owed` হিসেবে রেকর্ড থাকে; পরের pool addition/সকালের distribution/hourly sweep-এ অন্য top-up-এর আগে চেষ্টা হয়। Review reject হলে মূল design designer-এর হাতে ফেরে; আগে দেওয়া replacement কেড়ে নেওয়া হয় না। My targets-এ পাওনা দেখায়; Design Pool-এর Pipeline-এ মোট পাওনা থাকলে দেখায়। পুরোনো request backfill হয়নি। Owner-এর deliberate Un-skip/To pool action আলাদা। [নতুন নিয়ম ও limitations](audits/2026-10-07-four-reason-skip-review-release.md)।
+
+## প্রতিদিন কার কত Complete / Skip
+
+Owner/manager হিসেবে **Targets → Daily designs & skips** আলাদা page খুলুন (`/targets/daily`)। Design Pool-এর তালিকায় report আর খোলে না। Default-এ শেষ ৭ Dhaka day দেখায়। From/To দিয়ে সর্বোচ্চ ৩১ দিন বাছুন; **Today** ও **Last 7 days** shortcuts আছে। **Staff** dropdown দিয়ে একজনকে বাছলে daily row ও উপরের মোট সংখ্যা সেই ব্যক্তির হবে। Refresh report দিয়ে নতুন কাজ/skip review সিদ্ধান্ত আনুন।
+
+Report-এ দৈনিক **Issued, Page Not Found, Event, Copyright, Others, Replacement issued ও Owed** দেখা যায়। Issued হলো assignment-history event-এর দিন; replacement columns হলো ওই দিনের request-গুলোর **বর্তমান** delivery/debt অবস্থা—পরে delivery হলে পুরোনো দিনের row বদলাবে। Replacement tracking ৭ অক্টোবর release 453 থেকে; তার আগের শূন্য মানে replacement হয়েছিল/হয়নি, কোনোটাই প্রমাণ করে না।
+
+**Completed** হলো completion timestamp থাকা design, completion-এর Dhaka day-তে বর্তমান assigned staff-এর নামে। **Skipped** হলো ওই Dhaka day-তে করা non-rejected request; নতুন নিয়মে pending-review design-ও ইতিমধ্যে skipped, তাই Pending আলাদা column-এ দেখানোর পাশাপাশি Skipped-এ গণনা হয়; পুরোনো assigned-pending request শুধু Pending-এ থাকে। Reject হলে আগের দিনের Skipped সংখ্যা কমতে পারে। এটি skip-এর সঙ্গে completed-এর সরাসরি conversion rate নয়। ২৭ সেপ্টেম্বরের মাঝপথে skip ledger চালু হয়েছে; **২৮ সেপ্টেম্বরের আগের Skipped/Pending “—” মানে তথ্য অজানা, শূন্য নয়**।
+
+নিচের **Skip-rate details** আগের cohort report: recorded assignments, requests ও review decisions দেখায়। Daily table-এর সংখ্যা এবং cohort rate-এর denominator আলাদা, তাই সরাসরি তুলনা করবেন না।
+
+## খোঁজা ও ছাঁকা
+
+- **Search ASIN or job number**-এ ASIN বা job number লিখুন। Amazon URL-এর বদলে ASIN দিতে হবে।
+- **Target status**-এ Waiting, In hand, Done, Done today, no file trace, Skipped ও Deleted আছে। **To check** ও **To fix** বোতাম বানান যাচাই ও সংশোধনের queue দেখায়। Upload/live queues এই পাতায় নেই।
+- **Filters** খুলে Designer, Added by ও date range বাছুন। **Today** ও **Last 7 days** Dhaka calendar day ধরে।
+- **Work progress** দিয়ে In hand-এর কাজ **not started** বা **started** আলাদা করুন। **Skip or delete reason** দিয়ে Page Not Found, Event, Copyright বা Others বাছুন; এটি skipped/deleted target-এ খোঁজে। অন্য queue/status বাছলে বিরোধী progress/reason selection সাফ হয়।
+- **Activity from/to** সর্বশেষ কাজের সময় ধরে; **Added from/to** target প্রথম pool-এ যোগ হওয়ার দিন ধরে। দুই date range একসঙ্গে দিলে দুটো শর্তই লাগবে। **Sort Design Pool**-এ newest/oldest activity অথবা newest/oldest added ক্রম বাছা যায়। সবকটি filter পুরো matching set-এ server-side চলে, তারপর ৫০টি করে page হয়।
+- নতুন filter ও sort saved view/shareable link-এ থাকে। **Reset all filters**-এ এগুলো এবং sort default-এ ফেরে। Review page-এর আলাদা review filters অপরিবর্তিত।
+- Done-এর date হলো completion time; পরে upload/live হলেও ওই দিনের result-এ থাকে। Review/Skipped-এর date হলো skip-request time। অন্য views latest activity ধরে।
+- পুরোনো skip-এর সময় জানা না থাকলে এবং Review-এ deleted target দেখতে date filter clear করুন।
+- **Reset all filters** search, status, people ও date একসঙ্গে clear করে। Review page নিজের review queue-তেই থাকে।
+- **Refresh** latest table ও queue counts আনে এবং selection clear করে। Queue buttons-এর counts পুরো queue-এর; table count active filters-এর matching results।
+
+## Select ও delete
+
+শুধু owner/manager Delete করতে পারেন। Select-all শুধু এই page-এর deletable targets নেয়। Finished, already-deleted ও pending skip-review target select করা যায় না। Backend-ও completed/pending কাজ রক্ষা করে।
+
+Delete-এ reason লাগে। Target স্থায়ীভাবে database থেকে মুছে যায় না; Deleted হয়, নতুন assignment-এ যায় না এবং একই ASIN আবার bulk add করে নতুন target বানানো যায় না। ভুল হলে existing **Un-delete** action দিয়ে pool-এ ফেরানো যায়। Pending skip-এর ক্ষেত্রে আগে owner/manager **Approve skip** বা **Reject** দেবেন।
+
+Amazon link-এ **Page Not Found / Dogs of Amazon** দেখালে ASIN দিয়ে row খুঁজে select করে **Delete selected → Not Found** দিন; পরে row-তে **Deleted · Not Found** নিশ্চিত করুন। একটি product-এর “Currently unavailable”, robot/CAPTCHA, network error বা temporary block মানেই missing নয়। ৭ অক্টোবরের সীমিত live audit-এ ১৮টি confirmed missing target চিহ্নিত হয়েছে; [audit record](audits/2026-10-07-amazon-not-found.md)-এ scope, ASIN ও বাকি কাজ আছে।
+
+## কাজের ধাপ
+
+Design Pool-এ Complete, spelling check/error ও প্রয়োজন হলে Fixed actions আছে। Uploaded ও Live buttons মূল row এবং More actions থেকে সরানো হয়েছে। আগের upload/live records ও backend rules সংরক্ষিত আছে। Ordinary designers নিজের My targets-এ কাজ করেন; Design Pool-এর management/research কাজ role অনুযায়ী সীমিত।
+
+**More actions**-এর `⋯`-এ অতিরিক্ত actions আছে। ভুল Complete হলে eligible design-এ **Undo complete** ব্যবহার করুন; **To pool** assignment ছেড়ে দেয়। No-file-trace নিজে থেকে কাজ না হওয়ার প্রমাণ নয়—job number ছাড়া নাম বা unsaved file-ও trace না রাখতে পারে।
+
+## CSV
+
+**Export this page · CSV** বর্তমানে দেখা সর্বোচ্চ ৫০টি matching row export করে। পুরো pool বা অন্য pages এতে থাকে না। আরও row চাইলে next page খুলে export করুন। CSV-তে ASIN, job number, status, designer, added-by এবং relevant dates/reason আছে; timestamps ISO format-এ। Pending assignment-এর status `pending_skip_review` হয়।
+
+UTF-8 Bengali names, quotes ও spreadsheet formula protection আছে। Saved views, per-job history drawer, skip-rate report এবং full filtered export-এর পরবর্তী scope [audit doc](audits/2026-09-28-design-pool.md)-এ আছে।
+
+
+## Recorded insights, history and saved views — release 421
+
+Owner/manager-এর জন্য আলাদা Daily designs & skips page-এর **Skip-rate details**-এ Dhaka date range দিয়ে requests/automatic/pending/approved/rejected, unique recorded assignments এবং cohort rate দেখা যায়। Pending/rejected numerator-এ যায় না; period-এর বাইরে assignment unknown/carry-in হিসেবে আলাদা থাকে। Assignment recording 27 September 12:33 থেকে; আগের data তৈরি করা হয়নি। একই target repeated assignment/request হলেও rate double-count করে না।
+
+History button recorded actor/source ও status transition দেখায়; Older events দিয়ে cursor pagination। Missing old history কাজ হয়নি বা bypass হয়েছে—এমন প্রমাণ নয়।
+
+View name দিয়ে current filters save করা যায় (প্রতি browser/account/page সর্বোচ্চ ১০টি)। Saved button filters restore করে; × removes that saved view. Shareable view link search/status/staff/adder/date filters URL-এ রাখে, অন্য PC-তে সেই link খুলুন। Saved list automatic cloud sync হয় না। Removed upload/live queues ফিরে আসে না।

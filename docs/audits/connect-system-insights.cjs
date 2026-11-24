@@ -1,0 +1,16 @@
+const fs=require('fs');
+const path='.release-system/oxeio-monitor/web/src/pages/AllTargetsPage.tsx';
+let s=fs.readFileSync(path,'utf8').replace(/\r\n/g,'\n');
+s=s.replace("import { downloadTargetsCsv } from './targets/export';", "import { downloadTargetsCsv } from './targets/export';\nimport { SkipInsights, HistoryDrawer } from './targets/Insights';\nimport { SavedViews, parsePoolView, type PoolView } from './targets/SavedViews';");
+s=s.replace("  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? 'all');", "  const [initialView] = useState(() => parsePoolView(window.location.search));\n  const [showInsights,setShowInsights] = useState(false);\n  const [historyId,setHistoryId] = useState<number|null>(null);\n  const [filter, setFilter] = useState<FilterKey>(lockedStage ?? initialView.filter as FilterKey);");
+for(const [name,key] of [['q','q'],['staffId','staffId'],['addedById','addedById'],['from','from'],['to','to']]) s=s.replace(`const [${name}, set${name[0].toUpperCase()+name.slice(1)}] = useState('');`,`const [${name}, set${name[0].toUpperCase()+name.slice(1)}] = useState(initialView.${key});`);
+s=s.replace("  const skipDates = filter === 'to_review' || filter === 'skipped';", "  const applyView = (v:PoolView) => {setQ(v.q);setStaffId(v.staffId);setAddedById(v.addedById);setFrom(v.from);setTo(v.to);setFilter(lockedStage ?? v.filter as FilterKey);setPage(1);setPicked(new Set());setConfirmingBulk(false);};\n  const skipDates = filter === 'to_review' || filter === 'skipped';");
+s=s.replace('Export this page · CSV</MiniButton>', 'Export this page · CSV</MiniButton>\n        {mayDelete && <MiniButton onClick={()=>setShowInsights(!showInsights)}>{showInsights?\'Hide skip report\':\'Skip report\'}</MiniButton>}');
+s=s.replace('      <div className="px-4">\n', '      <SavedViews scope={String(user?.userId)+\'.\'+(lockedStage??\'all\')} current={{filter,q,staffId,addedById,from,to}} onApply={applyView}/>\n      {mayDelete&&showInsights&&<SkipInsights/>}\n      {historyId!==null&&<HistoryDrawer id={historyId} onClose={()=>setHistoryId(null)}/>}\n      <div className="px-4">\n');
+s=s.replace('                  <RowActions\n', '                  <span className="flex flex-wrap items-center justify-end gap-1.5">\n                  {mayDelete&&<MiniButton title={\'History for \'+r.asin} onClick={()=>setHistoryId(r.id)}>History</MiniButton>}\n                  <RowActions\n');
+s=s.replace('                  />\n                ),\n              },\n            ]}', '                  />\n                  </span>\n                ),\n              },\n            ]}');
+s=s.replace('      {mayDelete && (\n        <MiniButton tone="danger"', '      {mayDelete && row.status !== \'done\' && (\n        <MiniButton tone="danger"');
+fs.writeFileSync(path,s);
+const backend='.release-system/oxeio-monitor/server/src/targets/target-insights.controller.ts';
+s=fs.readFileSync(backend,'utf8').replace("if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || new Date(value+'T00:00:00Z').toISOString().slice(0,10) !== value)","if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value) || !Number.isFinite(new Date(value+'T00:00:00Z').getTime()) || new Date(value+'T00:00:00Z').toISOString().slice(0,10) !== value)");
+fs.writeFileSync(backend,s);

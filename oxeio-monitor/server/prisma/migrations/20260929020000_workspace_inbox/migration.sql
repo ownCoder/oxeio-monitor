@@ -1,0 +1,6 @@
+CREATE TABLE "workspace_receipts" (
+ "user_id" INTEGER NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+ "key" VARCHAR(120) NOT NULL,
+ "read_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY ("user_id", "key")
+);

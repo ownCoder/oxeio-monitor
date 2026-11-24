@@ -24,6 +24,7 @@ export function ReviewPage() {
       title="Review"
       subtitle="Skipped and deleted designs — and why"
     >
+      <p className="mb-4 text-sm text-ink-3">Pending skips keep their assignment until you approve or reject them. Date filters use the recorded skip-request time; older skips without a recorded time and deleted designs remain available when dates are cleared.</p>
       <TargetList lockedStage="to_review" />
     </Page>
   );

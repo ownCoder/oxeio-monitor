@@ -1,0 +1,13 @@
+server/src/workspace/workspace.service.ts
+server/src/workspace/workspace.controller.ts
+server/src/workspace/workspace.module.ts
+server/src/office/office.service.ts
+server/src/office/office.module.ts
+server/src/app.module.ts
+server/prisma/schema.prisma
+server/prisma/migrations/20260929020000_workspace_inbox/migration.sql
+server/test/workspace.e2e.spec.ts
+web/src/pages/WorkspacePage.tsx
+web/src/components/Layout.tsx
+web/src/App.tsx
+web/src/pages/office/OfficePage.tsx

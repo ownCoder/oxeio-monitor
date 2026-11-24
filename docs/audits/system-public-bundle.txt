@@ -1,0 +1,2 @@
+Public bundle: /assets/index-guYydpdg.js
+SHA256: 5e50dbd93415d6dac0ee639db485ae17711e8d1771ab72d299813bfde7383f94

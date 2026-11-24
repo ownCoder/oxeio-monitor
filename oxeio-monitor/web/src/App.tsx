@@ -30,6 +30,8 @@ const ProductionPage = lazy(() => import('./pages/production/ProductionPage').th
  * তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ — তাই "লগইন করেনি অথচ ভেতরের পেজ দেখছে"
  * বা "পাসওয়ার্ড না বদলে ঘুরে বেড়াচ্ছে" — এমন কিছু সম্ভবই নয়।
  */
+const WorkspacePage=lazy(()=>import('./pages/WorkspacePage').then(m=>({default:m.WorkspacePage})));
+const OfficePage=lazy(()=>import('./pages/office/OfficePage').then(m=>({default:m.OfficePage})));
 function Router() {
   const { user, loading, offline, refresh, logoutStatus, signOut } = useAuth();
 
@@ -230,6 +232,8 @@ function Router() {
              করতে পারবে। (এটা তার উপর নজরদারির কোনো নতুন পথ খোলে না —
              পাতাটা শুধু তার নিজের লগইন নিয়ে।)
         */}
+        <Route path="workspace/:section?" element={<Suspense fallback={<p>Loading workspace…</p>}><WorkspacePage /></Suspense>} />
+        <Route path="office/:section?" element={<Suspense fallback={<p>Loading office workspace…</p>}><OfficePage /></Suspense>} />
         <Route path="security" element={<SecurityPage />} />
 
         {/*

@@ -1,3 +1,7 @@
+> **Verified deployment — 27 September 2026:** web/API **411 / 5dd3783**. Current SSH alias `oxeio-vps` connects to `root@165.101.189.253:2222` using the existing local key `~/.ssh/oxeio_vps`; passwordless access was verified. `oxeio-vps-legacy` is the retired host. HTTPS at `https://hub.oxeio.com` was verified separately; SSH key setup does not replace the site TLS certificate.
+>
+> This release applies `20260926010000_target_history` and `20260927010000_skip_review_limit`, with migration commands overridden to avoid seed. Before future releases, preserve the deployed commit marker, take a verified encrypted backup, and deploy API/web together. Resolve pending skips using the new API before old-API rollback. [Release, backup and source bundle](../../docs/audits/2026-09-27-skip-review.md).
+
 > **26 September 2026 — release consistency:** keep the VPS checkout and runtime
 > on the same commit. `vps-update.sh` now rejects a checkout behind the verified
 > deployment marker `.git/oxeio-deployed-commit`, rejects tracked uncommitted changes,

@@ -1,8 +1,12 @@
 # oXeio Workforce Monitor
 
-> **Unreleased Studio expansion:** all eight approved feature implementations are tracked in the [production plan](docs/production-expansion-plan.md), with [verification evidence](docs/audits/2026-09-27-production-expansion.md) and [operations instructions](docs/production-operations.md). External monitoring setup and production rollout remain separate.
+> **Continue from another PC:** read [current state](docs/current-state.md) and [standing instructions](docs/work-preferences.md) first. Update these records after each completed task.
 
-> **Current release: 409 / 1081b09** — round 2 fixes B01–B03 are deployed and verified on 26 September 2026. See the [deployment record](docs/audits/2026-09-26-round2-fixes.md).
+> **Working preference — 27 September 2026:** use the owner's Google Chrome and installed ChatGPT extension for browser work. Do not use the internal/in-app browser. See [persistent working instructions](docs/work-preferences.md).
+
+> **Production workspace released:** the approved proofing, workload, quality and product-result screens are live. External digest delivery remains opt-in. Unrelated local agent/payroll/Studio work remains separate.
+
+> **Current release: 486 / 46a64bf** — the existing alert bot now answers greetings and common verified report questions immediately, and uses a smaller local Qwen model for open-ended questions. Staff can link their portal account and read their own report; managers and owners can request team summaries. No OpenAI API credit or key is needed. See [operations](docs/telegram-ai-operations.md) and the [canonical handoff](docs/current-state.md).
 
 > **26 September 2026:** system audit A01–A07 and their regression/deployment
 > results are recorded in [the repair ledger](docs/audits/2026-09-26-fix-tracker.md).
@@ -45,7 +49,7 @@ items — they were considered and **rejected**, and the reasons are in
 | **Silent installation** | Staff agree to monitoring when they join, and the agent never hides: it shows a tray icon and a "My data" window. A policy [template](docs/monitoring-policy-template.md) ships with the repo for deployments that need a signed document. |
 | **Hiding hours from the person who worked them** | Every employee can open their own page and see exactly what was recorded, including any manual correction the owner made and the reason for it. |
 | **Screenshots outside 07:00–23:00** | Capture is time-boxed, and images auto-delete after 90 days. |
-| **Approval workflows** | The owner can correct hours, but nobody has to ask permission to work. |
+| **Approval before working** | Staff can work without approval. Page Not Found skip needs no review; Event, Copyright and Others go to manager/owner review, while a 1:1 replacement is attempted immediately. |
 
 The one principle everything else follows: **a number must never claim to know
 something it doesn't.** A day the server wasn't watching is drawn as a dotted

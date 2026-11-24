@@ -1,0 +1,13 @@
+server/prisma/schema.prisma
+server/prisma/migrations/20260930070000_salary_payments/migration.sql
+server/src/payroll/payroll.controller.ts
+server/src/payroll/payroll.module.ts
+server/src/payroll/salary.dto.ts
+server/src/payroll/salary.service.ts
+server/src/audit/audit.service.ts
+server/test/salary-payments.e2e.spec.ts
+web/src/api/salary.ts
+web/src/pages/SalaryPage.tsx
+web/src/App.tsx
+web/src/components/Layout.tsx
+web/src/pages/settings/AuditTab.tsx

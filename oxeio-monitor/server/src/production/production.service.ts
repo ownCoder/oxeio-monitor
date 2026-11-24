@@ -212,9 +212,9 @@ export class ProductionService {
         await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
         const row = await tx.designTarget.findUnique({ where: { id } });
         if (!row) throw new NotFoundException('Target not found.');
-        if (row.status !== 'assigned' || row.startedAt !== null)
+        if (row.status !== 'assigned' || row.startedAt !== null || row.skipReviewPending)
           throw new ConflictException(
-            'Only assigned, unstarted work can be reassigned.',
+            'Only assigned, unstarted work without a pending skip can be reassigned.',
           );
         const emp = await tx.employee.findFirst({
           where: {

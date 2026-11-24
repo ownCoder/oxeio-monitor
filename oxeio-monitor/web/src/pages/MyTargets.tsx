@@ -5,16 +5,19 @@ import {
   completeTarget,
   myTargets,
   skipTarget,
+  skipAllowance,
   undoTarget,
   type DropReason,
   type MyTarget,
 } from '../api/targets';
 import { useApi } from '../api/useApi';
+import { useAuth } from '../auth/AuthContext';
 import { Card } from '../components/Card';
 import { ErrorBox, Loading } from '../components/States';
 import { formatAgo } from '../lib/format';
 import { blockedNotice, openInTabs } from '../lib/popups';
 import { DropReasonPicker } from './targets/DropReason';
+import { byJobNumber, readSelectedTarget, rememberSelectedTarget } from './targets/my-target-view';
 import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/ui';
 
 /**
@@ -36,8 +39,15 @@ import { Chip, MiniButton, Notice, ServerError, useMutation } from './settings/u
  * একটা খালি "কোনো টার্গেট নেই" বাক্স বসিয়ে লাভ নেই।
  */
 export function MyTargets() {
+  const { user } = useAuth();
+  const [selectedId,setSelectedId] = useState<number|null>(()=>user?readSelectedTarget(user.userId):null);
+  function selectTarget(id:number) {
+    setSelectedId(id);
+    if(user) rememberSelectedTarget(user.userId,id);
+  }
   const { data, loading, error, reload } = useApi(myTargets, []);
   const skip = useMutation();
+  const allowance = useApi(skipAllowance, []);
 
   /**
    * ⚠️ পপ-আপ আটকানোর বার্তা `skip.error`-এর সাথে মেশানো হয়নি — ওটা
@@ -60,8 +70,10 @@ export function MyTargets() {
    * ⚠️ সার্ভার **আজকের** শেষ করাগুলোই পাঠায়, তাই এখানে দিন গোনার
    * দরকার নেই — `completedAt` থাকা মানেই "আজ, আর এখনো ফেরানো যায়"।
    */
-  const inHand = data.filter((t) => t.completedAt === null);
-  const finished = data.filter((t) => t.completedAt !== null);
+  const ordered = byJobNumber(data);
+  const pending = ordered.filter((t) => t.skipReviewPending);
+  const inHand = ordered.filter((t) => t.completedAt === null && !t.skipReviewPending);
+  const finished = ordered.filter((t) => t.completedAt !== null);
 
   /**
    * ⭐⭐ **এক চাপে হাতের সব কটা Amazon পাতা** *(মালিকের চাওয়া, ২৯ আগস্ট
@@ -86,7 +98,7 @@ export function MyTargets() {
   return (
     <Card
       title="Your Design Targets"
-      hint={`${inHand.length} in hand — oldest first`}
+      hint={`${inHand.length} in hand — job number: low to high`}
       /*
         ⭐ বোতামটা কার্ডের মাথায়, প্রতিটা সারিতে নয় — কাজটা গোটা তালিকার,
            একটা টার্গেটের নয়। ⚠️ সংখ্যাটা লেখাতেই বসে ("Open all 30"),
@@ -105,6 +117,17 @@ export function MyTargets() {
       }
     >
       <div className="space-y-3 p-4">
+        <Notice>
+          The first 3 skip requests each Dhaka day are automatic. Further requests need owner or manager approval before replacement work can be issued.
+          {allowance.data && ` Automatic skips remaining today: ${allowance.data.remaining}.`}
+        </Notice>
+        {pending.length > 0 && <div className="space-y-2">
+          <p className="text-sm font-semibold">Pending skip review · {pending.length}</p>
+          {pending.map(t => <div key={t.id} role="group" tabIndex={0} aria-label={`Design ${t.jobNumber??t.asin}`} data-selected={selectedId===t.id} onClick={()=>selectTarget(t.id)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();selectTarget(t.id);}}} className={`rounded-lg border p-3 text-sm ${selectedId===t.id?'border-brand bg-brand/10 ring-1 ring-brand/30':'border-line'}`}>
+            {selectedId===t.id&&<span className="mr-2 text-brand font-semibold">✓ Selected</span>}
+            Job {t.jobNumber ?? '—'} · {t.asin} — waiting for owner or manager review. You can continue your other designs.
+          </div>)}
+        </div>}
         {/*
           ⭐⭐ এই এক লাইনটাই গোটা কার্ডের কারণ। ডিজাইনারের একমাত্র কাজ
              নম্বরটা ফাইলের নামে বসানো — সেটা না জানলে কোনো টার্গেটই
@@ -133,6 +156,8 @@ export function MyTargets() {
           <TargetRow
             key={t.id}
             target={t}
+            selected={selectedId===t.id}
+            onSelect={()=>selectTarget(t.id)}
             busy={skip.busy}
             onDone={() =>
               skip.run(async () => {
@@ -143,6 +168,7 @@ export function MyTargets() {
             onSkip={(reason) =>
               skip.run(async () => {
                 await skipTarget(t.id, reason);
+                allowance.reload();
                 reload();
               })
             }
@@ -169,6 +195,8 @@ export function MyTargets() {
               <FinishedRow
                 key={t.id}
                 target={t}
+                selected={selectedId===t.id}
+                onSelect={()=>selectTarget(t.id)}
                 busy={skip.busy}
                 onUndo={() =>
                   skip.run(async () => {
@@ -187,11 +215,15 @@ export function MyTargets() {
 
 function TargetRow({
   target,
+  selected,
+  onSelect,
   busy,
   onDone,
   onSkip,
 }: {
   target: MyTarget;
+  selected: boolean;
+  onSelect: () => void;
   busy: boolean;
   onDone: () => void;
   onSkip: (reason: DropReason) => void;
@@ -205,7 +237,7 @@ function TargetRow({
    */
   const [asking, setAsking] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-paper px-3 py-2.5">
+    <div role="group" tabIndex={0} aria-label={`Design ${target.jobNumber??target.asin}${selected?' selected':''}`} data-selected={selected} onClick={onSelect} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onSelect();}}} className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border px-3 py-2.5 ${selected?'border-brand bg-brand/10 ring-1 ring-brand/30':'border-line bg-paper'}`}>
       {/*
         ⭐ নম্বরটাই সবচেয়ে বড় লেখা, ASIN নয় — ASIN ডিজাইনারের কোনো কাজে
            লাগে না, লিঙ্কটা লাগে; আর নম্বরটা ছাড়া কাজ শেষই হয় না।
@@ -215,6 +247,7 @@ function TargetRow({
       </span>
 
       <span className="min-w-0 flex-1">
+        {selected&&<span className="block text-[11.5px] font-semibold text-brand">✓ Selected</span>}
         <span className="num block text-[13px] text-ink">{target.asin}</span>
         {/*
           ⭐ "কাজ চলছে" — সিস্টেম ফাইলটা খুলতে দেখেছে। ⚠️ এটা উৎসাহ নয়,
@@ -246,6 +279,7 @@ function TargetRow({
         ⚠️ `navigator.clipboard` না থাকলে (পুরোনো ব্রাউজার, http) বোতামটা
            চুপচাপ কিছুই করে না — তাই আগে দেখে নেওয়া হয়।
       */}
+      <Link className="text-xs text-brand" to={`/office/help?target=${target.id}`}>Details &amp; help</Link>
       {target.jobNumber !== null && typeof navigator.clipboard !== 'undefined' && (
         <MiniButton
           onClick={() => void navigator.clipboard.writeText(String(target.jobNumber))}
@@ -295,21 +329,26 @@ function TargetRow({
  */
 function FinishedRow({
   target,
+  selected,
+  onSelect,
   busy,
   onUndo,
 }: {
   target: MyTarget;
+  selected: boolean;
+  onSelect: () => void;
   busy: boolean;
   onUndo: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-line px-3 py-2">
+    <div role="group" tabIndex={0} aria-label={`Design ${target.jobNumber??target.asin}${selected?' selected':''}`} data-selected={selected} onClick={onSelect} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onSelect();}}} className={`flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border px-3 py-2 ${selected?'border-brand bg-brand/10 ring-1 ring-brand/30':'border-line'}`}>
       <span className="num min-w-[104px] text-[15px] font-semibold text-ink-2">
         {target.jobNumber ?? '—'} <Link to={`/production/board?target=${target.id}`} className="text-xs text-brand-ink hover:underline">History & review</Link>
       </span>
 
       <span className="min-w-0 flex-1">
         <span className="num block text-[12.5px] text-ink-2">{target.asin}</span>
+        {selected&&<span className="block text-[11.5px] font-semibold text-brand">✓ Selected</span>}
         <span className="block text-[11.5px] text-ink-3">
           {target.completedAt ? `Done ${formatAgo(target.completedAt)}` : 'Done'}
         </span>

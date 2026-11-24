@@ -16,9 +16,10 @@ export function targetWrite<T>(
   userId: number | null,
   source: string,
   write: (tx: Prisma.TransactionClient) => Promise<T>,
+  options?: { maxWait?: number; timeout?: number },
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
     await targetHistoryContext(tx, userId, source);
     return write(tx);
-  });
+  }, options);
 }

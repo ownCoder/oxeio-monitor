@@ -1,5 +1,7 @@
 # Production workspace operations
 
+> **Current deployment:** see [current-state](current-state.md) and [focused system implementation](audits/2026-09-28-system-improvements.md). Release 411 includes skip review and `20260926010000_target_history`. The full workspace below remains unreleased; `20260926020000_production_workspace` is not applied. Preserve `20260927010000_skip_review_limit` during later rollout. Resolve pending skips with the new API before any rollback to an older API. See [deployed rules and recovery](audits/2026-09-27-skip-review.md).
+
 The Studio mockup and all eight phases were approved on 26 September 2026. New code requires both `20260926010000_target_history` and `20260926020000_production_workspace`. Take and verify an encrypted backup before rollout. Apply migrations with the normal release process, then deploy API and web together. The additive schema can remain in place during an application rollback. Do not drop history or imported results to roll back a UI release.
 
 ## Monitoring setup

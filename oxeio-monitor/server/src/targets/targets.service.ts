@@ -28,6 +28,7 @@ import {
   fileSecOf,
   parseBulk,
   POOL_PER_DESIGNER,
+  MAX_ISSUED_PER_DAY,
   topUpSize,
   UPLOAD_QUEUE_FROM,
   type RejectedLine,
@@ -92,6 +93,7 @@ export interface BulkResult {
  * কম দিলে গবেষককে বারবার "পরের পাতা" চাপতে হতো।
  */
 export const TARGET_PAGE_SIZE = 50;
+export const DAILY_AUTOMATIC_SKIPS = 3;
 
 /**
  * ⚠️ এক ডাকে সর্বোচ্চ কতগুলো মোছা যাবে। পর্দায় এক পাতায় ৫০টা, তাই
@@ -123,6 +125,8 @@ type TargetSearchMatch =
   | { OR: [{ jobNumber: number }, { asin: { contains: string } }] };
 
 export interface TargetRow {
+  skipReviewPending: boolean;
+  skipRequestedAt: string | null;
   id: number;
   asin: string;
   url: string;
@@ -207,6 +211,8 @@ export interface TargetRow {
 }
 
 export interface MyTarget {
+  skipReviewPending: boolean;
+  skipRequestedAt: string | null;
   id: number;
   asin: string;
   url: string;
@@ -472,19 +478,24 @@ export class TargetsService {
     userId: number | null = null,
     source = 'top_up',
   ): Promise<number> {
-    const picked = await this.prisma.$queryRaw<{ id: number }[]>`
-      SELECT id FROM design_targets
-      WHERE status = 'pool'
-      ORDER BY random()
-      LIMIT ${size}
-      FOR UPDATE SKIP LOCKED
-    `;
-    if (picked.length === 0) return 0;
-
-    let count = 0;
-
-    for (const row of picked) {
-      const done = await targetWrite(this.prisma, userId, source, tx => tx.$executeRaw`
+    return targetWrite(this.prisma, userId, source, async tx => {
+      // Recheck capacity after waiting: concurrent skips/top-ups must not grant
+      // the same vacant slots twice. Pending skips are still assigned here.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(260927, ${employeeId}::int)::text`;
+      const open = await tx.designTarget.count({ where: { assignedToId: employeeId, status: 'assigned' } });
+      let available = Math.min(size, Math.max(0, POOL_PER_DESIGNER - open));
+      if (source === 'top_up') {
+        const issued = await tx.designTarget.count({ where: {
+          assignedToId: employeeId, assignedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+        } });
+        available = Math.min(available, Math.max(0, MAX_ISSUED_PER_DAY - issued));
+      }
+      if (available === 0) return 0;
+      return tx.$executeRaw`
+        WITH picked AS (
+          SELECT id FROM design_targets WHERE status = 'pool'
+          ORDER BY random() LIMIT ${available} FOR UPDATE SKIP LOCKED
+        )
         UPDATE design_targets
         SET status = 'assigned',
             assigned_to_id = ${employeeId},
@@ -494,12 +505,9 @@ export class TargetsService {
             --    আবার বসালে সিরিয়াল অকারণে ফুরাত, আর পুরোনো ফাইলের
             --    নাম কোনোদিন কিছুর সাথে মিলত না।
             job_number = COALESCE(job_number, nextval('design_job_number_seq'))
-        WHERE id = ${row.id} AND status = 'pool'
-      `);
-      count += done;
-    }
-
-    return count;
+        WHERE id IN (SELECT id FROM picked) AND status = 'pool'
+      `;
+    }, { maxWait: 30_000, timeout: 30_000 });
   }
 
   /**
@@ -538,7 +546,7 @@ export class TargetsService {
       const keep = new Set(touched.map((t) => `${t.employeeId}:${t.designId}`));
 
       const open = await this.prisma.designTarget.findMany({
-        where: { status: DesignTargetStatus.assigned },
+        where: { status: DesignTargetStatus.assigned, skipReviewPending: false },
         select: { id: true, assignedToId: true, jobNumber: true, startedAt: true },
       });
 
@@ -560,6 +568,7 @@ export class TargetsService {
         SET status = 'pool', assigned_to_id = NULL, assigned_at = NULL
         WHERE target.id IN (${Prisma.join(ids)})
           AND target.status = 'assigned' AND target.started_at IS NULL
+          AND NOT target.skip_review_pending
           AND NOT EXISTS (
             SELECT 1 FROM design_credits AS credit
             WHERE credit.employee_id = target.assigned_to_id
@@ -614,6 +623,8 @@ export class TargetsService {
         assignedAt: true,
         startedAt: true,
         completedAt: true,
+        skipReviewPending: true,
+        skipRequestedAt: true,
       },
       // ⚠️ যেটা আগে এসেছে সেটা আগে — নইলে পুরোনো টার্গেট চিরকাল তলায়
       //    পড়ে থাকত আর কেউ ধরত না
@@ -621,6 +632,8 @@ export class TargetsService {
     });
 
     return rows.map((r) => ({
+      skipReviewPending: r.skipReviewPending,
+      skipRequestedAt: r.skipRequestedAt?.toISOString() ?? null,
       id: r.id,
       asin: r.asin,
       url: amazonUrl(r.asin),
@@ -814,18 +827,61 @@ export class TargetsService {
     now: Date = new Date(),
     userId: number | null = null,
   ): Promise<{ ok: boolean }> {
-    const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
-      where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
-      // ⚠️⚠️ কারণটা এখন **বাধ্যতামূলক** *(৩১ আগস্ট)* — ঐচ্ছিক থাকায়
-      //    পর্দা কোনোদিন কিছু পাঠায়ইনি, আর ৯৩টা skipped সারির একটাতেও
-      //    কারণ লেখা ছিল না। ⭐ ঘরটা `dropReason`, কারণ Delete-ও এখানেই লেখে।
-      data: { status: DesignTargetStatus.skipped, dropReason: reason },
-    }));
+    const result = await targetWrite(this.prisma, userId, 'skip_request', async tx => {
+      // Serialize the allowance across tabs/API instances. Undo never refunds it.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(260927, ${employeeId}::int)::text`;
+      await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
+      const row = await tx.designTarget.findUnique({ where: { id } });
+      if (!row || row.assignedToId !== employeeId || row.status !== 'assigned' || row.skipReviewPending)
+        return { ok: false, pending: false };
+      const count = await tx.designSkipRequest.count({ where: {
+        employeeId, requestedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+      } });
+      const pending = count >= DAILY_AUTOMATIC_SKIPS;
+      await tx.designSkipRequest.create({ data: {
+        targetId: id, employeeId, actorUserId: userId, reason, requestedAt: now,
+        decision: pending ? 'pending' : 'automatic', decidedAt: pending ? null : now,
+      } });
+      await tx.designTarget.update({ where: { id }, data: {
+        status: pending ? 'assigned' : 'skipped', dropReason: reason,
+        skipReviewPending: pending, skipRequestedAt: now,
+        reviewedAt: null, reviewedById: null,
+      } });
+      return { ok: true, pending };
+    }, { maxWait: 30_000, timeout: 30_000 });
+    // Pending work occupies its assignment slot in every allocation path.
+    if (result.ok && !result.pending) await this.topUp(employeeId, now);
+    return { ok: result.ok };
+  }
 
-    // ⭐ বাদ দেওয়াও হাত খালি করে — তাই এখানেও (মালিকের নিয়ম: "complete + skip")
-    if (count > 0) await this.topUp(employeeId, now);
+  async skipAllowance(employeeId: number, now = new Date()) {
+    const requested = await this.prisma.designSkipRequest.count({ where: {
+      employeeId, requestedAt: { gte: localMidnightOf(now), lt: nextLocalMidnight(now) },
+    } });
+    return { limit: DAILY_AUTOMATIC_SKIPS, requested, remaining: Math.max(0, DAILY_AUTOMATIC_SKIPS - requested) };
+  }
 
-    return { ok: count > 0 };
+  async decideSkip(id: number, approve: boolean, userId: number, now = new Date()): Promise<{ ok: boolean }> {
+    const employeeId = await targetWrite(this.prisma, userId, approve ? 'skip_approved' : 'skip_rejected', async tx => {
+      await tx.$queryRaw`SELECT id FROM design_targets WHERE id = ${id} FOR UPDATE`;
+      const row = await tx.designTarget.findUnique({ where: { id } });
+      if (!row?.skipReviewPending || row.status !== 'assigned')
+        throw new ConflictException('This skip request has already been decided or changed. Refresh the list.');
+      const decision = await tx.designSkipRequest.updateMany({
+        where: { targetId: id, decision: 'pending' },
+        data: { decision: approve ? 'approved' : 'rejected', decidedAt: now, reviewerUserId: userId },
+      });
+      if (decision.count !== 1) throw new ConflictException('No pending skip request exists.');
+      await tx.designTarget.update({ where: { id }, data: {
+        skipReviewPending: false, status: approve ? 'skipped' : 'assigned',
+        dropReason: approve ? row.dropReason : null,
+        skipRequestedAt: approve ? row.skipRequestedAt : null,
+        reviewedAt: approve ? now : null, reviewedById: approve ? userId : null,
+      } });
+      return row.assignedToId;
+    }, { maxWait: 30_000, timeout: 30_000 });
+    if (approve && employeeId !== null) await this.topUp(employeeId, now);
+    return { ok: true };
   }
 
   /**
@@ -865,7 +921,7 @@ export class TargetsService {
         }
       }
       const result = await tx.designTarget.updateMany({
-        where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned },
+        where: { id, assignedToId: employeeId, status: DesignTargetStatus.assigned, skipReviewPending: false },
         data: {
           status: DesignTargetStatus.done,
           completedAt: now,
@@ -1230,6 +1286,9 @@ export class TargetsService {
      * ২৩ তারিখটাও বোঝায়। তাই পরের দিনের শুরু পর্যন্ত (`lt`) দেখা হয়।
      */
 
+    if (query.from && query.to && query.from > query.to)
+      throw new BadRequestException('From date must be on or before the to date.');
+
     const activity =
       query.from || query.to
         ? {
@@ -1334,12 +1393,12 @@ export class TargetsService {
                  */
                 query.stage === 'to_review'
                 ? {
-                    status: {
+                    OR: [{ skipReviewPending: true }, { status: {
                       in: [
                         DesignTargetStatus.skipped,
                         DesignTargetStatus.deleted,
                       ],
-                    },
+                    } }],
                     dropReason: { not: null },
                     reviewedAt: null,
                   }
@@ -1347,11 +1406,12 @@ export class TargetsService {
 
     const where = {
       ...(query.status ? { status: query.status } : {}),
-      ...(match ?? {}),
+      ...(query.stage && query.stage !== 'to_review' ? { status: DesignTargetStatus.done } : {}),
       ...(query.staffId ? { assignedToId: query.staffId } : {}),
       ...(query.addedById ? { addedById: query.addedById } : {}),
-      ...(activity ? { lastActivityAt: activity } : {}),
-      ...stage,
+      ...(activity ? (query.stage === 'to_review' || query.status === 'skipped'
+        ? { skipRequestedAt: activity } : query.status === 'done' ? { completedAt: activity } : { lastActivityAt: activity }) : {}),
+      AND: [match ?? {}, stage],
     };
 
     const [total, rows] = await Promise.all([
@@ -1367,6 +1427,8 @@ export class TargetsService {
           startedAt: true,
           completedAt: true,
           completedVia: true,
+          skipReviewPending: true,
+          skipRequestedAt: true,
           checkedAt: true,
           errorFoundAt: true,
           fixedAt: true,
@@ -1402,7 +1464,9 @@ export class TargetsService {
          * সারিগুলোর ক্রম যাতে প্রতিবার এক থাকে (নইলে পাতা বদলালে
          * একই সারি দুবার বা শূন্যবার দেখা যেত)।
          */
-        orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }],
+        orderBy: query.stage === 'to_review' || query.status === 'skipped'
+          ? [{ skipReviewPending: 'desc' }, { skipRequestedAt: { sort: 'desc', nulls: 'last' } }, { id: 'desc' }]
+          : [{ lastActivityAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * TARGET_PAGE_SIZE,
         take: TARGET_PAGE_SIZE,
       }),
@@ -1441,6 +1505,8 @@ export class TargetsService {
         liveAsin: r.liveAsin,
         sourceNote: r.sourceNote,
         dropReason: r.dropReason,
+        skipReviewPending: r.skipReviewPending,
+        skipRequestedAt: r.skipRequestedAt?.toISOString() ?? null,
         reviewedAt: r.reviewedAt?.toISOString() ?? null,
         reviewedBy: r.reviewedBy,
       })),
@@ -1494,6 +1560,7 @@ export class TargetsService {
              * "Copyright" বলে দাগানো, অথচ সেটা মীমাংসিত।
              */
             dropReason: null,
+            skipRequestedAt: null,
             /**
              * ⚠️⚠️ **"দেখা হয়েছে" চিহ্নটাও মুছে যায়** *(৩১ আগস্ট)*। সারিটা
              * পুলে ফিরছে মানে সেটা আর বাদ-যাওয়া নয়, অর্থাৎ ম্যানেজার কী
@@ -1521,6 +1588,7 @@ export class TargetsService {
       where: {
         id,
         // A retry must not move yesterday's completion into today's count.
+        skipReviewPending: false,
         ...(status === DesignTargetStatus.done
           ? { status: { not: DesignTargetStatus.done } }
           : {}),
@@ -1576,6 +1644,7 @@ export class TargetsService {
     const deleted = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateManyAndReturn({
       where: {
         id: { in: wanted },
+        skipReviewPending: false,
         status: { notIn: [DesignTargetStatus.done, DesignTargetStatus.deleted] },
       },
       data: { status: DesignTargetStatus.deleted, dropReason: reason },
@@ -1681,8 +1750,8 @@ export class TargetsService {
         by: ['status'],
         _count: { _all: true },
       }),
-      this.prisma.designTarget.count({ where: { uploadedAt: { not: null } } }),
-      this.prisma.designTarget.count({ where: { liveAt: { not: null } } }),
+      this.prisma.designTarget.count({ where: { status: DesignTargetStatus.done, uploadedAt: { not: null } } }),
+      this.prisma.designTarget.count({ where: { status: DesignTargetStatus.done, liveAt: { not: null } } }),
       /**
        * ⚠️⚠️ এই দুটো সংখ্যা **`list()`-এর ছাঁকনির হুবহু যমজ** হতে হবে —
        * চিপে ১৩২ লিখে ক্লিক করলে ৯০টা এলে কেউ আর সংখ্যাটা বিশ্বাস করবে না।
@@ -1690,15 +1759,17 @@ export class TargetsService {
        */
       this.prisma.designTarget.count({
         where: {
+          status: DesignTargetStatus.done,
           completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
           checkedAt: null,
         },
       }),
       this.prisma.designTarget.count({
-        where: { errorFoundAt: { not: null }, fixedAt: null },
+        where: { status: DesignTargetStatus.done, errorFoundAt: { not: null }, fixedAt: null },
       }),
       this.prisma.designTarget.count({
         where: {
+          status: DesignTargetStatus.done,
           completedAt: { not: null, gte: dhakaStart(UPLOAD_QUEUE_FROM) },
           uploadedAt: null,
           // ⚠️ ভুল পাওয়া অথচ ঠিক-না-হওয়া সারি বাদ — `list()`-এর যমজ
@@ -1712,9 +1783,9 @@ export class TargetsService {
       //    আর তালিকার সংখ্যা মিলত না (২৪ আগস্টের শিক্ষা)
       this.prisma.designTarget.count({
         where: {
-          status: {
+          OR: [{ skipReviewPending: true }, { status: {
             in: [DesignTargetStatus.skipped, DesignTargetStatus.deleted],
-          },
+          } }],
           dropReason: { not: null },
           reviewedAt: null,
         },
@@ -1854,17 +1925,24 @@ export class TargetsService {
     userId: number | null,
   ): Promise<{ ok: true }> {
     const { count } = await targetWrite(this.prisma, userId, 'manual', tx => tx.designTarget.updateMany({
-      where: { id, [prerequisite]: { not: null }, [stage]: null },
+      where: { id, status: DesignTargetStatus.done, skipReviewPending: false,
+        [prerequisite]: { not: null }, [stage]: null,
+        ...(stage === 'uploadedAt' ? { OR: [{ errorFoundAt: null }, { fixedAt: { not: null } }] } : {}),
+      },
       data,
     }));
     if (count > 0) return { ok: true };
     const target = await this.prisma.designTarget.findUnique({
       where: { id },
-      select: { completedAt: true, errorFoundAt: true, uploadedAt: true,
+      select: { status: true, skipReviewPending: true, completedAt: true, errorFoundAt: true, uploadedAt: true,
         checkedAt: true, fixedAt: true, liveAt: true },
     });
     if (!target) throw new NotFoundException('No design target with this id');
+    if (target.status !== DesignTargetStatus.done || target.skipReviewPending)
+      throw new BadRequestException('Only completed designs can advance through production stages.');
     if (target[prerequisite] === null) throw new BadRequestException(invalidMessage);
+    if (stage === 'uploadedAt' && target.errorFoundAt !== null && target.fixedAt === null)
+      throw new BadRequestException('Fix the recorded spelling error before uploading this design.');
     if (target[stage] !== null) return { ok: true };
     throw new ConflictException('This design changed during the request. Please try again.');
   }

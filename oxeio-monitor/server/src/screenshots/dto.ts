@@ -1,9 +1,11 @@
 import { Type } from 'class-transformer';
 import {
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   Matches,
   Max,
   Min,
@@ -33,6 +35,31 @@ export class GalleryQueryDto {
     message: 'Date must be in YYYY-MM-DD format',
   })
   date?: string;
+
+  /** Range endpoints must be supplied together, at most seven Dhaka days. */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  fromDate?: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  toDate?: string;
+
+  @IsOptional()
+  @IsIn(['all', '00-06', '06-12', '12-18', '18-24'])
+  timeBand?: 'all' | '00-06' | '06-12' | '12-18' | '18-24';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  app?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(32767)
+  monitorIndex?: number;
 
   /**
    * ⚠️ উপরের সীমা আছে ইচ্ছে করেই — `page=99999999` দিলে Postgres-কে

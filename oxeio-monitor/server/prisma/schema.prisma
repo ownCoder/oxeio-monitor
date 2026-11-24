@@ -209,6 +209,7 @@ model WorkPolicy {
 }
 
 model Employee {
+  officeEntries OfficeEntry[]
   id             Int            @id @default(autoincrement())
   empCode        String         @unique @map("emp_code")
   fullName       String         @map("full_name")
@@ -722,6 +723,10 @@ model AgentVersion {
  * দুটো চেহারা টেবিলে থাকত।
  */
 model DesignTarget {
+  officeEntries OfficeEntry[]
+  skipReviewPending Boolean @default(false) @map("skip_review_pending")
+  skipRequestedAt DateTime? @map("skip_requested_at") @db.Timestamptz(3)
+  skipRequests DesignSkipRequest[]
   history       DesignTargetEvent[]
   previews      DesignPreview[]
   sales         ProductSale[]
@@ -901,6 +906,24 @@ model DesignTarget {
   /// ⭐ ডিজাইনারের নিজের তালিকা
   @@index([assignedToId, status])
   @@map("design_targets")
+}
+
+/// A request survives rejection, un-skip and reassignment. Daily allowance counts requests.
+model DesignSkipRequest {
+  id Int @id @default(autoincrement())
+  targetId Int @map("target_id")
+  employeeId Int @map("employee_id")
+  actorUserId Int? @map("actor_user_id")
+  reason String @db.VarChar(16)
+  requestedAt DateTime @default(now()) @map("requested_at") @db.Timestamptz(3)
+  decision String @db.VarChar(16)
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  reviewerUserId Int? @map("reviewer_user_id")
+  target DesignTarget @relation(fields: [targetId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, requestedAt])
+  @@index([targetId, decision])
+  @@map("design_skip_requests")
 }
 
 /// Written atomically by the target-history trigger; no API edits/deletes.
@@ -1336,4 +1359,56 @@ model DepositSettlement {
   /// সেই সিদ্ধান্তটা তখনকার, আজকের নয়
   @@unique([employeeId])
   @@map("deposit_settlements")
+}
+
+model OfficeEntry {
+  id Int @id @default(autoincrement())
+  kind String @db.VarChar(32)
+  title String @db.VarChar(120)
+  content Json
+  employeeId Int? @map("employee_id")
+  targetId Int? @map("target_id")
+  createdBy Int @map("created_by")
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(3)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(3)
+  employee Employee? @relation(fields:[employeeId],references:[id],onDelete:Restrict)
+  target DesignTarget? @relation(fields:[targetId],references:[id],onDelete:Restrict)
+  events OfficeEvent[]
+  acknowledgements OfficeAcknowledgement[]
+  @@index([kind,updatedAt])
+  @@index([employeeId])
+  @@index([targetId])
+  @@map("office_entries")
+}
+model OfficeEvent {
+  id Int @id @default(autoincrement())
+  entryId Int @map("entry_id")
+  actorId Int @map("actor_id")
+  actorName String @map("actor_name") @db.VarChar(254)
+  action String @db.VarChar(20)
+  version Int
+  snapshot Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  entry OfficeEntry @relation(fields:[entryId],references:[id],onDelete:Restrict)
+  @@index([entryId,id])
+  @@map("office_events")
+}
+model OfficeAcknowledgement {
+  entryId Int @map("entry_id")
+  userId Int @map("user_id")
+  version Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  entry OfficeEntry @relation(fields:[entryId],references:[id],onDelete:Restrict)
+  @@id([entryId,userId,version])
+  @@map("office_acknowledgements")
+}
+
+model WorkspaceReceipt {
+ userId Int @map("user_id")
+ key String @db.VarChar(120)
+ readAt DateTime @default(now()) @map("read_at") @db.Timestamptz(3)
+ @@id([userId,key])
+ @@map("workspace_receipts")
 }

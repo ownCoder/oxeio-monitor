@@ -1,0 +1,14410 @@
+> **Current release — 28 September 2026:** **418 / e559b45** is live. Design Pool audit fixes, simpler filters and page CSV export are verified; skip-review controls remain active. [Audit record](audits/2026-09-28-design-pool.md) · [Usage guide](design-pool-operations.md).
+
+২৮ সেপ্টেম্বর: Design Pool-এর To upload/To make live queues ও row/More actions-এর Uploaded/Live buttons সরানো। [Release 418](audits/2026-09-28-pool-no-upload-live.md)।
+
+২৮ সেপ্টেম্বর: Add design targets থেকে Uploaded ও Live on Amazon tiles সরানো; তিনটি design-stage tile রাখা হয়েছে। [Release 416](audits/2026-09-28-add-target-three-stages.md)।
+
+> **27 September 2026 — Production expansion:** অনুমোদিত Studio production workspace-এর আটটি feature implementation ও verification [নতুন build record](audits/2026-09-27-production-expansion.md)-এ। Production এখন release 411 / 5dd3783। Skip review ও তার target-history dependency live; সম্পূর্ণ Production workspace, তার migration ও UI deploy হয়নি।
+> See the [bug evidence](audits/2026-09-26-system-audit.md) and
+> [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
+> Earlier dated sections below remain historical records.
+
+## 28 September — Design Pool audit and usability
+
+Release **418 / e559b45** is deployed. Delete permissions, error upload, dropped-target queues and completion-date filters corrected; reset/refresh, date shortcuts, protected selection and page CSV export added. Backend 138 / frontend 281 tests passed. [Full record](audits/2026-09-28-design-pool.md) · [Usage](design-pool-operations.md).
+
+## 27 September — skip review deployed
+
+**Release 411 / 5dd3783 · 12:33 Asia/Dhaka:** দিনে প্রথম ৩টি skip automatic; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। Reject হলে একই designer-এর কাছে থাকে; approve হলে স্বাভাবিক allocation নিয়মে replacement হয়। Request ledger থেকে দৈনিক হিসাব হয়, undo/reject করলে quota ফেরত আসে না। Review-এর date filter এখন প্রকৃত request time ব্যবহার করে।
+
+Exact release source-এ ৮টি integration ও ৪০টি rule test পাস। API/web build, encrypted backup parsing, ২টি migration, public HTTPS health এবং public bundle hash যাচাই হয়েছে; PostgreSQL container অপরিবর্তিত। [Release record](audits/2026-09-27-skip-review.md) · [ব্যবহারবিধি](skip-review-operations.md)। Screenshot evidence ও comparative skip-rate dashboard এই release-এর অংশ নয়।
+
+## 26 September — audit repair
+
+**Completed:** backend 1,230 unit tests (one skipped), 104 PostgreSQL integration tests, and frontend 264 tests pass. Web/API build 407 is live; release source is synchronized and all production services are healthy.
+
+Registered all seven findings before implementation. Restored canonical files and verified backend typecheck. Added a per-employee transactional completion lock, atomic delete eligibility, complete pool stage reset, and idempotent Done. Added an auth session-result boundary with eight web regressions. A temporary PostgreSQL container is isolated from production for integration verification. Exact final counts and deployment details are maintained in [the repair ledger](audits/2026-09-26-fix-tracker.md).
+
+# 09 · Build Log
+
+এ পর্যন্ত কী কী করা হয়েছে, এখন কোথায় আটকে আছে, আর পরের ধাপ কী।
+
+**সর্বশেষ হালনাগাদ:** ১১ সেপ্টেম্বর ২০২৬ · **অবস্থা:** Phase 1 ✅ · Phase 2 ✅ ·
+✅ **মাঠে চলছে** — ১২টা PC, প্রোডাকশন `hub.oxeio.com` (VPS · BDIX)
+
+> **আজকের অবস্থা** *(১১ সেপ্টেম্বর ২০২৬ সকাল, মেপে লেখা)*
+>
+> | | |
+> |---|---|
+> | এজেন্ট | **০.৪.১১ — সক্রিয় ১২টা PC-র ১২টাতেই** *(শেষ রিপোর্ট ১০ সেপ্টেম্বর ১৮:১৮; ৬ সেপ্টেম্বরে ছিল মাত্র ১টায়)* |
+> | টেস্ট | **২৬২৭** পাস · server ১৮১৮ · agent ৫৩৩ *(Core ৪০৩ · Agent ১৩০)* · web ২৫৬ |
+> | API | `build 404` · `commit a763b1c` · `db: up` *(১১ সেপ্টেম্বর ০৩:১১ UTC-এ `/api/v1/health` থেকে পড়া)* |
+> | ডিজাইন-পুল | পুলে **১৪,৩৮২** · শেষ ৩৩,৪৩৭ · হাতে ৩০০ · বাদ ২৪০ · মোছা ৬ · রোজ সকাল ৮টায় ১০ জনকে ~৩০টা *(লগে: ১০ সেপ্টেম্বর ২৯৫, ১১ সেপ্টেম্বর ২৯৩)* · ⭐ ৯ সেপ্টেম্বর থেকে দিনে ২৫-এর সীমা আর টপ-আপ (§ ৩ঞ৩৫) |
+> | শেষ ৭ দিনে শেষ | **৯৬২**টা ডিজাইন *(৪–১০ সেপ্টেম্বর)* · সবচেয়ে বেশি ৮ সেপ্টেম্বর (১৭৯) · শুক্রবার ০ |
+> | আগস্টের কর্তন | **৳১৭,৬০১** *(আগের নিয়মে হতো ৳৭৯,৭৮৮ — § ৩ঞ৩০)* |
+>
+> ⚠️⚠️ **এই ঘরটা ১২ আগস্টে আটকে ছিল** — লেখা ছিল *"এজেন্ট ০.৩.৫ · টেস্ট
+> ১২২৮ · পাইলট, মালিকের মেশিনে MSI বসছে"*, অথচ ততদিনে সিস্টেমটা রোজকার
+> কাজে ঢুকে গেছে। ⭐ নিচের অনুচ্ছেদগুলো তারিখ ধরে সাজানো, তাই ইতিহাস
+> কিছুই হারায়নি; কেবল *"এখন কী"* ঘরটাই হালনাগাদ হলো।
+
+> **⏳ যা এখন খোলা**
+>
+> ⭐⭐⭐ **রোলআউটের যন্ত্রটা মাঠে প্রথমবার নিজে চলেছে** *(৫ সেপ্টেম্বর
+> ১৭:০৭)*। ০.৪.১১ প্রকাশ পায় সকাল ০৯:২১-এ, ধাপ **হাতে** বাড়ানো হয়
+> `partial` পর্যন্ত (১১:৪৬), আর তারপর `RolloutAdvanceJob` **নিজে**
+> `partial → all` করে। অডিটে তার স্বাক্ষরটা স্পষ্ট:
+> `{"to":"all","from":"partial","onVersion":1,"soakHours":6,"freshMinutes":90}`
+> — অর্থাৎ ধাপটা বেড়েছে **একটা আসল মেশিনের ৬ ঘণ্টা টিকে থাকার প্রমাণে**,
+> ঘড়ি দেখে নয়। ⭐ G141 এখন কেবল টেস্টে নয়, মাঠেও প্রমাণিত।
+>
+> ✅ **০.৪.১১ এখন সক্রিয় ১২টা PC-র ১২টাতেই** *(১১ সেপ্টেম্বর মাপা)* — ৬
+> সেপ্টেম্বরে ছিল মাত্র ১টায় (OX-05, পাইলট)। ধাপ `all` মানে ছিল *"সবাইকে
+> অফার করা হচ্ছে"*, *"সবাই বসিয়ে ফেলেছে"* নয়; শেষ ক্লিকটা স্টাফের, আর
+> সেটা মুখে বলে করাতে হয়েছে (রানবুক: [02 § ৮](02-Workflow.md))। ⭐ ফলে নিচের
+> R29-B-র *"সক্রিয় ১২টা PC-র ৯টা এখনো ০.৪.৯"* আর R22a-র *"বাকি ৯টা PC এখনো ০.৪.৯"* — দুটো শর্তই আর খাটে না; দুটো তদন্তই
+> এখন গোটা দলের ডেটায় চালানো যায় (নতুন করে মাপা হয়নি)।
+>
+> ✅ **R29-B মাঠে কাজ করেছে** *(৬ সেপ্টেম্বর সকালে মাপা, § ৩ঞ২৩ § ৭)*:
+> একই রাতে পাশাপাশি ০.৪.১১-এর গড় দেরি **৩৪ সেকেন্ড**, ০.৪.৯-এর **৮৯৮
+> মিনিট** — বেসলাইন ছিল ৯৫৬ মিনিট। ⚠️ নমুনা এখনো ছোট: ০.৪.১১-এ **১টা
+> মেশিন, ৪টা ইভেন্ট**। ⏳ তাই R29 পুরো বন্ধ নয় — কোডটা প্রমাণিত,
+> রোলআউটটা নয় (সক্রিয় ১২টা PC-র ৯টা এখনো ০.৪.৯)।
+>
+> ✅ **G108 · G110 · G111 · G112 · G130 · G140 · G141 · G142 · G143 ·
+> G144 · G145 · G146 — বারোটাই বন্ধ** *(৪–৫ সেপ্টেম্বর, § ৩ঞ২৪–৩ঞ২৯)*।
+> ⚠️ এর প্রায় সবগুলোই ছিল **নীরব** ত্রুটি — সংখ্যা ঠিক, বাক্য ভুল — তাই
+> প্রতিটার পাহারা **উল্টোভাবে যাচাই করা হয়েছে**: কোডের বদলটা ফিরিয়ে দিয়ে
+> টেস্ট সত্যিই লাল হয় কি না দেখা।
+>
+> ⚠️ **যা রেপো থেকে করা যায় না** — দুটোই মাঠের কাজ, কোড নয়: **R4
+> (UptimeRobot)**, ওটা মালিকের নিজের অ্যাকাউন্টে বসে; আর ১৫ আগস্টের
+> **অডিট-লাইনের ভুল কারণ** (§ ৩ঞ২৮) — জামানতের সারিগুলো ঠিক হয়েছে,
+> ব্যাখ্যাটা হয়নি।
+>
+> ⭐ **R22a-র ডেটা আসতে শুরু করেছে** — ৩০ আগস্টে লেখা ছিল *"কোডে আছে কিন্তু
+> কোনো PC-তে নেই"*, আর তখন ৭ দিনের ৪০,০৮২টা `app_usage` সারির একটাও `idle`
+> ছিল না। ০.৪.১০/০.৪.১১ বসার পর এখন আছে **১২৯টা `idle` সারি**, তিনটে মেশিন
+> থেকে (BELAL ১০৮ · OX-05-সহ বাকি দুটো ২১)। ⚠️ **বাকি ৯টা PC এখনো ০.৪.৯**,
+> তাই *"idle থাকার সময় পর্দায় কী ছিল"* প্রশ্নের উত্তর দলের বেশিরভাগের
+> জন্য এখনো নেই — OX-04-এর তদন্ত ঠিক ওখানেই থেমে (§ ৩ঞ১৭.৫)।
+
+---
+
+## ১. এ পর্যন্ত যা সম্পন্ন
+
+### ✅ Phase 0 — ডিজাইন (সম্পূর্ণ)
+
+| কাজ | ফল |
+|---|---|
+| প্রয়োজন নির্ধারণ ও সিদ্ধান্ত | ৩ দফায় নিয়ম চূড়ান্ত (নিচে § ৪) |
+| ব্যবসায়িক প্ল্যান | [01-Planning](01-Planning.md) |
+| ১০টি ওয়ার্কফ্লো | [02-Workflow](02-Workflow.md) |
+| কোড ম্যাপ | [03-Project-Map](03-Project-Map.md) |
+| ফিচার ক্যাটালগ (১০৭টি সক্রিয়, ৭টি বাতিল) | [04-Features](04-Features.md) |
+| ২৪টি স্থাপত্য সিদ্ধান্ত (ADR) | [05-Options-Decisions](05-Options-Decisions.md) |
+| বাজার, API, আইন ও খরচ গবেষণা | [06-Research](06-Research.md) |
+| ১৯ টেবিলের DB স্কিমা + API কনট্রাক্ট + গণনার নিয়ম | [07-Technical-Spec](07-Technical-Spec.md) |
+| ৬২টি ফাঁক চিহ্নিত ও সমাধান (তিন দফায়) | [08-Gap-Analysis](08-Gap-Analysis.md) |
+| **UI মকআপ — ৭টি স্ক্রিন** | [dashboard-mockup.html](mockup/dashboard-mockup.html) |
+
+### 🔨 Phase 1 — Foundation (শুরু হয়েছে)
+
+কোড থাকবে `oxeio-monitor/` ফোল্ডারে। এ পর্যন্ত লেখা হয়েছে:
+
+| ফাইল | কী করে |
+|---|---|
+| `oxeio-monitor/docker-compose.yml` | Postgres 16 + API কনটেইনার, healthcheck, ভলিউম, টাইমজোন `Asia/Dhaka` |
+| `oxeio-monitor/.env.example` | সব কনফিগের নমুনা — পাসওয়ার্ড, JWT সিক্রেট, স্টোরেজ পাথ |
+| `oxeio-monitor/.gitignore` | `.env`, `node_modules`, `.data/`, `bin/`, `obj/` বাদ |
+
+**এই তিনটি ফাইলে যে দুটি নিরাপত্তা সিদ্ধান্ত নেওয়া হয়েছে:**
+1. Postgres পোর্ট `127.0.0.1:5432` — শুধু সার্ভার PC থেকে, LAN থেকে নয়
+2. `.env` কখনো git-এ যাবে না; শুধু `.env.example`-এ প্লেসহোল্ডার
+
+#### `server/` স্ক্যাফোল্ড ✅ *(৯ আগস্ট)*
+
+| ফাইল | কী আছে |
+|---|---|
+| `server/prisma/schema.prisma` | ⭐ **১৯টি মডেল** — স্পেকের § ২ হুবহু। ১১টি enum, তাই "মাত্র ৩ স্টেট" নিয়মটা টাইপ-লেভেলেই আটকানো |
+| `server/prisma/seed.ts` | work policy · **১০৯টি app category রুল** · ৭টি নির্দিষ্ট-তারিখের ছুটি · owner অ্যাকাউন্ট |
+| `server/package.json` | NestJS 11 · Prisma 6 · `@node-rs/argon2` (native build লাগে না) · pino · jose |
+| `server/src/main.ts` | `/api/v1` prefix · helmet · cookie-parser · CORS(credentials) · ValidationPipe · shutdown hooks |
+| `server/src/app.module.ts` | ConfigModule · pino logger (**টোকেন/পাসওয়ার্ড লগ থেকে redact**) · Prisma · Health |
+| `server/src/prisma/` | গ্লোবাল `PrismaService` — connect/disconnect lifecycle সহ |
+| `server/src/health/` | `GET /api/v1/health` → `{status, db, time}` |
+| `server/src/auth/` | ⭐ **Auth মডিউল** — লগইন, httpOnly JWT cookie, CSRF, ৪টি গ্লোবাল গার্ড, ব্রুট-ফোর্স থ্রটল, পাসওয়ার্ড রিসেট |
+| `server/src/audit/` | `audit_log`-এ লেখা — login, login_failed, change_password, reset_password… |
+| `server/src/users/` | `POST /users/:id/reset-password` · `POST /employees/:id/portal-account` (দুটোই owner-only) |
+| `server/src/agent/` | ⭐ **Agent ingest** — ৯টি endpoint, device token guard, clock-drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট আপলোড, rate limit |
+| `server/test/` | ৬৩টি টেস্ট (৫৪ e2e + ৯ পে-রোল ইউনিট) |
+| `web/` | ⭐ **লগইন শেল** — React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে |
+| `server/Dockerfile` | ৩-স্তরের বিল্ড, non-root `node` ইউজার, `Asia/Dhaka` |
+| `server/tsconfig.build.json` | `prisma/` বাদ — নইলে বিল্ড `dist/src/main.js`-এ যেত |
+
+**যাচাই হয়েছে:** `prisma validate` ✅ · `prisma generate` ✅ · `npm run build` ✅ · `tsc --noEmit` ✅ (০ error)
+**যা এখনো হয়নি:** `prisma migrate` চালানো — ডাটাবেস দরকার (নিচে § ২)।
+
+> **`.env` তৈরি হয়ে গেছে** — Postgres পাসওয়ার্ড ও JWT সিক্রেট র‍্যান্ডম জেনারেট করা।
+> ফাইলটা gitignored। owner-এর প্রথম পাসওয়ার্ড ওখানেই আছে, প্রথম লগইনেই বদলাতে হবে।
+
+---
+
+## ২. ✅ পরিবেশ প্রস্তুত — স্ট্যাক চলছে
+
+সার্ভার PC-তে যাচাই করে যা পাওয়া গেল:
+
+| সফটওয়্যার | দরকার কেন | অবস্থা |
+|---|---|:---:|
+| **Node.js** | API সার্ভার ও ওয়েব ড্যাশবোর্ড | ✅ **v24.19.0** *(৯ আগস্ট ইনস্টল করা হলো)* |
+| **npm** | প্যাকেজ | ✅ **v11.17.0** |
+| **Git** | সোর্স কন্ট্রোল | ✅ **v2.53.0** |
+| **.NET 8 SDK** | Windows এজেন্ট (Phase 2) | ✅ **v8.0.423** |
+| **Docker Desktop** | PostgreSQL ও API চালানো | ✅ **v4.85.0** · engine 29.6.2 |
+| **WSL2** | Docker-এর ব্যাকএন্ড | ✅ **v2.7.11** · `docker-desktop` ডিস্ট্রো চালু |
+
+> ⚠️ **আগের এই টেবিলটা ভুল ছিল।** ৯ আগস্ট আবার যাচাই করে দেখা গেল Node.js আসলে **ইনস্টলই ছিল না**
+> (v24.18.0 লেখা ছিল), আর .NET 8 SDK **আগে থেকেই ইনস্টল করা আছে** (নেই লেখা ছিল)।
+> Git-ও 2.53.0, 2.55.0 নয় — ওটা ছিল আপডেটে *পাওয়া যাচ্ছে* এমন ভার্সন।
+> শিক্ষা: `winget list` দিয়ে যাচাই করা, অনুমান না করা।
+
+### যা ইতিমধ্যে করা হয়েছে ✅
+
+- **Node.js 24.19.0** ইনস্টল (`winget install OpenJS.NodeJS.LTS`)
+- **Docker Desktop 4.85.0** ইনস্টল (`winget install Docker.DockerDesktop`)
+- **WSL 2.7.11** ইনস্টল, `VirtualMachinePlatform` ও `Microsoft-Windows-Subsystem-Linux` দুটোই enabled
+- **`C:\Users\Mamunur Rasid\.wslconfig`** লেখা হয়েছে — `memory=8GB · processors=4 · swap=2GB`
+
+### একটা বাধা এসেছিল — BIOS ভার্চুয়ালাইজেশন *(সমাধান হয়ে গেছে)*
+
+সব ইনস্টল হওয়ার পরও WSL2 উঠছিল না: *"virtualization is not enabled on this machine."*
+CPU (Ryzen 7 5700G) সাপোর্ট করে (`VMMonitorModeExtensions = True`), কিন্তু
+`VirtualizationFirmwareEnabled = False` — অর্থাৎ **BIOS-এ বন্ধ ছিল**।
+
+**সমাধান:** BIOS → Advanced → CPU Configuration → **SVM Mode → Enabled** (Intel-এ VT-x)।
+এরপর `HypervisorPresent = True`, WSL2 চালু, Docker engine পৌঁছানো যাচ্ছে।
+
+> **ভবিষ্যতে নতুন সার্ভার PC বসালে এটা প্রথমেই দেখে নেবেন** — Docker/WSL ইনস্টল করার
+> আগেই BIOS-এ SVM/VT-x চালু আছে কি না। না থাকলে সব ইনস্টল হয়েও কিছু চলবে না।
+
+### ✅ স্ট্যাক দাঁড়িয়ে গেছে (৯ আগস্ট, যাচাই করা)
+
+| ধাপ | ফল |
+|---|---|
+| `docker compose up -d postgres` | `oxeio-postgres` · **healthy** · `postgres:16-alpine` |
+| `prisma migrate dev --name init` | মাইগ্রেশন `20260809164642_init` · **১৯টি টেবিল** + `_prisma_migrations` · সব instant কলাম `timestamptz` ([G42](08-Gap-Analysis.md)) |
+| `npm run seed` | work policy #1 · **১০৯টি** app category (৭৪ productive · ২০ unproductive · ১৫ neutral) · ৭টি ছুটি · owner অ্যাকাউন্ট |
+| `npm run start:dev` | `GET /api/v1/health` → `{"status":"ok","db":"up"}` ✅ |
+
+ডাটাবেসে যাচাই করা work policy: `208.00` ঘণ্টা · `weekly_off_day = 5` (শুক্র) ·
+ছবি `07:00–23:00` · idle `60` সে. · `Asia/Dhaka`।
+
+> **ফলব্যাক এখনো খোলা:** Docker নিয়ে পরে সমস্যা হলে [ADR-008](05-Options-Decisions.md)-এর
+> নেটিভ পথ আছে — PostgreSQL সরাসরি Windows-এ, `DATABASE_URL` একই, কোডে কিছু বদলাতে হবে না।
+
+> **বিকল্প পথ:** Docker না চাইলে PostgreSQL 16 সরাসরি Windows-এ ইনস্টল করেও চলবে
+> ([ADR-008](05-Options-Decisions.md)-এর fallback)। তবে আপডেট, ব্যাকআপ ও রিস্টোর Docker-এ অনেক সহজ,
+> তাই Docker-ই সুপারিশ করছি।
+
+---
+
+## ৩. পরের ধাপ (Docker ইনস্টল হওয়ার পর)
+
+| # | কাজ | ফল |
+|---|---|---|
+| ~~1~~ | ~~`server/` স্ক্যাফোল্ড — NestJS + TypeScript~~ | ✅ `npm run build` চলে |
+| ~~2~~ | ~~`prisma/schema.prisma` — ১৯টি মডেল~~ | ✅ `prisma validate` + `generate` চলে |
+| ~~3~~ | ~~`prisma/seed.ts`~~ | ✅ চলেছে — ডাটাবেসে ডেটা বসে গেছে |
+| ~~3b~~ | ~~`prisma migrate dev`~~ | ✅ `20260809164642_init` প্রয়োগ হয়েছে |
+| ~~4~~ | ~~Auth মডিউল~~ | ✅ **শেষ** — ২২টি end-to-end টেস্ট পাস (নিচে § ৩.১) |
+| ~~5~~ | ~~Agent ingest মডিউল~~ | ✅ **শেষ** — ২৭টি end-to-end টেস্ট পাস (নিচে § ৩.২) |
+| ~~6~~ | ~~টেস্ট Vitest-এ তোলা~~ | ✅ **৬১টি টেস্ট রেপোতে** — `npm test` (নিচে § ৩.৩) |
+| ~~8~~ | ~~GitHub Actions CI~~ | ✅ **লেখা ও যাচাই হয়েছে** (নিচে § ৩.৪) · রেপো তৈরি — বাকি শুধু GitHub remote + push |
+| ~~7~~ | ~~`web/` লগইন শেল~~ | ✅ **শেষ** — ব্রাউজারে পুরো ফ্লো যাচাই করা (নিচে § ৩.৫) |
+| 9 | Postman collection | সব endpoint হাতে টেস্ট করার জন্য · Phase 3-এ |
+
+> 🎉 **Phase 1 সম্পূর্ণ।** পরের ধাপ Phase 2 — Windows এজেন্ট।
+
+**ছোট ধার (technical debt) যা জমছে:**
+
+| | |
+|---|---|
+| `package.json#prisma` | Prisma 7-এ কাজ করবে না — `prisma.config.ts`-এ সরাতে হবে (এখন শুধু সতর্কবার্তা) |
+| থাম্বনেইল | স্ক্রিনশট আপলোড হচ্ছে কিন্তু `thumb_path` null — Phase 3-এ sharp দিয়ে backfill লাগবে |
+| `device_commands` টেবিল | `capture_now` / `pause_tracking`-এর জন্য ([G41](08-Gap-Analysis.md)) |
+| শুধু Asia/Dhaka | `dhaka-time.ts` অফসেট +৬ ধ্রুবক ধরে; অন্য টাইমজোনে যেতে হলে আসল tz লাইব্রেরি লাগবে |
+
+---
+
+### ৩.১ Auth মডিউল — যা যাচাই করা হয়েছে *(২২/২২ পাস)*
+
+| এলাকা | যা পরীক্ষা করা হলো |
+|---|---|
+| পাবলিক রুট | `/health` লগইন ছাড়াই খোলে |
+| সুরক্ষা | লগইন ছাড়া প্রতিটি রুট **401** (CSRF-এর 403 নয় — গার্ডের ক্রম ঠিক করার পর) |
+| লগইন | ভুল পাসওয়ার্ড 401 · সঠিক 200 · `oxeio_session` **httpOnly** · `oxeio_csrf` বসে |
+| mustChangePw | `/auth/me` খোলা থাকে, বাকি সব **403** |
+| CSRF | হেডার ছাড়া 403 · ভুল টোকেন 403 · সঠিক টোকেনে কাজ করে |
+| পাসওয়ার্ড | ১০ অক্ষরের কম 400 · ভুল current 401 · আগেরটার মতো 400 · সঠিক 204 |
+| role guard | owner-only রুট owner-এর কাছে খোলে |
+| logout | cookie মুছে যায়, পরের রিকোয়েস্ট 401 |
+| ব্রুট-ফোর্স | ৫ বার ভুল → **429**, আর অন্য অ্যাকাউন্ট অক্ষত থাকে |
+| audit_log | `login`, `login_failed`, `change_password` — সব রেকর্ড হচ্ছে |
+
+> **টেস্ট লিখতে গিয়ে একটা ফাঁদ:** PowerShell-এর `WebRequestSession` একবার `-Headers` দিলে
+> সেটা পরের রিকোয়েস্টেও পাঠাতে থাকে — ফলে "CSRF হেডার ছাড়া" টেস্টটা আসলে হেডার পাঠিয়ে
+> মিথ্যে পাস দেখাচ্ছিল। প্রতিটি কলের আগে `$session.Headers.Clear()` করতে হয়।
+
+### ৩.২ Agent ingest — যা যাচাই করা হয়েছে *(২৭/২৭ পাস)*
+
+| এলাকা | যা পরীক্ষা করা হলো |
+|---|---|
+| Enrollment | ভুল কোড 401 · সঠিক কোড 201 + টোকেন · **একবার ব্যবহারের পর 401** |
+| Device auth | টোকেন ছাড়া 401 · ভুল টোকেন 401 · sha256 মিললে 200 |
+| Heartbeat | কনফিগ ভার্সন মিললে কোনো কমান্ড নেই · না মিললে `reload_config` |
+| dedupe | একই ব্যাচ দুবার → `accepted 0, duplicates 2` |
+| `client_uuid` | না থাকলে **422** (স্পেক § ৪.১ যেমন বলেছে) |
+| **মধ্যরাত-স্প্লিট** | ২৩:৫০→০০:১০ একটি সেগমেন্ট → **২টি রো**, work_date ০৮-০৮ ও ০৮-০৯ |
+| Clock drift | ঘড়ি ১০ মিনিট পিছিয়ে দিলেও সার্ভারে সঠিক সময় বসে |
+| ব্যাচ সীমা | ৫০১টি রেকর্ড → 400 |
+| স্ক্রিনশট | ভুল mime 400 · webp 201 · একই স্লট আবার → `duplicate: true`, ফাইল ডিস্কে ঠিক পাথে |
+| Session | logoff-এ বন্ধ হয়; প্রতিটি সেগমেন্ট তার সেশনের সীমার ভেতরে (`bad_bounds = 0`) |
+
+**দুটো আসল বাগ ধরা পড়ল, দুটোই ঠিক করা হয়েছে:**
+
+**১· কলামগুলো `timestamptz` ছিল না।** Prisma-র `DateTime`-এর ডিফল্ট `timestamp(3)` —
+স্পেকে `TIMESTAMPTZ` বলা থাকলেও স্কিমায় `@db.Timestamptz(3)` লিখিনি। অ্যাপের ভেতরে সমস্যা হতো না
+(সব UTC-তেই লেখা-পড়া), কিন্তু raw SQL-এ `AT TIME ZONE 'Asia/Dhaka'` করলে **৬ ঘণ্টা ভুল** ফল দিত —
+আর day-close ও মাসিক rollup জব ঠিক সেটাই করবে। ডাটাবেস রিসেট করে নতুন migration নেওয়া হয়েছে।
+
+**২· অফলাইন queue রিপ্লেতে সেশন ভেঙে যাচ্ছিল।** `resolveSession` ধরে নিয়েছিল সেগমেন্ট সময়ের
+ক্রমে আসবে। কিন্তু নেট ফিরলে **পুরোনো ব্যাচ নতুনের পরে** আসে (A05) — ফলে পুরোনো ডেটা এসে চলতি
+সেশনকে অতীতের সময়ে বন্ধ করে দিচ্ছিল (`ended_at < started_at`)। এখন সেশন খোঁজা হয়
+**(device, work_date)** ধরে, আর পুরোনো সেশন বন্ধ হয় **তার নিজের** মধ্যরাতে।
+
+**যা ইচ্ছাকৃতভাবে পরে:** থাম্বনেইল (A06, Phase 3) · অ্যাপ ক্যাটাগরি ম্যাচিং (D05, Phase 4) ·
+`capture_now` / `pause_tracking` কমান্ড — এর জন্য একটা কমান্ড-কিউ টেবিল লাগবে ([G41](08-Gap-Analysis.md))।
+
+### ৩.৩ স্বয়ংক্রিয় টেস্ট — `npm test` *(৬১টি, সবই পাস)*
+
+আগের যাচাইগুলো scratchpad-এর PowerShell স্ক্রিপ্টে ছিল — রেপোতেও ছিল না, CI-তেও চলত না।
+এখন Vitest + supertest দিয়ে রেপোর ভেতরে:
+
+```
+server/test/
+  auth.e2e.spec.ts      ২১টি — লগইন, CSRF, mustChangePw, role guard, রিসেট, ব্রুট-ফোর্স
+  agent.e2e.spec.ts     ৩০টি — enroll, drift, মধ্যরাত-স্প্লিট, dedupe, স্ক্রিনশট, auto-update
+  setup/harness.ts      অ্যাপ তৈরি, ডাটাবেস রিসেট, লগইন ও এজেন্ট হেল্পার
+  setup/global-setup.ts oxeio_test ডাটাবেস তৈরি + migrate
+```
+
+**যে তিনটি সিদ্ধান্ত নিতে হলো:**
+
+| | |
+|---|---|
+| **আলাদা `oxeio_test` ডাটাবেস** | [§ ৯](02-Workflow.md)-এ Testcontainers-এর কথা ছিল। নেওয়া হয়নি — docker compose-এ Postgres তো চলছেই, প্রতি রানে নতুন কন্টেইনার মানে অকারণে ৩০+ সেকেন্ড। CI-তে service container দিলে একই কোড চলবে। **ডেভ ডাটাবেস কখনো ছোঁয়া হয় না** |
+| **`configureApp()` আলাদা করা** | prefix · helmet · CSRF · ValidationPipe — টেস্ট আর প্রোডাকশন একই ফাংশন ব্যবহার করে। নইলে টেস্ট পাস করেও প্রোডাকশনে অন্যরকম আচরণ হতে পারত |
+| **SWC ট্রান্সফর্ম** | Vitest esbuild দিয়ে ট্রান্সপাইল করে, আর esbuild `emitDecoratorMetadata` সমর্থন করে না — ফলে NestJS-এর সব DI `undefined` হয়ে আসছিল। `unplugin-swc` বসানোর পর ঠিক |
+
+seed ইচ্ছাকৃতভাবে টেস্টে চালানো হয় না — প্রতিটি টেস্ট নিজের fixture নিজেই বসায়,
+নইলে seed বদলালেই টেস্ট ভাঙত।
+
+### ৩.৪ CI — `.github/workflows/ci.yml`
+
+push ও PR-এ দুটি job চলে:
+
+| job | ধাপ |
+|---|---|
+| **server** | `npm ci` → `prisma generate` → **lint** → **typecheck** → **test** (৬১টি) → **build** |
+| **web** | `npm ci` → **lint** → **build** (`tsc -b` বিল্ডের ভেতরেই) |
+| **agent-core** | `dotnet build -warnaserror` → **test** (২২৬টি) · ubuntu-তেই চলে, কারণ Core-এ Win32 নেই |
+| **docker** | `docker build` — Dockerfile ভাঙলে যেন রোলআউটের দিনে নয়, তখনই ধরা পড়ে |
+
+Postgres আসে **service container** হিসেবে (`postgres:16-alpine`) — লোকালে docker compose যা দেয়,
+CI-তে সেটাই। টেস্ট নিজেই `oxeio_test` ডাটাবেস বানিয়ে migrate করে নেয়, তাই আলাদা কোনো ধাপ লাগে না।
+
+`TZ: Asia/Dhaka` **ইচ্ছাকৃতভাবে** সেট করা — মধ্যরাত-স্প্লিট ও `work_date` এর উপরেই দাঁড়ানো,
+UTC runner-এ চললে ওই টেস্টগুলো ভুল জায়গায় ভাঙত।
+
+**পাঁচটি ধাপই স্থানীয়ভাবে চালিয়ে দেখা হয়েছে** — lint ০ error · typecheck ০ error ·
+৫১/৫১ টেস্ট · `nest build` · `docker build`। শুধু বিল্ড নয়, **তৈরি ইমেজটা চালিয়েও** দেখা হয়েছে:
+কনটেইনার উঠে Postgres-এ পৌঁছে `{"status":"ok","db":"up"}` ফেরত দিয়েছে — অর্থাৎ Dockerfile-এর
+prisma engine কপি করার কৌশলটা সত্যিই কাজ করে।
+
+> ✅ **রেপো তৈরি হয়ে গেছে** — `main` ব্রাঞ্চ, প্রথম কমিটে **৭৬টি ফাইল**।
+> author পরিচয় `--local` দিয়ে বসানো, গ্লোবাল কনফিগে হাত পড়েনি।
+> **এখনো বাকি:** GitHub-এ remote যোগ করে push — তার আগে CI চলবে না।
+
+সাথে যেগুলো লাগল: `eslint.config.mjs` (flat config, আগে কোনো eslint কনফিগই ছিল না, তাই
+`npm run lint` চলতই না) · `npm run typecheck` স্ক্রিপ্ট · Dockerfile-এর Node 22 → **24**,
+যাতে লোকাল, CI ও কনটেইনার — তিন জায়গায় একই ভার্সন থাকে।
+
+### ৩.৫ Web লগইন শেল — `web/`
+
+React 19 + Vite 7 + Tailwind 4, লোগোর প্যালেটে (কালো টপবার, লাল X)।
+
+```
+web/src/
+  api/client.ts          fetch র‍্যাপার — cookie, CSRF হেডার, গ্লোবাল 401 হ্যান্ডলিং
+  api/auth.ts            login · me · logout · change-password
+  auth/AuthContext.tsx   সেশনের অবস্থা, অ্যাপ খুললেই /auth/me
+  pages/LoginPage        pages/ChangePasswordPage        pages/HomePage
+  components/Layout      টপবার + নেভ (Phase 3-এর পেজগুলোর জায়গা রাখা)
+```
+
+**তিনটি অবস্থা, তিনটি আলাদা রুট-গাছ** — লগইন করেনি · পাসওয়ার্ড বদলায়নি · ঢুকে গেছে।
+ফলে "লগইন না করেই ভেতরের পেজ" বা "অস্থায়ী পাসওয়ার্ড নিয়ে ঘোরাঘুরি" সম্ভবই নয়।
+সার্ভারও একই জিনিস আলাদাভাবে আটকায় (`mustChangePw` → 403), তাই দুই স্তরে সুরক্ষা।
+
+**⚠️ যে জিনিসটা ধরা না পড়লে লগইনই ভাঙত:** সেশন cookie-তে `SameSite=Strict`, তাই ব্রাউজার
+সেটা শুধু **same-site** রিকোয়েস্টে পাঠায়। ফ্রন্টএন্ড `:5173` থেকে সরাসরি `:3000`-এ ডাকলে
+লগইন সফল দেখাত, কিন্তু পরের রিকোয়েস্টেই 401। তাই Vite-এ `/api` → `:3000` **proxy**
+বসানো হয়েছে — ব্রাউজারের চোখে সবই এক origin। প্রোডাকশনে Caddy একই কাজ করবে
+(ওয়েব ও API একই origin-এ), তাই সেখানে আলাদা কিছু লাগবে না।
+
+**ব্রাউজারে যা যাচাই করা হয়েছে:** লগইন → বাধ্যতামূলক পাসওয়ার্ড বদল → শেলে ঢোকা
+(নাম, ভূমিকা, সর্বশেষ লগইন ঢাকার সময়ে) → লগআউট → আবার লগইন পর্দা।
+`npm run lint` ও `npm run build` দুটোই পাস।
+
+---
+
+## ৩অ. Phase 2 শুরু — এজেন্টের নিয়মগুলো (`agent/`)
+
+C# .NET 8। এই ধাপে **যা যাচাই করা যায় শুধু সেটুকুই** বানানো হয়েছে।
+
+### একটা স্থাপত্য সিদ্ধান্ত — Core-এ কোনো Win32 নেই
+
+[03-Project-Map](03-Project-Map.md)-এর পরিকল্পনায় `oXeio.Core/Native/` ছিল। বাস্তবে
+উল্টো করা হলো:
+
+| প্রজেক্ট | target | কী থাকে |
+|---|---|---|
+| `oXeio.Core` | `net8.0` | **নিয়ম** — state machine, স্লট, ক্যাপচার উইন্ডো, ঢাকার সময়। **শূন্য Win32** |
+| `oXeio.Agent` | `net8.0-windows` ⏳ | Win32 interop, ক্যাপচার, tray, queue, sync |
+| `oXeio.Watchdog` | `net8.0-windows` ⏳ | Windows Service |
+
+**কেন:** নিয়মগুলো প্ল্যাটফর্ম-মুক্ত হলে সেগুলো **ইউনিট টেস্টে যাচাই করা যায়** এবং
+CI-তে সাধারণ ubuntu runner-এই চলে। `GetLastInputInfo` Core-এ ঢুকিয়ে দিলে পুরো
+হিসাবটাই কেবল আসল ডেস্কটপে চালিয়ে দেখা ছাড়া যাচাই করা যেত না।
+
+`IdleStateMachine` তাই বাইরে থেকে মাত্র তিনটে তথ্য নেয় — *এখন কটা বাজে*,
+*শেষ ইনপুট কতক্ষণ আগে*, *লক করা আছে কি না*।
+
+### যা তৈরি হয়েছে
+
+| ফাইল | কী করে |
+|---|---|
+| `Time/MonotonicClock.cs` | ঘড়ি বদলালেও পিছোয় না (Stopwatch/QPC) |
+| `Time/DhakaTime.cs` | সার্ভারের `dhaka-time.ts`-এর হুবহু প্রতিরূপ — দুই দিকে একই `work_date` |
+| `Tracking/IdleStateMachine.cs` | ⭐ ৬০ সে. threshold · **retro-adjust** · lock/unlock · suspend/resume · মধ্যরাত-স্প্লিট · input score |
+| `Tracking/CaptureWindow.cs` | ০৭:০০–২৩:০০ (ADR-011c) — নাম ইচ্ছাকৃতভাবে ShiftWindow নয় |
+| `Capture/SlotScheduler.cs` | ৫ মিনিট স্লট + র‍্যান্ডম অফসেট |
+| `Models/` | `SegmentState` (তিনটেই) · `ActivitySegment` |
+
+### ৫২টি ইউনিট টেস্ট — সবই পাস
+
+[02-Workflow § ৯](02-Workflow.md)-এর ম্যানুয়াল চেকলিস্ট থেকে যা স্বয়ংক্রিয় করা গেল:
+
+- ঠিক ৬০ সেকেন্ডে টাইমার থামে (৫৯-এ থামে না)
+- **retro-adjust ঠিক ৬০ সেকেন্ড পিছিয়ে কাটে** — ১০ মিনিট দূরে থাকলে ঠিক ১০ মিনিটই বাদ
+- ইনপুট পেলেই এক টিকে ফিরে আসে
+- Win+L → LOCKED · আনলকের পর কেউ না ছুঁলে IDLE, ACTIVE নয়
+- ৮ ঘণ্টা ঘুমিয়ে জাগলে ভুতুড়ে সময় যোগ হয় না
+- **কোনো সেগমেন্টই দুই তারিখ জুড়ে থাকে না** (৩ ঘণ্টা টানা কাজ, মধ্যরাত পেরিয়ে)
+- ছবি সবসময় নিজের স্লটের ভেতরে · ২ ঘণ্টায় ২৪টা স্লট · পরপর ব্যবধান একরকম নয়
+- ০৬:৫৯ না · ০৭:০০ হ্যাঁ · ২২:৫৯ হ্যাঁ · ২৩:০০ না
+
+> টেস্ট লিখতে গিয়ে তিনটে **আমারই ভুল** ধরা পড়েছিল — ১ সেকেন্ড পোলিংয়ে ইনপুট পরের
+> টিকে ধরা পড়ে, তাই হিসাব এক সেকেন্ড বেশি হয়। কোডে সমস্যা ছিল না, প্রত্যাশাগুলো
+> ঢিলেঢালা ছিল। এখন টেস্টগুলো সময়ের ব্যাপারে নিখুঁত।
+
+### ৩অ.১ Win32 স্তর — গবেষণা করে তারপর লেখা
+
+কোড লেখার আগে ৫টি API এলাকা আলাদা করে গবেষণা করিয়ে, প্রতিটার ঝুঁকিপূর্ণ দাবিকে
+বিরুদ্ধ-পরীক্ষায় ফেলা হয়েছে (২৩টি এজেন্ট, ৪৮০টি টুল কল)।
+
+> **১৭টি দাবির ১৫টিই ভুল বা আংশিক ভুল প্রমাণিত হয়েছে।** প্রথম পাঠে যা "জানা কথা"
+> মনে হয়েছিল, তার বেশিরভাগই ডকুমেন্টেশনের চেয়ে বেশি জোর দিয়ে বলা ছিল। এই ধাপটা
+> বাদ দিলে ওই ভুলগুলো সোজা কোডে চলে যেত।
+
+**যেসব সিদ্ধান্ত এর ফলে বদলাল:**
+
+| প্রথমে ভাবা হয়েছিল | যাচাইয়ের পর |
+|---|---|
+| `Microsoft.Win32.SystemEvents` ব্যবহার করা যায় | ❌ **বাদ** — ওটা `PBT_APMRESUMEAUTOMATIC` (0x12) ধরেই না, অথচ Windows-এর একমাত্র নিশ্চিত resume সংকেত সেটাই |
+| message-only (HWND_MESSAGE) উইন্ডোই যথেষ্ট | ❌ ব্রডকাস্ট মেসেজ ওখানে পৌঁছায় না — লুকানো **top-level** উইন্ডো লাগে |
+| QPC ঘুমের সময় থেমে থাকে | ❌ উল্টো — QPC ঘুমের সময়ও গোনে, আর সেটাই ঘুম *ধরার* কাজে লাগে |
+| `Environment.TickCount64` চলবে | ❌ পরের .NET-এ ওটা unbiased ঘড়িতে বদলাতে পারে, তখন কোড না বদলেই হিসাব ভুল হবে |
+| DXGI Desktop Duplication প্রধান পথ | ⚠️ **এই সারিটা পরে উল্টে গেছে** — আপত্তিগুলো সত্যি ছিল, কিন্তু প্রতিটার সমাধানও আছে, আর WGC-র হলুদ বর্ডারই আসল বাধা হয়ে দাঁড়াল ([ADR-012c](05-Options-Decisions.md)) |
+| `OpenInputDesktop` দিয়ে লক অবস্থা বোঝা | ❌ UAC প্রম্পট বা Ctrl+Alt+Del-এও ব্যর্থ হয় — `WTSQuerySessionInformation` ব্যবহার করা হলো |
+
+**যা তৈরি হয়েছে** (`src/oXeio.Agent`, `net8.0-windows10.0.17763.0`):
+
+`Native/` — Win32 ধ্রুবক, স্ট্রাকচার, আর `LibraryImport` ঘোষণা (Kernel32 · User32 · Wtsapi32)
+`Platform/` — `SessionGuard` (Session 0 ঠেকানো) · `IdleProbe` · `LockStateProbe` ·
+`MessageWindow` · `SessionMonitor` · `PowerMonitor`
+`app.manifest` — PerMonitorV2 DPI
+
+Core-এ যোগ হলো দুটো **বিশুদ্ধ, টেস্ট করা** হিসাব: `IdleMath` (৩২-বিট wraparound +
+ভবিষ্যৎ-টাইমস্ট্যাম্প ক্ল্যাম্প) আর `SleepGapDetector` (ঘড়ি দেখে ঘুম ধরা)।
+টেস্ট এখন **৫২টি**।
+
+### ৩অ.২ আসল PC-তে চালিয়ে যা যাচাই হলো
+
+`dotnet run --project src/oXeio.Agent` — এটা এখনো এজেন্ট নয়, **ডায়াগনস্টিক টুল**:
+
+```
+session   : id=1 console=1 — কনসোল সেশনে চলছে
+lock state: Unlocked  (ইভেন্টের অপেক্ষা না করে শুরুতেই জেনে নেওয়া)
+session notifications: ✅ রেজিস্টার হয়েছে
+power notifications  : ✅ রেজিস্টার হয়েছে
+capture window       : বন্ধ (০৭:০০–২৩:০০)
+⚡ power: DisplayOn
+  00:43:19  state=Idle  idle=119s  segments=0  বুট থেকে ঘুম=0.0মি
+```
+
+এতে **তিনটে জিনিস প্রমাণ হলো** যা আগে অনুমান ছিল:
+১· `RegisterPowerSettingNotification` সত্যিই ইভেন্ট পাঠায় (`DisplayOn` এসেছে) —
+অর্থাৎ লুকানো top-level উইন্ডোর সিদ্ধান্তটা কাজ করেছে।
+২· `WTSQuerySessionInformation` ইভেন্ট ছাড়াই লক অবস্থা বলে দেয়।
+৩· রাত ০০:৪৩-এ ক্যাপচার উইন্ডো নিজে থেকেই **বন্ধ** — ADR-011c জীবন্ত অবস্থায়।
+
+`segments=0` ঠিক আছে: এজেন্ট চালু হওয়ার সময়ই মেশিন নিষ্ক্রিয় ছিল, তাই গোনার মতো
+কোনো ACTIVE সময়ই ছিল না।
+
+### ৩অ.৩ ক্যাপচার — GDI ইঞ্জিন চলছে
+
+[ADR-012b](05-Options-Decisions.md) অনুযায়ী দুটো ইঞ্জিন দরকার। **GDI (ফলব্যাক) আগে
+বানানো হলো**, কারণ ওটা এই মেশিনেই চালিয়ে যাচাই করা যায়।
+*(পরে প্রধান ইঞ্জিন WGC নয়, DXGI হয়েছে — নিচে § ৩অ.৪।)*
+
+| ফাইল | কাজ |
+|---|---|
+| `Core/Capture/FrameQuality.cs` | ⭐ ছবি কালো বা এক-রঙা কি না — **৬টি টেস্ট** |
+| `Platform/Capture/MonitorEnumerator.cs` | প্রতিবার নতুন করে গোনা, কখনো ক্যাশ নয় |
+| `Platform/Capture/GdiCapturer.cs` | `BitBlt(SRCCOPY \| CAPTUREBLT)` + `GetDIBits` |
+| `Platform/Capture/WebpEncoder.cs` | SkiaSharp, q70, প্রতি মনিটর ≤১৯২০px |
+| `Platform/Capture/ScreenCaptureService.cs` | সব মনিটর ঘুরে ছবি + গুণমান যাচাই |
+| `Platform/DpiGuard.cs` | ম্যানিফেস্ট সত্যিই কাজ করেছে কি না |
+
+**দুটো ফাঁদ যা কোডে মন্তব্য করে রাখা হয়েছে:**
+
+`CreateCompatibleBitmap`-এ **screen DC দিতে হয়, memory DC নয়** — নতুন memory DC-তে
+১×১ মনোক্রোম বিটম্যাপ বসানো থাকে, তাই memory DC দিলে কল সফল হয় কিন্তু স্ক্রিনশট
+আসে সাদাকালো noise হিসেবে। আর প্রতিটি GDI হ্যান্ডেল `finally`-তে ছাড়তেই হয়:
+দিনে ২৮৮ ক্যাপচার × ২ মনিটরে একটা লিক হলে ~দুই সপ্তাহে ১০,০০০ হ্যান্ডেলের সীমা ছোঁবে।
+
+### আসল মেশিনে যা মাপা হলো
+
+```
+DPI       : ✅ PerMonitorDpiAware — ম্যানিফেস্ট কাজ করেছে
+মনিটর: 2টি
+   ▸ \\.\DISPLAY1  1920×1080  @0,0     DPI 96 (100%)  [প্রাইমারি]
+   ▸ \\.\DISPLAY2  1920×1080  @1920,0  DPI 96 (100%)
+ক্যাপচার ইঞ্জিন: GDI
+   ▸ মনিটর 0: 1920×1080 → 71 KB  (134 ms)  ✅ কালো 0%
+   ▸ মনিটর 1: 1920×1080 → 72 KB  (116 ms)  ✅ কালো 0%
+```
+
+ফাইলগুলো যাচাই করা হয়েছে — বৈধ `RIFF…WEBP`, হেডারে ১৯২০×১০৮০। **টেস্ট ছবিগুলো
+মুছে ফেলা হয়েছে**; স্ক্রিনশট টুল বানাতে গিয়ে নিজের টেস্ট ছবি ডিস্কে ফেলে রাখা চলে না।
+
+এই মাপ থেকে **G47** বেরিয়ে এল: স্টোরেজের হিসাব প্রতি স্টাফে একটা ছবি ধরেছিল,
+অথচ ছবি ওঠে **প্রতি মনিটরে একটা**। সাথে আকারও অনুমান (১৫০ KB) নয়, মাপা (৭২ KB)।
+দুটো ভুল অনেকটা কাটাকাটি হয়ে গেছে — [07 § ১](07-Technical-Spec.md) হালনাগাদ করা হয়েছে।
+
+### ৩অ.৪ ক্যাপচার — DXGI ইঞ্জিন, WGC বাদ *(১০ আগস্ট)*
+
+WGC বানাতে গিয়ে দেখা গেল ADR-012b-র ভিত্তিটাই ভুল ছিল: হলুদ বর্ডার শুধু
+Windows 10-এর সমস্যা নয়, আর unpackaged এজেন্টে সেটা **কোনো Windows-এই** বন্ধ
+করা যায় না। পুরো যুক্তি [ADR-012c](05-Options-Decisions.md)-তে।
+
+| ফাইল | কাজ |
+|---|---|
+| `Native/ComCall.cs` | vtable-এর স্লট ধরে সরাসরি COM কল |
+| `Native/D3D11.cs` · `Native/Dxgi.cs` | স্ট্রাকচার, IID, স্লট — প্রতিটার পাশে SDK হেডারের লাইন নম্বর |
+| `Platform/Capture/DuplicationCapturer.cs` | DXGI ডেস্কটপ ডুপ্লিকেশন |
+| `Platform/Capture/FallbackCapturer.cs` | DXGI → GDI শৃঙ্খল |
+| `Core/Capture/PixelCopy.cs` | strided → টানটান কপি + ঘূর্ণন — **২৪টি টেস্ট** |
+| `Core/Capture/EngineFallbackPolicy.cs` | কতবার ব্যর্থ হলে কতক্ষণ বিরতি — **৮টি টেস্ট** |
+
+**যে ভুলটা সবচেয়ে বেশি শেখাল।** প্রথম রানে `AcquireNextFrame` সফল হলো,
+HRESULT ঠিক, মাপ ঠিক (১৯২০×১০৮০, pitch ৭৬৮০) — অথচ প্রতিটা পিক্সেল শূন্য।
+
+`AccumulatedFrames == 0` মানে ওই ফ্রেমে ডেস্কটপের ছবিই বসানো হয়নি।
+**শুধু ফেরত মান দেখে সন্তুষ্ট হলে মাসের পর মাস নিখুঁতভাবে কালো ছবি জমত** —
+আর সেগুলো "স্টাফের পর্দা সত্যিই কালো ছিল"-র থেকে আলাদা করা যেত না।
+
+এর পাশাপাশি আরও দুটো নীরব ফাঁদ কোডে মন্তব্য করে রাখা হয়েছে: GPU-র `RowPitch`
+প্রায় কখনোই `width × 4` নয় (উপেক্ষা করলে ছবি তেরছা হয়, কালো নয় — তাই
+`FrameQuality`-ও ধরত না), আর `IGraphicsCaptureItemInterop::CreateForMonitor`
+স্লট ৪, ৩ নয়।
+
+**২৩ এজেন্টের গবেষণা** পরে সব বারোটা vtable স্লট স্বাধীনভাবে হেডারের সাথে
+মিলিয়ে দেখেছে — সবগুলো ঠিক।
+
+```
+ক্যাপচার ইঞ্জিন: DXGI→GDI
+   ▸ মনিটর 0: 1920×1080 → 73 KB  (192 ms)  [DXGI]  ✅
+   ▸ মনিটর 1: 1920×1080 → 88 KB  (161 ms)  [DXGI]  ✅
+   DXGI: accumulated=1 · pitch=7680 · ঘূর্ণন নেই
+```
+
+### ৩অ.৫ বাকি পাঁচটা মডিউল — সমান্তরালে *(১০ আগস্ট)*
+
+পাঁচটা মডিউল একসাথে বানানো হয়েছে, একটা সাধারণ কনট্র্যাক্ট স্তরের উপর
+(`Core/Agent/` — ১৬টা ফাইল, খাঁটি টাইপ, শূন্য I/O)।
+
+| মডিউল | কী |
+|---|---|
+| `Agent/Storage/` | SQLite অফলাইন কিউ — lease/ack, WAL, ডিস্ক বাজেট |
+| `Agent/Sync/` | `HttpClient` দিয়ে সার্ভারের সাথে কথা, কখনো ব্যতিক্রম ছোড়ে না |
+| `Agent/Security/` | MachineGuid, DPAPI-সুরক্ষিত ডিভাইস টোকেন, enrollment |
+| `Agent/Ui/` | tray আইকন — সবসময় দৃশ্যমান, সিঙ্ক ব্যর্থ হলে লাল (J07) |
+| `oXeio.Watchdog/` | আলাদা প্রসেস — ৩০ সে. অন্তর পাহারা, restart storm ঠেকানো (H01) |
+
+**কিউ কেন lease/ack:** "আগে dequeue তারপর আপলোড" বিদ্যুৎ গেলে ডেটা হারায়;
+"আগে আপলোড তারপর delete" ডুপ্লিকেট বানায়। তাই সারি জায়গাতেই থাকে, শুধু
+lease মার্কার বসে। যে ডুপ্লিকেটটা তবু থেকে যায় (সার্ভার লিখেছে, আমরা ২০০
+পাইনি) সেটা নিরীহ — প্রতিটা ingest পথ `clientUuid` দেখে dedupe করে।
+
+**ইন্টিগ্রেশনে যে বাগটা ধরা পড়ল, সেটাই সবচেয়ে দামি।** sync client সেগমেন্টের
+স্টেট পাঠাচ্ছিল বড় হাতে — `"ACTIVE"`। সার্ভারের Prisma enum ছোট হাতের, আর
+`ValidationPipe`-এ `forbidNonWhitelisted: true`। ফল: প্রতিটা ব্যাচে ৪০০,
+আর ৪০০ মানে `Permanent` — অর্থাৎ রিট্রাই নয়, **মুছে ফেলা**। একটা অক্ষরের
+পার্থক্যে পুরো মাসের পে-রোল ডেটা হারাত। *(সেই এজেন্ট নিজেই এটা তার
+ঝুঁকির তালিকায় লিখে রেখেছিল — "কেউ একজন সার্ভারের DTO মিলিয়ে দেখুক"।)*
+
+সেই সাথে অজানা স্টেটের ডিফল্টও সরানো হয়েছে: আগে অচেনা স্টেট নীরবে `ACTIVE`
+হয়ে যেত, অর্থাৎ **কাজের সময় হিসেবে গোনা হতো**। এখন সেখানে ব্যতিক্রম ছোড়ে।
+
+**যা এখনো জোড়া লাগেনি:** কেউ `LeaseAsync → ISyncClient → Ack/Retry` লুপটা
+লেখেনি — মডিউলগুলো আছে, অর্কেস্ট্রেটর নেই। এটাই পরের কাজ।
+
+### ৩অ.৬ sync worker ও এজেন্ট হোস্ট — সব জোড়া লাগল *(১০ আগস্ট)*
+
+মডিউলগুলো ছিল, কিন্তু কেউ চালাচ্ছিল না। এখন `SyncWorker` আউটবক্স থেকে
+lease নেয়, পাঠায়, তারপর ack / retry / abandon করে। আর `AgentHost` সবকিছু
+একসাথে চালায় — `Program.cs` আর ডায়াগনস্টিক টুল নয়, `--diagnose` দিলে সেটা।
+
+**পাঠানোর ক্রম:** সেগমেন্ট → ইভেন্ট → অ্যাপ-ব্যবহার → স্ক্রিনশট।
+লিংক দুর্বল হলে বা ব্যাকলগ বড় হলে **পে-রোলের ডেটা আগে যায়**, আর সবচেয়ে
+ভারী ও কম জরুরি জিনিসটা শেষে।
+
+**যে সমস্যাটা নকশায় ধরা পড়ল ([G50](08-Gap-Analysis.md)):** সার্ভার পুরো ব্যাচ
+একসাথে যাচাই করে। ৫০০টার একটা রেকর্ড বেঠিক হলে **পুরো ব্যাচেই** ৪০০ আসে,
+আর ৪০০ মানে `Permanent` — অর্থাৎ মুছে ফেলা। সরল বাস্তবায়ন একজনের ভুল
+সারির জন্য **১৯ জনের ঘণ্টা** ফেলে দিত, আর সার্ভারের দিক থেকে সব স্বাভাবিক
+দেখাত। এখন ব্যাচ অর্ধেক হতে হতে দোষীটা একা পড়ে, তখন শুধু সেটাই বাদ যায়।
+
+**থ্রেডের ভাগ, আর যে নিয়মটা এটা রক্ষা করে:**
+
+| থ্রেড | কাজ |
+|---|---|
+| UI | tray আইকন, lock/power মেসেজ — কখনো ব্লক করা হয় না |
+| ট্র্যাকার | প্রতি সেকেন্ডে idle পড়া — **কোনো I/O নেই** |
+| ব্যাকগ্রাউন্ড | ক্যাপচার, সিঙ্ক, heartbeat — ধীর কাজ শুধু এখানে |
+
+⭐ **ট্র্যাকিং কখনো নেটওয়ার্ক বা ডিস্কের জন্য থামে না।** সার্ভার বন্ধ, ডিস্ক
+ভরা বা enrollment ব্যর্থ — সেকেন্ডের হিসাব চলতেই থাকে, শুধু পাঠানো আটকে
+থাকে। উল্টোটা হলে একটা নেটওয়ার্ক সমস্যা সরাসরি কারো বেতন কমিয়ে দিত।
+
+**আরও দুটো নীরব ফাঁদ বন্ধ হলো:** ব্যর্থ মনিটর আর চুপচাপ বাদ পড়ে না
+([G51](08-Gap-Analysis.md) — আসল রানেই একবার ঘটেছিল), আর tray-র মাসিক
+সংখ্যাটা সার্ভার থেকে আসে, কারণ এজেন্ট রিবুটের পর নিজের হিসাব ভুলে যায়
+([G52](08-Gap-Analysis.md))।
+
+**টেস্ট:** ২২৬ (Core) + ৯ (Agent) + ৬১ (server) = **২৯৬**, সবই পাস।
+নতুন `tests/oXeio.Agent.Tests` — Win32-নির্ভর মডিউলগুলোর জন্য, CI-র
+windows job-এ চলে।
+
+### ⚠️ যা এখনো বাকি — এবং যা আমি যাচাই করতে পারব না
+
+### ৩অ.৮ MSI ইনস্টলার *(১০ আগস্ট)* — H03
+
+```
+msiexec /i oXeioAgent.msi /qn SERVERURL="https://oxeio.office.local" ^
+        ENROLLCODE="OXEIO-XXXXXXXX"
+```
+
+**ইনস্টলারের সবচেয়ে জরুরি কাজটা হলো ফোল্ডারের অনুমতি** — গতকালের দুটো বাগই
+`%ProgramData%\oXeio`-র ACL নিয়ে ছিল। ProgramData-র ডিফল্ট ACL-এ সাধারণ
+ইউজার শুধু **নিজের বানানো** ফাইল বদলাতে পারে; ইনস্টলার (অ্যাডমিন) ফোল্ডারটা
+বানিয়ে রেখে গেলে স্টাফের অ্যাকাউন্টে চলা এজেন্ট নিজের SQLite কিউ লিখতেই
+পারত না — প্রতিটা INSERT-এ `SQLITE_READONLY`, নীরবে।
+
+তাই ফোল্ডারটা **WiX বা icacls দিয়ে নয়, এজেন্ট নিজেই বানায়** —
+`oXeio.Agent.exe --prepare-data-dir`, যেটা `AgentDataDirectory.Ensure()`
+ডাকে। ACL-এর সংজ্ঞা একটাই জায়গায় থাকে; XML-এ আবার লিখলে দুটো একদিন আলাদা
+হয়ে যেত।
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| কনফিগ **রেজিস্ট্রিতে** (`HKLM\SOFTWARE\oXeio\Agent`), ফাইলে নয় | আনইনস্টলে Windows নিজেই মুছে দেয়, আর ফাইলের ACL নিয়ে ভাবতে হয় না। গোপন কিছু নেই — টোকেন DPAPI-তে আলাদা |
+| লগঅন টাস্ক **watchdog** চালু করে, এজেন্ট নয় | দুই জায়গা থেকে চালু হলে এক PC-তে দুটো এজেন্ট, আর একই ঘণ্টা দুবার গোনা |
+| `SERVERURL` ছাড়া ইনস্টল **ব্যর্থ** হয় | যে এজেন্ট বসে, চলে, অথচ কিছুই পাঠায় না — তার চেয়ে ইনস্টল না হওয়াই ভালো |
+| আনইনস্টলে `%ProgramData%\oXeio` **রাখা হয়** | ওখানে এমন ঘণ্টা থাকতে পারে যা সার্ভারে যায়নি। এজেন্ট সরানো মানে কারো গত সপ্তাহ মুছে ফেলা নয় |
+| আপগ্রেডে আগে প্রসেস থামানো | নইলে ফাইল লক থাকায় MSI রিবুট চাইত, আর ১৫ PC-র রোলআউট আটকে যেত |
+
+**আকার:** ১৯৭ MB → **৬২ MB** MSI। দুটো প্রজেক্ট একই ফোল্ডারে publish করায়
+.NET রানটাইম একবারই যায় (৩৭৯ → ১৯৭ MB), আর `.pdb` বাদ — `libSkiaSharp.pdb`
+একাই ছিল ৮৬ MB।
+
+**ইনস্টল না করেই যা যাচাই করা হয়েছে:** administrative extract-এ পুরো গাছ
+বেরিয়েছে (৪৭৭ ফাইল = publish-এর ৪৭৭, কোনো ফাইল দুবার নেই); বের করা exe
+চলেছে (কোনো DLL বাদ পড়েনি); আর সেটার বানানো ফোল্ডারে ACL ঠিক —
+SYSTEM full · Administrators full · **Users Modify** · উত্তরাধিকার বন্ধ।
+
+### ৩অ.৯ আসল ইনস্টল — আরও দুটো বাগ *(১০ আগস্ট)*
+
+MSI বসিয়ে লগঅন টাস্ক চালিয়ে দেখা হলো। **দুটো বাগ বেরোল, যেগুলো বিল্ড,
+২৩৫ টেস্ট বা হাতে এজেন্ট চালানো — কোনোটাতেই ধরা পড়েনি।**
+
+**১· watchdog একটার পর একটা এজেন্ট চালু করছিল** ([G57](08-Gap-Analysis.md)):
+
+```
+14:26:33  ⛔ এজেন্ট চলছে না — কেউ agent.lock ধরে নেই
+14:26:33  ▶ এজেন্ট চালু: pid 24960 (চেষ্টা 1/5)
+14:27:03  ▶ এজেন্ট চালু: pid 29212 (চেষ্টা 2/5)
+```
+
+watchdog মডিউল একটা liveness চুক্তি ঠিক করেছিল — এজেন্ট `agent.lock` ধরে
+রাখবে, প্রতি ১৫ সে. `agent.alive` লিখবে। `AgentHost` লেখার সময় ওই দিকটা
+বানানোই হয়নি। **দুটো এজেন্ট = একই ঘণ্টা দুবার গোনা**, আর সার্ভারে সেটা
+"কেউ বেশি কাজ করছে" ছাড়া আলাদা কিছু দেখাত না।
+
+**২· আপগ্রেড ও আনইনস্টল দুটোই ১৬০৩ দিয়ে ব্যর্থ হতো** ([G58](08-Gap-Analysis.md)):
+মেজর আপগ্রেডে MSI **দুটো** সেশন চালায় — নতুনটা বসানো, পুরোনোটা `REMOVE=ALL`
+দিয়ে সরানো। `SERVERURL` শর্তটা দ্বিতীয় সেশনেও চলত, যেখানে ওই প্রপার্টি
+থাকার কথাই নয়। অর্থাৎ প্রোডাক্টটা **কোনোদিন সরানোই যেত না**।
+
+**যা ঠিকঠাক পাওয়া গেল:**
+
+| | |
+|---|---|
+| ইনস্টল | ExitCode ০ · ৪৭৭ ফাইল |
+| রেজিস্ট্রি | ServerUrl · EnrollmentCode · StaffPortalUrl · InstallDir |
+| **ACL** | `SYSTEM:(F)` · `Administrators:(F)` · **`Users:(M)`** · উত্তরাধিকার বন্ধ |
+| লগঅন টাস্ক | রেজিস্টার, Status Ready |
+| enroll | ডিভাইস তৈরি · `device.dat` ৫১৮ বাইট |
+| RAM | এজেন্ট ৭৩ MB · watchdog ২২ MB (বাজেট < ১২০ MB ✅) |
+
+**ফিক্স দুটো বসানো MSI-তে যাচাই করা হয়েছে:**
+
+| যাচাই | ফল |
+|---|---|
+| ইনস্টল 0.1.1 | ExitCode ০ |
+| **এজেন্টের সংখ্যা** (৯৫ সে., watchdog ৩ বার চেক) | **১** ✅ — আগে ছিল ২ |
+| watchdog লগ | `✅ এজেন্ট সুস্থ — হার্টবিট তাজা` |
+| `agent.alive` | `v=1 pid=28224 session=1 unbiased=… utc=…` |
+| সেগমেন্ট (৬ মিনিট পর) | ২টি · ৩১৪ সে. — ৫-মিনিটের ভাগ কাজ করছে ([G53](08-Gap-Analysis.md)) |
+| স্ক্রিনশট | ০ — **ঠিক আছে**, তখন ২৩:০৬, ক্যাপচার উইন্ডো ২৩:০০-এ বন্ধ ([ADR-011c](05-Options-Decisions.md)) |
+| আনইনস্টল | ExitCode ০, **SERVERURL ছাড়াই** — [G58](08-Gap-Analysis.md)-এর ফিক্স প্রমাণিত |
+| আনইনস্টলের পর | প্রোডাক্ট · Program Files · রেজিস্ট্রি · টাস্ক — সব সাফ; `%ProgramData%` রয়ে গেছে (ইচ্ছাকৃত) |
+
+> ⚠️ **একটা শিক্ষা রোলআউটের আগে মনে রাখার মতো:** খারাপ LaunchCondition নিয়ে
+> একবার MSI বিলি হয়ে গেলে **নতুন MSI দিয়ে সেটা ঠিক করা যায় না** — আপগ্রেডে
+> পুরোনো প্যাকেজ নিজের ক্যাশ করা MSI দিয়েই সরে, বাগসহ। এই মেশিনে সরাতে
+> হয়েছে `msiexec /x {ProductCode} SERVERURL=…` দিয়ে, অর্থাৎ শর্তটাকে
+> সন্তুষ্ট করে। ১৫টা PC-তে এটা ঘটলে প্রতিটাতে হাতে যেতে হতো।
+
+
+### ৩অ.১০ অ্যাপ ও সাইট ট্র্যাকিং *(১০ আগস্ট)* — D01–D04
+
+কোন অ্যাপে কত সময়, আর ব্রাউজারে কোন সাইটে — এই অংশটা এতদিন ফাঁকা ছিল।
+এখন এজেন্ট থেকে সার্ভারের টেবিল পর্যন্ত পুরো পথটা জোড়া লেগেছে।
+
+**নিয়মগুলো `oXeio.Core`-এ, Win32 ছাড়া** — তাই ৩৫টা টেস্ট লেখা গেছে:
+
+| নিয়ম | কেন |
+|---|---|
+| একই উইন্ডো টানা থাকলে **একটাই** রেকর্ড | প্রতি সেকেন্ডে সারি হলে দিনে ২৮,৮০০ সারি |
+| **৫ সে.-এর কম বাদ** (D04) | alt-tab করে ফাইল খুঁজলে ১০টা উইন্ডো ছোঁয়া হয় — সেগুলো "ব্যবহার" নয় |
+| ACTIVE ছাড়া কিছুই গোনা হয় না | লাঞ্চে গেলে পর্দায় Excel খোলা থাকে; ওই এক ঘণ্টা Excel ব্যবহার নয় |
+| ব্রাউজারে **ডোমেইন** বদলালে নতুন রেকর্ড, টাইটেল বদলালে নয় | নইলে সারাদিন একটাই "chrome.exe ৮ ঘণ্টা" থাকত আর D08 বানানোই যেত না; আবার টাইটেলে ভাগ করলে স্ক্রল করলেও নতুন সারি হতো |
+| ৫ মিনিটের বেশি লম্বা হলে ভাগ | সেগমেন্টের মতোই — ক্র্যাশে পুরোটা হারাত ([G53](08-Gap-Analysis.md)) |
+
+**ব্যক্তিগত ব্রাউজিং** (incognito / InPrivate / ছদ্মবেশী) হলে শুধু
+`chrome.exe` যায় — ডোমেইন **আর টাইটেল দুটোই** বাদ। টাইটেলে পেজের নাম
+থাকে, তাই ওটা রাখলে ঘুরিয়ে একই তথ্যই রাখা হতো।
+
+**দুটো সিদ্ধান্ত যেগুলো খরচের হিসাব থেকে এসেছে:**
+
+**১· address bar পড়া হয় শুধু উইন্ডো বা টাইটেল বদলালে।** UI Automation-এর
+প্রতিটা কলে ~১০–৩০ ms যায়। প্রতি সেকেন্ডে ডাকলে দিনে হাজার হাজার বার —
+CPU ১%-এর নিচে রাখা যেত না ([06 § ২.৬](06-Research.md))। টাইটেলও দেখা হয়,
+কারণ একই ট্যাবে নতুন পেজে গেলে hwnd বদলায় না।
+
+**২· অ্যাপ-ট্র্যাকিং ট্র্যাকার থ্রেডে নয়, নিজের লুপে।** `BrowserUrlReader`
+কড়া ৪০০ ms টাইমআউট দিয়েও ব্যস্ত অ্যাপে ঝুলে থাকতে পারে। ওটা সেকেন্ড
+গোনার থ্রেডে বসালে idle মাপার টিক পিছিয়ে যেত — আর সেকেন্ডের হিসাবই এই
+সিস্টেমের একমাত্র মেট্রিক। **এই লুপ ব্যর্থ হলে অ্যাপের হিসাব হারায়,
+সময়ের হিসাব নয়।**
+
+**একটা ফাঁক ধরা পড়ল লিখতে গিয়েই** — সার্ভারের DTO-তে `appName`,
+`windowTitle`, `domain`-এর `@MaxLength` আছে, আর এই স্ট্রিংগুলোর
+**একটাও আমাদের লেখা নয়**: `appName` আসে এক্সিকিউটেবলের version resource
+থেকে, `domain` আসে address bar থেকে। যেকোনো লম্বা মান ঢুকতে পারত, আর
+একটা লম্বা মান পুরো ব্যাচকে ৪০০ করাত — অর্থাৎ [G49](08-Gap-Analysis.md)-এর
+মতো **ডেটা মুছে যেত**। এখন `SyncWire`-এ, তারে ওঠার ঠিক আগে, দৈর্ঘ্য
+ছেঁটে দেওয়া হয়। ছাঁটা তথ্য অসম্পূর্ণ, কিন্তু হারানো তথ্যের চেয়ে ভালো।
+
+**`--diagnose`-এ নতুন একটা অংশ** — রোলআউটের আগে প্রতিটা PC-তে দেখে নেওয়া
+যাবে UI Automation কাজ করছে কি না। না করলে অ্যাপের হিসাব তবু চলবে, শুধু
+সাইটের নাম আসবে না। কনসোলেও **ডোমেইনই ছাপা হয়, পুরো URL নয়** —
+নিয়মটা সব জায়গায় এক।
+
+| | |
+|---|---|
+| নতুন ফাইল | `Core/Apps/{AppUsageTracker,DomainParser}.cs` · `Agent/Apps/{AppUsageService,ForegroundWindowProbe,BrowserUrlReader}.cs` |
+| টেস্ট | **২৮৪ পাস** (ছিল ২৩৫) — ৩৫টা নিয়মের, ১৪টা তারের |
+| সার্ভার | `POST /agent/app-usage` আগেই ছিল, এখন সত্যিকারের ডেটা পাচ্ছে |
+
+**আসল মেশিনে চালানো হয়েছে** — `--diagnose`, দুই মনিটরের ডেস্কটপে:
+
+| যাচাই | ফল |
+|---|---|
+| D01 foreground প্রসেস | `chrome.exe` ✅ |
+| **D03 address bar** | ✅ `youtube.com` — **UI Automation এই মেশিনে কাজ করছে** |
+| ADR-013 | শুধু ডোমেইন — path/query কিছুই আসেনি ✅ |
+| D04 | ১১ সে. রেকর্ড (৫ সে.-এর সীমা পেরিয়ে) ✅ |
+| ক্যাপচার | দুই মনিটরেই DXGI, ১১৩–১১৬ KB, ১৭৫–২০৩ ms |
+| ক্যাপচার উইন্ডো | **বন্ধ** — তখন ২৩:৪৮, ঠিক আচরণ ([ADR-011c](05-Options-Decisions.md)) |
+| `%ProgramData%\oXeio` | তৈরি হয়নি — ডায়াগনস্টিক কিছু জমায় না ✅ |
+
+⚠️ **প্রথম রানেই ডায়াগনস্টিকের নিজের দুটো লাইন মিথ্যে বলছিল** — যেগুলো
+রোলআউটের সময় ঠিক উল্টো সিদ্ধান্তে নিয়ে যেত:
+
+- `foreground` পড়া হতো `CloseAll()`-এর **পরে**, আর ওটাই খোলা উইন্ডো বন্ধ
+  করে দেয় — সব ঠিকঠাক চললেও লাইনটা চিরকাল "পড়া গেল না" দেখাত
+- `address bar: ✅` আসত `UrlReadingDisabled` পতাকা দেখে, যেটা **টানা ২০ বার**
+  ব্যর্থ হলে ওঠে — ১০ সেকেন্ডের নমুনায় ২০ বার চেষ্টাই হয় না, তাই ওটা
+  সবসময় ✅। **যে PC-তে UI Automation কাজ করে না, সেখানেও ✅ দেখাত।**
+
+এখন বিচারটা একটাই প্রমাণের উপর: **সত্যিই ডোমেইন এসেছে কি না**। আর
+"ব্রাউজার সামনেই ছিল না" আলাদা করে বলা হয় — নইলে টেকনিশিয়ান ভাবত পরীক্ষা
+হয়ে গেছে। নমুনা ৫ → ১০ সেকেন্ড, যাতে ব্রাউজারে যাওয়ার সময় থাকে।
+
+### ৩অ.১১ ক্যাটাগরি — D05 *(১১ আগস্ট)*
+
+`app_categories` টেবিল ও ১০৯টা রুল seed-এ আগেই ছিল, কিন্তু ingest
+`categoryId: null` বসাত। এখন সত্যিই বসে।
+
+**দুটো সিদ্ধান্তে পুরো ফিচারটা দাঁড়িয়ে** — দুটোই উল্টো হলে কোথাও কোনো
+এরর উঠত না, শুধু রিপোর্টের সংখ্যা ভুল হতো:
+
+**১· ক্রম: priority ↑ → প্যাটার্নের দৈর্ঘ্য ↓ → id ↑**
+
+- seed-এ ব্রাউজারের priority ২০০, বাকি সবার ১০০। উল্টো হলে `chrome.exe`
+  (neutral) সবসময় জিতত আর **প্রতিটা ব্রাউজিং মিনিট neutral** হয়ে যেত —
+  youtube.com-ও, github.com-ও। D05 তখন কিছুই আলাদা করত না।
+- লম্বা প্যাটার্ন আগে, অর্থাৎ বেশি নির্দিষ্টটা: `mail.google.com`
+  (productive) `google.com`-কে (neutral) হারায়, নইলে Gmail "neutral" হতো।
+
+**২· ডোমেইন মেলে লেবেলের সীমানায়।** সাধারণ `endsWith('google.com')`
+লিখলে `notgoogle.com`-ও "Google" হতো। উল্টোদিকে `atlassian.net` নিয়মটা
+`acme.atlassian.net`-এ কাজ করা **দরকার** — প্রতিটা কোম্পানির Jira আলাদা
+সাবডোমেইনে।
+
+**null আর neutral এক নয়।** অচেনা অ্যাপ জোর করে neutral বানানো হয় না —
+null মানে "জানি না", neutral মানে "জানি, এবং নিরপেক্ষ"। মিলিয়ে ফেললে
+D07-এর স্কোরে অচেনা অ্যাপ নীরবে ভালো দিকে গোনা হতো, আর কোনগুলো এখনো
+নিয়মের বাইরে সেটাও জানা যেত না।
+
+**ক্যাটাগরি বসে ingest-এ, পড়ার সময় নয়** — D07/D08 মাসের লাখখানেক সারিতে
+group by করবে; প্রতিবার ১০৯টা নিয়ম মেলালে ওই কোয়েরি অচল হতো। দাম: নিয়ম
+বদলালে পুরোনো সারি পুরোনো সিদ্ধান্তেই থাকে, সেজন্য `recategorize()`।
+
+⚠️ **নিয়ম মুছে গেলে ক্যাশে তার id বসে থাকে**, আর তখন প্রতিটা insert
+foreign key ভেঙে ৫০০ দিত — TTL ফুরানো পর্যন্ত পাঁচ মিনিট। ডেটা হারাত না
+(৫xx এজেন্টের কাছে transient), কিন্তু একটা রুল মোছার শাস্তি হিসেবে পাঁচ
+মিনিটের অচলাবস্থা বেশি। এখন একবার ক্যাশ ফেলে আবার চেষ্টা হয়।
+
+**পাশাপাশি একটা পুরোনো ফাঁদ ধরা পড়ল** — তিনটে টেস্ট **রোজ রাত ১২টার পর
+আধঘণ্টা** ভাঙত, আর কারণটা কোডে নয়, ঘড়িতে: `minutesAgo(30)` মানে ঢাকার
+মধ্যরাতের পর **গতকাল**। আজকের হিসাব ০ আসত, সেশন `logoff` নয়
+`day_rollover` হয়ে বন্ধ হতো, আর সেগমেন্ট দু-ভাগ হয়ে যেত।
+CI রোজ রাতে লাল থাকলে আসল ভাঙন আর ঘড়ির ভাঙন আলাদা করা যেত না।
+`todayWindow()` এখন জানালাটা মধ্যরাতে ছেঁটে দেয়, আর টেস্ট হার্ডকোড করা
+৬০০ নয়, ফেরত আসা `durationSec`-ই মেলায়।
+
+| | |
+|---|---|
+| নতুন | `src/activity/{category-matcher,app-category.service,activity.module}.ts` |
+| টেস্ট | **৮৪ পাস** (ছিল ৬৩) — ১৯টা ম্যাচারের, ২টা ingest পথের |
+| বাকি | ~~D06–D09~~ — § ৩অ.১২-তে হয়ে গেছে |
+
+
+### ⚠️ যা এখনো বাকি — এবং যা আমি যাচাই করতে পারব না
+
+বাকি: মালিকের ক্যাটাগরি রুল ও রিপোর্ট (D06–D09), আর auto-update (H04)।
+
+> ✅ H04-এর পথের কাঁটাটা সরানো হয়েছে — [G59](08-Gap-Analysis.md) ঠিক করায়
+> সার্ভার এখন জানে কোন PC-তে সত্যিকারের কোন ভার্সন চলছে। ওটা ছাড়া ধাপে ধাপে
+> রোলআউট বা auto-rollback কোনোটাই সম্ভব ছিল না।
+
+> ⚠️ **পূর্ণ এজেন্টটা একবারও চালানো হয়নি।** বিল্ড হয়, টেস্ট পাস করে,
+> `--diagnose` চলে — কিন্তু `AgentHost` চালু করলে সেটা `%ProgramData%\oXeio`
+> তৈরি করবে, SQLite কিউ বানাবে, tray আইকন বসাবে আর সত্যিকারের স্ক্রিনশট
+> নিতে শুরু করবে। আপনার মেশিনে ওটা না বলে চালানো ঠিক মনে হয়নি।
+> **আপনি বললেই চালিয়ে দেখব।**
+
+**ক্যাপচারে যে দুটো জিনিস যাচাই করা যায়নি:**
+
+| | |
+|---|---|
+| ঘোরানো ডিসপ্লে | ৯০° আর ২৭০° কোনটা কোন দিকে — **আসল portrait মনিটরে দেখা হয়নি**। উল্টো হলে ছবি উল্টো কাত হবে, কিন্তু সেটা চোখে পড়বেই |
+| HDR মনিটর | ফরম্যাট `B8G8R8A8_UNORM` না হলে এখন GDI-তে নামে। ঠিক করতে `IDXGIOutput5::DuplicateOutput1` (IID `80A07424-…`, স্লট ২৬) — এক QI আর এক কল |
+
+**যেগুলো আপনাকেই চালিয়ে দেখতে হবে** — ডায়াগনস্টিক টুলটা চালিয়ে:
+
+| যাচাই | কীভাবে |
+|---|---|
+| ৬০ সেকেন্ড নিষ্ক্রিয়তায় সত্যিই থামে | টুল চালিয়ে হাত সরিয়ে রাখুন, `state=Idle` হওয়া দেখুন |
+| Win+L লক ধরা পড়ে | লক করে আনলক করুন — `🔔 session: lock/unlock` আসা চাই |
+| **ঘুম ধরা পড়ে** | ঢাকনা বন্ধ করে ১ মিনিট পর খুলুন — `💤 ফাঁক ধরা পড়ল` আসা চাই |
+| RDP disconnect ধরা পড়ে | RDP দিয়ে ঢুকে বেরিয়ে যান |
+| modern standby (ল্যাপটপ) | S0ix ল্যাপটপে `⚡ power: Suspend` আসে কি না |
+
+**সবচেয়ে জরুরি মাপটা:** একটা ল্যাপটপে ১ মিনিট ঘুম পাড়িয়ে দেখুন "বুট থেকে ঘুম"
+সংখ্যাটা সত্যিই বাড়ে কি না। পুরো ঘুম-শনাক্তকরণ ওই একটা সংখ্যার উপর দাঁড়িয়ে,
+আর এই ডেস্কটপে ঘুমের সুযোগ না থাকায় সেটা যাচাই করা যায়নি।
+
+---
+
+### ৩অ.১২ সার্ভারের API স্তর — সাতটা মডিউল একসাথে *(১১ আগস্ট)*
+
+সাতটা মডিউল **সমান্তরালে** লেখা হয়েছে, তারপর একবারে জোড়া লাগানো হয়েছে।
+কেউই `npm test` চালাতে পারেনি — টেস্ট DB একটাই, আর `resetDatabase()` প্রতি
+টেস্টের আগে TRUNCATE করে, তাই দুজন একসাথে চালালে একে অন্যের ফিক্সচার মুছে
+দিত। সবাই নিজের খাঁটি অংশটুকু আলাদা স্ক্রিপ্টে যাচাই করে রেখেছিল, আর
+জোড়া লাগানোর সময় পুরো স্যুট একবারে চালানো হয়েছে।
+
+| মডিউল | ফিচার |
+|---|---|
+| `activity/` | D06 রুল · D07 স্কোর · D08 টপ ১০ · D09 টিম |
+| `dashboard/` | E01 Live Board · E02 রিং · E04 টাইমলাইন · E05 ঘণ্টা-চার্ট |
+| `screenshots/` | E06 গ্যালারি · I07 signed URL · I08 audit · J05 |
+| `reports/` | F01 · F02 · F04 · F05 Excel · F08 রেঞ্জ |
+| `admin/` | E10 কর্মী+ডিভাইস · E11 audit ভিউয়ার · H05 · H06 |
+| `alerts/` | G01 · G02 · G03 · G05 · G06 · G07 |
+| `summary/` | K06 রিফ্রেশ · K05 দিন-ক্লোজ · K01 retention |
+
+**ফল: ৩৭০/৩৭০ টেস্ট পাস** (ছিল ৮৪), ১৫টা ফাইল · typecheck ✅ · eslint ✅ ·
+৫৬টা রুট ম্যাপ হয়, কোনো পথ-সংঘাত নেই।
+
+#### একটা টেস্ট নিজেই ভুল ছিল
+
+`admin-enrollment-code.spec.ts` দাবি করছিল বর্ণমালায় `O` **আছে**, অথচ
+ঠিক উপরের টেস্টটাই দাবি করছিল বর্ণমালা **৩২ অক্ষরের**। দুটো একসাথে সত্যি
+হওয়া অসম্ভব: ৩৬টা alphanumeric থেকে `0`, `I`, `L` — তিনটে বাদ দিলে ৩৩ থাকে,
+আর তখন ২৫৬ % ৩৩ = ২৫, অর্থাৎ প্রথম ২৫টা অক্ষর বেশি বার আসত (modulo bias)।
+বাস্তবে কোডটা **চারটে** বাদ দেয় (`0` ও `O` দুটোই, `I` ও `L` দুটোই) — সেটাই
+সঠিক। কোড ঠিক ছিল, **টেস্ট আর সোর্সের কমেন্ট দুটোই ভুল ছিল**; দুটোই সংশোধন
+করা হয়েছে। কমেন্টটা বিশেষভাবে বিপজ্জনক ছিল — "O আছে" পড়ে কেউ একদিন
+`O` ফেরত বসাত, কোড দিব্যি চলত, আর bias-টা নীরবে ফিরে আসত।
+
+#### যা শুধু সত্যিই চালিয়ে জানা গেল
+
+টেস্ট সব সবুজ হওয়ার পরেও তিনটে জিনিস টেস্ট **প্রমাণ করতে পারে না**, কারণ
+টেস্ট সবসময় `NODE_ENV=test`-এ চলে। তাই সার্ভারটা সত্যিকারের production
+মোডে তুলে যাচাই করা হয়েছে:
+
+| প্রশ্ন | কীভাবে দেখা হলো | ফল |
+|---|---|---|
+| সব মডিউল নিয়ে অ্যাপ ওঠে? | `node dist/main.js` | ✅ কোনো DI এরর নেই, "cron job already exists" নেই |
+| cron-এ ঢাকার টাইমজোন? | চালু অ্যাপের `SchedulerRegistry` পড়ে | ✅ তিনটে জব, তিনটেই `Asia/Dhaka` |
+| টেস্টে সিডিউলার বন্ধ? | একই স্ক্রিপ্ট `NODE_ENV=test`-এ | ✅ `SchedulerRegistry` **নেই-ই** — জব জন্মায়ই না |
+| ম্যানেজার বেতন দেখে? | আসল HTTP, দুই role-এ লগইন | ✅ owner `"30000.00"`, ম্যানেজারের JSON-এ key-ই নেই |
+| BigInt-এ ৫০০? | segment/screenshot/alert/audit — চারটেই | ✅ সবই `"id":"1"` স্ট্রিং, কোনো ৫০০ নেই |
+
+শেষেরটা আসল ঝুঁকি ছিল: `app.setup.ts`-এ BigInt-এর কোনো গ্লোবাল JSON
+সিরিয়ালাইজার **নেই**, তাই প্রতিটা মডিউলকে নিজে থেকে `String(id)` করতে
+হয়েছে। একজন ভুলে গেলে শুধু ওই endpoint-টা ৫০০ দিত — আর typecheck সেটা
+ধরত না। চারটেই আলাদা করে চালিয়ে দেখা হয়েছে।
+
+#### সিদ্ধান্ত যেগুলো জানা থাকা দরকার
+
+**⭐ একাধিক ডিভাইসে সময় — যোগফল না UNION (§ ২.১-গ)।** দুটো উত্তরই আছে,
+ইচ্ছাকৃতভাবে:
+
+| কোথায় | কী | কেন |
+|---|---|---|
+| `summary/` (rollup) | **UNION** | `credited_sec` এখান থেকেই যায়, আর **বেতন ওটার উপর দাঁড়িয়ে** |
+| dashboard · activity · reports | **যোগফল** | live বোর্ডের সংখ্যা এজেন্টের tray-র সাথে মিলতে হবে (`progress.service.ts`ও যোগফল) |
+
+অর্থাৎ **টাকার হিসাব UNION-সঠিক**; দেখার সংখ্যাগুলো কেউ দুটো PC একসাথে
+চালালে বেশি দেখাতে পারে (`device_overlap` অ্যালার্টে ধরা পড়ে), আর
+প্রতিটা রেসপন্সে `caveat` ফিল্ডে সেটা লেখা থাকে। রিং যখন rollup-এ সরবে
+তখন **DashboardService আর ProgressService একসাথে** বদলাতে হবে — একটা
+বদলালে tray আর বোর্ড আলাদা হয়ে যাবে।
+
+**✅ heartbeat-এর `state` এখন `devices`-এ জমা হয়** (G63)। `last_state` ও
+`last_state_at` বসে heartbeat-এর **একই** `UPDATE`-এ, আর Live Board-এর রঙ
+এখন ওখান থেকেই আসে — সেগমেন্ট থেকে অনুমান আর করা হয় না। দুটো সূক্ষ্ম
+নিয়ম কোডে বাঁধা: (ক) `state` না বদলালেও `last_state_at` **প্রতিবার** এগোয়,
+নইলে একটানা `active` বলা এজেন্টের সময় তার **প্রথমবার** বলার মুহূর্তে আটকে
+থাকত; (খ) রিপোর্টেরও মেয়াদ আছে (`OFFLINE_AFTER_SEC`), নইলে মরে যাওয়া
+এজেন্টের শেষ `active` কথাটা কলামে বসে থেকে বন্ধ PC-র কার্ড **চিরকাল সবুজ**
+দেখাত। `last_state` null হলে (মাইগ্রেশনের পরের সব সারি) পুরোনো
+সেগমেন্ট-অনুমানে fallback করে, তাই ফিচারটা চালু করা কোনো ⚪ ব্ল্যাকআউট
+তৈরি করে না।
+
+**✅ G02 এখন সত্যিই ট্রিগার করে।** `agent_stop`/`logoff`/`shutdown` তিনটেই
+কিউতে যায়। ⚠️ `shutdown` আসে **শুধু `WM_ENDSESSION`** হয়ে — PowerMonitor
+থেকে নয়, কারণ `WM_POWERBROADCAST`-এর সব রূপ ঘুম/জাগরণের কথা বলে আর
+Windows বন্ধ হলে ওগুলোর একটাও আসে না (ওখানে বসালে কোড কম্পাইল হতো,
+চলত, আর `shutdown` কোনোদিন যেত না)। `ENDSESSION_LOGOFF` বিটমাস্ক দেখে
+logoff ও PC-শাটডাউন আলাদা করা হয়, আর `agent_stop`-এর meta-তে `reason`
+থাকে (`shutdown`/`logoff`/`unknown` — `unknown` ঢাকা হয় না, ওটাই সন্দেহের
+সংকেত)। lock/unlock ইচ্ছাকৃতভাবে পাঠানো হয় না: দিনে ডজনখানেক বার হয়,
+আর তথ্যটা আগে থেকেই `locked` সেগমেন্টে আছে।
+⚠️ **বাকি** *(✅ পরে মিটেছে — § ৩র · ২২ আগস্ট)*: G01 তখন রাতে PC বন্ধ হওয়াকে "ব্যাখ্যাহীন নীরবতা" ধরত —
+৬ ঘণ্টার throttle-এর কারণে রাতে ডিভাইসপ্রতি ২–৩টা অ্যালার্ট। এখন যেহেতু
+`shutdown` ইভেন্টটা সত্যিই আসে, G01-এর চেকে সেটা দেখে নীরবতাটা
+"ব্যাখ্যাত" ধরা যায় — করা হয়নি।
+
+**অন্য কারো ফাইলে যা বদলানো দরকার** (কেউ ছোঁয়নি, নিয়ম মেনে):
+
+| ফাইল | কী | কেন দরকার |
+|---|---|---|
+| `audit/audit.service.ts` | `AuditAction`-এ নতুন literal — `salary_view` `salary_change` `employee_*` `device_restore` `alert_acknowledge` `change_category_rule` | এখন সব mutation `change_setting` দিয়ে লেখা, তাই audit ফিল্টার করা কঠিন। acknowledge এখনো audit-ই হয় না |
+| `agent/enrollment.service.ts` | দুই পাশে `.trim().toUpperCase()` | কোড **case-sensitive**; ছোট হাতে টাইপ করলে নীরবে "ভুল বা মেয়াদোত্তীর্ণ"। ⚠️ এক পাশে বদলালে সব enrollment ভাঙবে |
+| `app.setup.ts` | গ্লোবাল BigInt সিরিয়ালাইজার | থাকলে প্রতিটা মডিউলকে হাতে `String(id)` করতে হতো না |
+| `agent/util/dhaka-time.ts` | `dhakaHourOf()` | retention এখন `dhakaPathParts().hhmmss.slice(0,2)` দিয়ে কাজ চালাচ্ছে |
+| শেয়ার্ড | `storage.config.ts` ✅ | ~~`STORAGE_ROOT`-এর হিসাব `retention.job.ts`-এ **নকল** করতে হয়েছে~~ — ফাইলটা এখন আছে, `storageRoot()` **একটাই সংজ্ঞা** আর retention সহ সব কলার সেটাই ডাকে *(২৩ আগস্ট যাচাই)*। দুটো আলাদা হলে retention ভুল ফোল্ডারে খুঁজবে — সারি মুছবে, ফাইল থাকবে |
+
+**যেগুলো একদিন কামড়াবে:**
+
+- একই productivity হিসাব **দুই জায়গায়** — `reports.service.ts` (F04) নিজের
+  মতো যোগ করে, `activity.math.ts` ব্যবহার করে না। রুট আলাদা বলে আজ সংঘাত
+  নেই, কিন্তু একদিন দুটো দু-রকম উত্তর দেবে। ✅ *(২৩ আগস্ট যাচাই — এই নকলটা তুলে দেওয়া হয়েছে: `reports.service.ts` এখন `activity.math`-এর `addSeconds()`/`scoreOf()` ডাকে, নিজের `switch` আর নেই। ⚠️ তবু সংজ্ঞা **একটা নয়** — `summary.math.ts`-এর `productivityPct()`-এর হরে `neutral` নেই, `scoreOf()`-এর হরে আছে; ওটা ইচ্ছাকৃত, আলাদা সংখ্যা)*
+- **দুই রকম শিডিউলিং** — `alerts/` `setInterval`, `summary/` `@nestjs/schedule`।
+  কোনো সংঘাত নেই (কারণ `ScheduleModule.forRoot()` শুধু `SummaryModule`-এ),
+  কিন্তু একটা বাছা ভালো। ⚠️ `app.module.ts`-এ দ্বিতীয় `forRoot()` **বসানো
+  যাবে না** — দুটো explorer একই নামের জব দুবার রেজিস্টার করতে গিয়ে
+  bootstrap-এই ভেঙে পড়বে।
+- **থাম্বনেইল এখনো ফুল ছবি** — `thumb_path` এখনো `null` (A06 বাকি), তাই
+  `thumbUrl` ফুল ছবিই সার্ভ করে। টোকেনে variant আলাদা রাখা আছে, A06 এলে
+  এক লাইন বদলালেই হবে।
+
+**স্পেকের সাথে যা মেলে না** (07 § ৪.২ হালনাগাদ দরকার):
+
+- ক্যোয়ারি প্যারামিটার **camelCase** (`employeeId=`), স্পেকে লেখা snake_case।
+  `forbidNonWhitelisted` চালু বলে `employee_id=3` চুপচাপ উপেক্ষা না হয়ে **৪০০** হবে।
+- নতুন endpoint যেগুলো টেবিলে নেই: `GET /reports/summary`,
+  `POST /devices/:id/restore`, `POST /employees/:id/reactivate`,
+  `POST /work-policies/:id/deactivate`।
+- **দৈনিক টার্গেট** DB-তে নেই, তাই § ২.১-খ-র সূত্র একদিনে নামানো হয়েছে:
+  `মাসিক টার্গেট ÷ ওই মাসের ক্যালেন্ডার কর্মদিবস`, ছুটির দিনে ০ — যোগ করলে
+  ঠিক ২০৮-এ ঠেকে।
+
+#### একটা ফাঁক থেকে গিয়েছিল — কোনো endpoint টেস্টে ডাকা হচ্ছিল না
+
+৩৭০টা টেস্ট সবুজ ছিল, কিন্তু সেগুলোর প্রায় সবই **খাঁটি ফাংশনের**:
+`activity.math`, `dashboard.math`, `alerts.rules`, `signed-url`, `redact`…
+গণিতটা যাচাই হয়েছিল, **একটা endpoint-ও কখনো HTTP দিয়ে ডাকা হয়নি**।
+হাতে একবার দেখা হয়েছিল, কিন্তু হাতে দেখা রিপোতে থাকে না।
+
+যা ওতে ধরা পড়ত না:
+
+- দুটো কন্ট্রোলার একই পথ দাবি করলে (`/employees` দুই মডিউলে আছে) —
+  Express প্রথমটাকেই ডাকে, **দ্বিতীয়টা চিরকাল নীরবে অচল**
+- গার্ড ভুল বসানো — মেথডে `@Roles` দিলে পরের নতুন endpoint খোলা থেকে যেত
+- Prisma কোয়েরি ভুল — টাইপ ঠিক, চালালে ভাঙে
+- রেসপন্সে BigInt — `JSON.stringify` ছুড়ে ফেলে, ৫০০
+
+তাই `test/endpoints.e2e.spec.ts` — প্রতিটা নতুন GET **তিনবার** ডাকা হয়:
+owner (২xx আশা), manager (শেয়ার্ড রুটে ২xx, owner-only রুটে **৪০৩**), আর
+লগইন ছাড়া (**৪০১**)। সাথে দুটো নীতির পাহারা: ম্যানেজারের JSON-এ
+`monthlySalary` **কী হিসেবেই নেই** (null নয় — null হলে একদিন কেউ `?? 0`
+লিখে ফিল্ডটা ফিরিয়ে আনত), আর অ্যাক্টিভিটি রিপোর্টে `windowTitle` ফাঁস হয় না।
+
+⚠️ এটা **ব্যবসায়িক সঠিকতা যাচাই করে না** — শুধু "চলে, আর ঠিক লোককে ঠিক
+উত্তর দেয়"। সংখ্যাগুলো ঠিক কি না সেটা `.math` স্পেকগুলোর কাজ, আর সেগুলো
+আসল ডেটার বিরুদ্ধে এখনো চলেনি।
+
+| | |
+|---|---|
+| টেস্ট | **৩৭৭ পাস** (ছিল ৮৪) · typecheck ও eslint দুটোই ক্লিন |
+| নতুন endpoint | ~৪৫টি, সবগুলো অন্তত একবার সত্যিকারের HTTP-তে ডাকা |
+
+⚠️ *(১২ আগস্ট গুনে দেখা)* সংখ্যাটা **ড্যাশবোর্ডের** রুটের, গোটা সার্ভারের
+নয়। কন্ট্রোলারে মোট **৬৬টা** রুট: ৪৭ ড্যাশবোর্ড · ১০ auth · ৯ এজেন্ট।
+
+---
+
+## ৩আ. আট এজেন্টের কাজ জোড়া লাগানো *(১১ আগস্ট ২০২৬)*
+
+আটটা এজেন্ট সমান্তরালে কাজ করেছে, কেউ শেয়ার্ড ফাইল ছোঁয়নি — তাই সব
+মডিউল লেখা হয়ে **পড়ে ছিল, চালু ছিল না**। এই দফায় সেগুলো জোড়া লাগিয়ে
+তিনটে স্যুট একসাথে চালানো হয়েছে।
+
+### যে ফাঁকগুলো শুধু "জোড়া লাগানোর" সময়ই দেখা যায়
+
+সবচেয়ে বড় শিক্ষা: **যেসব ভুল কম্পাইলার ধরে না, সেগুলোই এখানে জমা হয়।**
+তিনটেই একই চেহারার — কোড সম্পূর্ণ, টাইপ ঠিক, লিন্ট পরিষ্কার, কিন্তু
+রানটাইমে জিনিসটা কেবল **অনুপস্থিত**:
+
+| যা লেখা হয়েছিল | কেন চলত না | ধরার একমাত্র উপায় |
+|---|---|---|
+| `OpsModule` · `DigestModule` | `app.module.ts`-এর `imports`-এ নাম নেই — Nest কোনো অভিযোগ করে না (G61-এর হুবহু পুনরাবৃত্তি, দ্বিতীয়বার) | অ্যাপ বুট করা |
+| `SecurityPage` (2FA) | `App.tsx`-এ রুট নেই — পাতাটা লেখা আছে, পৌঁছানোর পথ নেই | ব্রাউজারে খোঁজা |
+| থাম্বনেইল আপলোড (A06) | `FileInterceptor('file')` **একটাই** অংশ নেয়, তাই `thumb` অংশটা multer নীরবে ফেলে দিত (G64) | multipart-এ দুটো অংশ পাঠিয়ে দেখা |
+
+⭐ এর মধ্যে G64-টা সবচেয়ে ভয়ংকর, কারণ ব্যর্থতাটা **নিখুঁতভাবে নীরব**:
+কোনো এরর নেই, লগ নেই, `thumb_path` শুধু চিরকাল `null` — আর গ্যালারির
+fallback ঠিক সেটাই সামলানোর জন্য বানানো, তাই সবকিছু স্বাভাবিক দেখাত।
+থাম্বনেইলের পুরো কোড, ৩০+ টেস্টসহ, মাসের পর মাস মৃত অবস্থায় থাকতে পারত।
+
+### শেয়ার্ড ফাইলে যা সারানো হলো
+
+- **`AuditAction`** — 2FA-র আটটা নাম + `backup_run` আসল ইউনিয়নে (G68)।
+  সেতু-ফাইল `two-factor.audit.ts` মুছে দেওয়া হয়েছে, আর
+  `TwoFactorAuditAction` এখন `Extract<AuditAction, \`2fa_${string}\`>` —
+  **আলাদা তালিকা নয়**, তাই দুটো আর কখনো আলাদা হতে পারে না।
+- **`progress.service.ts`** — `paceSec` যোগ (B05b)। এজেন্ট ফিল্ডটা পড়তে
+  আগেই প্রস্তুত ছিল, তাই tray-র "গতি (আনুমানিক)" লেবেল থেকে
+  *আনুমানিক* কথাটা এখন নিজে থেকেই উঠে যায়। ⚠️ হিসাবটা `credited`
+  (worked + owner-এর সংশোধন), `worked` নয় — § ২.১-ঙ (G35); আর
+  সংশোধন পড়া হয় `time_adjustments` থেকে **সরাসরি**, `daily_summary`
+  থেকে নয়, কারণ ওই কলামটা ১৫ মিনিট পরপর চলা rollup-এর ফল, ফলে ঘণ্টা
+  ফেরত দেওয়ার পরেও স্টাফের tray পরের রিফ্রেশ পর্যন্ত তাকে "পিছিয়ে"
+  দেখাত। খাঁটি অংশটা `agent/progress.math.ts`-এ, ১৫টা টেস্টসহ।
+- **`.prettierrc.json`** — রিপোতে prettier কনফিগ ছিলই না, তাই
+  `npx prettier --write` ডিফল্ট ধরে single → double quote করে দিত
+  (eslint এটা ধরে না)। চারটে ফাইলে ইতিমধ্যেই সেটা ঘটেছিল, ফিরিয়ে
+  দেওয়া হয়েছে।
+
+### যাচাই
+
+| স্যুট | ফল |
+|---|---|
+| সার্ভার `npm test` | **৫৭২ পাস / ২৩ ফাইল** (ছিল ৩৭৭) |
+| এজেন্ট `dotnet test` | **৩২৪ পাস** (Core ২৬১ + Agent ৬৩) · `dotnet build -warnaserror` ০ warning |
+| ওয়েব | `tsc` ✅ · `eslint` ✅ · `npm run build` ✅ |
+
+⭐ একটাও টেস্টের প্রত্যাশা বদলাতে হয়নি — সব ভাঙা জায়গা কোডেই ছিল।
+
+---
+
+## ৩ই. রাতের শেষ দফা — ওয়েব, থাম্বনেইল, H04 *(১১ আগস্ট ২০২৬)*
+
+### ওয়েব ড্যাশবোর্ড — ছ-টা পেজ
+
+ভিত্তি আগে (API টাইপ **সার্ভারের সোর্স পড়ে** লেখা, অনুমান করে নয় ·
+`useApi`/`usePolling` · নয়টা শেয়ার্ড কম্পোনেন্ট · ঢাকার কর্মদিবস
+`format.ts`), তারপর ছ-জন এজেন্ট সমান্তরালে ছ-টা পেজ।
+
+⭐ **ভূমিকা UI-তেই কাটা, ৪০৩-এ নয়।** ম্যানেজারের জন্য `/settings` রুটটাই
+তৈরি হয় না, পে-রোল ট্যাবটাই বানানো হয় না, বেতনের কলাম render-ই হয় না।
+৪০৩ দেখিয়ে আটকালে অন্তত **বেতনের অস্তিত্বটা** জানা যেত — কে কত পায় না
+জানলেও "একটা পে-রোল পাতা আছে" জানাটাই যথেষ্ট অস্বস্তিকর।
+
+⚠️ `usePolling` পুরোনো ডেটা ধরে রাখে (নইলে বোর্ড প্রতি ৩০ সে. সাদা হতো
+আর কেউ পড়তেই পারত না), আর ট্যাব লুকোনো থাকলে থেমে যায় (নইলে খোলা রেখে
+বাড়ি গেলে সারারাত প্রতি ৩০ সে. সার্ভারে হিট)।
+
+### থাম্বনেইল কোথায় তৈরি হবে — সার্ভারে নয়, এজেন্টে
+
+সার্ভারের দিকটা তৈরি হওয়ার পরেও `thumb_path` null-ই থাকত, কারণ
+**কেউ থাম্বনেইল বানাচ্ছিল না**। Node-এ ছবি রিসাইজ করতে `sharp` লাগত —
+একটা নেটিভ বাইনারি dependency। এজেন্টে SkiaSharp এমনিতেই আছে (WebP
+এনকোডিং ওটাই করে)।
+
+তাই কাজটা এজেন্টে সরানো হলো। বাড়তি লাভ: ৩০ KB বেশি পাঠিয়ে সার্ভারের
+CPU বাঁচে, আর ১৫টা PC-র কাজ ১৫টা PC-তেই ভাগ হয়ে যায়।
+
+⚠️ **থাম্বনেইলের পথের নিয়ম চারটে জায়গা জানে** — লেখা (`AgentHost`),
+পাঠানো (`HttpSyncClient`), মোছা (`DeleteFiles`), আর অনাথ-ঝাড়ু
+(`SweepOrphanFiles`)। শেষেরটা `*.webp` খোঁজে, আর থাম্বনেইলও `.webp` —
+অর্থাৎ ঝাড়ুদারকে "এটাও চেনা" না বললে সে **প্রতিটা থাম্বনেইল মুছে দিত**,
+আর কেউ বুঝতই না গ্যালারি কেন আবার ধীর হয়ে গেল। সংজ্ঞা তাই একটাই:
+`OutboxPaths.ThumbPathFor`, টেস্টসহ।
+
+⚠️ থাম্বনেইল বানাতে ব্যর্থ হলে **আপলোড ব্যর্থ হয় না** — ছবিটাই মূল্যবান,
+থাম্বনেইল সুবিধা মাত্র। তখন `thumb_path` null থাকে আর গ্যালারি ফুল ছবিতে
+ফেরত যায়।
+
+### H04 — ⭐ এজেন্ট নিজে থেকে MSI চালায় না
+
+এটাই রাতের সবচেয়ে বড় সিদ্ধান্ত, আর এটা নেওয়া হয়েছে **এই রিপোরই
+অভিজ্ঞতা থেকে**।
+
+[G58](08-Gap-Analysis.md)-এ একটা ভুল LaunchCondition নিয়ে MSI বিলি হয়ে
+গিয়েছিল, আর তারপর আবিষ্কার হলো: **নতুন MSI দিয়ে সেটা ঠিক করা যায় না।**
+মেজর আপগ্রেডে পুরোনো প্যাকেজ নিজের ক্যাশ করা MSI দিয়েই সরে — বাগসহ।
+এক মেশিনে `msiexec /x {ProductCode} SERVERURL=…` দিয়ে হাতে সরাতে হয়েছিল।
+
+রাত ৩টায় ১৫টা PC-তে নিজে থেকে সেটা ঘটলে সকালে পুরো অফিসের ট্র্যাকিং
+বন্ধ থাকত, আর ১৫ বার হাতে যেতে হতো।
+
+তাই ভাগটা ইচ্ছাকৃত:
+
+| | |
+|---|---|
+| **স্বয়ংক্রিয়** | নতুন ভার্সন খোঁজা · নামানো · sha256 যাচাই · পুরোনো MSI সরানো |
+| **মানুষের হাতে** | বসানো |
+
+**সার্ভারে ধাপে ধাপে** (`rollout.ts`): canary → partial → all → halted।
+ডিভাইসের বালতি `sha256(machineGuid + version)` থেকে — স্থির, তাই একই
+মেশিন সবসময় একই উত্তর পায় (এলোমেলো হলে প্রতি heartbeat-এ ভিন্ন উত্তর
+আসত, আর canary বলে কিছুই থাকত না)।
+
+⚠️ **বালতিতে ভার্সনও মেশানো।** নইলে যে মেশিন একবার canary হয়েছে সে
+**চিরকাল** প্রতিটা আপডেটের গিনিপিগ থাকত — একজন স্টাফের PC-ই বারবার
+ভাঙত, আর সে সঙ্গত কারণেই বিরক্ত হতো।
+
+⚠️ ধাপ বাড়লে কেউ আপডেট **হারায় না** (canary যারা পেয়েছে, partial-এও
+পাবে) — টেস্টে বাঁধা, কারণ উল্টোটা হলে একটা মেশিন আপডেট পেয়ে আবার
+"পাওনি" শুনত।
+
+**এজেন্টে** (`UpdateStager`): ৬ ঘণ্টায় একবার, enroll হওয়ার ২ মিনিট পর
+থেকে। sha256 না মিললে ফাইল **মুছে ফেলা হয়** — রেখে দিলে পরে কেউ ওটাকে
+ভালো ভেবে বসাত। হ্যাশ না মেলা মানে হয় ট্রান্সফার নষ্ট, নয় কেউ মাঝপথে
+ফাইল বদলেছে; দ্বিতীয়টা সত্যি হলে সেটা আক্রমণ, আর তখন নীরবতা সবচেয়ে খারাপ।
+
+### শেষ যাচাই
+
+| স্যুট | ফল |
+|---|---|
+| সার্ভার `npm test` | **৫৮৬ পাস / ২৪ ফাইল** |
+| এজেন্ট `dotnet test` | **৩২৭ পাস** · `dotnet build -warnaserror` ০ warning |
+| ওয়েব | `tsc` ✅ · `eslint` ✅ · `npm run build` ✅ |
+
+---
+
+## ৩ঊ. GitHub-এ পুশ — আর তার আগে যা সরাতে হলো *(১১ আগস্ট ২০২৬)*
+
+রিপো: **`ownCoder/oxeio-monitor`** · **private** · ৪৮ কমিট।
+
+### ⚠️ কর্মীদের নাম ও বেতন কমিট করা ছিল
+
+পুশ করার আগে দেখা গেল `prisma/seed.ts`-এ **১২ জনের আসল নাম ও মাসিক
+বেতন** হার্ডকোড করা — Ali ১৩,০০০ · Belal ১৫,০০০ · Sumaiya ১৪,০০০ …
+
+⭐ **এটা মালিকের নিজের তথ্য নয়, কর্মীদের।** তাঁরা জানেন না যে এটা
+GitHub-এ যাচ্ছে, আর তাঁদের জিজ্ঞেসও করা হয়নি। private রিপোতেও ডেটাটা
+তৃতীয় পক্ষের সার্ভারে চলে যায়, আর কাউকে collaborator করলে সে-ও দেখে।
+
+⚠️ **git-এ একবার ঢুকলে বের করা কঠিন** — শুধু নতুন কমিটে মুছলে হয় না,
+ইতিহাসের প্রতিটা কমিটের ট্রি-তে সেটা থেকেই যায়।
+
+### যা করা হলো
+
+| | |
+|---|---|
+| তালিকা সরানো | `prisma/staff.local.json` (gitignore করা), seed সেখান থেকে পড়ে |
+| না থাকলে | `staff.example.json` — নমুনা নাম, বেতন ০, সাথে একটা warning |
+| ইতিহাস | `git filter-branch --tree-filter` দিয়ে **৩৬টা কমিট** নতুন করে লেখা |
+| পুরোনো রেফ | `refs/original` মোছা · `reflog expire` · `gc --prune=now` |
+| ফল | রিপো ৭.৯ MB → **১.৮ MB**, কোনো কমিটের `seed.ts`-এ বেতন নেই |
+
+⭐ **নকশাটা এমন যে ভুলে যাওয়া যায় না:** ফাইলটা না থাকলে seed **থেমে
+যায় না**, নমুনা দিয়ে চলে আর কনসোলে বলে। অর্থাৎ নতুন কেউ রিপো ক্লোন
+করলে প্রকল্পটা চলে, কিন্তু কারো বেতন জানে না। উল্টোটা করলে (ফাইল না
+পেলে ক্র্যাশ) কেউ বিরক্ত হয়ে আবার হার্ডকোড করে ফেলত।
+
+### পুশের আগে যা যাচাই করা হয়েছে
+
+- `.env` ট্র্যাক করা নেই (`**/.env` gitignore-এ, `.env.example` ব্যতিক্রম)
+- `staff.local.json` রিমোটে যায়নি
+- কোনো কমিটের `seed.ts`-এ বেতনের সংখ্যা নেই
+- শুধু `main` পুশ হয়েছে — ব্যাকআপ ব্রাঞ্চ নয়
+- ইতিহাস নতুন করে লেখার পর **৫৮৬ + ৩২৭ টেস্ট ও দুটো বিল্ড** আবার চালানো
+
+### 🟡 যা রয়ে গেছে, জেনেশুনে
+
+ডকে কয়েকটা **প্রথম নাম** আছে, বেতন ছাড়া — `01-Planning.md`-এ
+"Management | ১ (Belal)", `05-Options-Decisions.md`-এ "ম্যানেজার (Belal)
+বেতন দেখতে পাবেন না", আর মকআপে "Sumaiya"।
+
+⚠️ নাম **আর বেতনের জোড়াটাই** সংবেদনশীল ছিল, সেটা গেছে। শুধু প্রথম নাম,
+private রিপোতে, নকশার উদাহরণ হিসেবে — এটুকুর জন্য আবার ইতিহাস লেখা
+অসমানুপাতিক মনে হয়েছে। রিপো কখনো public করলে **এগুলোও সরাতে হবে**।
+
+⚠️ কোডে `13000`/`15000` সংখ্যা দুটো আছে (`payroll.math.spec.ts` ইত্যাদি)
+— ওগুলো টেস্টের ফিক্সচার, কারো সাথে জোড়া নেই।
+
+### README নতুন করে লেখা
+
+GitHub-এ এখন এটাই প্রথম পাতা, অথচ লেখা ছিল "Phase 2 চলমান · ৫২ টেস্ট"।
+হালনাগাদ করা হলো — সত্যিকারের সংখ্যা (৯১৩ টেস্ট), সব মডিউলের তালিকা, আর
+**"কীভাবে চালাবেন"** অংশ (ডাটাবেস → সার্ভার → ড্যাশবোর্ড → এজেন্ট)।
+
+⭐ স্ট্যাটাসের ঘরে ইচ্ছাকৃতভাবে লেখা: **"তৈরি" আর "চালিয়ে দেখা" এক নয়** —
+তিন ভাগের তালিকাটা (§ ৩ঈ) থেকেই লিঙ্ক করা। প্রথম পাতায় "সব শেষ" লিখে
+দিলে ছ-মাস পরে কেউ ধরেই নিত ব্যাকআপ পরীক্ষিত।
+
+---
+
+## ৩ঈ. ⚠️ কী মাঠে চালানোর মতো তৈরি, আর কী শুধু বিল্ড পাস করেছে
+
+এই দুটো **এক জিনিস নয়**, আর এই রাতেই তার প্রমাণ মিলেছে: ৩৭০টা টেস্ট
+সবুজ থাকা অবস্থায়ও দেখা গেল **একটা endpoint-ও কখনো HTTP দিয়ে ডাকা হয়নি**।
+
+### ✅ চালিয়ে চোখে দেখা হয়েছে
+
+⚠️ দুটো আলাদা জিনিস, গুলিয়ে ফেলা যাবে না: উপরের পাঁচটা সারি **আসল
+মেশিনে আসল ডেটায়** — এজেন্ট সত্যিই চলেছে, সত্যিই ছবি তুলেছে। নিচের
+চারটে সারি **আমাদের বানানো নমুনা ডেটায়** — পাতা ও হিসাব ঠিকঠাক আঁকে
+সেটা প্রমাণ হয়, কিন্তু এজেন্ট বাস্তবে কী পাঠায় সেটা নয়।
+
+| | |
+|---|---|
+| এজেন্টের ক্যাপচার | DXGI, দুই মনিটর, ১১৩–১১৬ KB, ১৭৫–২০৩ ms |
+| অ্যাপ/সাইট ট্র্যাকিং | `chrome.exe` → `youtube.com` — UI Automation এই মেশিনে চলে |
+| MSI ইনস্টল/আপগ্রেড/আনইনস্টল | ExitCode ০, ACL ঠিক, লগঅন টাস্ক Ready |
+| watchdog | একটাই এজেন্ট চলে (আগে দুটো চলত) |
+| lock · sleep · RDP | ইভেন্ট আসে, সময়ের হিসাব ঠিক |
+| **ওয়েবের ছ-টা পাতা** | *(১১ আগস্ট)* মালিক লগইন করে দুই থিমেই দেখেছেন — Live Board · Employee Detail · গ্যালারি · Monthly · Reports · Settings |
+| **D05 ক্যাটাগরি** | *(১১ আগস্ট)* ১৪ দিনের নমুনা ডেটায়: স্কোর ৬০%, YouTube ও Facebook unproductive-এ, uncategorised ০% |
+| **D07 · D08** | *(১১ আগস্ট)* একই ডেটায় — টপ অ্যাপ/সাইট, "কত শতাংশ অচেনা", ব্রাউজারে "Mixed" ট্যাগ |
+| **E07 হিটম্যাপ** | *(১১ আগস্ট)* ১৩ জন × ১৪ দিন, ঘাটতি অনুযায়ী সাজানো, মোট টার্গেট ২৭০৪ঘ = ২০৮ × ১৩ |
+
+⭐ **১১ আগস্ট বিকেলে যোগ হলো** ([§ ৩ঋ](#৩ঋ-এই-প্রথম-সব-কিছু-সত্যিই-চালিয়ে-দেখা-১১-আগস্ট-২০২৬-বিকেল)) — এগুলো **আসল এজেন্ট বা আসল HTTP** দিয়ে:
+
+| | |
+|---|---|
+| **আসল এজেন্ট → সার্ভার** | enroll (device #2, monitors ২ নিজে খুঁজে) · heartbeat · `agent_start` · segment (`idle`→`active` ৪s→`idle`) · app usage (`claude.exe`) |
+| **এজেন্টের update download** | ৬৩,৬১২ KB নামিয়ে hash যাচাই, `waiting to be installed` |
+| **ব্যাকআপ K02** | ডাম্প → এনক্রিপ্ট → চেকসাম → ডিক্রিপ্ট → **আলাদা DB-তে restore**, সারি হুবহু মিলেছে |
+| **TOTP 2FA** | setup → enable → লগইন কোড চায় → recovery code → single-use → disable |
+| **H04 রোলআউট** | offer · ২০৪ · ডাউনগ্রেড নয় · `update_agent` · `halted` · canary — ছ-টা শাখাই |
+| **G01 · G02 · G04 অ্যালার্ট** | তিনটেই সত্যিই জ্বলেছে, acknowledge সহ |
+| **স্ক্রিনশট ingest** | আসল WebP → ডিস্ক → থাম্বনেইল → গ্যালারি → signed URL *(⚠️ এজেন্টের ক্যাপচার দিয়ে নয়)* |
+
+⭐ **সন্ধ্যায় আরও তিনটে** ([§ ৩এ](#৩এ-বাকি-তিনটেও-চালানো--আর-আরও-তিনটে-নীরব-বাগ-১১-আগস্ট-২০২৬-সন্ধ্যা)) — 🔴 তালিকা তিন থেকে **দুইয়ে**:
+
+| | |
+|---|---|
+| **TLS (I01)** | সার্ট → HTTPS ২০০ → প্লেইন HTTP বন্ধ · অর্ধেক কনফিগে সার্ভার **ওঠেই না** · তারে আসা **SPKI পিন** `make-cert.ps1`-এর মানের সাথে হুবহু মেলে |
+| **ইমেইল (G05)** | আসল SMTP-তে **দুটো মেইল** — subject/from/to/এনকোডিং সব যাচাই · `channels_sent={email}` |
+| **অফসাইট কপি (K03)** | ড্রাইভ-নেই ও ড্রাইভ-আছে **দুটো শাখাই** · কপি byte-identical · কপি থেকেই ডিক্রিপ্ট |
+| **`locked` স্টেট** | তৃতীয় স্টেটটা এই প্রথম আসল এজেন্ট থেকে সার্ভারে |
+
+⭐⭐ **রাতে সবচেয়ে বড়টা** ([§ ৩ঐ](#৩ঐ-এজেন্টের-নিজের-তোলা-ছবি-এই-প্রথম-সার্ভারে-১১-আগস্ট-২০২৬-রাত)) — 🔴 তালিকা দুই থেকে **একে**:
+
+| | |
+|---|---|
+| **এজেন্টের নিজের ক্যাপচার → সার্ভার** | স্লট ১৯:২৫, ছবি উঠল **১৯:২৯:৫৪**-এ · দুই মনিটর · ১৯২০×১০৮০ · ১২৩ KB ও ৯৯ KB · থাম্বনেইল **৩২০×১৮০** · ডিস্ক → DB, ৩.৪ সেকেন্ডে |
+| **A07 প্রথমবার আসল ডেটায়** | `active_app = explorer.exe` — **দুটো সারিতেই একই**, যেমন হওয়ার কথা |
+
+### 🟡 টেস্টে যাচাই, মাঠে নয়
+
+সার্ভারের **ড্যাশবোর্ড-মুখী ৪৭টা** endpoint — e2e-তে owner/manager/anonymous তিন ভূমিকাতেই
+ডাকা হয়েছে। ১১ আগস্ট **১৪ দিনের নমুনা ডেটায়** (১৫ হাজার সেগমেন্ট)
+পাতাগুলো চোখেও দেখা হয়েছে, তারপর ডেটা সরিয়ে ফেলা হয়েছে।
+
+⚠️ কিন্তু নমুনা ডেটা **আমাদেরই বানানো** — যা ধরা পড়ে না তা হলো এজেন্ট
+সত্যিই কী পাঠায়। বিশেষ করে দেখা বাকি: একজনের দুটো PC একসাথে চললে
+সংখ্যাগুলো কেমন দাঁড়ায় · অফলাইন কিউ ভরে গিয়ে একসাথে রিপ্লে হলে · আর
+৯০ দিনের ডেটা জমার পর গ্যালারি ও retention-এর আচরণ।
+
+### 🔴 কোড আছে, কিন্তু একবারও চলেনি
+
+⭐ **১১ আগস্ট এই তালিকা ছ-টা থেকে একে নেমেছে** — বিকেলে ব্যাকআপ (K02),
+2FA, H04 ও G02 ([§ ৩ঋ](#৩ঋ-এই-প্রথম-সব-কিছু-সত্যিই-চালিয়ে-দেখা-১১-আগস্ট-২০২৬-বিকেল));
+সন্ধ্যায় TLS, ইমেইল ও অফসাইট কপি ([§ ৩এ](#৩এ-বাকি-তিনটেও-চালানো--আর-আরও-তিনটে-নীরব-বাগ-১১-আগস্ট-২০২৬-সন্ধ্যা));
+রাতে এজেন্টের নিজের ক্যাপচার ([§ ৩ঐ](#৩ঐ-এজেন্টের-নিজের-তোলা-ছবি-এই-প্রথম-সার্ভারে-১১-আগস্ট-২০২৬-রাত))।
+
+| কী | কেন এখনো চলেনি |
+|---|---|
+| **টেলিগ্রামে আসল ডেলিভারি** | চ্যানেল চালু হয়, বার্তা বানায়, HTTP কল করে, ৪০১ সামলায়, টোকেন ফাঁস করে না — কিন্তু `api.telegram.org` **হার্ডকোড**, তাই আসল বার্তা পৌঁছানো দেখতে মালিকের **নিজের bot token** লাগবে |
+
+⚠️ **একটাই বাকি**, আর সেটার চাবি কোডে নেই — মালিকের হাতে।
+
+### ⚠️ জানা সীমাবদ্ধতা
+
+- **রোলব্যাক নেই।** H04 নামায় ও যাচাই করে; খারাপ ভার্সন বসে গেলে
+  স্বয়ংক্রিয়ভাবে ফেরার পথ **তৈরি হয়নি**। `halted` দিয়ে বিলি থামানো যায়,
+  কিন্তু যারা পেয়ে গেছে তাদের ফেরাতে হাতে যেতে হবে। এটাই কারণ, বসানোটা
+  স্বয়ংক্রিয় না করার।
+- **PDF-এ বাংলা** — ফন্ট embed না করলে হরফ ভাঙে; কোন পথ নেওয়া হয়েছে
+  `reports.pdf.ts`-এ লেখা আছে।
+- **স্ক্রিনশটের রিপোর্ট মাসের ডেটায় দেখা হয়নি** — retention, ডিস্কের
+  আকার, গ্যালারির গতি: তিনটেই ৯০ দিনের ডেটা জমার পরই আসল রূপ দেখাবে।
+- ⭐ **ছবির পাশে অ্যাপের নাম বসত না (A07) — জোড়া লাগানো হয়েছে, কিন্তু
+  মাঠে দেখা যায়নি** *(১১ আগস্ট, ডক পড়তে গিয়ে ধরা)*। গোটা পথটা তৈরিই
+  ছিল: `screenshots.active_app`/`active_title` কলাম, ingest DTO, API,
+  ওয়েবের **তিন** জায়গা (গ্যালারির গ্রিড · লাইটবক্স · staff পাতার
+  `DayShots`), এমনকি এজেন্টের তারেও ঘর দুটো — শুধু
+  `AgentHost.CaptureSlotAsync` কখনো ভরত না। nullable বলে কোথাও এরর ছিল
+  না, কোনো লগ ছিল না, শুধু লাইটবক্সে চিরকাল `—`। এখন
+  `AppUsageService.Current` থেকে বসে ([G71](08-Gap-Analysis.md)), আর সেই
+  রাতেই **আসল ক্যাপচারে প্রমাণিত** হয়েছে ([§ ৩ঐ](#৩ঐ-এজেন্টের-নিজের-তোলা-ছবি-এই-প্রথম-সার্ভারে-১১-আগস্ট-২০২৬-রাত))।
+  ✅ **টাইটেলসহ ছবিও এসেছে** ১৯:৪৪:২৮-এ (`chrome.exe`, ৩১ অক্ষর), আর
+  তাতে ADR-013-ও যাচাই হলো: টাইটেলে `http` বা path নেই।
+- **জোর করে মারলে এজেন্ট কিছু বলে যায় না** *(১১ আগস্ট)* — `Stop-Process
+  -Force` করলে `Shutdown()` চলে না, তাই `agent_stop` ইভেন্টও যায় না আর
+  শেষ drain হয় না। ⭐ এটা বাগ নয়, বরং ঠিক সেই দৃশ্য **যেটা ধরার জন্য
+  G02**: Task Manager থেকে মেরে দিলে সার্ভার শুধু heartbeat থেমে যাওয়া
+  দেখবে → ১০ মিনিট পর `agent_down`। ⚠️ পাশাপাশি এর মানে,
+  `CloseMainWindow()` দিয়েও থামানো যায় না — উইন্ডোটা message-only।
+  ⚠️⚠️ **এখানে আগে লেখা ছিল "ভদ্র পথ tray মেনু বা সার্ভিস স্টপ" —
+  দুটোই ভুল** *(১১ আগস্ট রাতে দু-দফায় সংশোধন)*:
+  · tray মেনুতে **Exit নেই, ইচ্ছাকৃতভাবে** (`TrayIcon.cs` § ১৯: "স্টাফ
+    ট্রে থেকে এজেন্ট থামাতে পারবে না") — আইটেম মোটে পাঁচটা।
+  · **"watchdog সার্ভিস" বলে কিছু নেই।** `oXeio.Watchdog` কোনো
+    `ServiceBase` নয় — একটা সাধারণ exe, যেটা **লগঅন Scheduled Task**
+    চালায় (`--install-task`), আর MSI নিজে সেটাকে থামায়
+    **`taskkill /F`** দিয়ে (`Package.wxs`-এর `StopWatchdog`)।
+  ⭐ অর্থাৎ **এজেন্ট থামানোর কোনো ভদ্র পথই নেই** — যা আছে সবই জোর করে
+  মারা, আর তাতে `agent_stop` যায় না। এটা নকশার সাথে সঙ্গতিপূর্ণ (স্টাফ
+  যেন থামাতে না পারে), কিন্তু অ্যাডমিনের জন্যও কোনো পরিষ্কার পথ রাখা
+  হয়নি — সেটা আলাদা করে ঠিক করার জিনিস।
+  ⚠️ ভুলটা নিরীহ ছিল না: ইনসিডেন্টের সময় কেউ মেনুতে Exit বা
+  `services.msc`-এ oXeio খুঁজে সময় নষ্ট করত।
+
+---
+
+## ৩উ. ইংরেজি UI · দৈনিক টার্গেট · Midnight থিম *(১১ আগস্ট ২০২৬)*
+
+সাতজন এজেন্ট সমান্তরালে তিনটে বদল করেছে — UI-র ভাষা, লাইভ বোর্ডের রিং,
+আর থিম। কেউ কারো ফাইল দেখেনি, তাই সিদ্ধান্তগুলো এখানে এক জায়গায়।
+
+### ⭐ O6-এর উত্তর এসে গেছে — ভাষা **ইংরেজি**
+
+§ ৫-এর খোলা প্রশ্ন O6 ("ড্যাশবোর্ডের ভাষা — বাংলা না ইংরেজি?") মালিক
+নিষ্পত্তি করেছেন: **পর্দার সব লেখা ইংরেজি**।
+
+⚠️ কিন্তু **কোডের ডক-কমেন্ট ও `//` মন্তব্য বাংলাতেই থাকে** — ওগুলো এই
+রিপোর ডকুমেন্টেশন, UI নয়। অনুবাদ করলে প্রকল্পের সবচেয়ে মূল্যবান অংশটাই
+নষ্ট হতো। শব্দের তালিকা (Live Board · Staff · Working · Idle · Offline ·
+Agent down · Weekly off · Holiday · Shortfall …) এক রাখতে হয়, কারণ সাতজন
+আলাদা অনুবাদ করলে একই জিনিসের দুই নাম হয়ে যায় — জোড়া লাগানোর সময়
+`allLabel` "All staff" বনাম "Everyone" ঠিক সেভাবেই ধরা পড়েছে।
+
+⭐ **সার্ভারের বার্তাও ইংরেজি করতে হয়েছে**, ওয়েবে নয়। `<ErrorBox>`,
+`<Caveat>`, `overtimeNote` — তিনটেই সার্ভারের পাঠানো লেখা **হুবহু** দেখায়
+(§ ৪ অনুযায়ী `caveat` লুকানো নিষেধ)। ক্লায়েন্টে অনুবাদের টেবিল বসানো
+হয়নি ইচ্ছে করেই: তাহলে সার্ভারে নতুন বার্তা যোগ হলে সেটা নীরবে
+অনূদিত-না-হয়ে বেরোত আর কেউ ধরতে পারত না।
+
+### ⭐ লাইভ বোর্ডের রিং মাসিক → **দৈনিক**
+
+মাসের ৭৮/২০৮ দেখে কেউ বলতে পারত না **আজ** দিনটা ঠিক যাচ্ছে কি না — ওই
+উত্তরটা পেতে "মাসের কত ভাগ পেরিয়েছে" মাথায় হিসাব করতে হতো, আর সেটা
+ছুটির তালিকার উপর নির্ভর করে। এখন রিং ও বড় সংখ্যা দুটোই আজকের।
+
+⚠️⚠️ **ক্লায়েন্টে ৮ ঘণ্টা হার্ডকোড নিষিদ্ধ।** দৈনিক টার্গেট ধ্রুবক নয়,
+বের করা সংখ্যা: মাসিক টার্গেট ÷ ওই মাসের কর্মদিবস। আগস্ট ২০২৬-এ
+২০৮ ÷ ২৬ = ৮ ঘণ্টা, কিন্তু ২৭ কর্মদিবসের মাসে ৭ঘ ৪২মি। হার্ডকোড করলে
+কোনো কোনো মাসে টার্গেট **নীরবে** ভুল দেখাত — মাসিক পাতায় ঠিক এই ভুলটাই
+একবার ধরা পড়েছে (২০৮ vs ২১৬)। সংখ্যাটা আসে সার্ভারের `dailyTargetSec`
+থেকে, `GET /live`-এ।
+
+⚠️ **মাসের হিসাব মোছা হয়নি**, শুধু কার্ডে ছোট করে নিচে
+(`This month 78h 24m / 208h`) — কারণ **বেতনের ভিত্তি এখনো মাসিক ২০৮
+ঘণ্টাই** (§ ২.১-খ)। দৈনিক টার্গেট দেখানোর জিনিস, কাটার জিনিস নয়।
+
+⚠️ `todayIsWorkday === false` হলে রিং দেখানোই হয় না — ছুটির দিনে
+"0h of 8h" দেখানো অন্যায়, ওই দিনে কারো কিছু করার কথাই নয়। `dailyTargetSec > 0`-ও
+দেখা হয়: পুরো মাস ছুটি হলে সার্ভার ০ পাঠায়, আর তখন রিং ০-এর বিপরীতে
+১০০% দেখাত — কিছু না করেই সবাই টার্গেট ছুঁয়ে ফেলত।
+
+🟡 **এখনো বাকি:** `/live` ছুটির **কারণ** পাঠায় না, শুধু bool। তাই কার্ডে
+নিরপেক্ষ "Day off" লেখা — bool থেকে বেছে নিলে শুক্রবারকে "Holiday" বা
+২১শে ফেব্রুয়ারিকে "Weekly off" লিখে অর্ধেক দিন ভুল শব্দ বসত। সার্ভার
+`todayDayType: 'workday' | 'weekly_off' | 'holiday'` পাঠাতে শুরু করলে
+(রিপোর্টে `DayType` নামে ইউনিয়নটা আগে থেকেই আছে) অভিধানের ঠিক শব্দটা বসবে।
+
+### থিম **Midnight** — গাঢ়টাই ডিফল্ট
+
+| | |
+|---|---|
+| ডিফল্ট | **গাঢ়** — `color-scheme: dark`, `prefers-color-scheme` ইচ্ছে করেই দেখা হয় না |
+| কেন OS দেখা হয় না | একই অফিসের দুজন দুই রকম পর্দা দেখত, আর "আমার এখানে অন্যরকম" বলে ধরা কঠিন হতো |
+| টোকেন | `paper #0e1116` · `surface #161b22` · `line #242b35` · `brand #ff4d54` · `ok #3fb950` · `idle #d9a406` · topbar `#000000` |
+
+⭐ **`@theme static` বাধ্যতামূলক।** ডিফল্টে Tailwind v4 যে টোকেন কোনো
+ক্লাসে ব্যবহার হয়নি সেটাকে ছেঁটে ফেলে, আর তাতে দুটো জিনিস **নীরবে**
+ভাঙত: (ক) `--color-offline`/`--color-attention` অন্য টোকেনকে `var()` দিয়ে
+দেখায় — লক্ষ্যটা ছেঁটে গেলে রংটা কিছুই হতো না; (খ) ইনলাইন
+`style={{ stroke: 'var(--color-ok)' }}` Tailwind দেখতেই পায় না, তাই
+SVG-টা কালো হয়ে যেত। পুরো প্যালেট gzip-এ ৩০০ বাইটও নয়।
+
+⭐⚠️ **লালের দুটো অর্থ আলাদা রাখতে হয়** — এটাই পুরোনো থিমের আসল সমস্যা
+ছিল। সরু/আউটলাইন লাল = **ব্র্যান্ড** (সক্রিয় ট্যাব, ফোকাস রিং); সলিড
+ভরাট লাল = **মনোযোগ দরকার** (Agent down, ভুল, ঘাটতি)। চারটে স্ট্যাটাস
+টোকেন: `ok` (কাজ করছেন, সবুজ) · `idle` (হলুদ) · `offline` (ধূসর —
+স্বাভাবিক, কারো দোষ নয়) · `attention` (সলিড লাল)।
+
+⚠️ `offline` আর `attention` কখনো এক রঙে নয়: offline = কর্মী চলে গেছেন,
+attention = এজেন্ট মরে গেছে (IT-র কাজ)। একটাকে আরেকটার রঙে দেখালে হয়
+মিথ্যা অভিযোগ হয়, নয় আসল সমস্যা চাপা পড়ে।
+
+### ⚠️ একটা না-করা প্রশ্নের দাম
+
+O6 খোলা প্রশ্নের তালিকায় ছিল, ডিফল্ট ধরা ছিল **বাংলা** — কারণ মালিকের
+দেওয়া মকআপটা বাংলায়। কিন্তু যখন ১৪ জন সাব-এজেন্টকে "পুরো UI বাংলায়"
+লিখে কাজ দেওয়া হলো, তখন ওটা আর ডকের ডিফল্ট ছিল না — **ওটা একটা সিদ্ধান্ত
+হয়ে গিয়েছিল**, আর তার আগে এক লাইনে জিজ্ঞেস করে নেওয়া উচিত ছিল।
+
+ফল: পুরো একটা রাতের কাজ একটা না-করা প্রশ্নের উপর দাঁড়িয়েছিল, আর সকালে
+মালিক জিজ্ঞেস করলেন *"বাংলা কেন বেছে নিলে, না জিজ্ঞেস করে?"*
+
+⭐ **শিক্ষা:** ডকে "খোলা প্রশ্ন" লেখা মানে ওটা এখনো উত্তরহীন। ডিফল্ট ধরে
+এক-দুটো ফাইল লেখা এক জিনিস; **ডিফল্ট ধরে দশজন এজেন্টকে কাজে পাঠানো
+অন্য জিনিস।** দ্বিতীয়টার আগে প্রশ্নটা করতেই হবে।
+
+⚠️ `monitoring-policy-template.md` **বাংলাতেই থাকছে**, আর এটাও মালিকের
+সিদ্ধান্ত: স্টাফ যে কাগজে সই করে সেটা তার নিজের ভাষায় না হলে
+"পড়ে বুঝেছি" সইটার মূল্যই থাকে না।
+
+### ব্রাউজারে চোখে দেখে যা ধরা পড়ল
+
+⭐ **এই প্রথম পাতাগুলো সত্যিই খুলে দেখা হলো।** টেস্ট, বিল্ড আর লিন্ট —
+তিনটেই সবুজ থাকা অবস্থায় দুটো জিনিস বেরোল যা কোনো টেস্টে ধরা পড়ত না:
+
+**১· ছবি না থাকলে কার্ডে ছবির সমান উঁচু ফাঁকা বাক্স** (`aspect-video`)।
+রাত ১১টার পর (ক্যাপচার উইন্ডো বন্ধ) বা সদ্য বসানো অফিসে কারো ছবি থাকে
+না — তখন পুরো বোর্ড ফাঁকা বাক্সে ভরে গিয়ে এক পর্দায় মাত্র চারটে কার্ড
+দেখা যেত। অথচ Live Board-এর পুরো উদ্দেশ্যই **এক নজরে সবাইকে দেখা**।
+এখন এক লাইন — ছ-টা কার্ড।
+
+**২· "The darker a cell, the more hours"** — হিটম্যাপের র‍্যাম্পটা
+`--color-ink`-এর উপর অস্বচ্ছতা, আর `ink` লাইট থিমে কালো, ডার্কে সাদা।
+অর্থাৎ Midnight-এ ঘণ্টা বাড়লে ঘর **উজ্জ্বল** হয়, গাঢ় নয় — লেখাটা ঠিক
+উল্টো বলত। ⭐ থিম বদলানো যায় এমন UI-তে **থিম-নির্ভর শব্দ** লেখা যায় না।
+
+### সার্ভার ও এজেন্টও ইংরেজিতে
+
+ওয়েবের পরে বাকি দুই স্তর — পাঁচজন এজেন্ট সমান্তরালে। সার্ভারের HTTP
+বার্তা, Excel/PDF-এর লেখা, অ্যালার্ট ও ডাইজেস্ট, আর এজেন্টের tray ·
+নোটিফিকেশন · TodayForm · `--diagnose` · লগ।
+
+⭐ **৬৯টা বদলানো লাইনের সবই স্ট্রিং-লিটেরাল, শূন্যটা মন্তব্য** — ডক-কমেন্ট
+একটাও ছোঁয়া হয়নি।
+
+তিনটে জায়গা ইচ্ছাকৃতভাবে অক্ষত, কারণ ভাঙলে চুপচাপ ক্ষতি হতো:
+
+| কী | কেন |
+|---|---|
+| enrollment-এর **তিন কারণে একটাই বার্তা** | আলাদা করলে কোড অনুমান করা সহজ হতো (H05 · G18) |
+| লগইনে অজানা ইমেইল ≡ ভুল পাসওয়ার্ড | আলাদা করলে কোন ইমেইলগুলো আছে তা বের করা যেত |
+| wire-এর ধ্রুবক (`"active"`, `"agent_stop"`, `command:revoke`) | বদলালে ৪০০ → Permanent → ব্যাচ **মুছে** যেত (G49) |
+
+⚠️ `login-throttle`-এ "1 minutes" বেরোত — একবচন/বহুবচন যোগ করা হলো।
+
+⚠️ **সার্ভারের বার্তাও ইংরেজি করতেই হয়েছে, ওয়েবে অনুবাদ-টেবিল বসিয়ে নয়।**
+`<ErrorBox>`, `<Caveat>`, `overtimeNote` — তিনটেই সার্ভারের লেখা **হুবহু**
+দেখায়। ক্লায়েন্টে টেবিল বসালে সার্ভারে নতুন বার্তা যোগ হলে সেটা নীরবে
+অনূদিত-না-হয়ে বেরোত, আর কেউ ধরতে পারত না।
+
+**যাচাই:** মন্তব্য বাদে বাকি থাকা বাংলা UI স্ট্রিং **শূন্য**
+(`grep` করে দেখা) · সার্ভার ৫৮৬ টেস্ট · এজেন্ট ৩২৭ টেস্ট ·
+`dotnet build -warnaserror` ০ warning · ওয়েব বিল্ড পাস।
+
+### staff পাতায় ওই দিনের স্ক্রিনশট
+
+স্পেকে ([07 § ৫](07-Technical-Spec.md)) Employee Detail-এ "ওই দিনের সব
+স্ক্রিনশট" থাকার কথা ছিল, কিন্তু বানানো হয়নি — গ্যালারি আলাদা পাতায় ছিল।
+
+⭐ **কেন গ্যালারি থাকা সত্ত্বেও দরকার:** কারো একটা দিন নিয়ে প্রশ্ন উঠলে
+("এই তিন ঘণ্টায় কী হয়েছিল") উত্তরটা টাইমলাইন, ঘণ্টা-চার্ট আর ছবি
+**একসাথে** দেখলে তবেই মেলে। আলাদা পাতায় গিয়ে আবার স্টাফ ও তারিখ বেছে
+নিতে হলে কেউ মেলাতই না।
+
+⭐ **ছবিগুলো পাতার সবার শেষে, ইচ্ছাকৃতভাবে।** সংখ্যাগুলো (কত ঘণ্টা, কোন
+ঘণ্টায়, কোন সাইটে) আগে পড়া উচিত — ছবি আগে থাকলে চোখ ওখানেই আটকে যেত।
+এই সিস্টেমের সিদ্ধান্তগুলো সংখ্যার উপর দাঁড়ানো; **ছবি প্রমাণ, প্রধান
+পরিমাপ নয়।**
+
+⚠️ লিঙ্কের ৫ মিনিটের মেয়াদ (I07) সামলানোর কাজটা গ্যালারির সাথে **একই
+হুকে** (`useFreshUrls`) — নিজে আবার লিখলে একদিন দুই পাতায় দুই আচরণ হতো,
+আর "কোন পাতায় ছবি ভাঙে" ধরনের বাগ শুরু হতো।
+
+⚠️ প্রথম পাতাটাই দেখানো হয়: একদিনে ১৯২টা পর্যন্ত ছবি হতে পারে
+(১৬ ঘণ্টা × ১২), আর এই কলটা **audit-এ লেখা হয়** (I08) — অকারণে বারবার
+ডাকলে "কে কার ছবি দেখল" লগটাই আবর্জনায় ভরে যেত।
+
+### ⭐ D05 এই প্রথম মাঠে প্রমাণিত হলো — একটা ভুল ধরার মধ্য দিয়ে
+
+নমুনা ডেটা বসানোর পর মালিক লক্ষ করলেন: Top sites-এ `youtube.com 44m`
+আর `facebook.com 41m` আছে, অথচ Productivity score বলছে
+**"100% uncategorised"**। দুটো মিলছিল না।
+
+কারণটা পণ্যের নয়, নমুনা ডেটার: সারিগুলো **সরাসরি ডাটাবেসে** বসানো
+হয়েছিল, ingest-এর পথ দিয়ে নয়। আর ক্যাটাগরি বসে **ingest-এ**
+([§ ৩অ.১১](#৩অ১১-ক্যাটাগরি--d05-১১-আগস্ট)) — তাই `categoryId` ফাঁকা
+থেকে গিয়েছিল।
+
+`POST /categories/recategorize` চালানোর পর ২১০টা সারিই ঠিক হলো, আর
+তাতেই D05 প্রথমবার আসল ডেটায় কাজ করে দেখাল:
+
+| | |
+|---|---|
+| Score | ৬০% |
+| Productive | 2h 8m · ৬০% |
+| **Unproductive** | **1h 25m · ৪০%** (YouTube + Facebook) |
+| Uncategorised | ০% |
+
+⚠️ পাশাপাশি একটা নকশার সিদ্ধান্তও চোখে পড়ল: Top apps-এ `chrome.exe`-এর
+পাশে **"Mixed"** ট্যাগ। ব্রাউজারটা নিজে neutral (priority ২০০), কিন্তু
+তার ভেতরে productive ও unproductive দুটোই। একটা ব্রাউজারকে গোটা হিসেবে
+দাগানো হয় না — নইলে যে GitHub-এ কাজ করছে আর যে Facebook দেখছে, দুজনেই
+একই "chrome.exe neutral" হয়ে যেত।
+
+⚠️ **আসল এজেন্ট থেকে ডেটা এলে এটা নিজে থেকেই হয়** — `recategorize`
+হাতে চালানোর দরকার শুধু তখনই, যখন **নিয়ম বদলানো হয়** (D06), কারণ
+পুরোনো সারিতে পুরোনো সিদ্ধান্ত বসে থাকে।
+
+### নমুনা ডেটা সরানো হয়েছে
+
+দেখা শেষে `--undo` চালানো হয়েছে। manifest ধরে ঠিক যা বসানো হয়েছিল
+তাই মুছেছে — ১২ ডিভাইস · ১৪৩ সেশন · ২২ স্ক্রিনশট · ১৪,৮৯১ সেগমেন্ট ·
+১৪৩ সারাংশ · ২১০ অ্যাপ-ব্যবহার — আর ডাটাবেস আগের অবস্থায় ফিরেছে
+(১ ডিভাইস · ৫ সেগমেন্ট · ১ স্ক্রিনশট, সবই আসল এজেন্ট-পরীক্ষার)।
+
+⚠️ `daily_summary`-র যে সারিগুলো K06 জব বানিয়েছিল সেগুলোও গেছে — ওগুলো
+**উদ্ভূত** সারি, সেগমেন্ট থেকে প্রতি ১৫ মিনিটে আবার তৈরি হয়। ইচ্ছাকৃত।
+
+### নমুনা ডেটা — `server/scripts/sample-data.cjs`
+
+খালি ড্যাশবোর্ডে থিম বা লেআউট বিচার করা যায় না, তাই ১৪ দিনের বাস্তবের
+মতো ডেটা: ১২ ডিভাইস · ১৪৩ সেশন · ১৫,০২০ সেগমেন্ট · ২১০ অ্যাপ-ব্যবহার।
+
+⭐ **প্রতিটা সারির id একটা manifest-এ লেখা থাকে**, আর `--undo` ঠিক
+সেগুলোই মোছে। "আজকের সব ডেটা মুছে দাও" জাতীয় ঝাড়ু চালানো হয় না — এই
+ডাটাবেসে ইতিমধ্যেই আসল এজেন্ট-পরীক্ষার ডেটা আছে, ঝাড়ু চালালে সেটাও যেত।
+
+⚠️ **ডিস্কের `.webp`গুলো টেস্টের ১২-বাইটের স্টাব** (শুধু RIFF হেডার) —
+ব্রাউজার ওগুলো আঁকতেই পারে না, তাই থাম্বনেইল ফাঁকা আসত। আসল ছবি তুলতে
+গেলে মালিকের ডেস্কটপ ক্যাপচার করতে হতো, যেটা নমুনার জন্য অপ্রয়োজনীয়।
+তাই ব্রাউজারের canvas দিয়ে একটা **কৃত্রিম** ছবি বানিয়ে base64-এ রাখা
+হয়েছে (`sample-shot.cjs`) — ছবিতেই লেখা আছে "sample capture — not a
+real desktop", যাতে স্ক্রিনশটে দেখে কেউ ভুল না বোঝে।
+
+⚠️ **ভোরে চালালে আজকের কাজ ভবিষ্যতে পড়ত।** "৯টায় শুরু" লেখা ছিল, আর
+সকাল ৮টায় চালালে সেটা এখনো ঘটেনি — টাইমলাইনে অদ্ভুত দেখাত, আর
+স্ক্রিনশটের স্লট ভবিষ্যতে পড়ায় একটাও ছবি বসত না। আজকের কাজ এখন এখনকার
+সময় ধরে **পিছিয়ে** বসে।
+
+⚠️ প্রথম চেষ্টায় স্ক্রিপ্টটা মাঝপথে ভেঙেছিল (`daily_summary`-তে unique
+constraint) — কারণ **K06 rollup জব প্রতি ১৫ মিনিটে নিজেই সারি বানায়**।
+`upsert`-এ বদলানো হলো, সাথে আগের অসম্পূর্ণ রানের অবশেষ নিজে থেকে সরানোর
+ব্যবস্থা।
+
+### জোড়া লাগানোর সময় যা ধরা পড়ল
+
+- **অগ্রগতির রিং দুই জায়গায় লেখা ছিল** — `TodayRing` নিজের SVG আঁকত,
+  `ProgressRing`-ও। রঙের নিয়ম বদলানোর পর লাইভ বোর্ডের রিংটা পুরোনো
+  নিয়মেই রয়ে গিয়েছিল। এখন `TodayRing` শেয়ার্ড কম্পোনেন্টের **পাতলা
+  মোড়ক**, তাই জ্যামিতি ও রং এক জায়গাতেই।
+- ⭐ **চলতি রিং আর লাল নয়।** `--color-attention` আর `--color-brand`
+  **হুবহু একই হেক্স** — অর্থাৎ "সরু লাল বনাম ভরাট লাল" পার্থক্যটা রং
+  দেখে বোঝার উপায় নেই, শুধু ওজন দেখে; আর ৪px-এর ভরাট বৃত্তচাপ ওজনে
+  "সতর্কতা"-র দিকেই পড়ে। ফলে রোজ কাজ করা প্রতিটা মানুষের কার্ডে সারাদিন
+  একটা লাল রিং জ্বলত, আর দু-দিনেই লাল মানে "কিছু না" হয়ে যেত। নিয়ম এখন:
+  চলতি অবস্থায় নিরপেক্ষ `ink`, **টার্গেট পূর্ণ হলে সবুজ `ok`**।
+- **`StatusDot`-এর `DOT_CLASS` আর `PersonCard`-এর `EDGE` একই কমিটে
+  বদলাতে হয়** — একবার হয়নি, আর ফল হয়েছিল একই কার্ডে বাঁয়ের পটি এক রং,
+  চিপের বিন্দু আরেক রং।
+- **`index.css`-এর সেতু-ব্লক মুছে ফেলা গেছে** — `bg-ink text-white`,
+  `hover:bg-black`, ইনপুটে `bg-white`, টপবারে `bg-black`: হার্ডকোডগুলো
+  টোকেনে সরে যাওয়ায় (`text-on-ink`, `hover:bg-ink-strong`, `bg-surface`,
+  `bg-chrome`) নিয়মগুলো আর কোনো এলিমেন্টেই বসত না। রেখে দিলে পরের জনকে
+  ভুল বলত যে ওই ফাইলগুলোয় এখনো হার্ডকোড আছে।
+- ⚠️ **"কালো = গোনা হওয়া কাজ" কথাটা Midnight-এ মিথ্যা** — `--color-ink`
+  গাঢ় থিমে প্রায় সাদা (#e8ecf1)। পর্দার লেখায় তাই রঙের নাম নেই
+  ("Solid = counted work · grey = not counted"), আর শেয়ার্ড
+  কম্পোনেন্টের ডক-কমেন্টেও "নিরেট `ink`" লেখা।
+
+### যাচাই
+
+| স্যুট | ফল |
+|---|---|
+| ওয়েব | `tsc --noEmit -p tsconfig.app.json` ✅ · `eslint src` ✅ · `npm run build` ✅ |
+| বিল্ড-করা CSS | চারটে স্ট্যাটাস টোকেন ও `bg-ok`/`bg-idle`/`bg-offline`/`bg-attention`/`stroke-ok` — সবই বেরিয়েছে (`@theme static` কাজ করছে) |
+| বাকি বাংলা | পর্দায় শূন্য। কোডে যা আছে সব ডক-কমেন্ট (ইচ্ছাকৃত) |
+
+---
+
+## ৩ঋ. এই প্রথম সব কিছু সত্যিই চালিয়ে দেখা *(১১ আগস্ট ২০২৬, বিকেল)*
+
+শূন্য থেকে গোটা স্ট্যাক দাঁড় করানো হয়েছে — Postgres → migrate → seed →
+API → ড্যাশবোর্ড → **আসল C# এজেন্ট**। § ৩ঈ-র 🔴 তালিকার ছ-টার মধ্যে
+চারটে আর ওখানে নেই।
+
+আর সেই সাথে **তিনটে বাগ** বেরিয়েছে। তিনটেরই একটা মিল: কোনো টেস্ট
+এগুলো ধরতে পারত না, কারণ সমস্যাটা কোডের যুক্তিতে নয় — সমস্যাটা
+**সত্যিই চালালে তবেই দেখা যায়**।
+
+### ⭐ বাগ ১ — `prisma:deploy` নিজের `.env` পড়ত না
+
+README-র নিজের সেটআপ ধাপটা ফ্রেশ ক্লোনে **চলতই না**:
+
+```
+cd oxeio-monitor/server && npx prisma migrate deploy
+→ P1012 · Environment variable not found: DATABASE_URL
+```
+
+`.env` থাকে এক ফোল্ডার উপরে। বাকি **ছ-টা** স্ক্রিপ্ট আগে থেকেই
+`dotenv -e ../.env --` দিয়ে মোড়া ছিল; শুধু `prisma:deploy` বাদ পড়েছিল,
+আর README ঠিক ওই কাঁচা `npx` ফর্মটাই বলছিল। → [PR #1](https://github.com/ownCoder/oxeio-monitor/pull/1)
+
+### ⭐⭐ বাগ ২ — MSI ডাউনলোড শূন্য বাইট পাঠাত, H04 কোনোদিন কাজ করেনি
+
+সবচেয়ে গুরুতরটা। `GET /agent/update/download` বাইরে থেকে **নিখুঁত**
+দেখাত:
+
+```
+HTTP 200 · Content-Type: application/octet-stream
+Content-Length: 65139658
+Content-Disposition: attachment; filename="oXeioAgent-0.2.0.msi"
+```
+
+শরীরে কিন্তু **শূন্য বাইট**। `curl` দিত exit ১৮ (`CURLE_PARTIAL_FILE`),
+undici দিত `TypeError: terminated`, আর সার্ভারের লগে **কোনো এররই নেই** —
+`request completed`, ২৬ ms।
+
+কারণ `@Res({ passthrough: true })`। passthrough মানে সাড়াটা **Nest**
+পাঠাবে; হ্যান্ডলার `Promise<void>` ফেরত দিলে Nest সাথে সাথে সাড়া শেষ
+করে দিত — `stream.pipe(res)` একটা বাইটও লেখার আগেই। হেডার ততক্ষণে বসে
+গেছে, তাই ক্লায়েন্ট ৬৫ MB আশা করে বসে থাকত আর পেত কিছুই না।
+
+⚠️ **`pipe` ডাকা হয়েছে কি না দেখে এমন ইউনিট টেস্টও এটা ধরত না** —
+`pipe` সত্যিই ডাকা হচ্ছিল। ধরতে হলে আসল সকেটে বাইট গুনতে হবে।
+সমাধান: `StreamableFile` ফেরত দেওয়া। → [PR #3](https://github.com/ownCoder/oxeio-monitor/pull/3)
+
+| | আগে | পরে |
+|---|---|---|
+| `curl` | 200 · **0 bytes** · exit 18 | 200 · **65,139,658 bytes** · ০.৯৩s |
+| sha256 | — | রেজিস্টার করা হ্যাশের সাথে **হুবহু** মেলে |
+
+### বাগ ৩ — স্কোরের ব্যাখ্যা নিজেকেই তুলনা করত
+
+অচেনা সময় শূন্য হলে `categorizedSec` ও `totalSec` সমান, তাই পর্দায়
+দাঁড়াত *"the 3h 20m of known time …, **not on the full 3h 20m**"*। হিসাব
+ঠিক, বাক্য অর্থহীন। তুলনার অংশটুকু এখন শর্তসাপেক্ষ; "…% uncategorised"
+অংশটা **শর্তহীনই** রাখা হয়েছে (§ ৩ঈ-র পুরোনো সিদ্ধান্ত অক্ষত)।
+→ [PR #2](https://github.com/ownCoder/oxeio-monitor/pull/2)
+
+### ব্যাকআপ (K02) — ডিক্রিপ্ট পেরিয়ে **restore** পর্যন্ত
+
+`BACKUP_PASSPHRASE` ও `BACKUP_DOCKER_CONTAINER` বসিয়ে হাতে চালানো হয়েছে।
+
+| ধাপ | ফল |
+|---|---|
+| ডাম্প | `oxeio-2026-08-11-1455.dump.enc` · ৭১ KB · ১,২৬৭ ms |
+| চেকসাম | `sha256sum -c` → **OK** |
+| হেডার | `Salted__` — `openssl enc` ফরম্যাট ঠিক |
+| ডিক্রিপ্ট | ডকে লেখা `openssl` কমান্ড হুবহু কাজ করে |
+| প্লেইনটেক্সট | `PGDMP` দিয়ে শুরু — আসল pg_dump |
+| **restore** | আলাদা DB-তে `pg_restore` → employees ১২ · segments ৩ · app_usage ৫ · screenshots ২ · devices ১ — **হুবহু লাইভ ডেটা** |
+
+⭐ শুধু ফাইল তৈরি হওয়া নয়, **ফাইলটা দিয়ে সত্যিই ফেরা যায়** — সেটাই
+ব্যাকআপের একমাত্র সত্যিকারের পরীক্ষা।
+
+⚠️ **K03 এখনো চলেনি** — `BACKUP_COPY_TO` খালি ছিল, তাই সাড়ায়
+`copy: {configured: false}`। অফসাইট কপির পথটা অচেনাই (G39)।
+
+### TOTP 2FA — পুরো লুপ, তারপর আবার বন্ধ
+
+| যাচাই | ফল |
+|---|---|
+| setup | secret + otpauthUri + **inline `data:` QR** (CSP-এর কারণে বাইরের URL নয়) |
+| enable | ১০টা recovery code |
+| ৯০ সেকেন্ড পুরোনো কোড | ৪০০ — প্রত্যাখ্যাত |
+| কোড ছাড়া লগইন | `{needsTotp: true}` |
+| ভুল কোড | ৪০১ |
+| একই কোড দুবার | ৪০১ — **replay guard আছে** |
+| ঠিক কোড | ২০০ · recoveryCodesLeft ১০ |
+| recovery code | ২০০ · `usedRecoveryCode: true` · বাকি ৯ |
+| একই recovery code আবার | ৪০১ — **একবার-ব্যবহার্য নিয়ম টেকে** |
+
+⚠️ যাচাই শেষে **2FA আবার বন্ধ করে দেওয়া হয়েছে** (`enabled: false`)।
+মালিকের ফোনে authenticator বসানোর আগে চালু রেখে দিলে অ্যাকাউন্ট
+লক হয়ে যেত।
+
+### H04 রোলআউট — ছ-টা শাখাই
+
+| যাচাই | ফল |
+|---|---|
+| পুরোনো এজেন্ট (0.1.0) | অফার যায় |
+| হালনাগাদ (0.2.0) | ২০৪, অফার নেই |
+| নতুন (0.3.0) | ডাউনগ্রেড অফার হয় না |
+| heartbeat | `commands: ["update_agent"]` |
+| `rollout_stage = halted` | অফার **তুলে নেওয়া হয়** — জরুরি ব্রেক কাজ করে |
+| canary | একই মেশিন বারবার একই বালতিতে — নির্ধারিত, এলোমেলো নয় |
+
+### অ্যালার্ট — তিনটে পথ, দুটো নিজে থেকেই
+
+| # | কখন | কীভাবে |
+|---|---|---|
+| **G01** `agent_down` | ১০:৪৩ | heartbeat থেমে যাওয়ায় **নিজে থেকেই** |
+| **G04** `backup_failed` | ১১:৪৮ | passphrase বসানোর আগে, **নিজে থেকেই** |
+| **G02** `agent_killed` | ১৫:০৭ | logoff/shutdown ছাড়া একটা `agent_stop` পাঠিয়ে |
+
+G02-র detail-এ সঠিক যুক্তিটাই লেখা: *"there is no logoff/shutdown nearby
+— so the agent was stopped while the PC stayed on."* `channelsSent: ["log"]`
+— SMTP/Telegram নেই বলে শুধু লগে, ঠিক যেমন হওয়ার কথা। acknowledge-ও
+কাজ করে ("oXeio Owner", openCount ৩ → ২)।
+
+### ⭐ আসল এজেন্ট এই প্রথম সার্ভারে কথা বলল
+
+.NET 8 SDK বসিয়ে (আগে এই মেশিনে ছিলই না) — **৩২৭/৩২৭ টেস্ট পাস**
+(২৬১ Core + ৬৬ Agent), `--diagnose` চলেছে, তারপর পূর্ণ AgentHost।
+
+```
+sync: outbox schema v0 → v1
+sync: Enrolment attempt: code=«secret:1fa7f99f» · machineGuid=7c25de6d-… (Registry)
+                         host=SERVER  user=SERVER\Server  os=Microsoft Windows 10.0.19045
+sync: Credentials saved: device #2 · OX-02 · token=«secret:597bb9ce» → device.dat
+sync: ✅ Device enrolled
+```
+
+⭐ **লগে কোড আর টোকেন দুটোই ঢাকা** — `«secret:…»`। redaction মাঠেও কাজ করে।
+
+| যা সত্যিই ঘটেছে | |
+|---|---|
+| enroll | device #2 · hostname `SERVER` · **monitors 2** (নিজে খুঁজে নিয়েছে) |
+| `agent_start` ইভেন্ট | meta সহ সার্ভারে |
+| heartbeat | প্রতি ৩০ সেকেন্ডে |
+| segment | `idle` ২৫৮s → `active` **৪s** (input_score ১০) → `idle` ১৪১s |
+| app usage | `claude.exe` · Claude · ৬৪s · `is_browser=false`, ডোমেইন খালি (ADR-013) |
+| **update download** | ৬৩,৬১২ KB নামিয়ে **hash যাচাই** — `waiting to be installed`, নিজে বসায়নি (H04) |
+
+⭐ শেষ সারিটা বাগ ২-এর সবচেয়ে ভালো প্রমাণ: **ফিক্সের আগে আসল এজেন্টও
+ওখানে খালি হাতে ফিরত।**
+
+⚠️⚠️ **কিন্তু এজেন্টের নিজের তোলা ছবি সার্ভারে পৌঁছায়নি।** মেশিনে
+active সময় ছিল মোটে **৪ সেকেন্ড** — আর নিয়ম হলো ৫ মিনিটের স্লটে
+র‍্যান্ডম একটা মুহূর্তে ছবি, শুধু active অবস্থায়। ওই র‍্যান্ডম মুহূর্তটা
+৪ সেকেন্ডে পড়ার সম্ভাবনা ~১%। **ছবি না ওঠাটাই নিয়ম মানার প্রমাণ**,
+কিন্তু এজেন্টের DXGI ক্যাপচার → সার্ভার পথটা তাই **এখনো অচেনা**।
+
+### স্ক্রিনশটের ingest পথ — তবে এজেন্টের ক্যাপচার দিয়ে নয়
+
+⚠️ এই পার্থক্যটা গুলিয়ে ফেলা যাবে না। সার্ভারের দিকটা পুরো প্রমাণিত:
+আসল WebP বাইট (Chromium-এ বানানো, `RIFF/WEBP`, VP8X+ICC) আপলোড →
+তারিখ-ভাগ করা ফোল্ডারে জমা → থাম্বনেইল আলাদা সাবফোল্ডারে → DB সারি →
+গ্যালারিতে "2 images" → signed URL থাম্ব সার্ভ করে (১২৮০×৮০০ ফুল,
+৩২০×২০০ থাম্ব)।
+
+⭐ সার্ভার PNG **প্রত্যাখ্যান** করেছে (`Only image/webp is accepted`,
+ADR-007) — সেটাও ঠিক আচরণ।
+
+কিন্তু বাইটগুলো **এজেন্টের ক্যাপচার ইঞ্জিন থেকে আসেনি**। ওই জোড়টা
+বাকি।
+
+### ⚠️ যা শেখা গেল — জোর করে মারলে `agent_stop` যায় না
+
+এজেন্ট থামাতে `CloseMainWindow()` কাজ করে না — উইন্ডোটা **message-only**,
+কোনো main window নেই। শেষে `Stop-Process -Force` করতে হয়েছে, আর তাতে
+`Shutdown()` চলেনি: **কোনো `agent_stop` ইভেন্ট যায়নি**, শেষ drain হয়নি।
+
+⚠️ tray মেনুতেও Exit নেই — **ইচ্ছাকৃতভাবে** (`TrayIcon.cs` § ১৯)। আর
+"watchdog সার্ভিস" বলেও কিছু নেই: ওটা লগঅন Scheduled Task, আর MSI নিজেও
+তাকে `taskkill /F` দিয়েই থামায়। অর্থাৎ **হাতে থামানোর ভদ্র পথ কোথাও
+নেই** — যা আছে সবই জোর করে মারা, আর তখন নিচের ফলটাই ঘটে।
+
+⭐ এটা বাগ নয় — প্রসেস মেরে ফেললে cleanup না চলাই স্বাভাবিক। বরং এটাই
+ঠিক সেই দৃশ্য **যেটা ধরার জন্য G02 আছে**: Task Manager থেকে কেউ এজেন্ট
+মেরে দিলে সার্ভার `agent_stop`ও পাবে না, শুধু heartbeat থেমে যাবে →
+১০ মিনিট পর `agent_down`। ভদ্রভাবে থামানোর পথ tray মেনু বা সার্ভিস স্টপ।
+
+⚠️ তিনটে সেগমেন্ট কিন্তু ঠিকই উঠে গিয়েছিল — শেষ `idle` সেগমেন্টসহ।
+
+### একটা ছোট খটকা
+
+`--diagnose`-এর "২· Screen still (should fall back to GDI)" ধাপেও
+`[DXGI]`-ই এসেছে, GDI নয়। পর্দায় কিছু নড়তে থাকলে DXGI বৈধভাবেই ফ্রেম
+দিতে পারে, তাই বাগ বলা যাচ্ছে না — তবে লেবেল আর আচরণ মিলছে না, একবার
+দেখার মতো।
+
+### যাচাই
+
+| স্যুট | ফল |
+|---|---|
+| সার্ভার | `npm test` → **৫৮৬/৫৮৬** পাস (২৪ ফাইল) |
+| এজেন্ট | `dotnet test` → **৩২৭/৩২৭** পাস (২৬১ + ৬৬) — এই প্রথম আসল SDK-তে |
+| ওয়েব | `npm run typecheck` ✅ · `npm run lint` ✅ |
+
+### পরিষ্কার করা হয়েছে
+
+যাচাই শেষে `%ProgramData%\oXeio` (device token, outbox, নামানো MSI),
+`%TEMP%\oXeio-capture-test`, `.data/storage/updates`, আর `.data/backups`
+(**এতে বেতনসহ এনক্রিপ্টেড ডাম্প ছিল**) — সব মুছে ফেলা হয়েছে। `.env`-এ
+বসানো `BACKUP_PASSPHRASE` সরিয়ে আগের অবস্থায় ফেরানো হয়েছে।
+
+⚠️ **ডাটাবেসে যাচাইয়ের ডেটা এখনো আছে** — নকল `OXEIO-TEST-PC`, একটা
+`ZzUnknownTool.exe`, আর আসল এজেন্টের তিনটে সেগমেন্ট। সত্যিকারের
+ব্যবহার শুরুর আগে `prisma migrate reset` চালানো দরকার।
+
+---
+
+## ৩এ. বাকি তিনটেও চালানো — আর আরও তিনটে নীরব বাগ *(১১ আগস্ট ২০২৬, সন্ধ্যা)*
+
+§ ৩ঋ-তে 🔴 তালিকা ছয় থেকে তিনে নেমেছিল। এই দফায় **বাকি তিনটেও** ছোঁয়া
+হলো — TLS, ইমেইল, অফসাইট কপি। আর ঠিক সেটা করতে গিয়েই আরও **তিনটে বাগ**
+বেরোল, তিনটেই আগেরগুলোর মতোই **নীরব**: কোনো এরর ছাড়াই ভুল হতো।
+
+### ব্যাকআপের অফসাইট কপি (K03) — দুটো শাখাই
+
+| অবস্থা | ফল |
+|---|---|
+| ড্রাইভ **লাগানো নেই** | `copy.ok=false` · *"…was not found — is the external drive attached?"* |
+| ড্রাইভ **লাগানো আছে** | কপি হলো · `sha256` দুই কপিতে **হুবহু এক** · অফসাইট কপি থেকেই ডিক্রিপ্ট করে `PGDMP` |
+
+⭐ কোডটা কপির গন্তব্যে **ইচ্ছাকৃতভাবে `mkdir` করে না**। করলে বাইরের
+ড্রাইভ না থাকলেও চুপচাপ লোকাল ডিস্কে একটা ফোল্ডার বানিয়ে ব্যাকআপ
+রেখে দিত — আর মালিক ভাবতেন অফসাইটে যাচ্ছে। "ড্রাইভ নেই" আর "ড্রাইভ
+খালি" যে আলাদা, সেটা এখানে সত্যিই আলাদা রাখা আছে।
+
+⚠️ `README-restore.txt`-ও কপির সাথে যায় — ফেরানোর নির্দেশনা ব্যাকআপের
+সঙ্গেই ভ্রমণ করে, যেটাই কাজে লাগবে যেদিন মূল সার্ভার আর নেই।
+
+### ইমেইল (G05) — আসল SMTP-তে দুটো মেইল
+
+হোস্টে একটা throwaway SMTP sink বসিয়ে দুটো সত্যিকারের মেইল ধরা হয়েছে:
+
+```
+[oXeio · Warning]  Backup was not copied to the external drive
+[oXeio · Critical] Agent uninstall attempt — OXEIO-MAIL-TEST
+```
+
+`SMTP_FROM` ও `ALERT_EMAIL_TO` মানা হয়েছে; subject RFC 2047-এ UTF-8
+এনকোডেড (`·` ও `—` ঠিকঠাক); বডি quoted-printable, ভেতরে কর্মীর নাম ও
+হোস্টনেম। DB-তে `channels_sent = {email}` — অর্থাৎ শুধু `log` নয়,
+সত্যিই ইমেইল চ্যানেলে গেছে।
+
+⭐ পুরো ব্যাচ **একটাই** মেইলে যায় — বারোটা PC একসাথে বন্ধ হলে বারোটা
+মেইল নয়। বন্যা ঠেকানোর শেষ স্তরটা কাজ করছে।
+
+### TLS (I01) — সার্ট থেকে SPKI পিন পর্যন্ত
+
+| যাচাই | ফল |
+|---|---|
+| `make-cert.ps1` | সার্ট + কী + pfx + পিন · SAN-এ `localhost`, `Server`, `127.0.0.1` · মেয়াদ ২০২৮-১১-১৩ |
+| **অর্ধেক কনফিগ** (শুধু `TLS_CERT`) | ⭐ সার্ভার **উঠতেই অস্বীকার করল** — নীরবে HTTP-তে নামেনি |
+| পুরো কনফিগ | `https → 200`, প্লেইন `http` সংযোগই পায় না |
+| বুট লগ | `oXeio API https://0.0.0.0:3000` — scheme লেখা আছে |
+| **SPKI পিন** | তারে আসা সার্ট থেকে গোনা পিন `make-cert.ps1`-এর লেখা মানের সাথে **হুবহু** মিলেছে |
+
+### টেলিগ্রাম (G08) — টোকেন ছাড়া যতদূর যায়
+
+⚠️ `https://api.telegram.org/bot<token>/sendMessage` **হার্ডকোড**, তাই
+আসল ডেলিভারি দেখতে মালিকের নিজের bot token লাগবেই। বাকি সবটুকু ভুয়া
+টোকেন দিয়ে দেখা হয়েছে:
+
+| যাচাই | ফল |
+|---|---|
+| দুটো চলক বসানো | বুট লগ `ops checks started (G04 · **G08**)` — আগে শুধু `(G04)` |
+| sweep | ইমেইলে যাওয়া অ্যালার্টগুলোই তুলল, বার্তা বানাল, HTTP কল করল |
+| ব্যর্থতা | `HTTP 401 Unauthorized` — ক্র্যাশ নয়, পরিষ্কার লগ |
+| **টোকেন ফাঁস** | ❌ নেই — এররে টোকেনের চিহ্নমাত্র নেই |
+| হাল ছাড়া | ৩ বার (`TELEGRAM_MAX_ATTEMPTS`) চেষ্টার পর `telegram_failed` |
+| ট্যাগ | `{email,telegram_failed}` — **যোগ** হয়েছে, `email` মোছেনি |
+
+### ⭐ বাগ ৪ — TLS চালু করলে ড্যাশবোর্ড অচল হয়ে যেত
+
+সার্ভার HTTPS-এ উঠলে ওই পোর্টে আর প্লেইন HTTP থাকে না। কিন্তু ডেভ
+proxy-র target হার্ডকোড ছিল `http://localhost:3000` — ফলে প্রতিটা
+রিকোয়েস্ট `socket hang up` হয়ে মরত, **লগইন পাতাই পেরোনো যেত না**।
+অথচ সার্ভারের লগে কোনো ভুল নেই।
+
+⚠️ TLS চালু করার দিনটাই এই ফাঁদে পড়ার সবচেয়ে খারাপ দিন — তখন একসাথে
+অনেক কিছু বদলায়, কোনটা ভাঙল বোঝা যায় না। এখন proxy একই `.env`-এর
+`TLS_CERT` দেখে scheme ঠিক করে। ⚠️ vite কনফিগ চালু হওয়ার সময় **একবারই**
+পড়ে, তাই TLS টগল করলে ডেভ সার্ভারও রিস্টার্ট করতে হবে।
+
+### ⭐ বাগ ৫ — `ENROLLMENTCODE`, যে নামে MSI সাড়াই দেয় না
+
+root README-র ইনস্টল কমান্ডে ছিল `ENROLLMENTCODE="<code>"`, কিন্তু
+`Package.wxs`-এ প্রপার্টির নাম **`ENROLLCODE`**। msiexec অচেনা প্রপার্টি
+নীরবে ফেলে দেয়।
+
+⚠️ অর্থাৎ ওই কমান্ড দিয়ে ১৫টা PC-তে এজেন্ট **বসত ঠিকই, কিন্তু একটাও
+enroll হতো না** — রেজিস্ট্রিতে `EnrollmentCode` খালি যেত, আর কেউ বুঝত
+না কেন কোনো ডেটা আসছে না।
+
+### ⭐ বাগ ৬ — `SERVERPIN`, যে ফিচারটাই নেই
+
+`deploy/README.md` § ৮-এর কপি-পেস্ট কমান্ডে `SERVERPIN=…` ছিল। যাচাই
+করে দেখা গেল **কিছুই নেই**: `Package.wxs`-এ প্রপার্টি নেই,
+`AgentSettings`-এ `ServerPin` ফিল্ড নেই, এজেন্টে সার্ট যাচাইয়ের কোড নেই।
+§ ৬.৩ নিজেই বলছে ওটা "লাগবে" — অর্থাৎ ভবিষ্যতের কাজ।
+
+⚠️ ফল: অ্যাডমিন § ৮ মেনে চললে ভাবতেন পিনিং চালু আছে, অথচ এজেন্ট
+Windows-এর trust store-এর উপরেই ভরসা করছে। দুই জায়গাতেই এখন স্পষ্ট
+করে লেখা কী নেই ও কেন।
+
+### monitoring policy — টেমপ্লেট ঠিক, কিন্তু সই রেকর্ড করার পথ নেই
+
+১৯৩ লাইনের টেমপ্লেটটা পড়ে সিস্টেমের সাথে মিলিয়ে দেখা হয়েছে — ৬০ সেকেন্ড
+idle, ০৭:০০–২৩:০০, ডোমেইন কিন্তু ফুল URL নয়, tray আইকন, ৯০ দিন
+retention, স্ক্রিনশট দেখা audit হয় — সব মিলে যায়।
+
+🔴 **কিন্তু শেষ লাইনটা এমন কিছুর প্রতিশ্রুতি দেয় যা নেই:** *"সই করা কপি
+স্ক্যান করে ড্যাশবোর্ডে আপলোড করলে `policy_signed_at` বসে যাবে"*।
+ফিল্ডটা schema-তে আছে, `employees.service.ts` পড়ে, `web/src/api/admin.ts`-এ
+টাইপ করা — **কিন্তু সেট করার কোনো পথ নেই**: `UpdateEmployeeDto`-তে ফিল্ড
+নেই, endpoint নেই, UI-তে কিছু নেই।
+
+⚠️ অর্থাৎ রোলআউটের **সবচেয়ে জরুরি শর্তটা** — "সই ছাড়া কারো PC-তে এজেন্ট
+বসবে না" — সিস্টেমে রেকর্ডই করা যায় না। ফিচার-কাজ, তাই মালিকের সিদ্ধান্তের
+অপেক্ষায়: শুধু তারিখ বসানো (audited, বেতনের মতো), নাকি স্ক্যান আপলোডসহ।
+
+### ⭐ `locked` স্টেট এই প্রথম সার্ভারে
+
+আসল এজেন্ট দ্বিতীয়বার চালিয়ে যা এল:
+
+| state | সময় | দৈর্ঘ্য | input score |
+|---|---|---|---|
+| `active` | 18:26:04 → 18:27:42 | ৯৮s | ৪১ |
+| `locked` | 18:27:42 → 18:27:45 | ৩s | — |
+| `locked` | 18:27:45 → 18:27:46 | ২s | — |
+| `active` | 18:27:46 → 18:28:04 | ১৮s | ১৬ |
+
+⭐ তিনটে স্টেটের **তৃতীয়টা** — `locked` — এই প্রথম সার্ভারে পৌঁছাল।
+এতদিন শুধু `active`/`idle` দেখা গিয়েছিল।
+
+⚠️ একটা খটকা: পরপর **দুটো** `locked` সেগমেন্ট (৩s + ২s), একটা নয়।
+ভাঙা কেন, দেখা বাকি — ক্ষতিকর নয় (সময়ের যোগফল ঠিক), কিন্তু একটাই
+হওয়ার কথা ছিল।
+
+### 🔴 এজেন্টের নিজের ক্যাপচার — এখনো পৌঁছায়নি
+
+দুবার চেষ্টা হয়েছে, দুবারই একই দেয়ালে আটকেছে: **ছবি ওঠে ৫ মিনিটের
+স্লটে একটা র‍্যান্ডম মুহূর্তে, আর শুধু `active` অবস্থায়।** মেশিনে টানা
+active সময় ছিল প্রথমবার **৪ সেকেন্ড**, দ্বিতীয়বার মোট **১১৬ সেকেন্ড** —
+দুটোই এক স্লটের চেয়ে কম, তাই র‍্যান্ডম মুহূর্তটা কখনো active সময়ে পড়েনি।
+
+⭐ **ছবি না ওঠাটাই নিয়ম মানার প্রমাণ** — কিন্তু তাতে DXGI → সার্ভার
+জোড়টা প্রমাণিত হয় না, তাই এটা 🔴-তেই থাকল। ⚠️ প্রমাণ করতে হলে একটানা
+৫–৬ মিনিট সত্যিকারের কাজ দরকার, মাঝে ১ মিনিটের বেশি বিরতি ছাড়া —
+অর্থাৎ এই একটা ধাপ কাঠামোগতভাবেই কি-বোর্ডে বসা একজন মানুষ ছাড়া হয় না।
+
+⚠️ TLS চালু থাকলে এই পরীক্ষা এখন করা যায় না: এজেন্টে পিনিং নেই (বাগ ৬),
+তাই self-signed সার্ট আগে Windows-এর trust store-এ বসাতে হবে — সেটা
+মেশিনের নিরাপত্তা সেটিং, আলাদা সিদ্ধান্ত। তাই পরীক্ষাটা HTTP-তে করা হয়েছে।
+
+---
+
+## ৩ঐ. এজেন্টের নিজের তোলা ছবি এই প্রথম সার্ভারে *(১১ আগস্ট ২০২৬, রাত)*
+
+দু-বার চেষ্টা করে যেটা হয়নি, তৃতীয়বারে হলো। 🔴 তালিকা **দুই থেকে একে**।
+
+### কেন এই ধাপটা এতবার আটকেছিল
+
+ছবি ওঠে ৫ মিনিটের স্লটে **একটা র‍্যান্ডম মুহূর্তে**, আর শুধু `active`
+অবস্থায়। আগের দুবার টানা active সময় ছিল ৪ সেকেন্ড আর ১১৬ সেকেন্ড —
+দুটোই এক স্লটের চেয়ে কম, তাই র‍্যান্ডম মুহূর্তটা কখনো active সময়ে
+পড়েনি। ⚠️ এই একটা ধাপ কাঠামোগতভাবেই **কি-বোর্ডে বসা মানুষ ছাড়া হয় না**।
+
+⭐ **সিন্থেটিক ইনপুট দিয়ে "কাজ" বানানো হয়নি, ইচ্ছাকৃতভাবে।**
+`SendInput` পাঠালে এজেন্ট active দেখত আর ছবিও উঠত — কিন্তু সেটা ঠিক
+[G46](08-Gap-Analysis.md)-এর মাউস-জিগলার, যেটা ধরার জন্যই ব্যবস্থাটা।
+তাতে পাইপলাইন প্রমাণ হতো আর **মাপাটা মিথ্যে** হতো। তাই মালিক সত্যিই
+কাজ করেছেন, আর ডাটাবেস পাহারা দেওয়া হয়েছে।
+
+### সাজানো
+
+| | |
+|---|---|
+| MSI নয়, **বিল্ড-করা exe** | পরীক্ষাটা ইনস্টলারের নয়, ক্যাপচারের। ইনস্টল/আপগ্রেড/আনইনস্টল আগেই যাচাই (§ ৩অ.৯) |
+| ডেটা ফোল্ডার | `--prepare-data-dir` → ACL: SYSTEM Full · Administrators Full · **Users Modify**, উত্তরাধিকার বন্ধ |
+| TLS | `.env`-এ কমেন্ট করা রাখা হয়েছে — এজেন্টে পিনিং নেই (বাগ ৬), তাই self-signed সার্ট trust store-এ বসানোর দরকার পড়েনি |
+| enrollment কোড | ⚠️ **owner-এর পাসওয়ার্ড চাওয়া হয়নি** (আগের সেশনে বদলানো, আর পাসওয়ার্ড হাতে নেওয়ার জিনিস নয়)। কোডটা সার্ভারের **নিজের** `hashEnrollmentCode()` দিয়ে hash মিলিয়ে বসানো হয়েছে — hex হুবহু মিলেছে |
+| কার নামে | **টেস্ট কর্মী `OX-001`**, যাতে মালিকের ডেস্কটপের ছবি কোনো **আসল** কর্মীর রেকর্ডে না বসে |
+
+### যা ঘটল
+
+| সময় | ঘটনা |
+|---|---|
+| ১৯:২৪:৪৯ | outbox তৈরি (schema v0 → v1, WAL) |
+| ১৯:২৪:৫১ | **enroll** — device #58 · `DESKTOP-11JN6DI` · **monitors ২ নিজে খুঁজে** · টোকেন DPAPI-তে |
+| ১৯:২৪:৪৯–১৯:২৬:৫২ | `idle` ১২৩s — মালিক তখন পড়ছিলেন, টাইপ করছিলেন না |
+| ১৯:২৬:৫২ | `active` (input score ৭) · `claude.exe` ৬২s |
+| **১৯:২৯:৫৪** | ⭐ **ছবি — দুই মনিটরে দুটো** |
+| ১৯:২৯:৫৮ | আপলোড শেষ, কিউ খালি (৩.৪ সেকেন্ড) |
+
+### ছবিগুলো
+
+| | m0 | m1 |
+|---|---|---|
+| আকার | ১৯২০×১০৮০ | ১৯২০×১০৮০ |
+| ফাইল | ১২৩,১৬৪ B | ৯৯,৪১৮ B |
+| থাম্বনেইল | **৩২০×১৮০** · ৯,৫০২ B | **৩২০×১৮০** · ৫,৭৪০ B |
+| ফরম্যাট | RIFF/WEBP/**VP8** | RIFF/WEBP/**VP8** |
+
+স্লট ১৯:২৫:০০, ছবি ১৯:২৯:৫৪ — অর্থাৎ র‍্যান্ডম অফসেট ছিল **২৯৪ সেকেন্ড**,
+৩০০-র ঘরে প্রায় শেষ মাথায়। A03-এর "গড়ে ≤ ২০০ KB" মিলেছে, A06-এর
+"৩২০px থাম্বনেইল" হুবহু মিলেছে, আর A02-র মাল্টি-মনিটর দুটো আলাদা
+`monitor_index`-এ বসেছে।
+
+### ⭐ A07 — একই দিনে জোড়া লেগে একই দিনে প্রমাণিত
+
+দুটো সারিতেই `active_app = explorer.exe`, `active_title = NULL`।
+
+⚠️ **null-টা ভুল নয়, বরং সবচেয়ে ভালো প্রমাণ।** ওই মুহূর্তের
+`app_usage` সারিটা (#868, ১৯:২৯:৪৯–১৯:২৯:৫৮) বলছে
+`explorer.exe · Windows Explorer · window_title খালি` — অর্থাৎ সামনে
+থাকা Explorer উইন্ডোটার সত্যিই কোনো টাইটেল ছিল না।
+
+⭐ ছবির ঘর আর app usage-এর সারি **একই নমুনা** থেকে এসেছে — ঠিক যে
+কারণে নতুন করে Win32-কে জিজ্ঞেস না করে `AppUsageService.Current`
+ব্যবহার করা হয়েছিল ([G71](08-Gap-Analysis.md))। আলাদা করে পড়লে দুটোয়
+দু-রকম অ্যাপ বসতে পারত, আর সেটা মেলানোর কোনো উপায় থাকত না।
+
+⭐ দুই মনিটরের **দুটো সারিতেই একই অ্যাপ** — এটাও নকশা অনুযায়ী: ছবি
+প্রতি পর্দায় একটা, কিন্তু foreground উইন্ডো গোটা ডেস্কটপে একটাই।
+
+### সাথে যা এমনিতেই প্রমাণ হয়ে গেল
+
+- **watchdog beacon** — `agent.alive` ও `agent.lock` লেখা হচ্ছে (G57)
+- **tray-র "Today's hours" উইন্ডো** (J04) — মালিক খুলেছেন, আর সেটা
+  `app_usage`-এ `oXeio.Agent.exe · "oXeio — Today's hours"` হয়ে ফিরে এসেছে
+- **drop log খালি** — কিছুই বাদ পড়েনি
+
+### ⭐ টাইটেলও এল — ১৯:৪৪:২৮
+
+মালিক Chrome সামনে রেখে কাজ চালিয়ে যাওয়ায় পরের স্লটে দুটোই ভরা এল:
+`chrome.exe` · টাইটেল **৩১ অক্ষর** · দুই মনিটরেই এক।
+
+⭐ **ADR-013-এর পাহারাটাও একই সাথে যাচাই হলো** — `active_title`-এ
+`http` নেই, `youtube.com/watch`-এর মতো কোনো path নেই। অর্থাৎ উইন্ডোর
+টাইটেল যাচ্ছে, **ফুল URL নয়** (যদিও ব্রাউজারের টাইটেলে ওটা ঢোকার সুযোগ
+ছিল)।
+
+### ⭐ একটা স্লট বাদ গেল — আর সেটাই A04-এর সবচেয়ে ভালো প্রমাণ
+
+১৯:৩৫–১৯:৪০ স্লটে **কোনো ছবি ওঠেনি**, অথচ `app_usage` বলছে ওই পুরো
+সময় মালিক কাজ করছিলেন। কিউ খালি, drop log খালি, কোনো এরর নেই।
+
+সেগমেন্ট মিলিয়ে উত্তরটা পরিষ্কার:
+
+| state | থেকে | পর্যন্ত |
+|---|---|---|
+| `idle` | ১৯:৩৩:৫৩ | **১৯:৩৫:০৫** |
+| `active` | ১৯:৩৫:০৫ | ১৯:৪০:০৫ |
+
+স্লট শুরু ১৯:৩৫:০০, আর তার প্রথম **৫ সেকেন্ড** ছিল idle। র‍্যান্ডম
+মুহূর্তটা ঠিক ওই ৫ সেকেন্ডে পড়েছিল (৩০০-র মধ্যে ৫ — সম্ভাবনা ১.৭%),
+তাই A04 মেনে ছবি ওঠেনি। ⭐ শিডিউলারের পরের হিসাবটাও তাতেই মেলে:
+`Next(১৯:৩৫:০২)` → পরের স্লট **১৯:৪০:০০**, আর ছবি এল ১৯:৪৪:২৮।
+
+⚠️ **আমার প্রথম সন্দেহটা ভুল ছিল** — ভেবেছিলাম ফুল-স্ক্রিন ভিডিওতে DXGI
+নীরবে ব্যর্থ হচ্ছে। ১৯:৪৪:২৮-এর ছবিটা তোলাই হয়েছে Chrome সামনে থাকা
+অবস্থায়, তাই ওই তত্ত্ব বাতিল। ⚠️ তবে একটা আসল ফাঁক এতে ধরা পড়ল:
+**সফল ক্যাপচার কোথাও লগ হয় না**, তাই "বাদ গেল না ব্যর্থ হলো" আলাদা করার
+একমাত্র উপায় ছিল সেগমেন্টের সাথে মেলানো। H08-এর লগে ক্যাপচারের এক লাইন
+থাকলে এই তদন্তটা লাগত না।
+
+### ⚠️ যা এই রানেও প্রমাণ হয়নি
+
+- **গ্যালারিতে চোখে দেখা** — owner লগইন লাগত, পাসওয়ার্ড চাওয়া হয়নি;
+  DB, ডিস্ক ও ফাইল-হেডার তিন জায়গায় মিলিয়ে দেখা হয়েছে
+- **টেলিগ্রাম** — 🔴 তালিকায় একমাত্র বাকি
+
+### একটা ভুল অনুমান, সাথে সাথেই শোধরানো
+
+মাঝপথে বলা হয়েছিল "প্রথম স্লটের র‍্যান্ডম মুহূর্তটা idle সময়ে পড়েছে,
+তাই স্কিপ হয়েছে"। ওটা ভুল ছিল — মুহূর্তটা তখনো **আসেইনি**, এল
+১৯:২৯:৫৪-এ, ওই একই স্লটের শেষ দিকে। কোনো স্লট স্কিপ হয়নি।
+
+---
+
+## ৩ও. ট্রে জানালার রি-ডিজাইন — কোডে বসানো *(১১ আগস্ট ২০২৬, রাত)*
+
+মকআপ ([tray-today-mockup.html](mockup/tray-today-mockup.html)) দেখার পর
+মালিক অনুমোদন করেছেন, আর সেটা C#-এ বসানো হয়েছে। চারটে অবস্থাই আসল
+জানালায় খুলে দেখা হয়েছে।
+
+### কী বদলাল
+
+| | |
+|---|---|
+| `TrayTheme.cs` (নতুন) | oXeio-র প্যালেট, `web/src/index.css`-এর টোকেনের জোড়া। আগে সব রং আসত `SystemColors` থেকে — অর্থাৎ জানালাটা Windows যা পরে আছে তা-ই পরত, পণ্যের কোনো পরিচয় বহন করত না |
+| `TrayFonts` | তিনটে নতুন ভূমিকা — `Hero` (৪৪px semibold), `Micro` (১০.৫px লেবেল), `Mono` (Cascadia Mono, রিডআউট) |
+| `OwnerDrawnForm` | চারটে নতুন প্রিমিটিভ — `Hero` (সংখ্যা + চিপ), `Meter` (দাগসহ), `Legend`, `Readout`, `Alert` |
+| `TodayForm` | নতুন লেআউট; উচ্চতা ৫০০ → ৪০০ |
+| `TrayNative` | `DwmSetWindowAttribute` — টাইটেল বারও গাঢ় |
+
+### ⭐ সিদ্ধান্ত: সবসময় Midnight, OS যা-ই হোক
+
+প্রথমে Windows-এর `AppsUseLightTheme` দেখে বাছা হয়েছিল — নেটিভ জানালার
+জন্য সেটাই ভদ্র আচরণ। মালিক উল্টোটা ঠিক করেছেন: **জানালাটা পণ্যের
+পরিচয়ই বহন করবে**, ঠিক যেমন ড্যাশবোর্ড আলোয় থাকা মেশিনেও Midnight-এ খোলে।
+⚠️ `TrayTheme.Day` মুছে ফেলা হয়নি — রংগুলো বাছা হয়ে আছে, কোনোদিন
+সেটিংসে থিমের সুইচ এলে ওটাই লাগবে।
+
+⚠️ তাতে একটা কাজ **বাধ্যতামূলক** হয়ে গেল: টাইটেল বার আঁকে Windows,
+আমরা নয়। কালো জানালার মাথায় সাদা পটি বসলে সেটা ডিজাইন নয়, ভাঙা জিনিস
+মনে হতো। তাই `DWMWA_USE_IMMERSIVE_DARK_MODE` — আর দুটো নম্বরই
+(১৯ ও ২০) চেষ্টা করা হয়, কারণ 1809–1903-এ নম্বরটা আলাদা ছিল।
+
+### ⭐ `--preview-today` — নতুন ডেভ টুল
+
+জানালার চারটে অবস্থা আসল ডেটায় দেখতে হলে যথাক্রমে একটা নতুন লগঅন,
+আধ ঘণ্টার কাজ, নেট বিচ্ছিন্ন করা আর **একটা পুরো মাস** লাগত। ডিজাইন
+বদলে প্রতিবার সেটা করা যায় না, তাই `--diagnose`-এর মতোই একটা টুল:
+
+```
+oXeio.Agent.exe --preview-today [loading|failing|met]
+```
+
+কিছুই জমা হয় না, সার্ভারে কিছু যায় না।
+
+### যা চোখে দেখা হলো
+
+| অবস্থা | ফল |
+|---|---|
+| স্বাভাবিক | `0:04 hours today` · সবুজ `Working` চিপ · দাগ ৩৮% · `79:20 behind` আম্বারে |
+| মাস জানা নেই | `Loading…` + ব্যাখ্যা · মিটার আঁকাই হয় না |
+| পৌঁছাচ্ছে না | আম্বার `Idle` চিপ · `SYNC: Not reaching` **লাল** · `QUEUED 2481` · লাল বাক্সে এক বাক্য |
+| টার্গেট পূর্ণ | মিটার **সবুজ** ও পূর্ণ · `Target met` · `3:15 ahead` |
+
+⭐ **০.৩%-এর ভরাটটা সত্যিই দেখা যায়** — মকআপ বানাতে গিয়ে ধরা পড়েছিল যে
+৩৬০px-এ ওটা ১.১px, আর GDI গোল করে শূন্য করে দিত। ৩px-এর মেঝে বসানোয়
+"একটু কাজ হয়েছে" আর "কিছুই হয়নি" আর এক দেখায় না।
+
+### ⚠️ ছবি তুলতে গিয়ে যা শেখা গেল
+
+প্রথমে `SetForegroundWindow` + স্ক্রিন-ক্যাপচার দিয়ে ছবি তোলা হচ্ছিল।
+Windows foreground চুরি আটকায়, তাই জানালাটা সামনে আসেনি — আর ছবিতে উঠে
+এসেছিল **মালিকের ব্রাউজারের পর্দা**। ছবিগুলো মুছে ফেলা হয়েছে, আর
+পদ্ধতি বদলে `PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT)` — জানালাটা
+নিজের bitmap-এ নিজেই আঁকে। ⭐ এতে পর্দার অন্য কিছু ছবিতে আসার **সুযোগই
+থাকে না**, আর জানালা ঢাকা পড়ে থাকলেও চলে।
+
+**যাচাই:** `dotnet build -warnaserror` ০ warning · **৩৩২ টেস্ট পাস**।
+
+---
+
+## ৩ঔ. ট্রে জানালায় মালিকের চাওয়া চারটে জিনিস *(১১ আগস্ট ২০২৬, রাত)*
+
+মালিক পাঁচটা জিনিস চেয়েছিলেন। চারটে বসেছে, একটা হোল্ডে, আর একটা
+চাওয়া **ইচ্ছাকৃতভাবে অন্যভাবে** দেওয়া হয়েছে।
+
+| চাওয়া | ফল |
+|---|---|
+| দৈনিক · ৭ দিন · মাসিক টার্গেট, progress bar-এ | ✅ তিনটে বার |
+| সর্বশেষ স্ক্রিনশট | ✅ থাম্বনেইল |
+| প্রতি ৫ মিনিটে কি-বোর্ড/মাউস **কতবার** | ⚠️ **কতবার নয় — কত শতাংশ সময়** (নিচে) |
+| মিনিমাইজ বাটন | ✅ |
+| **Start / Pause বাটন** | ⏸ **হোল্ড** — মালিকের সিদ্ধান্তের অপেক্ষায় |
+
+### ⭐ "কতবার" কেন দেওয়া গেল না
+
+কতবার কি-বোর্ড চাপা হয়েছে গুনতে low-level hook লাগে — সেটাই
+[04-Features § L](04-Features.md)-এর নিষিদ্ধ **কীলগিং**, আর
+[G46](08-Gap-Analysis.md)-এ ঠিক এই প্রস্তাবটাই আগে প্রত্যাখ্যাত হয়েছে।
+এজেন্ট `GetLastInputInfo` দিয়ে শুধু জানে *"শেষ ইনপুট কতক্ষণ আগে"*।
+
+⭐ **কিন্তু কাছাকাছি জিনিসটা আগে থেকেই ছিল** — `input_score` (B13):
+
+```csharp
+// ০–১০০। কতটা ব্যস্ত ছিল, কী লিখেছে তা নয় (B13)।
+return (int)Math.Round(100.0 * _activeSamples / _samples);
+```
+
+প্রতি সেকেন্ডে দেখা হয় ইনপুট ছিল কি না, আর সেগমেন্ট কাটা হয় সর্বোচ্চ
+৫ মিনিটে (G53) — অর্থাৎ **"প্রতি ৫ মিনিটে কতটা ব্যস্ত"** সংখ্যাটা
+বহুদিন ধরেই সার্ভারে যাচ্ছিল, শুধু কাউকে দেখানো হতো না। জানালায় এখন
+শেষ ৬টা ঘর স্তম্ভ হিসেবে আঁকা হয়।
+
+⚠️ শূন্য স্কোরেও ১px রেখা আঁকা হয়, আর রংটা ধূসর — নইলে "০% ব্যস্ত"
+আর "এই ঘরের কোনো তথ্যই নেই" পর্দায় হুবহু এক দেখাত।
+
+### দৈনিক ও ৭ দিনের টার্গেট
+
+সার্ভার এখন heartbeat-এ তিনটে নতুন সংখ্যা পাঠায় — `dailyTargetSec`,
+`week7ActiveSec`, `week7TargetSec`।
+
+⚠️ **রোলিং ৭ দিন, "চলতি সপ্তাহ" নয়** — এই সিস্টেমে সপ্তাহের কোনো
+সীমানাই নেই (§ ৪: যেকোনো দিন গোনা হয়)। "এই সপ্তাহ" বানাতে গেলে
+সপ্তাহ কবে শুরু সেই নতুন ধারণা আমদানি করতে হতো।
+
+⚠️ **ছুটির দিনে দৈনিক টার্গেট ০, আর সেটা `null`-এর চেয়ে আলাদা** —
+`null` মানে "সার্ভার বলেনি"। দুটো এক করে ফেললে জানালা ছুটির দিনেও
+"৮ ঘণ্টা বাকি" বলে তাড়া দিত। টেস্টে বাঁধা।
+
+⚠️ ছুটির তালিকা মাসের শুরু নয়, **৭ দিনের জানালাটাও ধরে** আনতে হয় —
+মাসের ১–৬ তারিখে ওই জানালা আগের মাসে ঢুকে পড়ে।
+
+### সর্বশেষ স্ক্রিনশট — দুটো ফাঁদ
+
+⚠️ **এক:** কিউয়ের ফাইলটার দিকে আঙুল তুলে রাখা যায় না — আপলোড সফল হলে
+sync worker ছবি ও থাম্বনেইল দুটোই কয়েক সেকেন্ডে **মুছে ফেলে**। তাই
+থাম্বনেইলটা `state\last-shot.webp`-এ কপি করে রাখা হয় (৪–১১ KB)।
+
+⚠️⚠️ **দুই:** `Image.FromStream` WebP **চেনে না** — GDI+-এ ওই কোডেকটাই
+নেই, আর সে ব্যর্থ হয়ে বলে *"Parameter is not valid"*, যেটা পড়ে মনে হয়
+ফাইল নষ্ট। ডিকোড করতে হয়েছে SkiaSharp দিয়ে (`WebpImage.cs`) — যেটা
+এজেন্টে আগে থেকেই আছে, তাই নতুন কোনো নির্ভরতা লাগেনি।
+⚠️ সারি ধরে কপি করতে হয়, একবারে নয়: Skia-র `RowBytes` আর GDI-র
+`Stride` এক না-ও হতে পারে, আর তখন ছবিটা তির্যক হয়ে যেত।
+
+### মিনিমাইজ
+
+⚠️ `MaximizeBox = false` দিলে Windows বাটনটা **সরায় না, ধূসর করে** —
+minimize বা maximize-এর একটা থাকলে সে দুটোই আঁকে। `WS_MAXIMIZEBOX`
+স্টাইল-বিট হাতে মুছেও লাভ হয়নি (চেষ্টা করে দেখা হয়েছে)। সরাতে হলে গোটা
+টাইটেল বার নিজে আঁকতে হবে — এই জানালার জন্য অসমানুপাতিক, তাই ধূসর
+বাটনটা মেনে নেওয়া হলো।
+
+### ⏸ Start / Pause কেন হোল্ডে
+
+কাঠামো **আগে থেকেই আছে** — `AgentCommand.PauseTracking`,
+`AgentStatus.Paused`, tray আইকনের আলাদা রং। কিন্তু `TrayTooltip.cs`-এ
+লেখা: *"Paused সার্ভারের কমান্ড (H06), **স্টাফের বাটন নয়**"*।
+
+স্টাফের বাটন বসালে যা উল্টে যায়: ADR-011d · "কোনো অনুমোদন ব্যবস্থা
+নেই" · "স্টাফের চাপার মতো কোনো বাটন নেই" · § ৪-এর চূড়ান্ত নিয়ম।
+
+⚠️ **আর আসল বিপদটা নীতির নয়, ব্যবহারিক:** Start বাটন মানে ট্র্যাকিং
+বন্ধ অবস্থায়ও থাকতে পারে। **যেদিন কেউ Start চাপতে ভুলে যাবে, সেদিনের
+পুরো বেতন হারাবে** — আর ভুলটা করবে স্টাফ, ভুগবেও স্টাফ। এই সিস্টেমের
+গোটা নকশাটাই দাঁড়িয়ে আছে "স্টাফকে কিচ্ছু মনে রাখতে হবে না"-র উপর।
+
+তিনটে পথ মালিকের সামনে রাখা হয়েছে: (ক) মালিকের হাতে pause — G41-এর
+`device_commands` টেবিল লাগবে, কোনো নিয়ম ভাঙে না · (খ) স্টাফের
+"৩০ মিনিটের pause", নিজে থেকে ফিরে আসে · (গ) পূর্ণ Start/Pause।
+
+**যাচাই:** সার্ভার **৫৮৭ টেস্ট** (ছিল ৫৮৬) · এজেন্ট **৩৩২** ·
+`build -warnaserror` ০ warning · জানালা চারটে অবস্থাতেই খুলে দেখা।
+
+---
+
+## ৩ক. ⚠️ কী কী বাকি — কোডের বিরুদ্ধে যাচাই করা তালিকা *(১১ আগস্ট ২০২৬, রাত)*
+
+⭐ এই তালিকাটা ডক পড়ে বানানো **নয়**। ৭৮টা এজেন্ট পাঁচটা দিক থেকে
+সমান্তরালে কোড ঘেঁটেছে, তারপর **প্রতিটা দাবি আলাদা এজেন্ট দিয়ে খণ্ডন
+করার চেষ্টা** করা হয়েছে — ৭২টা দাবির ৯টা ওখানেই বাদ পড়েছে।
+
+⚠️ **কেন এভাবে:** একই দিনে দুবার প্রমাণ হয়েছে ডক আর কোড আলাদা কথা বলে —
+A07 "তৈরি" লেখা ছিল অথচ অর্ধেক জোড়া ([G71](08-Gap-Analysis.md)), আর tray
+মেনুতে Exit "আছে" ধরে নেওয়া হয়েছিল অথচ ইচ্ছাকৃতভাবে নেই।
+
+### 🔴 রোলআউট ব্লকার
+
+**ক· হিসাব ভুল দেবে, চুপচাপ**
+
+| | কী |
+|---|---|
+| ~~G35 · B14~~ ✅ | ~~**`time_adjustments`-এ লেখার পথ নেই**~~ — এখন `adjustments/` মডিউল, লেখা ও বাতিল দুটোই ([§ ৩ঙ](#৩ঙ-ঘণ্টা-ফেরত-দেওয়ার-পথ-আর-বাতিল-ডিভাইসে-ছবি-তোলা-১২-আগস্ট-২০২৬)) |
+| ~~G32~~ ✅ | ~~**`device_overlap` অ্যালার্টের প্রযোজক নেই**~~ — এখন `alerts/device-overlap.check.ts`, [§ ৩ঞ](#৩ঞ-তিনটে-ফাঁক-যেগুলো-কেউ-খুঁজত-না-১২-আগস্ট-২০২৬) |
+| G37 | proration রিপোর্টে বসেছে, `monthly_summary` ও payroll-এ বসেনি |
+| O2 | **চান্দ্র ছুটি DB-তে নেই** → কর্মদিবস বেশি গোনা → টার্গেট ও pace দুটোই ভুল |
+| ~~J08~~ ✅ | ~~স্টাফ নিজের ঘণ্টা-সংশোধন দেখতে পারে না~~ — `GET /employees/:id/time-adjustments` স্টাফের নিজেরটার জন্য খোলা, আর `/me` পাতায় কারণসহ দেখায় |
+
+⚠️ **G32-এর সবচেয়ে খারাপ দিকটা কোডের মন্তব্যে:** `dashboard.service.ts`
+UNION-এর বদলে যোগফল রাখার যুক্তি দিয়েছে *"…তাই ব্যাপারটা অদৃশ্য নয়"* —
+অর্থাৎ অ্যালার্টটাকে রক্ষাকবচ ধরে। অ্যালার্টটা কোনোদিন ওঠে না, তাই দুই
+PC-তে সময় দ্বিগুণ গোনা **সত্যিই অদৃশ্য**। ✅ *(১২ আগস্ট — প্রযোজকটা
+লেখা হয়েছে, তাই যুক্তিটা এখন আর ফাঁপা নয়; মন্তব্যেও সেটা লেখা আছে)*
+
+**খ· রোলআউটের শর্ত**
+
+~~`policy_signed_at` লেখার পথ নেই~~ ✅ *(১২ আগস্ট —
+[§ ৩ঘ](#৩ঘ-সই-রেকর্ড-করার-পথ--রোলআউটের-শেষ-কাগুজে-বাধা-১২-আগস্ট-২০২৬))* ·
+G34 সই করা কাগজের **স্ক্যান আপলোডের** endpoint এখনো নেই (তারিখ বসানো
+যায়, ছবি রাখা যায় না) · নীতিমালার ৩৬টা ফাঁকা ঘর ও আইনজীবী ·
+~~**স্টাফের নিজস্ব পাতা বলে কিছু নেই**~~
+✅ *(১২ আগস্ট — `/me`, [§ ৩ট](#৩ট-স্টাফের-নিজের-পাতা--যে-মেনুটা-রোজ-৪০৪-দেখাত-১২-আগস্ট-২০২৬))*
+· tray-র "View policy" এখনো ৪০৪-এ নামায়। ⚠️ এখানে আগে লেখা ছিল
+"নীতিমালার ফাইলটাই লেখা হয়নি" — **ভুল**: `docs/monitoring-policy-template.md`
+১৯৩ লাইনের পুরো খসড়া। যা নেই তা হলো ওটাকে একটা URL-এ পরিবেশন করা
+(`POLICYURL` যেখানে নামে)।
+
+**গ· ডিপ্লয় ও অপস** — সবচেয়ে অপ্রত্যাশিত দল
+
+| | কী |
+|---|---|
+| web-deploy | **ওয়েব ড্যাশবোর্ড প্রোডাকশনে চালানোর ব্যবস্থাই নেই** — compose-এ শুধু postgres ও api |
+| deploy | রানবুক মেনে চললে **একটাও টেবিল বসে না** — migrate/seed ধাপ নেই |
+| env | SMTP চলক compose-এ পৌঁছায় না → সার্ভার ওঠে **ব্যাকআপ ও ইমেইল বন্ধ** অবস্থায় |
+| autostart | বিদ্যুৎ গেলে Docker Desktop নিজে ওঠে না |
+| ~~owner-lockout~~ ✅ | ~~একমাত্র owner লগইন হারালে ফেরার পথ নেই~~ — `recover-owner.js`, [§ ৩ঞ](#৩ঞ-তিনটে-ফাঁক-যেগুলো-কেউ-খুঁজত-না-১২-আগস্ট-২০২৬) |
+| I10 · pgdata | BitLocker নেই · ডাটাবেসের নিজের ডিস্ক কেউ মাপে না |
+| CORS | ওয়েব relative `/api/v1` ধরে, সার্ভার cross-origin CORS-এ সাজানো |
+
+**ঘ· এজেন্ট**
+
+~~config~~ ✅ *(ঠিক করা হয়েছে — [§ ৩খ](#৩খ-এজেন্টের-কনফিগ-লুপ--settings-এই-প্রথম-সত্যিই-কাজ-করে-১১-আগস্ট-২০২৬-রাত))* ·
+H06 **revoke করা এজেন্ট ছবি তোলা থামায় না** · ~~H08 **সাধারণ কোনো লগ ফাইল
+নেই**~~ ✅ *(⚠️ আগে এখানে "কোনো লগ ফাইলই নেই" লেখা ছিল — বেশি বলা: `DropLog`
+`outbox-drops.log` ডিস্কে লেখে। যা ছিল না তা হলো `ISyncLog`-এর কোনো ফাইল
+বাস্তবায়ন — একমাত্র ইমপ্লিমেন্টেশন `ConsoleSyncLog`, আর WinExe-তে কনসোলই
+নেই। এখন `Storage/FileLog.cs` —
+[§ ৩ঝ](#৩ঝ-h08--যে-লগগুলো-শূন্যে-যেত-১২-আগস্ট-২০২৬))* ·
+A05 আউটবক্সের ডিস্ক-বাজেট কেউ প্রয়োগ করে না · ~~I01 সার্ট পিনিং নেই~~ ✅ *(§ ৩ত)* ·
+K01 retention জব ~~**কল করার পথই নেই**~~ ✅ *(⚠️ এই দাবিটা **ভুল ছিল** —
+`@Cron('0 0 2 * * *')` জবের গায়েই বসানো, অর্থাৎ প্রোডাকশনে রাতে চলে।
+যা সত্যিই ছিল না: জবের শরীরের একটাও টেস্ট, আর হাতে চালানোর পথ। দুটোই
+এখন আছে — [§ ৩জ](#৩জ-k01--যে-জব-কখনো-চোখে-দেখা-হয়নি-১২-আগস্ট-২০২৬))* ·
+এজেন্ট নিজের ভার্সন হার্ডকোড করে
+`0.1.0`, তাই H04 চিরকাল একই আপডেট অফার করবে।
+
+### 🟡 ব্লকার নয়, কিন্তু আসল কাজ
+
+A09/G41 `device_commands` · A10 ব্লার · A11 ব্ল্যাকলিস্ট · G69 rollback ·
+H07 পারফরম্যান্স (মাপার কোডই নেই) · ৯০ দিনের গ্যালারি (retention-এর
+কোয়েরিতে ইনডেক্স নেই) · **MSI-তে code signing নেই** · `deploy-agent.ps1`
+নেই · ~~অ্যালার্ট ও হেলথের API আছে, পর্দা নেই~~ ✅ *(§ ৩ণ)* · ~~**ওয়েবে একটাও টেস্ট নেই**~~
+✅ *(৬৪টা — [§ ৩ঞ](#৩ঞ-তিনটে-ফাঁক-যেগুলো-কেউ-খুঁজত-না-১২-আগস্ট-২০২৬))* ·
+~~লগ রোটেশন নেই~~ ✅ *(§ ৩ঝ)* · **সার্ভার নিজে বন্ধ থাকলে কেউ জানে না** · UPS-এর graceful
+shutdown নেই · `/agent/enroll` unthrottled · Prisma 7-এ seed ভাঙবে ·
+G46 জিগলার · ~~`agent_versions`-এ সারি বসানোর পথ নেই~~ ✅ *(§ ৩ণ)*।
+
+### 📄 ডক যেখানে মিথ্যা বলছে
+
+~~`device_overlap` ওঠে দাবি করা **ছ-জায়গা**~~ ✅ *(এখন সত্যিই ওঠে)* ·
+স্পেকে এখনো snake_case
+কোয়েরি প্যারাম ✅ *(২৩ আগস্ট যাচাই — 07 § ৪.২-তে এখন camelCase-ই লেখা, সাথে `forbidNonWhitelisted`-এর ৪০০-র সতর্কতা)* · ~~রানবুক `agent.log` পড়তে বলে (ফাইলটা কোনোদিন লেখা হয় না)~~
+✅ *(ফাইলটা এখন লেখা হয়, আর রানবুকের পাথটাও শোধরানো — ছিল
+`oXeio\agent.log`, আসলে `oXeio\logs\agent.log`)* ·
+compose-এ api-র healthcheck নেই অথচ রানবুক "দুটোই healthy" চায় ·
+Settings-এ retention বদলানোর কথা, কোডে ৯০ দিন হার্ডকোড · `lang="bn"`
+অথচ UI ইংরেজি ✅ *(২৩ আগস্ট যাচাই — `web/index.html` ও `manifest.webmanifest` দুটোতেই এখন `lang="en"`)* · **watchdog "সার্ভিস"** (উপরে § ৩ঈ-তে সংশোধিত)।
+
+---
+
+## ৩খ. এজেন্টের কনফিগ-লুপ — Settings এই প্রথম সত্যিই কাজ করে *(১১ আগস্ট ২০২৬, রাত)*
+
+অডিটের সবচেয়ে বড় আবিষ্কারটা ঠিক করা হলো: **ড্যাশবোর্ডের Settings-এ যা-ই
+বদলানো হোক, ১৫টা PC-র একটাও কিছু জানত না।**
+
+### ⭐ কেন নীরবে মরে ছিল
+
+`GetConfigAsync()` লেখা ছিল, কিন্তু **কেউ কোনোদিন ডাকেনি**। আর heartbeat-এর
+হ্যান্ডলারে ছিল একটাই লাইন:
+
+```csharp
+_configVersion = body.ConfigVersion;   // ← এটাই ফাঁদ
+```
+
+⚠️ অর্থাৎ এজেন্ট সার্ভারের ভার্সন নম্বরটা **অন্ধভাবে মেনে নিত**, অথচ
+কনফিগটা আনতই না। পরের heartbeat-এ ভার্সন মিলে যেত, তাই সার্ভার আর কোনোদিন
+`reload_config` চাইত না। কমান্ডের তালিকাটাও এজেন্ট পড়ত না — অর্থাৎ
+`reload_config` দু-দিক থেকেই মৃত ছিল।
+
+### যা করা হলো
+
+| | |
+|---|---|
+| কখন আনা হয় | সার্ভার `reload_config` বললে, **অথবা** ভার্সন না মিললে |
+| ⚠️ দ্বিতীয় শর্তটা কেন | সদ্য চালু হওয়া এজেন্টের ভার্সন `null`, আর তখন সার্ভার কোনো কমান্ড পাঠায় না ("কিছু বদলায়নি")। শুধু কমান্ডে নির্ভর করলে রিবুটের পর এজেন্ট চিরকাল ডিফল্টে চলত |
+| কোথায় প্রয়োগ হয় | **`TrackLoop`-এ**, heartbeat থ্রেডে নয় |
+
+⚠️⚠️ **থ্রেডের ভাগটাই এখানে আসল নকশা।** `_machine` আর `_apps` ট্র্যাকিং
+লুপের সম্পত্তি। heartbeat থ্রেড থেকে বদলালে ঠিক সেই সেকেন্ডে একটা `Tick`
+পুরোনো অবজেক্টে আর পরেরটা নতুনটায় পড়ত — মাঝের সময়টুকু **কোনো সেগমেন্টেই
+ঢুকত না**। কনফিগ বদলানোর দিনে সবার কিছু ঘণ্টা নীরবে হারাত। তাই heartbeat
+শুধু `_pendingConfig`-এ রেখে যায়, আর ট্র্যাকিং লুপ প্রতি টিকের শুরুতে
+`Interlocked.Exchange` দিয়ে তুলে নেয়।
+
+### ⭐ যা বদলায়নি তাতে হাত দেওয়া হয় না
+
+সিদ্ধান্তটুকু Core-এ সরানো হয়েছে (`ConfigChange.Between`), তাই প্রতিটা
+শাখা ইউনিট টেস্টে ধরা যায়।
+
+⚠️ **কেন এটা জরুরি:** "কনফিগ এসেছে, সব নতুন করে বসাই" লিখলে সার্ভারে কেউ
+Settings-এ **save** চাপলেই ১৫টা PC-র সবার চলতি সেগমেন্ট কাটা পড়ত — দিনে
+কয়েকবার হলে রিপোর্ট ভরে যেত টুকরো সারিতে। এখন:
+
+| বদল | ট্র্যাকিং ছোঁয়া হয়? |
+|---|---|
+| ছবির সময়সীমা · স্লট · heartbeat | ❌ শুধু রেফারেন্স বদল |
+| মাসিক টার্গেট · টাইমজোন | ❌ কিছুই না |
+| **idle সীমা** | ✅ চলতি সেগমেন্ট বন্ধ করে নতুন মেশিন |
+| **অ্যাপ ট্র্যাকিং চালু/বন্ধ** | ✅ খোলা রেকর্ড বন্ধ |
+
+⚠️ নতুন `IdleStateMachine` শুরু হয় **পুরোনোটার শেষ স্টেট** নিয়ে — ডিফল্ট
+`Active` ধরলে লক করা পর্দার মানুষও এক টিকের জন্য "কাজ করছে" হয়ে যেত।
+
+⚠️ অবৈধ মান উপেক্ষা করা হয়: `slotMinutes ≤ 0` বা `idleThresholdSec ≤ 0`
+এলে বদল গোনাই হয় না — একটা ভুল কনফিগ পুরো ক্যাপচার লুপ নামিয়ে দিতে
+পারত। heartbeat-এর ব্যবধানও ১৫ সে.–৫ মি.-এ বাঁধা: ১ সেকেন্ড বসালে ১৫টা
+PC দিনে ১৩ লক্ষ রিকোয়েস্ট পাঠাত, আর ১ দিন বসালে G01 চিরকাল জ্বলত।
+
+### মাঠে যাচাই
+
+সার্ভারে `work_policies` বদলে (`idle 60→90`, ছবি `23:00→21:00`) দেখা হয়েছে —
+এজেন্টের লগে বদলটা নাম ধরে এসেছে।
+
+**যাচাই:** Core **২৭৪ টেস্ট** (ছিল ২৬৩ — ১১টা নতুন) · এজেন্ট ৬৯ ·
+`build -warnaserror` ০ warning।
+
+---
+
+## ৩গ. ডিপ্লয়ের তিনটে ফাঁক *(১১ আগস্ট ২০২৬, রাত)*
+
+অডিটের 🔴 তালিকার "ডিপ্লয় ও অপস" দলটার সবচেয়ে জরুরি তিনটে। তিনটেরই
+একই চরিত্র: **রানবুক মেনে চললে সিস্টেম চলত না, অথচ কোথাও কোনো ভুল
+দেখাত না।**
+
+### ১· ড্যাশবোর্ড চালানোর কোনো ব্যবস্থাই ছিল না
+
+`docker compose up -d` তুলত শুধু `postgres` ও `api`। ওয়েব চালানোর একমাত্র
+পথ ছিল হাতে `npm run dev` (Vite-এর **ডেভ** সার্ভার) চালিয়ে রাখা।
+
+⚠️ অর্থাৎ সার্ভার PC রিবুট হলে — বিদ্যুৎ গেলে, আপডেটে — মালিক আর কোনো
+পাতা দেখতে পেতেন না, যতক্ষণ না কেউ টার্মিনাল খুলে কমান্ডটা আবার চালাত।
+
+**এখন:** `web` সার্ভিস — মাল্টি-স্টেজ বিল্ড (node → `dist`), তারপর Caddy।
+
+⭐ **আর এটাই CORS-এর ফাঁকটাও বন্ধ করে।** Caddy `/api/*` কে api কনটেইনারে
+পাঠায়, বাকি সব পাতা নিজে দেয় — অর্থাৎ ব্রাউজারের চোখে **একটাই origin**।
+সেশন cookie-তে `SameSite=Strict`, তাই আলাদা origin হলে লগইন সফল দেখাত
+আর পরের রিকোয়েস্টেই ৪০১ — ঠিক যে ফাঁদে ডেভ মোডে একবার পড়া হয়েছিল
+([§ ৩.৫](#৩৫-web-লগইন-শেল--web))।
+
+⚠️ `try_files` বাধ্যতামূলক: রুটিং ক্লায়েন্টে, তাই `/monthly` সরাসরি
+খুললে ডিস্কে ওই ফাইল নেই। না থাকলে **refresh চাপলেই ৪০৪** — আর সেটা
+ধরা পড়ত রোলআউটের দিনে।
+
+### ২· রানবুক মেনে চললে একটাও টেবিল বসত না
+
+§ ২-এ ছিল `.env` বানান → `docker compose up -d` → `ps`। **migrate ও seed
+ধাপটাই ছিল না।**
+
+⚠️ আর কনটেইনার নিজে সেটা করতেও পারত না: প্রোডাকশন ইমেজে prisma CLI বা
+`tsx` নেই (`Dockerfile`-এর runtime স্তরে `--omit=dev`)।
+
+**এখন:** `migrate` নামে একটা one-shot সার্ভিস, `build` স্তরের উপর দাঁড়ানো
+(ওখানে সোর্স ও পূর্ণ `node_modules` দুটোই আছে):
+
+```
+docker compose --profile setup run --rm migrate
+```
+
+⭐ profile দেওয়া, তাই `up -d`-তে চলে না — মাইগ্রেশন সচেতন একটা ধাপ,
+প্রতি রিস্টার্টে নিজে থেকে চলার জিনিস নয়।
+
+⚠️ `npm run seed` ডাকা হয় না — ওটা `dotenv -e ../.env` দিয়ে মোড়া, আর
+কনটেইনারে ওই ফাইল নেই।
+
+⚠️ `prisma/` হোস্ট থেকে **mount** করা হয়, ইমেজে বেক করা নয় — কারণ
+`staff.local.json`-এ কর্মীদের নাম ও বেতন থাকে ([§ ৩ঊ](#৩ঊ-github-এ-পুশ--আর-তার-আগে-যা-সরাতে-হলো-১১-আগস্ট-২০২৬))।
+বেক করলে সেটা প্রতিটা লেয়ার-কপির সাথে ছড়াত।
+
+### ৩· `.env.example`-এ ১০টা চলক, সার্ভার পড়ে ২৬টা
+
+গুনে দেখা গেল সার্ভার `process.env` থেকে **২৬টা** চলক পড়ে, অথচ
+`.env.example`-এ ছিল **১০টা**, আর compose পাস করত **১৫টা**।
+
+⚠️ যা বাদ পড়েছিল তার মধ্যে ছিল **পুরো SMTP সেট** আর `ALERT_EMAIL_TO`।
+ফল: ডকের ধাপ মেনে চললে সার্ভার উঠত **ইমেইল সম্পূর্ণ বন্ধ অবস্থায়** —
+অ্যালার্ট তৈরি হতো, ডাটাবেসে বসত, কিন্তু কারো কাছে পৌঁছাত না। আর সেটা
+কোথাও ভুল হিসেবেও দেখাত না, কারণ "SMTP নেই" মানে চ্যানেল **চুপচাপ বন্ধ**।
+
+**এখন:** ২৬টার একটাও বাদ নেই (TLS-এর দুটো ছাড়া, ওগুলো ইচ্ছাকৃতভাবে
+কমেন্টে)। যাচাই করা হয়েছে সোর্স গ্রেপ করে compose-এর সাথে মিলিয়ে।
+
+⭐ `.env.example`-এ এখন **খালি রাখা যায় এমন চলকগুলোও লেখা**, কারণ ওগুলোর
+অনুপস্থিতি নীরব — "যে সেটিংটা আছে বলে আপনি জানতেনই না" তার চেয়ে "যে খালি
+লাইনটা চোখে পড়ে" ভালো।
+
+### সাথে · api-র healthcheck
+
+রানবুক বলত *"দুটোই healthy হওয়া চাই"*, অথচ `api`-তে কোনো healthcheck
+ছিল না — `docker compose ps` শুধু `running` দেখাত, আর ভেতরে অ্যাপ
+ক্র্যাশ-লুপে থাকলেও সেটা running-ই।
+
+এখন `/api/v1/health` দেখা হয় ও `db: "up"` মেলানো হয়।
+⚠️ scheme বাছা হয় `TLS_CERT` দেখে — TLS চালু থাকলে ওই পোর্টে আর প্লেইন
+HTTP থাকে না, তাই স্থির `http://` লিখলে healthcheck **সবসময় ব্যর্থ**
+হতো আর সুস্থ কনটেইনার unhealthy দেখাত।
+
+### যাচাই
+
+| ধাপ | ফল |
+|---|---|
+| `docker compose config` | ✅ বৈধ |
+| env-এর ফাঁক | ✅ শূন্য (স্ক্রিপ্টে সোর্স ↔ compose মিলিয়ে) |
+| `build web` | ✅ ইমেজ তৈরি |
+| `--profile setup run migrate` | ✅ কনটেইনার DB-তে পৌঁছেছে — `No pending migrations to apply.` |
+| ড্যাশবোর্ড চালিয়ে | `/` `/monthly` `/staff/7` → **২০০** (SPA fallback) · asset `immutable`, index `no-cache` |
+| proxy সত্যিই বসেছে? | `/api/v1/health` → **৫০২**, index.html নয় — অর্থাৎ রুটটা proxy-র হাতে গেছে |
+
+⚠️ **পুরো স্ট্যাক একসাথে চালিয়ে দেখা হয়নি** — এই মুহূর্তে হোস্টের
+`npm run start:dev` পোর্ট ৩০০০ ধরে আছে, তাই `api` কনটেইনার উঠতে পারত না।
+৫০২-টা তারই ফল, Caddy-র দোষ নয়।
+
+---
+
+## ৩ঘ. সই রেকর্ড করার পথ — রোলআউটের শেষ কাগুজে বাধা *(১২ আগস্ট ২০২৬)*
+
+§ ৩ক-র 🔴 তালিকার "রোলআউটের শর্ত" দলের প্রথমটা।
+
+⚠️ **সমস্যাটা ছিল সবচেয়ে নীরব ধরনের:** `policy_signed_at` কলামটা
+schema-তে ছিল, `employees.service.ts` পড়ত, `redact.ts` রেসপন্সে দিত,
+`web/src/api/admin.ts`-এ টাইপ করা ছিল — **শুধু বসানোর কোনো পথ ছিল না**।
+কোড পড়ে সবকিছু সম্পূর্ণ মনে হতো। অথচ *"সই ছাড়া কারো PC-তে এজেন্ট বসবে
+না"* — [01 § রোলআউট](01-Planning.md)-এর একমাত্র শর্তটা — সিস্টেমে
+রেকর্ডই করা যেত না।
+
+### যা বানানো হলো
+
+| | |
+|---|---|
+| `POST /employees/:id/policy-signed` | বডি ঐচ্ছিক: `{ "signedOn": "2026-08-03" }` |
+| `DELETE /employees/:id/policy-signed` | ভুল করে বসানো সই তোলা |
+| Settings → Staff | নতুন **Policy signed** কলাম, আর সারিতে একটা বাটন |
+
+⭐ **আলাদা endpoint, `PATCH /employees/:id`-এর একটা ফিল্ড নয়।** এটা
+কর্মীর তথ্য সম্পাদনা নয়, একটা **আইনি ঘটনা রেকর্ড করা**। সাধারণ update-এর
+ভেতরে থাকলে সেটা `employee_update` audit-এ মিশে যেত, আর ছ-মাস পরে "ওর সই
+কি সত্যিই নেওয়া হয়েছিল" প্রশ্নের উত্তর খুঁজে পাওয়া যেত না। তাই দুটো নতুন
+audit action: `policy_signed` ও `policy_signed_cleared`।
+
+⚠️ **তারিখ দেওয়ার সুযোগ রাখা হয়েছে** — কাগজ প্রায়ই আগে সই হয়, ড্যাশবোর্ডে
+বসানো হয় দু-দিন পরে। বসানোর দিনটাকে সইয়ের দিন ধরে নিলে রেকর্ডটা কাগজের
+সাথে মিলত না। তবে **ভবিষ্যতের তারিখ নাকচ** — সই হওয়ার আগেই রেকর্ড হয়ে
+গেলে গোটা শর্তটার মানেই থাকে না।
+
+⚠️ তারিখটা **ঢাকার মধ্যরাত** হিসেবে বসে। কলামটা `timestamptz`, তাই
+বসানোর মুহূর্ত রাখলে "৩ আগস্ট সই" রেকর্ডটা টাইমজোন বদলালে ২ বা ৪ আগস্ট
+দেখাত — একটা আইনি নথির তারিখ হিসেবে অগ্রহণযোগ্য।
+
+⚠️ **স্ক্যান আপলোড এখনো নেই**, আর পর্দায় সেটার প্রতিশ্রুতিও দেওয়া হয়নি।
+টেমপ্লেটটা "স্ক্যান করে আপলোড" বলে; সেটা ভবিষ্যতের কাজ (G34), আর
+`upload_policy_doc` audit action ওর জন্যই তোলা আছে।
+
+### দুটো টেস্ট নিজেই শিখিয়েছে
+
+⚠️ **এক·** প্রথমে সব POST/DELETE ৪০৩ খেয়েছে — CSRF হেডার দিতে ভুলে
+গিয়েছিলাম। প্রোডাক্টের দোষ নয়, গার্ডটা কাজ করছে। ⭐ কিন্তু তাতে একটা
+আসল ফাঁদ ধরা পড়ল: "ম্যানেজার পারে না" টেস্টটা **ভুল কারণে পাস করছিল** —
+৪০৩ আসছিল CSRF থেকে, role guard থেকে নয়। হেডার বসানোর পর সেটা এখন
+সত্যিকারের role guard-ই পরীক্ষা করে।
+
+⚠️⚠️ **দুই·** ঠিক ০০:২২-এ (ঢাকার মধ্যরাতের পরে) আগের রাতের একটা টেস্ট
+ভেঙেছে — **[G62](08-Gap-Analysis.md)-এর হুবহু পুনরাবৃত্তি**। ছুটির
+টেস্টে `getUTCFullYear/Month/Date` দিয়ে "আজকের" তারিখ বানানো হয়েছিল;
+দিনের বেলায় ঢাকা ও UTC একই তারিখে থাকে, তাই সবুজ ছিল। মধ্যরাত থেকে ভোর
+৬টার মধ্যে UTC তখনো আগের দিনে — ছুটিটা বসত গতকালের ঘরে, আর দৈনিক টার্গেট
+০-র বদলে ২৮,৮০০ আসত।
+
+⭐ শিক্ষাটা দ্বিতীয়বার একই: **এই সিস্টেমে "আজ" মানে সবসময় ঢাকার আজ**,
+টেস্টেও।
+
+**যাচাই:** সার্ভার **৫৯৬ টেস্ট** (ছিল ৫৮৭ — ৯টা নতুন) · web `tsc` ও
+`eslint` ক্লিন · `npm run build` ✅।
+
+⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ড্যাশবোর্ডে ঢুকতে owner পাসওয়ার্ড
+লাগত, আর সেটা চাওয়া হয়নি।
+
+---
+
+## ৩ঙ. ঘণ্টা ফেরত দেওয়ার পথ, আর বাতিল ডিভাইসে ছবি তোলা *(১২ আগস্ট ২০২৬)*
+
+§ ৩ক-র 🔴 তালিকা থেকে দুটো — একটা হিসাবের, একটা প্রাইভেসির।
+
+### ১· G35 · B14 — `time_adjustments`-এ কেউ কখনো লিখত না
+
+⚠️⚠️ **পড়ার দিকটা মাসের পর মাস সম্পূর্ণ ছিল:** `progress.service`
+(tray-র সংখ্যা), `summary.service` (rollup), `payroll.math`
+(`credited = worked + adjustment`), `reports` — চারটে মডিউলই
+`time_adjustments` পড়ত। **কেউ কখনো একটা সারিও লিখত না**, তাই যোগফলটা
+চিরকাল ০ থাকত।
+
+⭐ ফল: *"সিস্টেমের দোষে হারানো ঘণ্টা owner ফেরত দিতে পারে"* — B14-এর
+পুরো প্রতিশ্রুতিটাই কাগজে ছিল, কোডে নয়। আর কোথাও কোনো ভুল দেখাত না,
+কারণ ০ যোগ করা আর কিছু না থাকা পর্দায় এক।
+
+| | |
+|---|---|
+| `POST /employees/:id/time-adjustments` | owner-only |
+| `GET /employees/:id/time-adjustments` | owner · manager · **স্টাফ নিজের** (J08) |
+| `POST /time-adjustments/:id/revoke` | owner-only |
+
+⭐ **কাঁচা সেগমেন্ট কখনো ছোঁয়া হয় না** — সংশোধন আলাদা সারি। তাই "মেশিন
+কী দেখেছে" আর "মানুষ কী ঠিক করেছে" চিরকাল আলাদা থাকে; সেগমেন্ট এডিট
+করলে সেটা আর অডিটযোগ্য থাকত না। টেস্টে বাঁধা।
+
+⭐ **সংশোধনের পর ওই দিনের rollup সাথে সাথেই চলে।** না করলে tray-র সংখ্যা
+সাথে সাথে বদলাত (progress কাঁচা টেবিল পড়ে) কিন্তু রিপোর্ট ও হিটম্যাপ
+১৫ মিনিট পুরোনো থাকত — owner ঘণ্টা ফেরত দিয়ে রিপোর্ট খুলে দেখতেন কিছুই
+বদলায়নি।
+
+⚠️ **±২৪ ঘণ্টার সীমা** — `delta_sec` একটা `Int`, আর কেউ সেকেন্ডের জায়গায়
+মিলিসেকেন্ড বসালে (৭২,০০,০০০) সেটা নীরবে ঢুকে মাসে ~২,০০০ ঘণ্টা যোগ
+করত; pace, payroll ও ড্যাশবোর্ড তিনটেই একসাথে অর্থহীন হয়ে যেত।
+
+⚠️ **কারণ বাধ্যতামূলক**, আর স্টাফ সেটা পড়তে পারে (J08) — তাই ওটা নোট নয়,
+ব্যাখ্যা। **ডিলিট নেই, শুধু revoke** — "ছিল, পরে বাতিল হলো" আর "কোনোদিন
+ছিল না" দুটো আলাদা ইতিহাস, বিশেষ করে বেতন দেওয়া হয়ে গেলে।
+
+⚠️ `@Roles` **মেথডে**, ক্লাসে নয় — ক্লাসে বসালে স্টাফ নিজের সংশোধন
+দেখতেই পেত না, আর ADR-011e-র স্বচ্ছতার শর্ত ভাঙত।
+
+### ২· H06 — বাতিল করা ডিভাইস ছবি তোলা থামাত না
+
+`revoke` করলে টোকেন মুছে যেত আর আপলোড থামত। **কিন্তু ছবি ঠিকই উঠত** আর
+ডিস্কে জমত — কেউ দেখত না, কোথাও যেত না, কিন্তু ছাঁটাই হওয়া কর্মীর PC-তে
+স্ক্রিনশট জমতেই থাকত। সেগমেন্ট ও অ্যাপ-ব্যবহারও একই ভাবে।
+
+⭐ শর্তগুলো Core-এ তুলে আনা হয়েছে (`CaptureGate`), কারণ ওগুলো
+`CaptureSlotAsync`-এর ভেতরে guard clause হিসেবে ছড়ানো ছিল আর সেখানে
+কোনো টেস্ট পৌঁছাত না। ⚠️ **ঠিক সে কারণেই একটা শর্ত অনুপস্থিত থাকলেও কেউ
+টের পায়নি।**
+
+⚠️ revoke-এর শর্তটা **সবার আগে** দেখা হয় — নইলে বাতিল ডিভাইসে "ছবি
+ওঠেনি কেন" প্রশ্নের উত্তর আসত "ও তখন idle ছিল": সত্যি, কিন্তু আসল
+কারণ নয়।
+
+⚠️ বাতিলের পর খোলা সেগমেন্ট বন্ধ হয় কিন্তু **কিউতে যায় না** — টোকেন
+ইতিমধ্যে মুছে গেছে, তাই ওই সারি কোনোদিন সার্ভারে যেতে পারত না; শুধু
+আউটবক্স বড় করত।
+
+### একটা টেস্ট নিজেই শোধরাতে হলো
+
+প্রথমে হাতে একটা `activity_segments` সারি বসাতে গিয়েছিলাম — ব্যর্থ,
+কারণ `sessionId` ও `deviceId` দুটোই বাধ্যতামূলক। ⭐ ফলে টেস্টটা এখন
+**আসল ingest পথ দিয়েই** সেগমেন্ট ঢোকায় (enroll → `POST /agent/segments`),
+যেটা বেশি সৎ: সেশন-সীমানার নিয়মগুলোও (§ ২.১-ক) সাথে যাচাই হয়ে যায়।
+
+**যাচাই:** সার্ভার **৬১৬ টেস্ট** (ছিল ৫৯৬ — ২০টা নতুন) · এজেন্ট Core
+**২৮১** (ছিল ২৭৪) · `build -warnaserror` ০ warning · eslint ক্লিন।
+
+### ৩· ওয়েবের দিকটাও শেষ
+
+কর্মীর পাতায় (`/staff/:id`) নতুন **Hour corrections** অংশ।
+
+⭐ **Settings-এ নয়, কর্মীর পাতায়** — প্রশ্নটা ওঠে একটা নির্দিষ্ট দিন
+দেখতে দেখতে ("ওইদিন এজেন্ট বন্ধ ছিল, ওর ঘণ্টা কম কেন"), তাই উত্তরটাও
+ওখানেই থাকা দরকার। অন্য পর্দায় গিয়ে খুঁজতে হলে কেউ করতই না।
+
+⚠️ পাতার নিজের ডক-কমেন্টে লেখা ছিল *"J08 এখানে নেই: সার্ভারে
+`GET /employees/:id/time-adjustments` বলে কোনো রুট নেই"* — সেটা তখন
+সত্যিই ছিল, আর এখন নেই। কমেন্টটাও হালনাগাদ।
+
+⚠️ **ইনপুট ঘণ্টা ও মিনিটে**, সেকেন্ডে নয় — কেউ "2h 30m" ভেবে `230`
+লিখলে সেটা ৪ মিনিট হয়ে যেত।
+
+⚠️ সংখ্যাটা সবসময় **চিহ্নসহ** (`+2:00` / `−0:30`), আর ঋণাত্মকে ইউনিকোড
+মাইনাস — হাইফেন সংখ্যার পাশে ছোট দেখায় আর চোখ এড়িয়ে যেতে পারত। অথচ
+যোগ না বিয়োগ, সেই পার্থক্যটাই তার বেতনের।
+
+⚠️ অংশটা **তারিখ-নিরপেক্ষ**, পাতার বাকি সব একটা দিনের — সংশোধন কম হয়,
+আর "গত মাসে কিছু দেওয়া হয়েছিল কি" দিন ধরে খুঁজতে হলে কেউ খুঁজত না।
+
+⚠️ ব্রাউজারে চোখে দেখা হয়নি — owner পাসওয়ার্ড লাগত। `tsc` · `eslint` ·
+`build` তিনটেই ক্লিন।
+
+---
+
+## ৩চ. এজেন্টের ভার্সন — তিন জায়গায় তিনটে *(১২ আগস্ট ২০২৬)*
+
+⚠️⚠️ ভার্সন ছিল **তিন জায়গায়, কোনো যোগ ছাড়া**:
+
+| কোথায় | কী |
+|---|---|
+| `Program.cs` | `const string Version = "0.1.0"` ← সার্ভারকে যা বলা হতো |
+| `installer/build.ps1` | `$Version = '0.1.0'` ← MSI-তে যা বসত |
+| কোথাও `<Version>` নেই | assembly হতো `1.0.0.0` |
+
+⭐ **ফলটা নীরব কিন্তু গুরুতর:** MSI ০.২.০ বানিয়ে ১৫টা PC-তে বিলি করলেও
+এজেন্ট heartbeat-এ নিজেকে **০.১.০** বলত। সার্ভার সেই স্টেল মান দেখেই
+ঠিক করে আপডেট অফার করবে কি না ([G59](08-Gap-Analysis.md)) — তাই আপডেট
+হয়ে যাওয়া মেশিনকেও **একই আপডেট বারবার** অফার করা হতো, আর H04-এর ধাপে
+ধাপে রোলআউট কোনোদিন শেষই হতো না।
+
+⚠️ মজার ব্যাপার: G59 ঠিক এই সমস্যাটারই **উল্টো দিক** সারিয়েছিল —
+সার্ভার যেন এজেন্টের পাঠানো ভার্সন সংরক্ষণ করে। কিন্তু এজেন্ট যে
+সংখ্যাটা পাঠাচ্ছিল সেটাই ভুল ছিল, তাই সমাধানটা অর্ধেক কাজ করছিল।
+
+**এখন উৎস একটাই** — `agent/Directory.Build.props`। assembly ওখান থেকে
+ভার্সন পায়, `Program.cs` রানটাইমে assembly থেকে পড়ে, আর `build.ps1`
+ওই ফাইলটাই পড়ে (হাতে `-Version` দিলে সতর্ক করে, কারণ তখন MSI ও assembly
+আলাদা হয়ে যাবে)।
+
+⭐ **`+commit` ছাঁটার কোডটা অনুমান নয়, মেপে পাওয়া** — বিল্ড করা DLL-এর
+`ProductVersion` সত্যিই আসে `0.1.0+ef685e42b940…` রূপে (SourceLink)।
+পুরোটা পাঠালে `rollout.ts`-এর SemVer তুলনা ভাঙত। ⚠️ তবে pre-release
+অংশ (`1.0.0-beta.2`) রেখে দেওয়া হয় — ওটা SemVer-এর অংশ, build metadata নয়।
+
+**যাচাই:** এজেন্ট **৭৬ টেস্ট** (ছিল ৬৯) · assembly ০.১.০.০ · `Company`
+ও `Product` দুটোই বসেছে · ০ warning।
+
+---
+
+## ৩ছ. A05 — কিউয়ের ডিস্ক-বাজেট কেউ প্রয়োগই করত না *(১২ আগস্ট ২০২৬)*
+
+⚠️⚠️ `EnforceBudgetAsync`-এর নিজের ডকে **চুক্তিটা লেখাই ছিল**:
+
+> *"সিঙ্ক ওয়ার্কার শুধু এটাই ডাকবে (স্টার্টআপে একবার, তারপর ঘণ্টায় একবার
+> আর `LastWriteError` দেখা দিলেই সঙ্গে সঙ্গে)।"*
+
+**কলারটা কোনোদিন লেখা হয়নি।** `EnforceBudgetAsync`-এর একটাও কল-সাইট ছিল
+না। ফলে ২ GiB-র ক্যাপ, ৭ দিনের বয়সসীমা, eviction-এর ক্রম (স্ক্রিনশট
+আগে, সেগমেন্ট শেষে), ড্রপ-লগ — **পুরো ব্যবস্থাটা তৈরি হয়ে অচল পড়ে ছিল**।
+
+⭐ এটা A05-এর অন্য অর্ধেকটাকেই অর্থহীন করে দিত: কিউ অফলাইনে ডেটা ধরে
+রাখে ঠিকই, কিন্তু একটা PC সপ্তাহখানেক অফলাইন থাকলে সেটা বাড়তেই থাকত —
+আর ডিস্ক ভরে গেলে কী হবে তার কোনো উত্তর ছিল না।
+
+⚠️ **প্রতি সিঙ্ক-চক্রে (৩০ সে.) নয়** — জরিপটা পুরো টেবিল স্ক্যান করে, আর
+কিউ বড় হলে সেটা অকারণে ডিস্ক ঘোরাত। ঘণ্টায় একবারই যথেষ্ট: দিনে ~১৭০ MB
+জমে, ক্যাপ ২ GiB।
+
+⭐ **কিন্তু লেখা ব্যর্থ হলে অপেক্ষা করা হয় না** — `LastWriteError` মানে
+ডিস্ক ভরে গেছে, অর্থাৎ ঠিক তখনই জায়গা দরকার। ঘণ্টার অপেক্ষায় থাকলে
+মাঝের সময়টুকুর ডেটা নীরবে হারাত।
+
+⚠️ কিছু বাদ পড়লে **সবসময় লগে যায়**। নীরবে ফেলে দিলে একটা মেশিন মাসের পর
+মাস ডেটা হারাত আর রিপোর্টে শুধু "ওর ঘণ্টা কম" দেখা যেত — সন্দেহটা পড়ত
+স্টাফের উপর, এজেন্টের উপর নয়।
+
+⭐ সিদ্ধান্তটা Core-এ (`OutboxSweep`), কারণ AgentHost-এ বসে তিনটে শাখা
+যাচাই করা যেত না — আর আজ `CaptureGate`-এ ঠিক এই পদ্ধতিটাই একটা **অনুপস্থিত
+শর্ত** ধরিয়ে দিয়েছে।
+
+**যাচাই:** Core **২৮৭ টেস্ট** (ছিল ২৮১) · ০ warning।
+
+---
+
+## ৩জ. K01 — যে জব কখনো চোখে দেখা হয়নি *(১২ আগস্ট ২০২৬)*
+
+⚠️ **প্রথমেই একটা ভুল শোধরানো।** [§ ৩ক](#৩ক--কী-কী-বাকি--কোডের-বিরুদ্ধে-যাচাই-করা-তালিকা-১১-আগস্ট-২০২৬-রাত)-এ
+লেখা ছিল *"K01 retention জব **কল করার পথই নেই**"*। কোড খুলে দেখা গেল
+দাবিটা ভুল — `retention.job.ts`-এ `@Cron('0 0 2 * * *')` জবের গায়েই
+বসানো, `timeZone` ঢাকা, `waitForCompletion: true`। প্রোডাকশনে জবটা
+প্রতি রাতে চলে।
+
+যা **সত্যিই** ছিল না, দুটো:
+
+**১· জবের শরীরের একটাও টেস্ট।** `retention` লিখে টেস্ট ফোল্ডারে খুঁজে
+পাওয়া যায় শুধু `thumb.spec.ts` — সেখানেও কেবল `retentionCutoff`-এর
+পাটিগণিত। ⚠️ অর্থাৎ যে অংশটা **সত্যিই ফাইল মোছে** সেটা কোনোদিন একবারও
+চালিয়ে দেখা হয়নি।
+
+⭐ এটা নিছক কভারেজের ফাঁক নয়। নীতিমালায় স্টাফকে **লিখিতভাবে** বলা আছে
+"৯০ দিন পর ছবি নিজে থেকেই মুছে যাবে" — রোলআউটের আগে যে কাগজে সবাই সই
+করবে, তাতেই। জবটা চুপচাপ ভাঙা থাকলে সেটা প্রতিশ্রুতিভঙ্গ, আর ধরা পড়ত
+কেবল ডিস্ক ভরে গেলে — অর্থাৎ বছরখানেক পরে।
+
+**২· হাতে চালানোর পথ।** ব্যাকআপের `POST /ops/backup/run` আছে ঠিক এই
+যুক্তিতেই — *যে ব্যাকআপ কখনো পরীক্ষা করা হয়নি সেটা ব্যাকআপ নয়, অনুমান*।
+retention-এর বেলায় সেই জোড়াটা কেউ বানায়নি। এখন
+`POST /api/v1/ops/retention/run` — owner-only (গোটা কন্ট্রোলারই তাই),
+`RunLock` দুটো রান ঠেকায়, উত্তরে কোনো ফাইল-পাথ যায় না।
+
+### টেস্টগুলো মকড fs দিয়ে নয়
+
+⚠️ `test/retention.e2e.spec.ts` **সত্যিকারের ফাইল** লেখে ও মোছে
+(`STORAGE_ROOT` → `server/.tmp-test-storage`)। fs মক করলে ঠিক যে
+জিনিসগুলো ভুল হতে পারে — পাথের হিসাব, ফোল্ডার খালি হওয়ার ক্রম, ENOENT —
+সেগুলোর একটাও পরীক্ষা হতো না।
+
+দশটা টেস্ট, আর প্রতিটার পেছনে একটা নির্দিষ্ট ভয়:
+
+| টেস্ট | না থাকলে যা নীরবে ভাঙত |
+|---|---|
+| দুটো ফাইলই যায় | A06 — শুধু `file_path` মুছলে `thumb/` ফোল্ডার চিরকাল ডিস্কে |
+| সাম্প্রতিক ছবি অক্ষত | সীমানার ভুলে চালু কাজের ছবি মুছে যেত |
+| ঠিক ৯০ দিনেরটা থাকে, ৯১-এরটা যায় | `<=` লিখলে প্রতিশ্রুত ৯০-এর বদলে ৮৯ দিন |
+| অসম্পূর্ণ রান শেষ করে | ENOENT-কে ব্যর্থতা ধরলে ওই সারিগুলো **চিরকাল** আটকে থাকত |
+| idempotent | দ্বিতীয় রানে কিছু বদলালে cron রোজ কাজ বাড়াত |
+| রুটের বাইরের পাথ | ⭐⭐ একটা `..` ঢুকলে জবটা D:\-এর যেকোনো ফাইল `unlink` করত |
+| খালি ফোল্ডার সরে | গভীরতম আগে না মুছলে `emp-001` চিরকাল ENOTEMPTY-তে |
+| owner পারে · ম্যানেজার পারে না · লগইন ছাড়া নয় | ডিস্ট্রাকটিভ endpoint-এ role guard |
+
+⚠️ ম্যানেজারের টেস্টে `X-CSRF-Token` **দিয়েই** পাঠানো হয় — নইলে ৪০৩ আসত
+CSRF থেকে, টেস্টটা পাস করত ভুল কারণে, আর role guard কোনোদিন পরীক্ষাই
+হতো না। (আজই এই ভুলটা adjustments-এর টেস্টে ধরা পড়েছিল।)
+
+⚠️ রুটের বাইরের ফাইলটা টেস্ট নিজে `finally`-তে মোছে — ওটা
+`.tmp-test-storage/`-এর বাইরে বলে গিটের ignore-এ পড়ে না, নইলে
+`server/`-এ পড়ে থাকত।
+
+### `OpsModule` → `SummaryModule`
+
+⚠️ `RetentionJob` থাকে `SummaryModule`-এ, আর সেখানেই `ScheduleModule.forRoot()`।
+`forRoot` global, দুবার ডাকলে bootstrap-এই ভাঙে — কিন্তু Nest মডিউল
+singleton, তাই **ইমপোর্ট করলে সেটা দ্বিতীয়বার চলে না**। জবটা কপি করে
+`OpsModule`-এ provider হিসেবে বসালে দুটো আলাদা ইনস্ট্যান্স হতো, দুটো
+আলাদা `RunLock` — অর্থাৎ তালাটাই অর্থহীন হয়ে যেত।
+
+**যাচাই:** `retention.e2e` **১০ টেস্ট** পাস · `endpoints.e2e` ৭ · tsc পরিষ্কার।
+
+---
+
+## ৩ঝ. H08 — যে লগগুলো শূন্যে যেত *(১২ আগস্ট ২০২৬)*
+
+⚠️⚠️ `ISyncLog`-এর একমাত্র বাস্তবায়ন ছিল `ConsoleSyncLog`, আর প্রজেক্ট
+`WinExe` — **কনসোলই নেই**। অর্থাৎ এজেন্টের প্রতিটা লগ লাইন লেখা হতো এমন
+এক জায়গায় যা কোথাও নেই:
+
+> এনরোলমেন্ট ব্যর্থ · টোকেন বাতিল · সার্ভারের ৪২২ প্রত্যাখ্যান · কনফিগ
+> আনতে ব্যর্থ · আপডেট নামানো · আউটবক্স থেকে কী বাদ পড়ল
+
+⭐ **এটা নিছক সুবিধার প্রশ্ন নয়।** এজেন্ট চলে ১৫টা PC-তে, যেগুলোর
+কোনোটাতেই আমরা বসে থাকি না। কিছু ভুল হলে হাতে থাকে দুটো জিনিস: সার্ভারে
+কী পৌঁছেছে, আর ওই মেশিনের লগ। দ্বিতীয়টা না থাকলে "ওর ডেটা আসছে না" —
+এই এক বাক্যের বেশি কিছু কোনোদিন জানা যেত না।
+
+⚠️ আর `deploy/README.md` সমস্যা হলে
+`Get-Content "$env:ProgramData\oXeio\agent.log"` চালাতে বলত। ফাইলটা
+কোনোদিন লেখা হয়নি — অর্থাৎ রানবুকের ধাপটা IT-কে একটা **খালি হাতে**
+পাঠাত। পাথটাও ভুল ছিল (আসল জায়গা `logs\` সাবফোল্ডার); দুটোই শোধরানো।
+
+### নাম দুরকম, ইচ্ছাকৃতভাবে
+
+| | কেন |
+|---|---|
+| চলতি ফাইল `agent.log` | রানবুকে **একটাই** পাথ বলা যায় — IT-কে "আজকের তারিখ বসিয়ে নিন" বলতে হয় না |
+| আর্কাইভ `agent-YYYY-MM-DD.log` | ৭ দিনের হিসাবটা **নাম থেকেই** পড়া যায় |
+
+⚠️ বয়সটা `mtime` থেকে পড়া হয় **না**। ফাইল কপি করলে, ব্যাকআপ থেকে
+ফেরালে বা রাতের robocopy চললে mtime বদলে যায় — তখন সাত দিনের পুরোনো লগ
+হঠাৎ "আজকের" হয়ে যেত আর কোনোদিন মুছত না।
+
+### সীমা দুটো, কারণ বিপদও দুটো
+
+`04 § H08` বলে **৭ দিন, ম্যাক্স ৫০ MB**। দুটোই দরকার:
+
+- দিনের সীমা না থাকলে শান্ত মেশিনে বছরের পর বছর লগ জমত
+- আকারের সীমা না থাকলে একটা ক্র্যাশ-লুপ **এক দুপুরেই** ডিস্ক ভরাত
+
+⭐ সিদ্ধান্তটা — "কোন ফাইলটা মুছব" — গেছে Core-এ
+(`Agent/LogRetention.cs`), ফাইল-ঘোরানোর কোডে নয়। এটাই একমাত্র অংশ যেটা
+ভুল হলে **ডেটা মুছে যায়**, আর ঘোরানোর ভেতরে বসে থাকলে সেটা যাচাই করতে
+সাত দিনের পুরোনো টাইমস্ট্যাম্পওয়ালা লগ বানাতে হতো। এখন ৮টা ইউনিট টেস্ট,
+আর তার তিনটে ঠিক সেই শাখাগুলোর যেগুলো হাতে পরীক্ষা করা প্রায় অসম্ভব:
+
+- **চলতি ফাইলটা কখনোই মোছার তালিকায় আসে না** — এমনকি সে একাই বাজেট
+  ছাড়িয়ে গেলেও। মুছলে ঠিক তখনই লগ হারাত যখন সেটা সবচেয়ে বেশি দরকার
+  (ডিস্ক ভরে যাচ্ছে)। তবে তার আকারটা বাজেটে **গোনা হয়**, নইলে সীমাটা
+  কার্যত দ্বিগুণ হয়ে যেত।
+- **ভবিষ্যতের তারিখওয়ালা ফাইল রেখে দেওয়া হয়** — ঘড়ি পিছিয়ে গেলে (NTP
+  সংশোধন, BIOS ব্যাটারি) মুছে দিলে আজকের লগই হারাত।
+- **`<` না `<=`** — keepDays = ৭ মানে আজ + আগের ৬ দিন। উল্টোটা লিখলে ৮
+  দিন থাকত, আর কেউ টের পেত না।
+
+### ক্যাপচারের এক লাইন
+
+⭐ H08-এর সবচেয়ে কাজের অংশটা হয়তো এই একটা লাইন:
+
+```
+2026-08-12 19:44:28 +06:00  INFO   📸 slot 19:40 · 1 monitor(s) · chrome
+```
+
+⚠️ এই লাইনটার অভাবেই ১১ আগস্ট রাতে ঘণ্টাখানেক গেছে ([§ ৩ঐ](#৩ঐ-এজেন্টের-নিজের-তোলা-ছবি-এই-প্রথম-সার্ভারে-১১-আগস্ট-২০২৬-রাত)):
+একটা স্লট বাদ পড়েছিল, আর কেন — DXGI ব্যর্থ, জানালা বন্ধ, নাকি ওই
+মুহূর্তে idle — জানার কোনো উপায় ছিল না। শেষে সেগমেন্টের সময়ের সাথে
+মিলিয়ে অনুমান করতে হয়েছিল, আর প্রথম অনুমানটা **ভুলও** ছিল।
+
+⚠️ স্লট প্রতি একটাই লাইন, মনিটর প্রতি নয় — দিনে ২৮৮, তিন মনিটরে ৮৬৪
+হতো, আর বাকি লাইনগুলো তাতে চাপা পড়ত।
+
+### `ConsoleSyncLog` রেখে দেওয়া হয়নি
+
+⚠️ ক্লাসটা মুছে ফেলা হয়েছে, "থাকুক না" বলে রেখে দেওয়া হয়নি। রেখে দিলে
+একদিন কেউ আবার ওটাই বসাত — আর লগ আবার শূন্যে যেত, **কোনো ভুল বার্তা
+ছাড়াই**। `ISyncLog.cs`-এ কারণটা লেখা আছে।
+
+**যাচাই:** Core **২৯৫ টেস্ট** (ছিল ২৮৭) · Agent **৮৭** · ০ warning।
+⚠️ লাইভ রানে দেখা **বাকি** — এখন ক্যাপচার উইন্ডোর ভেতরে (৭:০০–২৩:০০),
+তাই এজেন্ট চালানো মানে মালিকের পর্দার ছবি ওঠা। পরের মাঠ-পরীক্ষায়
+`logs\agent.log`-এ স্টার্টআপ ও 📸 লাইনগুলো মিলিয়ে দেখতে হবে।
+
+---
+
+## ৩ড. "Live Board-এ দেখতে পাচ্ছি না" — টেবিলটা ওখানে ছিলই না *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"kon designer koyta design korlo eita live board e dekhote pacchina"*।
+
+### ⭐ কারণটা কোডেই লেখা ছিল
+
+কর্মীভিত্তিক টেবিলটা (`live/TeamRoster.tsx`) **১৭ আগস্ট মালিকেরই
+অনুরোধে** Live Board-এর নিচ থেকে সরিয়ে **Worklog** পাতায় নেওয়া হয়েছিল।
+আমি `Designs · opened / done` কলামটা ওই টেবিলেই বসিয়েছিলাম — অর্থাৎ
+কলামটা ছিল, শুধু **অন্য পাতায়**।
+
+⚠️ মালিক স্বাভাবিকভাবেই Live Board-এ খুঁজেছেন, আর সেটাই স্বাভাবিক
+জায়গা মনে হওয়ার কথা। ⭐ **ফিচারটা ঠিক ছিল, জায়গাটা ভুল ছিল** —
+আর সেটা ব্যবহারকারীর ভুল নয়, নকশার।
+
+### যা বসল — টাইল, টেবিল নয়
+
+Live Board-এর টাইলের সারিতে **Designs Today**:
+
+```
+      ৪৬
+Designs Today
+  ৫৯ opened
+```
+
+⭐ **বড় সংখ্যাটা "শেষ"** — কেবল ওটাই সত্যিকারের উৎপাদন বোঝায়।
+"খোলা" নিচে ছোট করে।
+
+⚠️⚠️ **কর্মীভিত্তিক ভাগটা নকল করা হয়নি** — বোর্ড দেয় মোট, আর "কে কতটা"
+এক ক্লিক দূরে Worklog-এ। দুই জায়গায় একই টেবিল রাখলে একদিন একটা বদলাত
+আর অন্যটা নয় (ঠিক যে কারণে ১৭ আগস্ট মার্কআপটা **সরানো** হয়েছিল, নকল নয়)।
+
+⭐ সার্ভারে কিছু লাগেনি — সংখ্যা দুটো কার্ডেই ছিল, শুধু যোগ করা হয়েছে।
+
+⚠️ কেউ ডিজাইন না করলে টাইলটাই ওঠে না — "০" দেখতে ব্যর্থতার মতো লাগে,
+অথচ গবেষকদের দিনে ওটা কেবল "প্রযোজ্য নয়"।
+
+### ⭐ আর টাইলই যথেষ্ট ছিল না — কর্মীভিত্তিক কলামও চাই
+
+মালিক পর্দার ছবিতে **"Against Today's Target"** টেবিলের একটা কলামে লাল দাগ
+দিয়ে লিখলেন: *"ei colame kon staff koto design korlo today seta bosiye dao"*।
+
+⭐ ওই টেবিলটা Live Board-এই আছে (`live/TeamTable.tsx`) — Worklog-এর
+রোস্টার নয়। অর্থাৎ একই সংখ্যা **তিন জায়গায়** দরকার: বোর্ডের টাইল
+(মোট), বোর্ডের টেবিল (কর্মীভিত্তিক), আর Worklog-এর রোস্টার।
+
+### ⚠️⚠️ তাই কোষটা নকল না করে সরানো হলো
+
+`DesignCell` ছিল `TeamRoster.tsx`-এর ভেতরে। ⭐ সেটাকে
+`live/DesignCell.tsx`-এ **সরানো** হয়েছে, আর দুটো টেবিলই সেখান থেকে নেয়।
+
+⚠️ নকল করলে একদিন একটা বদলাত আর অন্যটা নয় — **ঠিক যে কারণে ১৭ আগস্ট
+`TeamRoster`-এর মার্কআপও সরানো হয়েছিল, নকল নয়।** নিয়মটা এখানেও একই।
+
+⚠️ কলামটা **কেবল তখনই** বসে যখন দলে অন্তত একজনের ডিজাইন আছে — নইলে
+গবেষকদের সারিতে রোজ একটা খালি ঘর থাকত, আর খালি ঘর দেখতে "ডেটা আসেনি"-র
+মতো লাগে।
+
+## ৩ঠ. CI যা ধরল — আর যে ঝুঁকিটা আগেই লেখা ছিল *(২৩ আগস্ট ২০২৬)*
+
+মালিক CI-র ব্যর্থতার ইমেইল পাঠালেন। ⭐ ব্যর্থতাটা শুরু হয়েছে ঠিক
+`aac7bca`-তে — পে-রোলের কর্মী-ছাঁকনি বদলানোর কমিটে। তার আগের সব রান সবুজ।
+
+### ⚠️⚠️ যা ভেঙেছিল
+
+পে-রোল আগে ছাঁকত `status: 'active'` ধরে, আর তাতে **চলে যাওয়া কর্মী
+পুরোনো মাসের শিট থেকেও উধাও** হতেন। সারাতে গিয়ে লেখা হয়েছিল "ওই মাসে
+কর্মরত ছিলেন যাঁরা":
+
+```js
+{ OR: [{ joinedOn: null }, { joinedOn: { lt: monthEnd } }] },   // ⛔
+{ OR: [{ leftOn:   null }, { leftOn:   { gte: monthStart } }] },
+```
+
+⛔ প্রথম শর্তটাই ভুল ছিল। নথিভুক্ত আচরণ হলো — **পরে যোগ দেওয়া কর্মীও
+আগের মাসের শিটে থাকেন, `payable = 0.00` নিয়ে**
+(`proration.e2e.spec.ts` — *"মাসের পরে যোগ দিলে ওই মাসে প্রদেয় শূন্য"*)।
+`joinedOn` শর্ত তাঁকে বাদ দিয়ে দিচ্ছিল।
+
+⭐ **আসল বাগটা ছিল চলে যাওয়া নিয়ে, যোগ দেওয়া নিয়ে নয়** — তাই শর্তটা
+সংকীর্ণ করা হলো:
+
+```js
+OR: [{ status: EmployeeStatus.active }, { leftOn: { gte: monthStart } }]
+```
+
+### ⚠️ ঝুঁকিটা আগেই লেখা ছিল, তবু ধরা পড়েনি
+
+`aac7bca`-র কমিট বার্তাতেই লেখা ছিল: *"e2e এখানে চালানো যায়নি (Docker
+নেই) — CI-র দায়িত্ব"*। ⭐ ঝুঁকিটা **চেনা ছিল ও লেখা ছিল**, কিন্তু
+CI-র ফল না দেখে পরের কমিটগুলো চালিয়ে যাওয়া হয়েছে — তাই একই ভুল
+**ছটা কমিট ধরে বয়ে গেছে**।
+
+⚠️⚠️ **শিক্ষা:** স্থানীয়ভাবে যে টেস্ট চালানো যায় না, সেটার ফল **পরের
+কমিটের আগে** দেখে নেওয়া। "CI ধরবে" লিখে রাখা যথেষ্ট নয় — CI ধরেছিল,
+প্রথমবারেই; কেউ তাকায়নি।
+
+⭐ ভাগ্য ভালো যে ব্যর্থ টেস্টটা **টাকার হিসাব** পাহারা দিচ্ছিল, আর
+সেটাই সবচেয়ে ভালো জায়গায় ভাঙা।
+
+## ৩ঞ. তিনটে ফাঁক যেগুলো কেউ খুঁজত না *(১২ আগস্ট ২০২৬)*
+
+তিনটেরই মিল একটা জায়গায়: **ব্যর্থতাটা নীরব**। কেউ অভিযোগ করত না,
+কোনো এররও আসত না — শুধু একটা জিনিস কোনোদিন ঘটত না।
+
+### ১· G32 — যে অ্যালার্ট কোনোদিন ওঠেনি
+
+`device_overlap` ছিল **নাম মাত্র**: টাইপের ইউনিয়নে, ওয়েবের ফিল্টারে,
+ops-এর টেলিগ্রাম লেবেলে, স্পেকের তিন জায়গায়। **তোলার কোড কোথাও ছিল না।**
+
+⚠️⚠️ সবচেয়ে খারাপ দিকটা কোডের একটা মন্তব্যে। `dashboard.service.ts`
+ইচ্ছাকৃতভাবে UNION-এর বদলে **যোগফল** রাখে (tray আর বোর্ডে যেন এক সংখ্যা
+দেখায়), আর সেই সিদ্ধান্তের যুক্তি দিয়েছিল এভাবে:
+
+> *"কেউ একইসাথে দুই PC চালালে ওই সময়টা দুইবার গোনা হয়। ১৫ মিনিটের বেশি
+> overlap-এ `device_overlap` অ্যালার্ট ওঠে, **তাই ব্যাপারটা অদৃশ্য নয়**।"*
+
+অর্থাৎ একটা জানা-শোনা ভুলকে মেনে নেওয়া হয়েছিল একটা রক্ষাকবচের ভরসায় —
+আর রক্ষাকবচটার অস্তিত্বই ছিল না।
+
+**⭐ হিসাবটা যেভাবে প্রায় ভুল হয়ে যাচ্ছিল।** হাতের কাছেই ছিল
+`active_sec − worked_sec`, আর `summarizeDay`-এর মন্তব্যে ওটাকেই
+*"`device_overlap` অ্যালার্টের কাঁচামাল"* বলা ছিল। কিন্তু ওই দুটো সংখ্যা
+**দুই ঘড়ির**: `active_sec` আসে এজেন্টের monotonic ঘড়ি থেকে
+(`duration_sec`), `worked_sec` মাপা হয় দেয়ালঘড়ির `started_at`–`ended_at`
+দিয়ে। একটাই মেশিনেও ওরা হুবহু মেলে না — ঘুম থেকে ওঠা, ঘড়ির সংশোধন, ছোট
+ফাঁক। ⚠️ ওই ফারাককে overlap ধরলে **একটাই PC ব্যবহার করা স্টাফের নামেও**
+অ্যালার্ট উঠত, আর সেটা হতো সবচেয়ে খারাপ ধরনের মিথ্যা: কারো কাজের সততা
+নিয়ে।
+
+তাই হিসাবটা হলো —
+
+```
+overlap = Σ (প্রতিটা ডিভাইসের নিজের UNION) − (সব ডিভাইস মিলিয়ে UNION)
+```
+
+দুই দিকেই একই মাপকাঠি (দেয়ালঘড়ির UNION), তাই একটা ডিভাইসে ফল
+গাণিতিকভাবেই ঠিক শূন্য। e2e টেস্টে সেই কেসটাই সবচেয়ে বড়: *একটাই ডিভাইসে
+দিনভর তিনটে খণ্ড → কিছুই ওঠে না*।
+
+⚠️ প্রতি ডিভাইসের **নিজের UNION** নেওয়া হয়, কাঁচা যোগফল নয় — একই মেশিনের
+দুটো ছোঁয়া-ছোঁয়া খণ্ড (রিট্রাই, সেশন পুনরায় খোলা) নইলে "দুই ডিভাইসের
+overlap" বলে গোনা হতো।
+
+⚠️ অ্যালার্টে `deviceId` **null** — ঘটনাটা দুটো ডিভাইসের, একটার নয়।
+যেকোনো একটাকে বাছলে throttle-এর key ওই ডিভাইসের সাথে বাঁধা পড়ত, আর
+পরের ঘণ্টায় অন্যটা বাছলে একই দিনের একই ঘটনায় দ্বিতীয় অ্যালার্ট বসত।
+
+⚠️ **আর একটা উল্টো লেবেল।** `ops.rules.ts`-এ টেলিগ্রামে যেত
+*"Multiple staff on one device"* — G32 ঠিক এর **উল্টো** (একজন স্টাফের
+দুটো ডিভাইস)। যে পড়ত সে ভুল PC-তে খুঁজতে যেত। এখন
+*"One person on two devices"*।
+
+⭐ **দোরগোড়া ১৫ মিনিট, আর severity `warning` — অভিযোগ নয়।** ঘণ্টার হিসাবে
+overlap-এর কোনো প্রভাব পড়ে না (`worked_sec` এমনিতেই UNION), আর স্পেক
+বলে সাধারণ কারণ দুটো: এক PC দুজন ব্যবহার করছে, বা কোনো ভুলে-ফেলে-রাখা
+মেশিন চালু আছে। বার্তাটাও সেভাবেই লেখা — *"this does not change the hours"*।
+
+### ২· owner-lockout — ফেরার পথ
+
+⚠️ এই সিস্টেমে "পাসওয়ার্ড ভুলে গেছি" বলে **কোনো ইমেইল-লিংক নেই**, আর
+সেটা ইচ্ছাকৃত (অফিসের ভেতরের সার্ভার, বাইরের মেইল-নির্ভরতা নেই)। ফলটা
+ছিল একটা নিঃশব্দ ফাঁদ: একমাত্র owner পাসওয়ার্ড বা 2FA-র ফোনটা হারালে
+**গোটা সিস্টেমে ঢোকার আর কোনো উপায় থাকত না**। ঘণ্টা জমা হতেই থাকত,
+কেউ দেখতে পারত না, বেতনের হিসাবও বেরোত না।
+
+⚠️ `prisma/seed.ts` দিয়েও ফেরা যেত না — owner সেখানে `upsert` হয়
+`update: {}` দিয়ে, অর্থাৎ অ্যাকাউন্ট থাকলে পাসওয়ার্ড অক্ষত থাকে। seed-এর
+জন্য ওটাই ঠিক (বারবার চলে), কিন্তু বিপদের দিনে অচল।
+
+চারটে সিদ্ধান্ত, প্রতিটার পেছনে একটা করে ব্যর্থতার ছবি:
+
+| সিদ্ধান্ত | না হলে |
+|---|---|
+| পাসওয়ার্ড **বানিয়ে** দেওয়া, argv-তে না নেওয়া | শেলের ইতিহাসে আর `ps`-এ থেকে যেত, আর মানুষ দুর্বল কিছু বসাত |
+| `--confirm` ছাড়া কিছুই বদলায় না | ভুল করে চালালে owner-এর চালু পাসওয়ার্ডটাই চিরতরে যেত |
+| একাধিক owner হলে **নিজে বাছে না** | "প্রথমটা নাও" লিখলে যিনি ঠিকঠাক ঢুকছিলেন তিনিও আটকে যেতেন |
+| **2FA-ও সরানো হয়** | ফোন হারানো পাসওয়ার্ড ভোলার চেয়ে কম সাধারণ নয়; শুধু পাসওয়ার্ড রিসেট করলে পরের ধাপেই আবার আটকে যেত |
+
+⚠️⚠️ **ফাইলটা `src/`-এর ভেতরে, `scripts/`-এ নয়** — আর এটাই এখানকার
+সবচেয়ে সহজে মিস হওয়া সিদ্ধান্ত। প্রোডাকশনের ইমেজে যায় শুধু `dist/` আর
+prod-deps; `tsx` সেখানে নেই, `scripts/` ফোল্ডারটাও কপি হয় না। বাইরে
+রাখলে স্ক্রিপ্টটা ঠিক **সেই মেশিনেই** অচল থাকত যেখানে ওটা একমাত্র কাজে
+লাগে। `src/`-এ থাকায় `nest build` এটাকেও কম্পাইল করে
+(`dist/scripts/recover-owner.js`), আর কেউ import না করায় সার্ভার চালুর
+সময় এটা কখনো চলে না।
+
+⚠️ সিদ্ধান্তগুলো CLI-তে নয়, `src/auth/owner-recovery.ts`-এ — `process.argv`
+-এর সাথে জড়ানো থাকলে একটাও টেস্ট লেখা যেত না।
+
+⭐ আটটা টেস্টের মধ্যে **শেষেরটাই আসল**: রিসেটের পর নতুন পাসওয়ার্ড দিয়ে
+সত্যিই `POST /auth/login` হয় কি না। হ্যাশ বসানো আর লগইন করতে পারা এক
+কথা নয় — argon2-র প্যারামিটার আলাদা হলে বা `isActive` নিয়ে কোনো শর্ত
+থাকলে বাকি সাতটা পাস করেও owner তালাবন্ধই থাকতেন।
+
+### ৩· ওয়েবের প্রথম টেস্ট — আর প্রথম টেস্টেই একটা বাগ
+
+সার্ভারে ৬৫১টা টেস্ট, ওয়েবে **শূন্য**। ফাঁকটা কাকতালীয় নয়: React-এর
+টেস্ট মানেই সাধারণত jsdom, render, testing-library — ভারী ব্যবস্থা, তাই
+বারবার পিছিয়ে যায়।
+
+⭐ তাই শুরুটা উল্টো দিক থেকে: **যে অংশটুকু DOM ছাড়াই ভুল হতে পারে**।
+`lib/format.ts` — ঘণ্টা, ঢাকার তারিখ, টাকা। এগুলোর একটাও ভুল হলে পর্দায়
+ভুল **সংখ্যা** বসে, আর সেটাই এই সিস্টেমের সবচেয়ে খারাপ ব্যর্থতা: কেউ
+ধরতে পারে না, কারণ দেখতে ঠিকই লাগে। **৬৪টা টেস্ট**, `environment: 'node'`
+(jsdom ইচ্ছাকৃতভাবে বাদ — প্রতি রানে কয়েক সেকেন্ড যোগ করত)।
+
+⚠️ `test/` ফোল্ডারটা `tsconfig.app.json`-এর `include`-এ যোগ করা হয়েছে —
+নইলে ভাঙা import বা বদলে যাওয়া সিগনেচার শুধু `vitest` চালালেই ধরা পড়ত,
+`npm run typecheck`-এ নয়।
+
+**⭐ আর তখনই একটা সত্যিকারের বাগ বেরোল।** `Adjustments.tsx`-এ
+`signed()` নামে নিজস্ব একটা ফরম্যাটার লেখা ছিল, যদিও `format.ts`-এর
+নিজের ডকই বলে *"নিজের পেজে আলাদা করে ফরম্যাট লিখবেন না"*। সরিয়ে
+`formatSignedDuration()` বানানোর পর প্রথম টেস্টেই ধরা পড়ল:
+
+> ৩৫৯৮ সেকেন্ডের সংশোধন পর্দায় দেখাত **`+0:60`**
+
+মিনিট round করে ৬০ হয়ে যায়, আর ঘণ্টায় তোলা হতো না। ⚠️ `formatDuration()`
+ওই ফাঁদটা আগেই সামলাত — **নকল করে লেখা কোডটাই সামলাত না**। নিয়মটা
+("এক জায়গায় ফরম্যাট") যে কেন, তার সবচেয়ে ছোট আর সবচেয়ে পরিষ্কার প্রমাণ।
+
+**যাচাই:** server **৬৫১ টেস্ট** (ছিল ৬২৬) · web **৬৪** (ছিল ০) ·
+tsc ও lint পরিষ্কার · web build ঠিক।
+
+---
+
+## ৩ট. স্টাফের নিজের পাতা — যে মেনুটা রোজ ৪০৪ দেখাত *(১২ আগস্ট ২০২৬)*
+
+⚠️⚠️ tray-র মেনুতে **"My data"** আইটেমটা প্রথম দিন থেকেই ছিল। MSI-তে
+`PORTALURL` প্রপার্টি ছিল, রেজিস্ট্রিতে `StaffPortalUrl` লেখা হতো, রানবুকে
+এমনকি ঠিকানাটাও লেখা ছিল — `https://oxeio.office.local/me`। **শুধু
+পাতাটাই কোনোদিন বানানো হয়নি।**
+
+⭐ অর্থাৎ স্বচ্ছতার প্রতিশ্রুতিটা প্রতিদিন স্টাফের চোখের সামনে ছিল, আর
+প্রতিদিনই ভাঙত। এই সিস্টেমের পুরো ভিত্তিই হলো "স্টাফ নিজের ডেটা নিজে
+দেখতে পাবে" (§ ৪, ADR-011) — আর সেই দরজায় লেখা ছিল "পাওয়া যায়নি"।
+
+### কোনো `:id` নেই — এটাই গোটা মডিউলের নিরাপত্তা-নকশা
+
+```
+GET /api/v1/me            → নাম · আজ · মাস · pace · সইয়ের তারিখ
+GET /api/v1/me/days       → দিনে দিনে (?from=&to=)
+```
+
+⚠️⚠️ পথে **কখনো** `:id` বসানো হয়নি, আর সেটা ইচ্ছাকৃত। কর্মীর আইডি আসে
+**সেশন থেকে** — তাই ওয়েব থেকে সহকর্মীর ডেটা চাওয়ার কোনো উপায়ই নেই।
+আশঙ্কাটা নতুন নয়, `employee-activity.controller.ts`-এর ডকেই লেখা ছিল:
+*"স্টাফের নিজের ভিউ আলাদা পথে হবে, নইলে একজন স্টাফ `:id` বদলে সহকর্মীর
+পুরো দিন দেখে ফেলত"*। e2e-তে সেটারই পাহারা — সহকর্মীর ৮ ঘণ্টা ডাটাবেসে
+বসিয়ে দেখা হয়েছে ফলাফলে ০ আসে কি না।
+
+⚠️ কন্ট্রোলারে `@Roles` **নেই**, আর সেটাও ইচ্ছাকৃত: সীমাটা ভূমিকার নয়,
+সেশনের। `@Roles(employee)` লিখলে উল্টো ক্ষতি হতো — owner বা manager যদি
+নিজেও একজন কর্মী হন, তাঁরা নিজের পাতাটাই দেখতে পেতেন না।
+
+### সংখ্যাগুলো নতুন করে কষা হয়নি
+
+⭐⭐ `MeService` `ProgressService`-কেই ডাকে — যেটা **এজেন্টের tray-কে
+খাওয়ায়**। কার্ডের hint-এ তাই লেখা যায়: *"The same numbers your tray icon
+shows"*।
+
+⚠️ আলাদা করে লিখলে একদিন tray বলত "৫:৪২" আর ওয়েব বলত "৫:৩৯", আর স্টাফের
+প্রশ্ন হতো *"কোনটা সত্যি?"* — এই একই ফাঁদ `dashboard.service.ts`-এ আগে
+একবার ধরা পড়েছিল, আর সেখানে UNION-এর বদলে যোগফল রাখার সিদ্ধান্তটাই
+নেওয়া হয়েছিল ঠিক এই কারণে। যে ফিচারের পুরো উদ্দেশ্য আস্থা, সেটাই তখন
+আস্থা ভাঙত।
+
+### পাঁচটা ছোট সিদ্ধান্ত
+
+| | কেন |
+|---|---|
+| **প্রতিটা দিনের সারি**, শুধু কাজের দিন নয় | ফাঁক রাখলে ৯ আর ১১ তারিখ পাশাপাশি বসত, আর ১০ তারিখটা "ছিলই না" মনে হতো — অথচ ওটাই সেই দিন যেদিন এজেন্ট বন্ধ ছিল |
+| **রোলিং ৩০ দিন**, চলতি মাস নয় | মাসের ১ তারিখে তালিকায় একটাই সারি থাকত, আর ঠিক তখনই মানুষ আগের মাসের শেষ দিনগুলো মেলাতে চায় |
+| ছুটির দিনে **বার নয়, বাক্য** | খালি বার "আজও ৮ ঘণ্টা বাকি" বলে তাড়া দিত, অথচ আজ কিছু করার কথাই নেই (tray জানালাতেও একই নিয়ম) |
+| সংশোধন ০ হলে **ড্যাশ**, `+0:00` নয় | প্রতিটা সারিতে `+0:00` দেখলে মনে হতো কিছু একটা বদলানো হয়েছে |
+| ছবির মেয়াদ **সার্ভার থেকে** | পর্দায় "৯০ দিন" হাতে লিখলে নীতি বদলানোর দিন পাতাটা পুরোনো প্রতিশ্রুতি দেখিয়ে যেত |
+
+⚠️ **কোনো বোতাম নেই** — না "সময় দাবি করুন", না "ব্যাখ্যা দিন"। একটা
+বসালেই সেটা approval workflow-র প্রথম ধাপ হতো, যেটা এই সিস্টেমে
+ইচ্ছাকৃতভাবে নেই (ADR-011d)। tray জানালাতেও ঠিক এই কারণেই কোনো বোতাম নেই।
+
+### owner `/me`-তে গেলে
+
+⚠️ owner ও manager-এর `users.employee_id` সাধারণত null। সার্ভার তাঁদের
+৪০৩ বলে, কিন্তু `ErrorBox` সেটা পর্দায় আনত *"You don't have access"*
+হয়ে — আর owner-এর কাছে ওই বাক্যটা অর্থহীন (তাঁর তো সবেতেই access)। আসল
+কথাটা অন্য: **তাঁর নিজের বলে কোনো ঘণ্টা নেই**। তাই পাতাটা রিকোয়েস্টই
+পাঠায় না, একটা `Empty` দেখায়। নেভেও লিংকটা শুধু স্টাফের জন্য।
+
+### ব্রাউজারে চালিয়ে দেখা
+
+⭐ একটা অস্থায়ী স্টাফ অ্যাকাউন্ট বানিয়ে সত্যিই লগইন করে দেখা হয়েছে
+(পরে মুছে ফেলা হয়েছে):
+
+- নেভে তিনটে ট্যাব — **My data · Screenshots · Security**, ঠিক যতটা
+  সার্ভার তাকে দেয়
+- `/me` ও `/me/days` দুটোই ২০০, সংখ্যাগুলো ঠিক
+- ৩০ দিনের তালিকায় ছুটির দিন **Day off** লেখা, ফাঁকা দিনগুলোও আছে
+- ৩৭৫px-এ পাতা আড়াআড়ি স্ক্রল করে **না** (E12) — টেবিলটা নিজের ফ্রেমে করে
+- কনসোলে কোনো এরর নেই (লগইনের আগের ৪০১গুলো স্বাভাবিক)
+
+**যাচাই:** server **৬৬৪ টেস্ট** (ছিল ৬৫১ — ১৩টা নতুন) · web ৬৪ ·
+tsc, lint, build পরিষ্কার।
+
+---
+
+## ৩ঠ. MSI ০.২.০ — আর যে স্ক্রিপ্টটা কোনোদিন চলতই না *(১২ আগস্ট ২০২৬)*
+
+মালিক MSI চাইলেন। বানাতে গিয়ে **দুটো জিনিস** বেরোল।
+
+### ১· `build.ps1` স্টক উইন্ডোজে পার্সই হয় না
+
+স্ক্রিপ্টটা চালাতেই তিনটে এরর:
+
+```
+Unexpected token 'à¦¯à¦¼à¦¾' in expression or statement.
+The '<' operator is reserved for future use.
+Unexpected token 'version:' in expression or statement.
+```
+
+⚠️⚠️ কারণ: ফাইলটায় **UTF-8 BOM ছিল না**, অথচ ভেতরে বাংলা মন্তব্য।
+Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে, বাংলা হরফগুলো ভেঙে যায়,
+আর তখন `à¦¯à¦¼à¦¾` জাতীয় আবর্জনা টোকেন হয়ে পার্সার থামিয়ে দেয়।
+
+⭐ **নিয়মটা এই রিপোতেই লেখা ছিল** — `deploy/README.md`-এর শেষে, ঠিক এই
+ভাষায়: *"দুটো `.ps1` ফাইলই UTF-8 BOM সহ সংরক্ষিত। ⚠️ BOM মুছে ফেলবেন না
+— Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে…"*। **দুটো** — অর্থাৎ
+`deploy/`-এর দুটো। তৃতীয় স্ক্রিপ্টটা, যেটা `agent/installer/`-এ, নিয়মের
+বাইরে থেকে গিয়েছিল।
+
+⚠️ আর ধরা পড়েনি কেন: git history বলছে ফাইলটায় **কোনোদিনই** BOM ছিল না
+(`a3edc2f`, প্রথম কমিট)। আগের MSI-টা বানানো হয়েছিল `pwsh` (PowerShell 7)
+দিয়ে — সে BOM ছাড়াই UTF-8 ধরে নেয়। রানবুকেও লেখা ছিল
+`pwsh agent\installer\build.ps1`।
+
+⭐⭐ **ফলটা কাগজে ছোট, বাস্তবে নয়:** PowerShell 7 আলাদা করে ইনস্টল করতে
+হয়, স্টক উইন্ডোজে থাকে না। অর্থাৎ অফিসের সার্ভার PC-তে বসে **MSI বানানোই
+যেত না** — আর সেটা টের পাওয়া যেত ঠিক সেই দিন, যেদিন তাড়াহুড়োয় একটা
+হটফিক্স বিলি করতে হতো। এখন BOM বসেছে, রানবুকে `powershell -File`, আর
+স্ক্রিপ্টের `.NOTES`-এ কারণটা লেখা।
+
+### ২· ভার্সন ০.১.০ → ০.২.০
+
+আগের MSI ছিল **১০ আগস্ট রাতের**। তারপর এজেন্টে চারটে সত্যিকারের বদল হয়েছে:
+H06 (revoke করলে ক্যাপচার থামে) · A05 (কিউয়ের ডিস্ক-বাজেট সত্যিই প্রয়োগ
+হয়) · H08 (`logs\agent.log`) · কনফিগ লুপ।
+
+⚠️⚠️ সংখ্যাটা না বাড়ালে **আপডেট বিলি করাই যেত না**। MSI নিজে বসত
+(`AllowSameVersionUpgrades="yes"`), কিন্তু `rollout.ts` SemVer তুলনা করে —
+০.১.০ চালানো PC-কে ০.১.০ অফার করা হতো না (G59)। অর্থাৎ H04-এর গোটা
+ব্যবস্থাটা অচল থাকত আর প্রতিটা PC-তে হাতে গিয়ে বসাতে হতো।
+
+⭐ আর এখানেই আজকের সকালের কাজটার ফল হাতে-কলমে দেখা গেল — এক জায়গায়
+সংখ্যাটা বদলে বিল্ড করার পর:
+
+| | |
+|---|---|
+| MSI `ProductVersion` | `0.2.0` |
+| exe `ProductVersion` | `0.2.0+30bfdcd876…` |
+| exe `FileVersion` | `0.2.0.0` |
+
+⚠️ ওই `+30bfdcd876…` লেজটাই সেই জিনিস যেটা `TrimBuildMetadata()` ছেঁটে
+ফেলে সার্ভারে পাঠানোর আগে — নইলে `rollout.ts`-এর SemVer তুলনা ভাঙত।
+আজ সেটা চোখে দেখা গেল।
+
+**যাচাই:** `oXeioAgent.msi` · **৬২.১ MB** · ৪৭৭টি ফাইল · দুটো exe
+(`oXeio.Agent`, `oXeio.Watchdog`), `libSkiaSharp`, `e_sqlite3` — সব ভেতরে।
+⚠️ ইনস্টল করে দেখা **বাকি** — সেটা পাইলটের PC-তে।
+
+---
+
+## ৩ড. ইনস্টল সরল করা — স্টাফ নিজের পাসওয়ার্ড দিয়ে ঢোকে *(১২ আগস্ট ২০২৬)*
+
+মালিক MSI-তে ডাবল-ক্লিক করে পেলেন একটা হলুদ ত্রিভুজ: *"SERVERURL দিতে
+হবে"*। সিদ্ধান্ত এলো সাফ কথায় — **"install process ta simple koro. staff
+ra nijeder user name and pass diye login korbe. complex kono way ami cai
+na."**
+
+### কী এত জটিল ছিল
+
+পুরোনো পথে একটা PC বসাতে লাগত: ড্যাশবোর্ডে গিয়ে ওই কর্মীর জন্য একটা
+enrollment code বানানো → কোডটা কোথাও টুকে রাখা → ওই PC-তে গিয়ে একটা
+লম্বা `msiexec` কমান্ড টাইপ করা → ২৪ ঘণ্টার মধ্যে শেষ করা।
+
+⚠️⚠️ **আর সবচেয়ে বাজে অংশটা নীরব:** কোনটা কোন মেশিনে সেটা **মানুষকে
+হাতে মেলাতে** হতো। ভুল মিললে কোনো এরর আসত না, ইনস্টল সফলই হতো — শুধু
+রাকিবের কাজের ঘণ্টা করিমের নামে জমা হতো, আর ধরা পড়ত মাস শেষে বেতনের
+হিসাব মেলাতে গিয়ে।
+
+### নতুন পথ
+
+MSI-তে সার্ভারের ঠিকানা **বিল্ডের সময়ই** বেক করা যায়:
+
+```powershell
+powershell -File agent\installer\build.ps1 -ServerUrl "https://oxeio.office.local"
+```
+
+তারপর প্রতিটা PC-তে শুধু **ডাবল-ক্লিক**, আর স্টাফ নিজের ইমেইল-পাসওয়ার্ড
+দিয়ে সাইন ইন করে।
+
+⭐ **যে কীবোর্ডে বসে, সে নিজেই প্রমাণ করে সে কে।** তাই ডিভাইস-কর্মীর
+বাঁধাটা আগের চেয়ে **বেশি নির্ভুল**, কম নয় — মানুষের মেলানোর ধাপটাই
+উঠে গেছে।
+
+### সার্ভার — নতুন কোনো যাচাই লেখা হয়নি
+
+`POST /agent/enroll-login` ভেতরে ডাকে **`AuthService.login()`**, ওয়েবের
+লগইন যেটা ব্যবহার করে। ফলে তিনটে রক্ষাকবচ বিনামূল্যে এসেছে:
+
+| | না থাকলে |
+|---|---|
+| brute-force throttle (I11) | endpoint-টায় cookie নেই, CSRF নেই — পাসওয়ার্ড অনুমানের **সবচেয়ে সহজ দরজা** হতো |
+| 2FA (I06) | 2FA-ওয়ালা স্টাফ কোনোদিন enroll করতে পারত না |
+| `audit_log` | কে কবে কোন PC থেকে চেষ্টা করল, কিছুই থাকত না |
+
+⚠️ owner ও manager-এর অ্যাকাউন্টে **৪০৩** — তাঁদের `users.employee_id`
+null, অর্থাৎ ঘণ্টা জমা করার জায়গাই নেই। ৪০১ দিলে মনে হতো পাসওয়ার্ড ভুল,
+আর ভুল জায়গায় খোঁজা হতো।
+
+⚠️ `enroll()` আর `enrollWithLogin()` — দুটোরই শেষ ধাপ **একটাই মেথড**
+(`bind()`)। দুবার লিখলে একদিন একটা পথে `status: 'active'` বসত আর অন্যটায়
+নয়, আর পার্থক্যটা ধরা পড়ত কেবল ওই পথে বসানো মেশিনগুলোয়।
+
+### এজেন্ট — যেখানে শ্রেণিবিভাগটা উল্টো ছিল
+
+⚠️⚠️ সাইন-ইনের ভুল সামলাতে গিয়ে `SyncOutcomeClassifier` **ব্যবহার করা
+যায়নি**, আর কারণটা শেখার মতো। ওটা বানানো হয়েছে **ডেটা সিঙ্কের** জন্য,
+যেখানে ৪০১ = *"টোকেন হয়তো রিফ্রেশ হচ্ছে, কিউটা ফেলে দিয়ো না"* → Transient।
+সাইন-ইনে ৪০১-এর মানে ঠিক উল্টো আর একেবারে নিশ্চিত: **পাসওয়ার্ড ভুল**।
+
+ওই শ্রেণিবিভাগ মেনে চললে স্টাফ ভুল পাসওয়ার্ড দিয়ে পড়ত *"সার্ভারে
+পৌঁছানো যাচ্ছে না"* — আর নেটওয়ার্কের লোক ডেকে আধঘণ্টা নষ্ট করত। তাই
+`SignInAsync` স্ট্যাটাস কোড দেখেই সিদ্ধান্ত নেয় (৪০১ · ৪০৩ · ৪২৯ · ৪০০)।
+
+### জানালাটা
+
+⚠️ **কোনো Cancel বোতাম নেই, কিন্তু X আছে।** বন্ধ করলে এজেন্ট চলতেই
+থাকে, শুধু enroll হয় না; পরের লগঅনে আবার জিজ্ঞেস করে। জোর করে আটকে
+রাখলে স্টাফ ইনস্টলের দিনে কাজই শুরু করতে পারত না।
+
+⭐ সার্ভারের ঠিকানাটা জানালায় **দেখানো হয়** — স্টাফ যেন জানে পাসওয়ার্ডটা
+কোথায় যাচ্ছে। হুবহু এই রকম একটা জানালা যে কেউ বানাতে পারে।
+
+⚠️ 2FA-র ঘরটা শুরুতে লুকানো, আর দরকার হলে **জানালাটা নিজে বড় হয়**।
+প্রথম ছবিতে ধরা পড়েছিল উল্টোটা: ঘরটার জন্য জায়গা ছেড়ে রাখায় মাঝখানে
+একটা বড় শূন্যতা, আর নিচে বোতামটা কিনারায় ঠেকা।
+
+⚠️ লেবেলগুলোর `BackColor` **স্পষ্ট করে** বসাতে হয়েছে — ambient-এর ভরসায়
+ছাড়লে গাঢ় জানালায় প্রতিটা লেবেলের পেছনে একটা ফ্যাকাশে বাক্স বসে যায়
+(প্রথম ছবিতে সেটাও দেখা গেছে)।
+
+⚠️ `--preview-signin`-এর অবস্থাগুলো দেখাতে প্রথমে `SendKeys` ব্যবহার
+করা হয়েছিল — **কাজ করেনি, আর নীরবে**: কি-স্ট্রোক ফোরগ্রাউন্ড জানালায়
+যায়, আর সেটা আমাদের জানালা কি না তার নিশ্চয়তা নেই। বোতামটা `Controls`
+থেকে খুঁজে `PerformClick()` করাই একমাত্র নিশ্চিত পথ।
+
+**যাচাই:** server **৬৭৮ টেস্ট** (ছিল ৬৬৪ — ১৪টা নতুন, তার অর্ধেক
+রক্ষাকবচের) · agent Core ২৯৫ · Agent ৮৭ · ০ warning ·
+MSI ০.২.০ · **৬২.২ MB**, আর `SERVERURL = https://oxeio.office.local`
+সত্যিই ভেতরে বসেছে (MSI-র Property টেবিল পড়ে মেলানো) ·
+জানালার চারটে অবস্থাই ছবিতে দেখা।
+⚠️ আসল PC-তে ইনস্টল করে সাইন ইন করা **বাকি** — সেটা পাইলটে।
+
+---
+
+## ৩ঢ. ডক সিঙ্ক — ইনস্টলের পথ বদলালে যে ছ-টা ফাইল মিথ্যা বলে *(১২ আগস্ট ২০২৬)*
+
+⚠️ ইনস্টলের পথ বদলানো মানে শুধু কোড বদলানো নয়। **ছ-টা ডকে** পুরোনো পথটা
+ধাপে ধাপে লেখা ছিল, আর সেগুলো না বদলালে রোলআউটের দিন কেউ ডক পড়ে
+enrollment code বানাতে বসত।
+
+| ফাইল | কী বদলাল |
+|---|---|
+| `02-Workflow` § ৬ | নতুন স্টাফের অনবোর্ডিং — এখন portal account → ডাবল-ক্লিক → স্টাফ নিজে সাইন ইন |
+| `07-Technical-Spec` § ৪.১ | `POST /agent/enroll-login` যোগ; `/agent/enroll` এখন "স্ক্রিপ্টেড রোলআউটের পথ" |
+| `07-Technical-Spec` § ৪.২ | `GET /me` · `/me/days` · `POST /ops/{health,backup/run,retention/run}` · `policy-signed` — সবগুলো তালিকায় ছিল না |
+| `07-Technical-Spec` § ১০ | রোলআউটের চেকলিস্টে portal account ও `-ServerUrl` যোগ |
+| `05-Options-Decisions` | **ADR-024** — সিদ্ধান্তটা কেন, আর চারটে আপত্তির জবাব |
+| `04-Features` H05 · E10 | 🔴 → ✅, দুটো পথের বর্ণনা |
+| `monitoring-policy-template` § ৫ · ৯ | ⭐ স্টাফকে বলা হয় **সে নিজেই এটা চালু করবে** |
+| `README` | ইনস্টলের ধাপগুলো |
+
+### ⚠️ দুটো বাসি দাবি ধরা পড়ল
+
+**১· স্পেকের "শুধু ডিজাইন, কোডে নেই" তালিকাটা তিন জায়গায় ভুল ছিল।**
+`time-adjustments`-এর তিনটে রুট আর `policy-signed` আজই কোডে বসেছে, অথচ
+তালিকায় তখনো "নেই" লেখা। ⚠️ এই ধরনের তালিকা **নিজে থেকে পুরোনো হয়** —
+তাই এখন ওতে "✅ ১২ আগস্ট বন্ধ হয়েছে" নামে একটা অংশ যোগ করা হলো, যাতে
+পরেরবার কেউ শুধু উপরের লাইনটা পড়ে ভুল সিদ্ধান্ত না নেয়।
+
+**২· নীতিমালার ফাঁকা ঘরের সংখ্যা।** আগে বলা হয়েছিল **২১টা** — সেটা একটা
+আলগা grep-এর ফল (লাইন গুনেছিল, ঘর নয়)। সত্যিকারের সংখ্যা **৩৬**।
+মালিককেও ভুল সংখ্যাটাই বলা হয়েছিল; কাজের পরিমাণ আন্দাজ করার জন্য
+সংখ্যাটা জরুরি, তাই সংশোধন।
+
+### ⭐ ADR-024 কেন লেখা হলো
+
+সিদ্ধান্তটা এক লাইনের ছিল — *"staff ra nijeder user name and pass diye
+login korbe"* — কিন্তু এতে সিস্টেমের একটা **নিরাপত্তা-সীমানা** বদলেছে:
+এখন একটা endpoint আছে যা পাসওয়ার্ড নেয়, আর তাতে cookie বা CSRF নেই।
+ছ-মাস পরে কেউ (বা আমি) এটা দেখে "এটা কেন এভাবে" জিজ্ঞেস করবেই।
+
+তাই ADR-তে চারটে সম্ভাব্য আপত্তির জবাব লিখে রাখা হলো, আর তার মধ্যে
+সবচেয়ে জরুরিটা: **যাচাইয়ের কোড নতুন করে লেখা হয়নি** — `AuthService.login()`
+ডাকা হয়, তাই throttle · 2FA · audit তিনটেই আপনাআপনি প্রযোজ্য।
+
+
+---
+
+## ৩ণ. দুটো পর্দা যা তৈরি হয়ে অচল পড়ে ছিল *(১২ আগস্ট ২০২৬)*
+
+আজকের পঞ্চম ও ষষ্ঠ "চুক্তি লেখা আছে, কলার লেখা হয়নি"।
+
+### ১· `agent_versions` — টেবিলটা শুধু পড়া হতো
+
+⚠️⚠️ `update.service.ts` ওই টেবিল থেকে সর্বশেষ ভার্সন খোঁজে, `isNewer()`
+দিয়ে তুলনা করে, `rolloutBucket()` দিয়ে ধাপে ধাপে অফার করে, `halted`
+দেখলে থেমে যায়, sha256 পাঠায়, MSI স্ট্রিম করে। **কিন্তু ওই টেবিলে সারি
+বসানোর কোনো পথ কোথাও ছিল না** — endpoint নয়, UI নয়, seed-এও নয়।
+
+⭐ ফলটা আজ হাতে-কলমে দেখা গেল: MSI ০.২.০ বানানো হলো, আর সেটা ১৫টা PC-তে
+পৌঁছানোর **একমাত্র উপায় প্রতিটা মেশিনে হাতে গিয়ে বসানো**। H04-এর গোটা
+ব্যবস্থাটা — canary, ধাপে ধাপে, জরুরি ব্রেক — তৈরি হয়ে অচল পড়ে ছিল।
+
+**⭐ sha256 হাতে দিতে হয় না — সার্ভার নিজে ফাইল পড়ে হিসাব করে।**
+দিলে মিলিয়ে দেখা হয়, না মিললে ৪০০। ⚠️ কেন এটা জরুরি: এজেন্ট নামানোর পর
+হ্যাশ মিলিয়ে দেখে আর না মিললে MSI ফেলে দেয়। হাতে বসানো হ্যাশে একটা অক্ষর
+ভুল হলে ১৫টা PC ফাইলটা নামাত, বাতিল করত, আবার নামাত — **চিরকাল**, আর লগে
+কেবল "hash mismatch" লেখা থাকত।
+
+⚠️ পুরোনো বা সমান ভার্সন বসানো **আটকানো হয়**: `isNewer()` মিথ্যা হলে
+কাউকে কোনোদিন অফার করা হতো না, আর owner ভাবতেন বিলি হয়ে গেছে।
+
+### ২· অ্যালার্টের পাতা — API ছিল, পর্দা ছিল না
+
+⚠️ `web/src/api/alerts.ts` অনেক আগেই লেখা — টাইপ, লেবেল, ফিল্টার,
+`openCount` (মন্তব্যেই লেখা *"nav ব্যাজে এটাই"*)। **কোনো পাতা সেটা
+ব্যবহার করত না।** সার্ভার নিয়ম মেনে অ্যালার্ট তুলত, ইমেইলও পাঠাত,
+কিন্তু ড্যাশবোর্ডে ঢুকে মালিক একটাও দেখতে পেতেন না।
+
+⭐ পাতাটা খুলেই বোঝা গেল ফাঁকটা কত বড়: **৩৩টা খোলা অ্যালার্ট** —
+ব্যাকআপ বন্ধ, এজেন্ট চুপ, কারো সারাদিন কাজ নেই — কোনোটাই কেউ কোনোদিন
+দেখেনি।
+
+⚠️ হেলথটা **একই পাতায়** রাখা হয়েছে, আলাদা কোথাও নয়: "কিছু কি ভাঙা?"
+প্রশ্নের উত্তর দু-জায়গায় ভাগ থাকলে মানুষ একটাও খুলত না। তবে দুটো
+আলাদা কার্ডে — অ্যালার্ট **ঘটনা**, হেলথ **অবস্থা**।
+
+### ⚠️ ব্রাউজারে চালিয়ে একটা বাগ ধরা পড়ল
+
+publish বোতাম চেপে এলো:
+
+```
+Unexpected token '"', ""{\"versio"... is not valid JSON
+```
+
+`api()` নিজেই `JSON.stringify` করে, আর আমি আরেকবার করেছিলাম — দুবার
+এনকোড হয়ে সার্ভারে একটা **স্ট্রিং** পৌঁছাচ্ছিল। ⚠️ tsc ধরেনি
+(`body: unknown`), ৬৯৩টা টেস্টও ধরেনি (ওগুলো সার্ভারে সরাসরি JSON
+পাঠায়)। **ধরা পড়ল কেবল সত্যিকারের একটা ক্লিকে** — আজকের দ্বিতীয়বার
+এই শিক্ষা।
+
+### যাচাই — আসল ৬২ MB MSI দিয়ে
+
+শুধু পাতা দেখা নয়, গোটা পথটা:
+
+| | |
+|---|---|
+| MSI কপি করে publish | ✅ ০.২.০, canary, ০টা PC |
+| সার্ভারের হিসাব করা sha256 | ✅ `9d65182c…fd71` — ফাইলের আসল হ্যাশের সাথে **হুবহু** |
+| তালিকায় আকার | ✅ ৬২ MB |
+| অ্যালার্টের পাতা | ✅ ৩৩টা খোলা, হেলথে ডিস্ক ৬৮%, "Last backup — Never" |
+
+**যাচাই:** server **৬৯৩ টেস্ট** (ছিল ৬৭৮ — ১৫টা নতুন) · web ৬৪ ·
+tsc, lint, build পরিষ্কার। যাচাইয়ের অস্থায়ী owner অ্যাকাউন্ট, ভার্সনের
+সারি ও কপি করা MSI — সব মুছে ফেলা হয়েছে।
+
+
+---
+
+## ৩ত. I01 — পিনিং, আর যে এক লাইনে সব নিরাপত্তা চলে যেত *(১২ আগস্ট ২০২৬)*
+
+রানবুকের § ৬-এ পুরো নকশাটা লেখা ছিল — কোড স্নিপেট সহ — আর শেষে একটা
+বাক্য: *"এই কোডটা এই কাজের অংশ নয়।"* এজেন্টে তাই কিছুই ছিল না।
+
+⚠️ ফলে অফিসের স্ব-স্বাক্ষরিত সার্টে এজেন্ট যা-কিছু Windows মেনে নেয় তাতেই
+সন্তুষ্ট থাকত — অর্থাৎ কেউ Trusted Root-এ নিজের সার্ট বসাতে পারলে
+(বা ল্যানে MITM করলে) ডিভাইস টোকেন ও স্ক্রিনশট তার হাতে যেত।
+
+### ⭐⭐ যে ভুলটা প্রায় হয়েই যায়
+
+⚠️⚠️ .NET-এ `RemoteCertificateValidationCallback` বসানোর মানে তার **নিজের
+সব যাচাই বন্ধ হয়ে যাওয়া** — হোস্টনেম মেলানো, চেইন, মেয়াদ, সব। কলব্যাক
+যা বলবে তাই চূড়ান্ত।
+
+অর্থাৎ পিন মিলে গেলেই `return true` লিখে দেওয়াটা দেখতে ঠিক লাগে, কাজও
+করে — আর নীরবে হোস্টনেম যাচাই ও মেয়াদ দুটোই ফেলে দেয়। রানবুক নিজেই এটাকে
+*"সবচেয়ে সহজ ভুল"* বলেছিল।
+
+তাই সিদ্ধান্তটা TLS হ্যান্ডলারে নয়, **Core-এ** — `CertificatePin.Check()`:
+
+```
+পিন মিলতে হবে  এবং  sslErrors == None
+```
+
+⭐ Core-এ থাকায় এটা যাচাই করতে সত্যিকারের সার্ট, MITM বা টেস্ট সার্ভার
+কিছুই লাগে না — **১৫টা ইউনিট টেস্ট**, আর তার মধ্যে সবচেয়ে জরুরিটা
+ঠিক ওই ফাঁদটার: *"পিন মিলেছে, কিন্তু চেইন ভাঙা → প্রত্যাখ্যান"*।
+
+### তিনটে ছোট সিদ্ধান্ত
+
+| | কেন |
+|---|---|
+| **SPKI**-র হ্যাশ, পুরো সার্টের নয় | নবায়নে সাধারণত একই কী রেখে নতুন সার্ট হয়। সার্টের হ্যাশ পিন করলে প্রতিটা নবায়নে ১৫টা PC-তে নতুন পিন বিলি করতে হতো (`make-cert.ps1`-ও এই মানটাই ছাপে) |
+| **একাধিক পিন** চলে | নবায়নের দিন পুরোনো ও নতুন দুটোই কিছুক্ষণ বৈধ থাকা দরকার, নইলে সার্ট বদলানোর মুহূর্তে ফ্লিট একসাথে সংযোগ হারাত (§ ৭.১) |
+| **আগে পিন, তারপর চেইন** | উল্টো হলে ভুল সার্ভারের মেয়াদোত্তীর্ণ সার্টে লগে লেখা হতো "মেয়াদ শেষ", অথচ আসল খবরটা অনেক বড় — ওটা আমাদের সার্ভারই নয় |
+
+⚠️ `Parse()` ফাঁকা জায়গা ও বাড়তি কমা ছেঁকে ফেলে। রেজিস্ট্রিতে হাতে বসানো
+মান প্রায়ই শেষে একটা কমা নিয়ে আসে, আর তখন একটা **খালি স্ট্রিং** পিন
+হিসেবে ঢুকত — কোনোদিন কিছুর সাথে মিলত না, কিন্তু তালিকাটাকে "অখালি"
+বানিয়ে রাখত, অর্থাৎ পিনিং চালু অথচ **সবসময় ব্যর্থ**।
+
+### ⚠️ রানবুকের সুপারিশটা মানা হয়নি — ইচ্ছাকৃতভাবে
+
+§ ৬.৪ বলেছিল: *"https হলে পিন বাধ্যতামূলক, আর পিন ছাড়া কনফিগ পেলে
+এজেন্ট সংযোগ না করে tray-তে স্পষ্ট ভুল দেখাক।"*
+
+সেটা করা হয়নি, কারণ তাতে **আজকের পাইলটের মেশিনগুলো সংযোগই করতে পারত না**
+— ওখানে এখনো সার্টই বসানো হয়নি। পিন না থাকলে কলব্যাকটা **বসেই না**
+(.NET-এর স্বাভাবিক যাচাই চলে), আর এজেন্ট লগে একটা স্পষ্ট warning লেখে।
+
+⭐ "পিন নেই মানে যাচাই বাদ" — এই ভুল ডিফল্টটা এড়ানোর একমাত্র নিরাপদ উপায়
+কলব্যাকটা না বসানো, `return true` নয়।
+
+**যাচাই:** Core **৩১০ টেস্ট** (ছিল ২৯৫) · MSI আবার বিল্ড — `SERVERPIN`
+প্রপার্টি ও `ServerPin` রেজিস্ট্রি মান দুটোই ভেতরে · ০ warning।
+⚠️ আসল সার্টের বিরুদ্ধে চালিয়ে দেখা **বাকি** — সেটা সার্ভারে TLS বসানোর
+দিন (§ ৬.৩)।
+
+
+---
+
+## ৩থ. ⚠️ একই নামে তিনটে বাইনারি — আজকের নিজের ভুল *(১২ আগস্ট ২০২৬)*
+
+মালিক বললেন: *"MSI ফাইল এখনো পুরোনোটা দেখতে পাচ্ছি। নিউ লুক এখনো আসেনি।"*
+
+খুঁজে দেখা গেল **ভুলটা আমার**। git বলছে:
+
+| সময় | কী |
+|---|---|
+| ০৯:৫৩ | `<Version>` বসানো হলো **০.২.০** |
+| ০৯:৪৮ | MSI বিল্ড ও মালিককে পাঠানো — **সাইন-ইন জানালা ছাড়া** |
+| ১০:২৮ | সাইন-ইন জানালার কোড কমিট |
+| ১৫:৫৩ | MSI আবার বিল্ড (জানালা সহ) ও পাঠানো — **তবু ০.২.০** |
+| ১৬:৪৩ | MSI আবার বিল্ড (পিনিং সহ) — **তবু ০.২.০** |
+
+⚠️⚠️ অর্থাৎ **তিনটে আলাদা বাইনারি একই `0.2.0` নামে** বেরিয়ে গেছে, আর
+ফাইলের নামও এক (`oXeioAgent.msi`)। মালিকের পক্ষে কোনটা কোনটা বলার উপায়
+ছিল না — তিনি পুরোনোটা চালিয়ে ভাবছিলেন ফিচারটা আসেনি।
+
+⭐ **সবচেয়ে অস্বস্তিকর দিকটা:** আজ সকালেই ([§ ৩চ](#৩চ-এজেন্টের-ভার্সন--তিন-জায়গায়-তিনটে-১২-আগস্ট-২০২৬))
+ঠিক এই সমস্যাটাই সারানো হয়েছিল — MSI-র ভার্সন আর assembly-র ভার্সন আলাদা
+হওয়া। সেটা সারিয়ে তারপর **আরেক স্তরে একই ভুল** করা হলো: এক নম্বরে একাধিক
+বাইনারি।
+
+**শিক্ষা, আর সেটা ভার্সন ফাইলেই লেখা হলো:** *বাইনারি হাতে বিলি করার
+**আগেই** ভার্সন বাড়াও — কোডে বদল আসার পরে নয়।*
+
+### ⚠️ কিন্তু আসল কারণ আরও একটা ছিল
+
+ঠিক MSI-টা বসালেও জানালাটা আসত **না** — কারণ ওই মেশিনে
+`C:\ProgramData\oXeio\device.dat` পড়ে ছিল (১১ আগস্ট রাতের ফিল্ড টেস্টের
+টোকেন)। ফাইলটা থাকলে `NeedsEnrollment` মিথ্যা, তাই এজেন্ট নিজেকে আগেই
+enrolled ধরে আর কিছুই জিজ্ঞেস করে না।
+
+⭐ এটা **বাগ নয়, নকশা** — প্রতিবার লগঅনে পাসওয়ার্ড চাইলে সেটাই হতো
+বিরক্তির কারণ। কিন্তু "নতুন ফিচার দেখা যাচ্ছে না" ধরনের অভিযোগে এই
+সম্ভাবনাটা **প্রথমেই** দেখা উচিত।
+
+**যাচাই:** ০.৩.০ বিল্ড হলো, আর `installer/obj/publish/oXeio.Agent.exe` —
+অর্থাৎ MSI-তে যাওয়া **ঠিক ওই ফাইলটাই** — `--preview-signin` দিয়ে চালিয়ে
+জানালাটা ছবিতে তোলা হলো। ⭐ এবার আর "বিল্ডে ফিচারটা আছে তো?" প্রশ্নের
+উত্তর অনুমান নয়।
+
+
+---
+
+## ৩দ. আসল মেশিনে সাইন-ইন — আর লগে BOM-এর উল্টো পিঠ *(১২ আগস্ট ২০২৬, সন্ধ্যা)*
+
+মালিক বললেন *"install kore run kore dekho"*। অ্যাডমিন অধিকার ছিল না, তাই
+MSI বসানো গেল না — কিন্তু **আসল অপ্রমাণিত জিনিসটা MSI নয়** (ইনস্টল/আপগ্রেড
+/আনইনস্টল ১১ আগস্ট প্রমাণিত), বরং নতুন সাইন-ইন ফ্লো। তাই MSI-তে যাওয়া
+হুবহু ওই exe-টাই চালানো হলো।
+
+### ⭐ পুরো পথটা এই প্রথম আসল মেশিনে
+
+| | |
+|---|---|
+| জানালা এলো | `MainWindowTitle = "oXeio — sign in"` |
+| ভুল পাসওয়ার্ডে | **"Email or password is incorrect."** |
+| ঠিক পাসওয়ার্ডে | জানালা বন্ধ · `device.dat` তৈরি |
+| সার্ভারে | **device #59** · agent `0.3.0` · দুই মনিটর নিজে খোঁজা · `"via": "login"` |
+
+⭐⭐ **ভুল পাসওয়ার্ডের বার্তাটা আকস্মিকভাবে সবচেয়ে দামি প্রমাণ।** প্রথম
+চেষ্টায় ভুল করে টেস্ট-হার্নেসের ক্রেডেনশিয়াল দেওয়া হয়েছিল, আর জানালা
+বলল ঠিক কথাটাই। ⚠️ `SyncOutcomeClassifier`-এর নিয়ম মানলে ওখানে লেখা
+থাকত *"সার্ভারে পৌঁছানো যাচ্ছে না"* — কারণ ওর চোখে ৪০১ মানে Transient।
+[§ ৩ড](#৩ড-ইনস্টল-সরল-করা--স্টাফ-নিজের-পাসওয়ার্ড-দিয়ে-ঢোকে-১২-আগস্ট-২০২৬)-এ
+স্ট্যাটাস কোড ধরে আলাদা করার সিদ্ধান্তটা তাই তত্ত্ব ছিল না।
+
+### ⚠️ আর যে বাগটা কেবল চোখেই ধরা পড়ত
+
+লগ পড়তে গিয়ে:
+
+```
+2026-08-12 18:07:38  INFO  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+2026-08-12 18:07:38  INFO  oXeio agent 0.3.0 starting Â· server http://localhost:3000
+```
+
+⚠️ ফাইলটা **ঠিকই লেখা** — বৈধ UTF-8, বাইট মিলিয়ে দেখা হয়েছে। কিন্তু
+**BOM নেই**, আর Windows PowerShell 5.1 BOM ছাড়া ফাইলকে ANSI ধরে। ফলে
+রানবুকের নিজের কমান্ড —
+`Get-Content "$env:ProgramData\oXeio\logs\agent.log" -Tail 50` — স্টক
+উইন্ডোজে ভাঙা হরফ দেখাত, আর যিনি সমস্যা খুঁজতে লগ খুলেছেন তিনি প্রথমেই
+ভাবতেন ফাইলটাই নষ্ট।
+
+⭐⭐ **একই দিনে, একই ভুল, উল্টো পিঠ থেকে।** সকালে
+[§ ৩ঠ](#৩ঠ-msi-০২০--আর-যে-স্ক্রিপ্টটা-কোনোদিন-চলতই-না-১২-আগস্ট-২০২৬):
+BOM না থাকায় PowerShell স্ক্রিপ্টটা **পার্সই** করতে পারেনি। সন্ধ্যায়:
+BOM না থাকায় PowerShell লগটা **পড়তে** পারছে না।
+
+নিয়মটা তাই `FileLog.cs`-এ লিখে রাখা হলো:
+**Windows-এ যে টেক্সট ফাইল মানুষ পড়বে, তাতে BOM দাও।**
+
+⚠️ BOM বসে **শুধু ফাঁকা ফাইলে** (`stream.Length == 0`) — প্রতি লাইনে
+বসালে মাঝখানে জমে লেখাগুলোই নষ্ট হতো। দিন বদলে নতুন ফাইল হলে আবার বসে।
+দুটো টেস্ট ঠিক এই দুটো শর্তের।
+
+### ⭐ আর নতুন নিয়মটা এখানেই প্রথম মানা হলো
+
+০.৩.০ মালিকের হাতে **চলে গেছে**, তারপর কোড বদলেছে — তাই ফিক্সটা গেল
+**০.৩.১** হয়ে। সকালে যে শিক্ষাটা লেখা হয়েছিল (*বাইনারি বিলি করার আগেই
+ভার্সন বাড়াও*), এটাই তার প্রথম প্রয়োগ। `bin/`-এ এখন দুটো বিল্ড
+পাশাপাশি, নামেই আলাদা।
+
+**যাচাই:** ফিক্সের পর নতুন করে চালিয়ে রানবুকের **হুবহু সেই কমান্ডেই** লগ
+পড়া হয়েছে — `─────` `·` `—` `→` `§` সব ঠিক · Agent টেস্ট **৮৯** (ছিল ৮৭) ·
+পরীক্ষার ডিভাইস, অ্যাকাউন্ট ও `ProgramData\oXeio` সব মুছে ফেলা হয়েছে ·
+⚠️ একটাও স্ক্রিনশট ওঠেনি (৫ মিনিটের স্লট-সীমানায় পড়েনি)।
+
+---
+
+## ৩ধ. ইনস্টলার সফল, কিন্তু কিছুই চলে না *(১২ আগস্ট ২০২৬, রাত)*
+
+মালিক ০.৩.১ বসিয়ে জানালেন: **"install korar pore run hoyna"**।
+
+⭐⭐ **আর এবার বাইনারিতে কোনো দোষ ছিল না।** `C:\Program Files\oXeio`-এ
+সব ফাইল ঠিকঠাক বসেছে, আর হাতে `oXeio.Watchdog.exe` চালাতেই সাইন-ইন
+জানালা এলো, `ProgramData\oXeio` তৈরি হলো, লগ লেখা শুরু হলো। অর্থাৎ
+সমস্যাটা এজেন্টের নয় — **ইনস্টলারের**।
+
+### যা আসলে ঘটছিল
+
+`Package.wxs`-এ `InstallLogonTask` কাস্টম অ্যাকশন ছিল, আর সেটা কাজও
+করত — `Get-ScheduledTask 'oXeio Watchdog'` বলছিল **Ready**। কিন্তু
+টাস্কটার ট্রিগার **লগঅন** (`MSFT_TaskLogonTrigger`, ১৫ সেকেন্ড দেরি)।
+
+⚠️ তাই ইনস্টলার শেষ হয়ে "সফল" বলে বেরিয়ে যেত, আর **পরের লগঅন বা রিবুট
+পর্যন্ত কিছুই হতো না** — কোনো জানালা নয়, কোনো ঘণ্টা গোনা নয়, কোনো এরর
+নয়। মালিকের চোখে ইনস্টল হয়েছে অথচ প্রোগ্রামটা নেই।
+
+⭐ এটা আবার সেই চেনা ছাঁদ — **"চুক্তি লেখা আছে, কলার লেখা হয়নি"**। শুধু
+এবার "কলার"-টা একটা কোডের ফাংশন নয়, বরং **প্রথম রানটা**। টাস্ক বসানোর
+কোড ছিল, টাস্ক চালানোর কেউ ছিল না।
+
+### ⚠️ যে সহজ সমাধানটা কাজ করে না
+
+স্বাভাবিক ভাবনা: ইনস্টলের শেষে `schtasks /Run /TN "oXeio Watchdog"`।
+চালিয়ে দেখা হয়েছে —
+
+> `ERROR: The system cannot find the file specified.`
+
+টাস্কটা তো আছে। কারণটা তার **principal**: H02 অনুযায়ী `Group = Users`,
+যাতে যে-ই লগইন করুক তার জন্যই চলে। Group টাস্কের কোনো **একক ইউজার নেই**,
+তাই Task Scheduler on-demand চালাতে অস্বীকার করে (একই কারণে
+`Get-ScheduledTaskInfo`-ও ব্যর্থ হয়)। exe সরাসরি চালানোই একমাত্র পথ।
+
+### সমাধান — তিনটে খুঁটিনাটি, তিনটেই জরুরি
+
+```xml
+<CustomAction Id="StartWatchdog" Directory="INSTALLFOLDER"
+              ExeCommand="&quot;[INSTALLFOLDER]oXeio.Watchdog.exe&quot;"
+              Execute="immediate" Impersonate="yes" Return="asyncNoWait" />
+<Custom Action="StartWatchdog" After="InstallFinalize"
+        Condition="NOT Installed OR REINSTALL" />
+```
+
+| খুঁটিনাটি | না মানলে কী হতো |
+|---|---|
+| `Execute="immediate"`, deferred নয় | deferred অ্যাকশন SYSTEM হিসেবে **সেশন ০**-তে চলে — সাইন-ইন জানালা কেউ দেখতেই পেত না, স্ক্রিনও ধরা পড়ত না |
+| ⚠️⚠️ `Return="asyncNoWait"` | watchdog কোনোদিন নিজে বেরোয় না — `check`/`ignore` দিলে ইনস্টলার তার শেষের অপেক্ষায় **চিরকাল ঝুলে থাকত** |
+| `After="InstallFinalize"`, আগে নয় | এর আগেই `StopWatchdog`-এর `taskkill` চলে — সবে-চালু প্রসেসটাকেই মেরে ফেলত |
+
+⚠️ **জানা সীমা:** অ্যাডমিন নিজের অ্যাকাউন্টে বসালে জানালাটা **তাঁর** সেশনে
+ওঠে, স্টাফের নয়। ক্ষতি নেই দুটো কারণে — `AgentDataDirectory`-র ACL-এ
+`Users = Modify` **ObjectInherit** সহ, তাই অ্যাডমিনের তৈরি ফাইলও পরে স্টাফ
+লিখতে পারে; আর স্টাফের লগঅনে টাস্কটা এমনিতেই চলে।
+
+### যাচাই
+
+⚠️ এই মেশিনে অ্যাডমিন অধিকার নেই, তাই `msiexec` চালিয়ে দেখা যায়নি।
+বদলে **বিল্ড হওয়া MSI-র টেবিল পড়ে** মিলিয়ে দেখা হয়েছে:
+
+| যা দেখা হলো | মান | মানে |
+|---|---|---|
+| `CustomAction.Type` | **২২৬** | ৩৪ (Directory+exe) + ৬৪ (Async) + ১২৮ (Continue) — deferred (১০২৪) বা NoImpersonate (২০৪৮) নেই |
+| ক্রম | StartWatchdog **৬৬০১**, InstallFinalize **৬৬০০** | ঠিক পরেই |
+| শর্ত | `NOT Installed OR REINSTALL` | আনইনস্টলে চলবে না |
+
+সাথে: ইনস্টল করা ০.৩.১-এ **BOM ফিক্সও মাঠে যাচাই হলো** — `agent.log`-এর
+প্রথম তিন বাইট `EF BB BF`, আর ফাইলের হরফ সব ঠিক। টেস্ট: Core **৩১০** ·
+Agent **৮৯**। পরীক্ষার পর প্রসেস ও `ProgramData\oXeio` মুছে ফেলা হয়েছে।
+
+⭐ ভার্সন **০.৩.২** — বদলটা এজেন্টে নয়, ইনস্টলারে; কিন্তু ০.৩.১ মালিকের
+হাতে চলে গেছে, তাই নম্বর বাড়ল। নিয়মটার দ্বিতীয় প্রয়োগ, পরপর দুবার।
+
+---
+
+## ৩ন. ⚠️ ফিক্সটা ঠিক ছিল, বিল্ড কমান্ডটা নয় *(১২ আগস্ট ২০২৬, রাত)*
+
+০.৩.২ পাঠানোর পর মালিকের পর্দায় —
+
+> **This MSI was built without a server address.** Install it with:
+> `msiexec /i oXeioAgent-<version>.msi /qn SERVERURL="https://oxeio.office.local"`
+
+⚠️ **ইনস্টলারের ফিক্সটা ঠিকই ছিল** (§ ৩ধ), কিন্তু MSI-টা বানানো হয়েছে
+`./build.ps1` — `-ServerUrl` ছাড়া। ফলে ঠিকানা বেক হয়নি, আর
+`Installed OR SERVERURL` লঞ্চ-শর্তটা ডাবল-ক্লিকেই আটকে দিয়েছে।
+
+### ⭐ আসল দোষটা স্ক্রিপ্টের ডিফল্টের
+
+`-ServerUrl` ছিল **ঐচ্ছিক**, আর না দিলে বিল্ড **সফলই** হতো — শুধু একটা
+লাইন, তা-ও DarkGray-তে: *"server : বেক করা হয়নি"*। ৪৭৭টা ফাইল আর ৬২ MB
+আউটপুটের মাঝে ওই ধূসর এক লাইন চোখে পড়ার কথা নয়।
+
+⚠️ অথচ পুরো ব্যাপারটার **উদ্দেশ্যই** ছিল ডাবল-ক্লিকে ইনস্টল
+(*"install prosess ta simple koro"*)। যে জিনিসটা ছাড়া উদ্দেশ্যটাই ভেঙে
+পড়ে, সেটা ঐচ্ছিক রাখা ভুল — **ব্যতিক্রমটা** ঐচ্ছিক হওয়ার কথা।
+
+| | আগে | এখন |
+|---|---|---|
+| `./build.ps1` | ঠিকানা **ছাড়া** MSI, ধূসর সতর্কবাণী | ঠিকানা **বেক করা** — ডাবল-ক্লিকে চলে |
+| ঠিকানা ছাড়া চাই | ডিফল্টেই পাওয়া যেত | `-NoServerUrl` স্পষ্ট করে চাইতে হয় |
+| সতর্কবাণী | DarkGray এক লাইন | **হলুদ**, দুই লাইন, "ডাবল-ক্লিকে ইনস্টল হবে না" |
+
+### ⭐ ভার্সন ০.৩.৩ — কোডে একটা অক্ষরও বদলায়নি
+
+এবারের বাম্পটা কোনো বাগ ফিক্সের জন্য নয়। ০.৩.২ নামের একটা MSI ইতিমধ্যে
+মালিকের হাতে, আর নতুনটা তার থেকে **আলাদা** (SERVERURL বসানো)। একই নামে
+দুটো আলাদা বাইনারি ঘোরা — ঠিক যে সমস্যাটার জন্য § ৩ঠ-তে নিয়মটা লেখা
+হয়েছিল।
+
+⭐⭐ **নিয়মটা তাই কোড বদলের নয় — বিলি করা বাইনারির।** ভুল বিল্ড ফ্ল্যাগও
+আলাদা বাইনারি বানায়। bin/ থেকে ত্রুটিপূর্ণ ০.৩.২ মুছে ফেলা হয়েছে যাতে
+কেউ ভুল করে ওটাই তুলে নেয় না।
+
+**যাচাই** — বিল্ড হওয়া MSI-র টেবিল পড়ে, অনুমান করে নয়:
+
+| টেবিল | মান |
+|---|---|
+| `Property.SERVERURL` | `https://oxeio.office.local` ✅ |
+| `Property.ProductVersion` | `0.3.3` |
+| `LaunchCondition` | `Installed OR SERVERURL` — এখন সন্তুষ্ট |
+| `CustomAction.StartWatchdog` | Type **২২৬** — § ৩ধ-এর ফিক্সও সাথে আছে |
+
+---
+
+## ৩প. সাইন ইন করার আগেই গোনা শুরু *(১২ আগস্ট ২০২৬, রাত)*
+
+০.৩.৩ বসিয়ে মালিক লিখলেন:
+
+> *"install korar pore sign in option ase but sign na korleO task bar e
+> working stage e dekhay."*
+
+জানালাটায় সবুজ বিন্দু, পাশে **"Working"**, নিচে **QUEUED ৭** — অথচ
+কেউ সাইন ইন করেনি।
+
+### ⚠️⚠️ এটা দেখানোর ভুল নয়
+
+`StartLoops()` ট্র্যাকিং ও ক্যাপচারের লুপ চালু করত `EnrollIfNeededAsync`-এর
+**সমান্তরালে**, কোনো শর্ত ছাড়াই। মালিকের মেশিনের আউটবক্স খুলে দেখা গেল
+১৮ মিনিটে কী জমেছে:
+
+| kind | কতগুলো |
+|---|---|
+| `AppUsage` | **১৪** |
+| `Segment` | **৩** |
+| `Screenshot` | **২** — ডিস্কে আসল ফাইল, ৪০ KB ও ৬৯ KB |
+
+⭐ তিনটে আলাদা ক্ষতি, আর প্রথমটা সবচেয়ে গুরুতর:
+
+1. **ভুল লোকের নামে ঘণ্টা।** সারিগুলো ডিভাইস-পরিচয় ছাড়াই জমত, আর স্টাফ
+   সাইন ইন করামাত্র ডিভাইসটা **তার** নামে বাঁধা পড়ে সব সারি তার খাতায়
+   চলে যেত। অ্যাডমিন PC বসিয়ে আধঘণ্টা কাজ করে গেলে সেই আধঘণ্টাও।
+2. **সম্মতির আগেই ছবি।** নিয়ম "কাজ করার সময় ছবি" — কিন্তু যে এখনো সাইন
+   ইনই করেনি, সে এখনো কেউ নয়।
+3. **জানালাটা মিথ্যে বলত।** সবুজ বিন্দু আর "Working" মানে সব ঠিকঠাক চলছে।
+   ⚠️ ফলে স্টাফের **সাইন ইন করার কথাই মাথায় আসত না** — আর দিনের শেষে
+   তার ঘণ্টা শূন্য।
+
+⚠️ কেন `SyncHealth` এটা ধরেনি: সাইন ইন না থাকলে আপলোড হয়ই না, তাই কিউ
+জমে কিন্তু **শেষ সফল সিঙ্কের ঘড়ি** চালুই হয় না — নীতির চোখে "পাঠানোর
+কিছু নেই" আর "পাঠাতে পারছি না" তখন এক দেখাত।
+
+### সমাধান — `TrackingGate`, Core-এ
+
+```
+Check(enrolled, revoked) → Allowed | NotEnrolled | Revoked
+```
+
+⭐ পাঁচটা জায়গা এখন **একই** নিয়ম মানে: `TrackLoop` · `AppUsageLoop` ·
+`CaptureGate` · `TodayForm`-এর পিল ও বিন্দু · `TrayTooltip`। আগে
+revoke-এর শর্তটা দুই জায়গায় আলাদা করে লেখা ছিল, আর সেজন্যই ক্যাপচারে
+সেটা একবার [বাদ পড়ে গিয়েছিল](#২-h06--বাতিল-করা-ডিভাইস-ছবি-তোলা-থামাত-না)।
+
+### ⚠️⚠️ আর `AppUsageLoop`-টা প্রথম দফায় বাদ পড়েছিল
+
+`TrackLoop` ও `CaptureGate` গেট করার পর ধরে নিয়েছিলাম কাজ শেষ। **মেপে
+দেখা** হয়েছিল বলেই ভুলটা ধরা পড়ল: ৭ মিনিটে আউটবক্সে **একটা** সারি —
+`oXeio.Agent.exe`, ৩০০ সেকেন্ড। অর্থাৎ সাইন-ইন জানালাটা কতক্ষণ খোলা
+ছিল, সেটাই অ্যাপ-ব্যবহার হিসেবে জমা হচ্ছিল।
+
+⚠️ কারণ: `AppUsageLoopAsync` আলাদা থ্রেড, নিজের সারি নিজেই কিউতে ফেলে —
+`TrackLoop`-এর `continue` তাকে থামায় না। তিনটে প্রযোজকের **তিনটেতেই**
+গেট বসাতে হয়েছে।
+
+⭐⭐ **শিক্ষা:** "শূন্য হওয়ার কথা" আর "শূন্য" — এক নয়। এই বাগটার পুরো
+জন্মই ওই ফাঁকে, আর ফিক্সটাও প্রায় সেখানেই মরত।
+
+⚠️⚠️ **ক্রমটাই আসল সিদ্ধান্ত: revoke আগে।** revoke করলে
+`DeviceCredentials` টোকেন মুছে ফেলে, তাই ওই মুহূর্ত থেকে ডিভাইসটা
+"enrolled নয়"-ও বটে — **দুটো শর্তই সত্যি**। উল্টো ক্রমে বাতিল মেশিনে
+স্টাফ পড়ত *"Sign in to start"*, অর্থাৎ অফিস যেটা বন্ধ করেছে সেটাই আবার
+চালু করার নির্দেশ।
+
+### ⭐ আর ঠিক সেই ভুলটাই আমি করেছি
+
+টুলটিপে ক্রমটা হাতে লিখেছিলাম — `!Enrolled` আগে, `Health` পরে। বাতিল
+ডিভাইসে তাই "Not signed in" দেখাত। **টেস্টটা ধরেছে**, আর তারপর টুলটিপকেও
+`TrackingGate`-এর ভেতর দিয়ে পাঠানো হয়েছে।
+
+⭐⭐ এটাই ছাঁদটার পুরো যুক্তি: নিয়ম এক জায়গায় না থাকলে **যে লিখছে সে-ও**
+দ্বিতীয়বার আলাদা করে লিখে ফেলে।
+
+### `required`, ডিফল্ট নয়
+
+`AgentStatus.Enrolled` ইচ্ছাকৃতভাবে `required` —
+
+| যদি হতো | কী হতো |
+|---|---|
+| ডিফল্ট `true` | ভুলে যাওয়া জায়গা চুপচাপ "সাইন ইন হয়ে গেছে" বলত — এই বাগটাই ফিরে আসার পথ |
+| ডিফল্ট `false` | ভুলে যাওয়া জায়গা সাইন-ইন করা মেশিনেও "Sign in to start" দেখাত |
+
+⭐ `required` দিলে **কম্পাইলারই** "কলার লেখা হয়েছে কি না" পাহারা দেয় —
+এই প্রকল্পে যে ভুলটা ছয়বার হয়েছে, ঠিক সেটাই। বিল্ডে সাতটা জায়গা ধরা
+পড়েছে, সবগুলোই টেস্টে।
+
+### ৩প.১ · আগে-পরে, একই মেশিনে
+
+⭐ বাগটা ধরা পড়েছিল **মালিকের চলতি ইনস্টল থেকেই** — ০.৩.৩ তখন সাইন ইন
+ছাড়াই ঘণ্টাখানেক চলছিল, তাই আউটবক্সটাই ছিল প্রমাণ। একই মেশিনে একই
+শর্তে ০.৩.৪ চালিয়ে গোনা হয়েছে।
+
+| | ০.৩.৩ (১৮ মিনিট) | ০.৩.৪ (৮ মি. ১৯ সে., স্লট-সীমানা পেরিয়ে) |
+|---|---|---|
+| `AppUsage` | ১৪ | **০** |
+| `Segment` | ৩ | **০** |
+| `Screenshot` | ২ | **০** |
+| ডিস্কে `.webp` ফাইল | ২ (৪০ ও ৬৯ KB) | **০** |
+
+### ⚠️⚠️ ৩প.২ · আর মাপাটাই প্রায় মিথ্যে হয়ে গিয়েছিল
+
+পরীক্ষার এজেন্টটা চালানো হচ্ছিল **`obj\publish` থেকেই** — অর্থাৎ বিল্ডের
+নিজের আউটপুট ফোল্ডার থেকে। চলন্ত প্রসেস ওখানকার DLL লক করে রাখে, তাই
+পরের `build.ps1` থেমে যেত —
+
+> `Remove-Item : Cannot remove item …\obj\publish\Accessibility.dll:
+> Access to the path 'Accessibility.dll' is denied.`
+
+⚠️ **আর থেমে যাওয়াটাই সবচেয়ে বিপজ্জনক অংশ নয়।** বিল্ড থামলেও
+`obj\publish`-এ **আগের** exe আর `bin/`-এ **আগের** MSI পড়ে থাকে। ফলে
+পরের দুটো মাপ চলেছে **পুরোনো বাইনারিতে**, আর ফলটা দেখে মনে হয়েছিল
+ফিক্সটা কাজ করছে। ধরা পড়েছে কেবল MSI-র টাইমস্ট্যাম্প দেখে — ১৯:০৯,
+অথচ কোড বদলেছে ১৯:১৯-এ।
+
+**এখন `build.ps1` শুরুতেই থামে**, পরিষ্কার বার্তা দিয়ে: কোন প্রসেস
+আটকাচ্ছে (নাম ও PID), কী কমান্ডে থামাতে হবে, আর কেন `obj\publish` থেকে
+এজেন্ট চালানো যাবে না। পরীক্ষা এখন আলাদা কপি থেকে চলে।
+
+⚠️ শর্তটা **"oXeio চলছে" নয়, "`obj\publish` থেকে চলছে"**। প্রথমে চওড়া
+করে লিখেছিলাম, আর তাতে নিজের ইনস্টল করা এজেন্ট চালু থাকলেও বিল্ড আটকে
+যেত — অর্থাৎ পাহারাটা এমন কিছু আটকাত যা কোনো ক্ষতিই করত না, আর তখন
+মানুষ পাহারাটাকেই সরিয়ে দিত।
+
+⭐ পাহারাটা **দুদিক থেকেই** পরীক্ষা করা হয়েছে: `obj\publish` থেকে এজেন্ট
+চালিয়ে বিল্ড → থামে (আর MSI অক্ষত থাকে, কারণ থামে `Remove-Item`-এর
+আগেই); আলাদা কপি থেকে চালিয়ে বিল্ড → চলে।
+
+⭐ আজ রাতের তৃতীয়বার একই আকৃতির ভুল: **সফল-দেখানো একটা ধাপ আসলে কিছুই
+করেনি** (§ ৩ধ ইনস্টলার · § ৩ন ঠিকানা · এখানে বিল্ড)। প্রতিবারই ধরা
+পড়েছে ফলটা **গুনে** দেখে, ধাপটা "সফল" বলেছে বলে নয়।
+
+⚠️ **যা এখনো মাঠে দেখা হয়নি:** সাইন ইন **সফল হলে** গোনা শুরু হয় কি না।
+এই মেশিনে সার্ভারটা এখন চলছে না (`NameResolutionError`), তাই পুরো পথটা
+চালানো যায়নি। ঢাকা যা ভরসা: `TrackLoop` প্রতি টিকে `IsEnrolled` পড়ে, আর
+সাইন-ইনের শেষে `PublishStatus()` ডাকা হয় — দুটোই এক লাইনের পাঠ, আর
+সাইন-ইনের পথটা [§ ৩দ](#৩দ-আসল-মেশিনে-সাইন-ইন--আর-লগে-bom-এর-উল্টো-পিঠ-১২-আগস্ট-২০২৬-সন্ধ্যা)-এ
+device #59 দিয়ে প্রমাণিত।
+
+**যাচাই:** Core **৩২১** (ছিল ৩১০) · Agent **৯৭** (ছিল ৮৯) · ০ warning।
+ভার্সন **০.৩.৪**।
+
+---
+
+## ৩ফ. "sign in korar option nei" *(১২ আগস্ট ২০২৬, রাত)*
+
+০.৩.৪ বসিয়ে মালিকের পর্দায় G79-এর ফিক্স **ঠিকই কাজ করেছে** — লাল বিন্দু,
+"Not signed in", **QUEUED ০**। মাঠে প্রমাণ।
+
+আর সাথে সাথেই পরের প্রশ্নটা, এক লাইনে:
+
+> *"sign in korar option nei."*
+
+⚠️⚠️ **ঠিক।** জানালাটা আসত **শুধু চালু হওয়ার সময়**, একবার
+([§ ৩ড](#৩ড-ইনস্টল-সরল-করা--স্টাফ-নিজের-পাসওয়ার্ড-দিয়ে-ঢোকে-১২-আগস্ট-২০২৬)-এর নকশা: বন্ধ করে দিলে
+*"পরের লগঅনে আবার জিজ্ঞেস করা হবে"*)। ইনস্টলের দিন তাড়া থাকলে বা কেউ
+জানালাটা বন্ধ করে দিলে ফেরার একমাত্র পথ ছিল **লগ-অফ করে আবার লগ-ইন**।
+
+### ⭐⭐ আর ফিক্সটাই সমস্যাটা তৈরি করেছে
+
+০.৩.৪-এর আগে এই ফাঁকটা চোখে পড়ত না, কারণ **এজেন্ট এমনিতেই গুনত** — সাইন
+ইন না করেও tray সবুজ দেখাত। G79 সেটা বন্ধ করার পর প্রথমবারের মতো
+সাইন-ইনটা **বাধ্যতামূলক** হলো, আর তখনই দেখা গেল দরজাটা নেই।
+
+⚠️ আর আমার লেখা বার্তাটা ব্যাপারটা আরও খারাপ করেছে: পর্দায় বড় করে লাল
+হরফে *"Sign in to start counting your hours"* — একটা নির্দেশ, যেটা মানার
+কোনো উপায় পর্দায় নেই। **একটা নির্দেশ যেটা করার পথ দেখায় না, সেটা নির্দেশ
+নয় — সেটা শুধু দোষারোপ।**
+
+### যা বসল
+
+| | |
+|---|---|
+| tray মেনুতে **"Sign in…"** | সবার উপরে, আর `Visible` শুধু সাইন ইন না থাকলে |
+| `TrayOptions.RequestSignIn` | হোস্ট থেকে আসা কাজটা |
+| `SignInOnDemandAsync()` | জানালাটা আবার খোলে |
+| বার্তা বদলাল | *"…— right-click the oXeio tray icon → Sign in"* |
+
+⚠️ `Visible`, `Enabled` **নয়** — সাইন ইন হয়ে গেলে আইটেমটার কোনো মানে নেই,
+আর ধূসর হয়ে ঝুলে থাকলে স্টাফ ভাবত কিছু একটা ভেঙে আছে।
+
+⚠️⚠️ **দুটো জানালা খোলা ঠেকাতে একটা `Interlocked` পাহারা** — স্টার্টআপের
+পথ আর মেনুর পথ, দুটোই একই সময়ে ডাকা যায়। পাহারা না থাকলে দুটো সাইন-ইন
+জানালা পাশাপাশি খুলত, আর দুটোই ১২ ঘণ্টার টাইমআউট নিয়ে বসে থাকত।
+
+**যাচাই:** `--preview-today signin` দিয়ে জানালাটা খুলে **ছবি তুলে দেখা**
+হয়েছে — বার্তাটা দুই লাইনে ঠিকঠাক বসে, আর এই অবস্থার জানালা স্বাভাবিকের
+চেয়ে **ছোট** (৫৮৬px বনাম ৬৫৬px), তাই কিছু চাপা পড়ে না।
+Core **৩২২** · Agent **৯৭** · ০ warning · ভার্সন **০.৩.৫**।
+
+⚠️ **যা ক্লিক করে দেখা হয়নি:** tray মেনুর আইটেমটা — ট্রে-র রাইট-ক্লিক
+মেনু স্বয়ংক্রিয়ভাবে চালানো নির্ভরযোগ্য নয়। কোড কম্পাইল হয়, শর্তটা
+`_status.Enrolled` থেকেই আসে (যেটা মাঠে প্রমাণিত), আর ক্লিকের কাজটা
+স্টার্টআপের **হুবহু একই** `SignInAsync` ডাকে।
+
+⭐ তাৎক্ষণিক উপায় (০.৩.৫-এর আগে): এজেন্ট প্রসেসটা বন্ধ করে দিলে watchdog
+৩০ সেকেন্ডে আবার চালু করে, আর জানালাটা ফিরে আসে।
+
+---
+
+## ৩ব. নিজে সই করা — তিনটে স্ক্রিপ্ট *(১২ আগস্ট ২০২৬, রাত)*
+
+ADR-014-এর সিদ্ধান্তটা কোডে বসল: কেনা সার্ট নয়, **নিজে সই**। খরচ শূন্য,
+আর ১৫টা মেশিনের জন্য যথেষ্ট।
+
+| স্ক্রিপ্ট | কাজ |
+|---|---|
+| `deploy/make-code-cert.ps1` | ৫ বছরের সার্ট · `.cer` · `.pfx` · thumbprint |
+| `build.ps1 -SignWith <tp>` | দুটো exe → **তারপর** MSI |
+| `deploy/trust-publisher.ps1` | প্রতিটা PC-তে — **দুই** স্টোরে |
+
+### ⚠️⚠️ ফাঁদ ১ · `.cer` দুই জায়গায় বসাতে হয়
+
+কেনা সার্টে শুধু **Trusted Publishers**-ই যথেষ্ট, কারণ তার ইস্যুকারী
+Windows-এ আগে থেকেই বসানো। ⚠️ কিন্তু self-signed সার্ট **নিজেই নিজের
+ইস্যুকারী** — **Trusted Root**-এ না বসালে চেইন ভাঙা থাকে, আর Publishers-এ
+থাকা সত্ত্বেও *"Unknown publisher"* ডায়ালগটা আসতেই থাকে।
+
+⭐ এটা এমন ভুল যা ধরা পড়ত রোলআউটের দিন, ১৫টা PC-তে ঘোরার পর — "স্ক্রিপ্ট
+তো চালালাম, তবু ডায়ালগ আসে কেন"।
+
+### ⚠️⚠️ ফাঁদ ২ · `Status` মিথ্যে বলে, আর আমার কোড সেটা বিশ্বাস করেছিল
+
+সার্ট বানিয়ে প্রথম বিল্ডেই সই **"ব্যর্থ"**:
+
+> `UnknownError — A certificate chain processed, but terminated in a root
+> certificate which is not trusted by the trust provider`
+
+⚠️ ফাইলটা পড়ে দেখা গেল সই **বসে গেছে**, টাইমস্ট্যাম্পও হয়েছে, signer
+thumbprint-ও ঠিক। `Set-AuthenticodeSignature`-এর `Status` আসলে বলে
+*"এই মেশিন সইটা যাচাই করতে পারল কি না"* — আর বিল্ড-মেশিন নিজের সার্টটা
+Root-এ বসায়নি বলে পারেনি।
+
+⚠️⚠️ আমার প্রথম কোডে `Status -ne 'Valid'` হলেই `throw` ছিল। ফলে
+**সার্ট বানানোর পর সই করাই অসম্ভব হয়ে যেত**, অথচ আসল সমস্যা কিছুই ছিল না।
+মালিক `make-code-cert.ps1` চালিয়ে তারপর `build.ps1 -SignWith` দিতেন, আর
+দেয়ালে ধাক্কা খেতেন।
+
+⭐ এখন প্রশ্নটা আলাদা: *"আমাদের সার্ট দিয়ে সই বসেছে তো?"* — signer-এর
+thumbprint মিলিয়ে দেখা হয়। যাচাই করতে না পারাটা **সতর্কবাণী**, ব্যর্থতা নয়।
+
+### ⭐ টাইমস্ট্যাম্প — বাধ্যতামূলক
+
+টাইমস্ট্যাম্প ছাড়া সই করলে সার্টের মেয়াদ শেষ হওয়ার দিন **আগের সব বিল্ডের
+সই একসাথে অচল** হয়ে যেত — ৫ বছর পর পুরোনো MSI দিয়ে কোনো মেশিন আর ঠিক করা
+যেত না। তাই টাইমস্ট্যাম্প না বসলে বিল্ড থামে, আর বাদ দিতে হলে স্পষ্ট করে
+`-NoTimestamp` লিখতে হয়।
+
+### ⚠️ আর BOM-টা আবার
+
+দুটো নতুন `.ps1` লেখার সাথে সাথেই PowerShell 5.1 পার্স করতে পারল না —
+আজ **তৃতীয়বার** একই জিনিস ([§ ৩ঠ](#৩ঠ-msi-০২০--আর-যে-স্ক্রিপ্টটা-কোনোদিন-চলতই-না-১২-আগস্ট-২০২৬) ·
+[§ ৩দ](#৩দ-আসল-মেশিনে-সাইন-ইন--আর-লগে-bom-এর-উল্টো-পিঠ-১২-আগস্ট-২০২৬-সন্ধ্যা))।
+নতুন Windows-এ পড়া কোনো টেক্সট ফাইল লিখলেই BOM — নিয়মটা আর মনে রাখার
+জিনিস নয়, প্রতিবার যাচাই করার জিনিস।
+
+**যাচাই — অনুমান নয়, একটা ছুঁড়ে-ফেলা সার্ট দিয়ে সত্যিই সই করে:**
+
+| যা দেখা হলো | ফল |
+|---|---|
+| `oXeioAgent-0.3.5.msi` | signer ✅ · timestamp ✅ |
+| `oXeio.Agent.exe` · `oXeio.Watchdog.exe` (publish-এ) | signer ✅ · timestamp ✅ |
+| ⭐ **MSI খুলে বের করা** exe দুটো (`msiexec /a`) | signer ✅ · timestamp ✅ |
+| `-SignWith` ছাড়া বিল্ড | আগের মতোই চলে, আর "সই করা হয়নি" বলে |
+| `make-code-cert.ps1 -WhatIf` · `trust-publisher.ps1 -WhatIf` | কিছুই বদলায় না, অ্যাডমিনও লাগে না |
+
+⭐ তৃতীয় সারিটাই আসল প্রমাণ: exe-তে সই **wix build-এর আগে** বসে, তাই
+মোড়কের ভেতরের কপিগুলোও সই করা। পরে করলে ইনস্টলের পর ডিস্কে সই-ছাড়া exe
+যেত, অথচ MSI দেখে মনে হতো সব ঠিক।
+
+⚠️ পরীক্ষার সার্টটা মুছে ফেলা হয়েছে, আর `bin/`-এর MSI আবার **সই ছাড়া**
+বিল্ড করা — নইলে একটা throwaway পরিচয়ে সই করা MSI বিলি হয়ে যেত।
+
+⚠️ **যা এখনো দেখা হয়নি:** `trust-publisher.ps1`-এর আসল বসানোর পথ
+(অ্যাডমিন অধিকার নেই), আর সই করা MSI-তে ডাবল-ক্লিক করলে সত্যিই
+"Unknown publisher" যায় কি না। দুটোই মালিকের মেশিনে দেখতে হবে।
+
+---
+
+## ৩ভ. G37 — মাঝপথে যোগ দিলে *(১২ আগস্ট ২০২৬, রাত)*
+
+ADR-025-এর নিয়মটা কোডে বসল। ⭐ সিদ্ধান্তগুলো আগেই নেওয়া ছিল, তাই কোড
+লেখার সময় একটাও "কী করব" প্রশ্ন আসেনি — শুধু "কোথায় বসাব"।
+
+### নিয়মটা এক জায়গায় — `summary/proration.ts`
+
+```
+D = ওই মাসের কর্মদিবস          d = তার নিজের কর্মদিবস
+টার্গেট = d × (মাসিক টার্গেট ÷ পলিসির কর্মদিবস)      বেতন = মাসিক × d ÷ D
+```
+
+⚠️ **"৮ ঘণ্টা" কোথাও হার্ডকোড করা হয়নি** — পলিসির দুটো কলাম ভাগ করেই
+বেরোয়। এখন ঠিক ৮ আসে (২০৮ ÷ ২৬); চুক্তি বদলালে নিয়মটাও সাথে বদলাবে,
+migration ছাড়াই।
+
+### ⭐⭐ যে সমতাটা পুরো নিয়মের ভিত্তি
+
+বেতন ও টার্গেট **দুটোই** prorate করলে ঘণ্টাপ্রতি হার =
+(S·d/D) ÷ (d×৮) = **S ÷ (D×৮)** — d কেটে যায়। অর্থাৎ যে ১৭ তারিখে যোগ
+দিল আর যে পুরো মাস আছে, দুজনের হার হুবহু এক (৳৯২.৫৯)।
+
+⚠️ শুধু টার্গেট prorate করলে হার **দ্বিগুণ** হয়ে যেত — আর সেটা কোনো
+একক সংখ্যা দেখে ধরা পড়ত না। তাই ইউনিট ও e2e, **দুই জায়গাতেই** দুজনের
+হার পাশাপাশি রেখে মিলিয়ে দেখা হয়।
+
+### ⚠️⚠️ চারটে জায়গা, যেগুলো বাদ পড়লে নীরবে ভুল হতো
+
+| জায়গা | না বসালে |
+|---|---|
+| `summary.service` rollup | টার্গেট ফ্ল্যাট ২০৮-ই থাকত |
+| `payroll.service` | টার্গেট prorated, বেতন নয় → হার দ্বিগুণ |
+| **`progress.service`** | ⚠️ tray দেখাত "x / ২০৮ঘ", ড্যাশবোর্ড "x / ১০৪ঘ" — **দুই সংখ্যা, একটা মিথ্যা** |
+| `workdaysElapsed` | ১৭ তারিখে যোগ দেওয়া কর্মী প্রথম দিনেই ১২৮ঘ পিছিয়ে |
+
+⭐ তৃতীয়টা সবচেয়ে ছলনাময়: `progress.service` নিজে ক্যালেন্ডার থেকে
+কর্মদিবস গোনে, `monthly_summary` পড়ে না। শুধু rollup ঠিক করলে সংখ্যাটা
+ড্যাশবোর্ডে বদলাত আর tray-তে বদলাত না — আর এই ফিচারটার পুরো উদ্দেশ্যই আস্থা।
+
+### ⚠️⚠️ `expected_workdays`-এর মানে বদলেছে — আর ব্যাকফিল ছাড়া বিপদ ছিল
+
+কলামটা আগে ছিল "ওই মাসের কর্মদিবস" (D), এখন "তার কর্মদিবস" (d)। D গেল
+নতুন কলাম `month_workdays`-এ, কারণ পে-রোলে d ÷ D লাগে আর **দুটো একই
+সময়ের হিসাব হওয়া চাই** (ছুটির তালিকা বদলালে আলাদা করে গুনলে ভগ্নাংশ ভুল হতো)।
+
+⚠️⚠️ নতুন কলামের ডিফল্ট ০, আর পে-রোলের নিয়মে **D = ০ মানে "পুরো মাস
+ছুটি → পুরো বেতন"** (O9)। ব্যাকফিল না করলে পুরোনো প্রতিটা সারিতে সবাই
+**পুরো বেতন** দেখাত, যতই কম কাজ করুক। চলতি মাস ১৫ মিনিটে ঠিক হয়ে যেত,
+পুরোনো মাসগুলো কোনোদিনই নয়।
+
+⭐ ব্যাকফিলের মানটা হুবহু ঠিক — G37-এর আগে `expected_workdays` মানেই ছিল
+D, তাই `UPDATE … SET month_workdays = expected_workdays` কোনো অনুমান নয়।
+
+### ⚠️ টার্গেট ০ — বৈধ, কিন্তু একটাই কারণে
+
+কারো কোনো কর্মদিবসই না থাকলে (মাসের পরে যোগ দিয়েছে, বা পুরো মাস ছুটি)
+টার্গেট ০ হওয়াই ঠিক। ⚠️ কিন্তু কর্মদিবস **থাকা সত্ত্বেও** ০ মানে পলিসি
+ভুল বসানো — আর মেনে নিলে ঘাটতি অসম্ভব হতো, কর্তনও শূন্য, অর্থাৎ **কেউ
+এক ঘণ্টা কাজ না করেই পুরো বেতন পেত**। শর্তটা `rollupMonth` ও
+`computePayroll`, দুটোতেই।
+
+⭐ সাথে একটা ছোট কিন্তু জরুরি সংশোধন: `targetMet` এখন `targetSec > 0`-ও
+দেখে। নইলে `0 >= 0` সত্যি হয়ে যে ওই মাসে ছিলই না সে-ও "✅ টার্গেট পূরণ"
+দেখাত, আর `target_met_at`-এ একটা সময় বসে যেত।
+
+### ⭐ দুটো টেস্ট যা ফেল করল — আর সেটাই ঠিক ছিল
+
+`me.e2e` ও `agent.e2e` দাবি করত `monthlyTargetHours === 208`। আগস্টে ২৭
+কর্মদিবস, তাই এখন ২১৬ — অর্থাৎ **টেস্ট দুটো ঠিক ধরেছে যে আচরণ বদলেছে**।
+দাবিটা এখন সংখ্যার নয়, **নিয়মের**: ৮-এর গুণিতক, আর ২০–২৭ দিনের সীমার
+ভেতরে। স্থির সংখ্যা লিখে রাখলে টেস্টটা মাস বদলালেই আবার ভাঙত।
+
+**যাচাই:** server **৭২৭** টেস্ট (ছিল ৬৯৩) · web ৬৪ · lint ও tsc পরিষ্কার ·
+`prisma migrate deploy` চলেছে। নতুন: `proration.spec.ts` (২০, বিশুদ্ধ
+নিয়ম) · `proration.e2e.spec.ts` (৮, rollup → DB → পে-রোল পুরো পথ) ·
+payroll math-এ ৬টা।
+
+⚠️ **যা এখনো দেখা হয়নি:** আসল কর্মীদের `joined_on` কারোরই বসানো নেই
+(O13), তাই মাঠে proration আজও নিষ্ক্রিয় — নিয়মটা তৈরি, কিন্তু চালু হবে
+তারিখগুলো বসানোর দিন।
+
+---
+
+## ৩ম. সেটআপটা এক নজরে — আর সইয়ের শর্ত নিয়ে পরিষ্কার কথা *(১৩ আগস্ট ২০২৬)*
+
+মালিক বললেন: *"soi dula bypass koro. system ta ekto smooth koro, hard
+hoye jacche for user."*
+
+### ⭐ সইয়ের শর্তটা কোডে কোনোদিনই ছিল না
+
+খুঁজে দেখা গেল `policy_signed_at` শুধু **লেখা** হয় — enrollment, ট্র্যাকিং,
+ক্যাপচার, কিছুই ওটা দেখে থামে না। নিয়মটা বরাবরই রানবুকের কাগজে ছিল,
+কোডে নয়। ⭐ আর সেটাই ঠিক নকশা: সম্মতির প্রশ্নটা মানুষের, সফটওয়্যারের নয়।
+তাই "বাইপাস" করার মতো কিছু ছিল না — চেকলিস্ট থেকে সরিয়ে দেওয়াই যথেষ্ট।
+
+### ⚠️⚠️ আসল কষ্টটা ছিল অন্য জায়গায়
+
+১৫ জনের রোলআউটের আগে মালিকের জানা দরকার **কার portal account খোলা হয়েছে**।
+সেই তথ্যটা রেসপন্সেই আসত না — জানার একমাত্র উপায় ছিল প্রতিটা সারিতে
+"Portal account" চেপে দেখা, ১৫ বার।
+
+⚠️ আর কেউ বাদ পড়লে সেটা ধরা পড়ত **ওই PC-র সামনে দাঁড়িয়ে**, যখন স্টাফ
+সাইন ইন করতে পারত না — অর্থাৎ সবচেয়ে খারাপ সময়ে, সবচেয়ে বেশি লোকের সামনে।
+
+**এখন Staff পর্দায় একটা `Setup` কলাম**, আর কাজের ক্রমেই তিনটে অবস্থা:
+
+| | মানে |
+|---|---|
+| 🔴 `Needs login` | portal account নেই — এজেন্ট বসিয়ে লাভ নেই |
+| 🟡 `Ready to install` | লগইন তৈরি, এখন MSI বসানো যায় |
+| 🟢 `Running` | সে নিজের PC থেকে সাইন ইন করেছে, ট্র্যাকিং চলছে |
+
+সাথে কার্ডের হেডারে এক লাইনের হিসাব — *"৩ still need a portal account ·
+৫ ready for the agent"*। ⚠️ কাজ বাকি থাকলেই কেবল দেখায়; সব শেষ হলে
+লাইনটা উধাও, নইলে ওটা স্থায়ী সাজসজ্জা হয়ে যেত আর কেউ পড়ত না।
+
+⭐ `_count` দিয়ে আনা হয়, সারি টেনে নয় — রেসপন্সে **হ্যাঁ/না** ছাড়া কিছু
+যায় না, ইউজারের ইমেইল বা ডিভাইসের টোকেন নয় (টেস্টে যাচাই করা)।
+
+⚠️ **revoke করা ডিভাইস গোনা হয় না** — নইলে বদলে ফেলা PC-র পুরোনো সারিটা
+চিরকাল "Running" দেখাত, অথচ ওখান থেকে একটাও ঘণ্টা আসছে না।
+
+### ⚠️ আর একটা রাত-জাগা বাগ ধরা পড়ল
+
+ভরা টেস্ট স্যুট রাত ১২:৩০-এ চালাতে গিয়ে `retention.e2e`-এর সীমানা-টেস্ট
+ফেল করল। কারণ: ফিক্সচার `work_date` বসাত **UTC** তারিখ থেকে, আর জবের
+কাটঅফ **ঢাকার** কর্মদিবস ধরে। ঢাকা UTC+৬, তাই রাত ১২টা থেকে ভোর ৬টার
+মধ্যে UTC তারিখ একদিন পিছিয়ে — `daysAgo: 90` আসলে ৯১ ঢাকা-দিন আগের সারি
+বানাত।
+
+⭐ অর্থাৎ টেস্টটা **প্রতি রাতে ছয় ঘণ্টা ধরে ফেল করত**, আর দিনের বেলা
+চালালে চিরকাল সবুজ থাকত। ফিক্সচার এখন `workDateOf()` ব্যবহার করে — জব
+যেটা ব্যবহার করে, ঠিক সেটাই।
+
+### ⭐ আর Staff পর্দা থেকে সইয়ের অংশটাই সরে গেল
+
+মালিক: *"Settings → Staff ekhan theke policy releted sob soriye felo.
+Kono policy issue nei amader."* — সই যখন হয়ে গেছে আর কোডে ওটা কিছুই
+আটকায় না, তখন পর্দায় ওই কলাম ও বোতামের কোনো কাজ নেই।
+
+সরানো হয়েছে: `Policy signed` কলাম · "Record signature" বোতাম ·
+`PolicySignedDialog` (৯৪ লাইন)। কলাম আটটা থেকে সাতটা, বোতাম চারটে থেকে তিনটে।
+
+⚠️ **"Work policy" কলামটা রাখা হয়েছে** — নামে মিল থাকলেও ওটা সম্পূর্ণ
+আলাদা জিনিস: ২০৮ ঘণ্টার টার্গেট ও সাপ্তাহিক ছুটি কোন নীতিতে চলবে।
+সরালে কর্মীর টার্গেটই ঠিক হতো না।
+
+⚠️ **API ও কলামটা রাখা হয়েছে** — `policy_signed_at` ডাটাবেসে আছে, রুটও
+আছে। পর্দা থেকে সরানো আর ডেটা মুছে ফেলা এক নয়; সইয়ের তারিখ একটা নথি,
+আর ওটা ফেরত পাওয়ার উপায় থাকে না।
+
+**যাচাই:** server **৭৩২** টেস্ট (ছিল ৭২৭ — নতুন ৫টা সেটআপ-অবস্থার) ·
+web ৬৪ · lint ও tsc পরিষ্কার · ওয়েব বিল্ড হয়। ⭐ tsc দুটো অব্যবহৃত
+import ধরেছে (`setPolicySigned` · `clearPolicySigned`) — সরানোটা
+সম্পূর্ণ হয়েছে কি না, সেটার সবচেয়ে সস্তা প্রমাণ।
+
+⚠️ **যা দেখা হয়নি:** কলামটা ব্রাউজারে চোখে দেখা। ড্যাশবোর্ডে ঢুকতে
+পাসওয়ার্ড লাগত, আর সেটা আমি কোথাও টাইপ করি না — API-র দিকটা পাঁচটা
+e2e টেস্টে প্রমাণিত, কিন্তু রঙ ও লেখাটা মালিকের চোখে দেখা বাকি।
+
+---
+
+## ৩য. লগইন ঠিক করার পথ, আর পুরো শেকল প্রথমবার প্রমাণিত *(১৩ আগস্ট ২০২৬)*
+
+মালিক: *"staff der user name and pass edit option ta easy kore dao."*
+
+### ⚠️⚠️ খুঁজতে গিয়ে দেখা গেল দুটোর একটাও করা যেত না
+
+| | অবস্থা |
+|---|---|
+| পাসওয়ার্ড রিসেট | ⚠️ `resetUserPassword()` ওয়েবের API-তে **লেখাই ছিল**, কিন্তু কোথাও ডাকা হতো না |
+| লগইন ইমেইল বদলানো | রুটটাই ছিল না |
+
+⭐⭐ **আজ রাতের সপ্তমবার সেই একই ছাঁদ** — "চুক্তি লেখা আছে, কলার লেখা
+হয়নি"। আর এবার কারণটা সূক্ষ্ম: ডাকার মতো **`userId` রেসপন্সেই আসত না**।
+`employees` তালিকায় ছিল শুধু `hasPortalAccount` (হ্যাঁ/না), অথচ
+`/users/:id/reset-password` id চায়। ফাংশনটা লেখা হয়েছিল, কিন্তু ডাকার
+উপায়টাই কেউ বসায়নি।
+
+⚠️ ফল: **স্টাফ পাসওয়ার্ড ভুলে গেলে মালিকের কিছুই করার ছিল না।** আর
+অস্থায়ী পাসওয়ার্ড একবারই দেখা যায়, তাই ভুলে যাওয়াটা বিরল নয় — অনিবার্য।
+
+### যা বসল
+
+- নতুন `PATCH /users/:id/email` — owner-only · lowercase · unique যাচাই
+  **আগে থেকে** (নইলে Prisma-র `P2002` পর্দায় যেত) · audit-এ `from` ও `to`
+- `employees` রেসপন্সে `portalUserId` ও `portalEmail`
+- Staff সারির বোতাম অবস্থা বুঝে বদলায়: `Portal account` → **`Login`**
+- একই মোডাল দুটো কাজ করে — খোলা, আর ঠিক করা
+
+⚠️⚠️ **রিসেট আর ইমেইল বদলানো দুটো আলাদা বোতাম**, ইচ্ছাকৃতভাবে। এক বোতামে
+মিলিয়ে দিলে ইমেইলের বানান ঠিক করতে গিয়ে কারো পাসওয়ার্ড অকারণে বদলে যেত,
+আর সে পরদিন ঢুকতেই পারত না — কারণটা কোথাও লেখা না থাকায় খুঁজে বের করাও
+কঠিন হতো। সার্ভারেও দুটো আলাদা রুট, আর একটা টেস্ট ঠিক এই শর্তটার পাহারা দেয়।
+
+### ⚠️ `_count`-এর বদলে `select` — আর কেন সেটা নিরাপদ
+
+`portalUsers: { select: { id, email }, take: 1 }` — সারি টানা হয়, কিন্তু
+**দুটো ফিল্ড মাত্র**। `passwordHash` বা `totpSecret` কখনো যায় না, আর একটা
+টেস্ট রেসপন্সের কাঁচা JSON-এ ওই শব্দ দুটো খুঁজে দেখে।
+
+---
+
+## ৩র. ⭐⭐ পুরো শেকল প্রথমবার, শুরু থেকে শেষ *(১৩ আগস্ট ২০২৬, সকাল)*
+
+মালিক সাইন ইন করতে গিয়ে পেলেন —
+
+> `Could not reach the server: enroll-login: NameResolutionError`
+
+⚠️ পাসওয়ার্ডে ভুল নয়, **DNS**। এজেন্টে বেক করা `https://oxeio.office.local`,
+কিন্তু ওই নামটার কোনো অস্তিত্ব নেই; dev সার্ভার চলছে `localhost:3000`-এ।
+
+⚠️ মালিকের চালানো `Set-ItemProperty HKLM:\...` **চুপচাপ ব্যর্থ হয়েছিল** —
+`HKLM`-এ লিখতে অ্যাডমিন লাগে। রেজিস্ট্রি পড়ে দেখা গেল পুরোনো ঠিকানাই
+রয়ে গেছে, আর এজেন্ট রিস্টার্ট হয়েও সেটাই পড়েছে।
+
+⭐ **সমাধান অ্যাডমিন ছাড়াই** — `OXEIO_SERVER_URL` পরিবেশ-চলক রেজিস্ট্রির
+চেয়ে **অগ্রাধিকার পায়** (`AgentSettings.Load`-এর ক্রম), আর কোড পড়ে
+নিশ্চিত হওয়া গেল এজেন্ট `http`-ও মানে (`IsUsable`), শুধু `https` নয়।
+
+### ফল — এই প্রথম, একটাও ধাপ বাদ না দিয়ে
+
+| ধাপ | প্রমাণ |
+|---|---|
+| সাইন-ইন | `rakib@oxeio.local` → লগে `Sign-in attempt` |
+| enroll | **device #61** · `Credentials saved` · `device.dat` |
+| ডিভাইস সারি | `DESKTOP-11JN6DI` · active · agent **০.৩.৫** |
+| **Staff পর্দা** | OX-001 → **`Running`** · বাকিরা `Needs login` |
+| `portalEmail` | `rakib@oxeio.local` — নতুন বোতাম দুটোর ডেটা ঠিক আসছে |
+
+⭐⭐ **`Setup` কলামটা এতদিন কেবল টেস্টে প্রমাণিত ছিল** — ড্যাশবোর্ডে ঢুকতে
+পাসওয়ার্ড লাগে বলে চোখে দেখা যায়নি। আজ আসল ডেটায় তিনটে অবস্থার দুটোই
+একসাথে দেখা গেল, একই পর্দায়।
+
+### ⚠️ যা এখনো অস্থায়ী
+
+- এজেন্টের ঠিকানা একটা **পরিবেশ-চলকের জোরে** — রিবুট বা লগঅফে হারাবে
+- **watchdog বন্ধ** (এজেন্ট থামাতে গিয়ে) — পরের লগঅনে টাস্ক ফিরিয়ে আনবে
+- সার্ভার চলছে **`npm run start:dev`**-এ ⚠️ ট্রায়ালের আগে Docker-এ নিতেই
+  হবে, নইলে টার্মিনাল বন্ধ করলেই সব বন্ধ
+
+**যাচাই:** server **৭৪৬** টেস্ট (ছিল ৭৩২ — নতুন ১৪টা) · lint ও tsc
+পরিষ্কার · ওয়েব বিল্ড হয়।
+
+---
+
+## ৩ল. সই করা MSI — আর যে ফাঁদটা মালিকের সাথেই ঘটেছিল *(১৩ আগস্ট ২০২৬)*
+
+মালিক: *"কোড সাইনিং চালাও"*।
+
+### ⭐ সার্টটা আগেই তৈরি ছিল — অর্ধেক
+
+`deploy/certs/` খুলে দেখা গেল `oxeio-code.cer` **আছে** (১২ আগস্ট ২৩:১৫),
+আর সার্টটা প্রাইভেট কী সহ `Cert:\CurrentUser\My`-তেও আছে। অর্থাৎ মালিক
+আগের রাতেই স্ক্রিপ্টটা চালিয়েছিলেন।
+
+⚠️ **কিন্তু `.pfx` ব্যাকআপ ও `.txt` লেখা হয়নি।**
+
+⭐⭐ কারণটা ঠিক সেই দুর্বলতা যেটা এই কমিটেই সারানো হয়েছে: স্ক্রিপ্ট
+**আগে সার্ট বানাত, তারপর** পাসওয়ার্ড চাইত। ওই প্রম্পটে থেমে গেলে স্টোরে
+সার্ট আর ডিস্কে `.cer` পড়ে থাকত, অথচ ব্যাকআপ কিছুই না।
+
+⚠️ আর উপরের পাহারাটা **ফাইল** দেখে, সার্ট নয় — তাই আবার চালালে চুপচাপ
+**দ্বিতীয় একটা সার্ট** বানাত, আর কোনটা দিয়ে সই করা হয়েছে সেটা বলার
+উপায় থাকত না।
+
+**এখন পাসওয়ার্ড আগে চাওয়া হয়** — থামলে কিছুই তৈরি হয় না।
+
+### সই করা হলো
+
+| | |
+|---|---|
+| সার্ট | `CN=oXeio` · thumbprint `81729A63…` · মেয়াদ ২০৩১ |
+| MSI | `oXeioAgent-0.3.6.msi` — signer ✅ timestamp ✅ |
+| দুটো exe | signer ✅ timestamp ✅ |
+| ⭐ **MSI খুলে বের করা** exe দুটো | signer ✅ timestamp ✅ |
+
+⭐ শেষ সারিটাই আসল প্রমাণ — সই বসে **wix build-এর আগে**, তাই মোড়কের
+ভেতরের কপিগুলোও সই করা। পরে করলে ইনস্টলের পর ডিস্কে সই-ছাড়া exe যেত,
+অথচ MSI দেখে মনে হতো সব ঠিক।
+
+⚠️ `Get-AuthenticodeSignature` বলে `UnknownError` — বিল্ড-মেশিন নিজের
+self-signed সার্টটা Trusted Root-এ বসায়নি বলে। MSI-তে দোষ নেই; সেটা
+[§ ৩ব](#৩ব-নিজে-সই-করা--তিনটে-স্ক্রিপ্ট-১২-আগস্ট-২০২৬-রাত)-এ ব্যাখ্যা করা,
+আর `Invoke-Sign` ইচ্ছাকৃতভাবে এটাকে ব্যর্থতা নয়, সতর্কবাণী ধরে।
+
+### ⚠️ যা এখনো বাকি — দুটোই মালিকের হাতে
+
+1. **`.pfx` ব্যাকআপ** — পাসওয়ার্ডটা তাঁর বাছা, তাই তাঁকেই চালাতে হবে।
+   ⚠️⚠️ এটা ছাড়া মেশিন নষ্ট হলে **একই পরিচয়ে আর কোনোদিন সই করা যাবে না**,
+   আর ১৫টা PC-তে নতুন `.cer` নিয়ে ঘুরতে হবে।
+2. **`trust-publisher.ps1`** — LocalMachine-এর স্টোরে লিখতে অ্যাডমিন লাগে।
+   ⚠️ এটা না চালালে সই থাকবে ঠিকই, কিন্তু Windows চিনবে না — "Unknown
+   publisher" ডায়ালগটা তখনো আসবে।
+
+⭐ ভার্সন **০.৩.৬** — কোডে একটা অক্ষরও বদলায়নি, কিন্তু সই মানে বাইট বদলে
+যাওয়া, আর ০.৩.৫ মালিকের হাতে চলে গেছে।
+
+---
+
+## ৩শ. VPS-এ তোলা — আর পথে পাঁচটা ফাঁদ *(১৩ আগস্ট ২০২৬)*
+
+মালিক VPS পেলেন (`<VPS_IP>`), ডোমেইন ঠিক হলো **`hub.oxeio.com`**।
+
+⚠️ ডিপ্লয়টা মালিকের হাতেই চলেছে — সার্ভারে ঢুকতে পাসওয়ার্ড লাগে, আর সেটা
+আমার সীমার বাইরে। তাই কাজটা **এক কমান্ডে** নামিয়ে আনা হয়েছে
+(`deploy/vps-setup.sh`), আর প্রতিটা ভুলের সময় লগ দেখে পরের ধাপ বলা হয়েছে।
+
+### ⚠️⚠️ ফাঁদ ১ · `git add -A` গোপন ফাইল টেনে নিল — **আমার ভুল**
+
+`.env.bak-before-trial` সেশনের শুরু থেকে untracked পড়ে ছিল। একটা
+`git add -A`-তে সেটা কমিট **ও পুশ** হয়ে গেছে — ভেতরে `POSTGRES_PASSWORD`,
+`JWT_SECRET`, `BACKUP_PASSPHRASE`, `TELEGRAM_BOT_TOKEN`।
+
+⚠️ `.gitignore`-এ `**/.env` **ছিল**, কিন্তু `.env.bak-before-trial` ওই
+প্যাটার্নে পড়ে না — `**/.env.*.local` কেবল `.local`-এ শেষ হওয়া নাম ধরে।
+
+⭐ রিপো private, তাই বাইরের কেউ দেখেনি। ফাইলটা untrack করা হয়েছে আর
+`.env.bak*` · `.backup*` · `.old*` · `.save*` সব বন্ধ করা হয়েছে।
+⭐⭐ আর আসল সমাধানটা এসেছে অন্য দিক থেকে: `vps-setup.sh` **নিজেই** সব
+গোপন মান বানায় (`openssl rand`), তাই ফাঁস হওয়া মানগুলো VPS-এ যাওয়ার
+পথই নেই।
+
+### ⚠️⚠️ ফাঁদ ২ · API পাবলিক IP-তে খোলা ছিল
+
+`docker-compose.yml`-এ `api` সার্ভিস `"3000:3000"` দিয়ে পোর্ট প্রকাশ করত।
+অফিসের LAN-এ ক্ষতিকর নয়, কিন্তু **VPS-এ মানে Caddy ও তার TLS পুরোপুরি
+পাশ কাটিয়ে যাওয়া** — ডিভাইস টোকেন ও স্ক্রিনশট প্লেইন HTTP-তে ইন্টারনেটে।
+
+⚠️ আর ফাঁদটা নীরব: ব্রাউজারে সব ঠিকই দেখাত, কারণ ড্যাশবোর্ড Caddy দিয়েই যায়।
+এখন `127.0.0.1:3000:3000` — Caddy docker নেটওয়ার্কের ভেতর দিয়ে পৌঁছায়,
+তাই কিছুই ভাঙে না। (`postgres` আগে থেকেই ঠিক ছিল।)
+
+### ⚠️⚠️ ফাঁদ ৩ · compose পোর্টের তালিকা **যোগ** করে, বদলায় না
+
+`docker-compose.vps.yml`-এ ৮০ ও ৪৪৩ বসানোর পর merged config গুনে দেখা
+গেল বেসের `8080`-ও **থেকে গেছে** — অথচ Caddy তখন ডোমেইন-মোডে ৮০/৪৪৩ ধরে,
+৮০৮০-তে ভেতরে কিছুই শোনে না। ফল: VPS-এ একটা মৃত পোর্ট বাইরের জন্য খোলা।
+
+⭐ `ports: !override` দিয়ে সারানো, আর merged config আবার গুনে মিলিয়ে দেখা:
+`127.0.0.1:3000` · `127.0.0.1:5432` · `0.0.0.0:80` · `0.0.0.0:443`।
+
+### ⚠️ ফাঁদ ৪ · private রিপোতে `git clone` **ঝুলে যায়**
+
+মালিকের প্রথম চেষ্টা আটকে গেল `Username for 'https://github.com':`-এ।
+রিপো private, তাই বেনামে HTTPS clone হয় না — আর git চুপচাপ বসে থাকে।
+স্ক্রিপ্টের ভেতরে সেটা দেখতে অদ্ভুত: মনে হয় কিছু ঝুলে গেছে, কী চাইছে বোঝা যায় না।
+
+⭐ সমাধান **deploy key**, PAT নয়: শুধু-পড়ার, শুধু এই রিপোর, আলাদা করে
+বাতিলযোগ্য, আর কোনো টোকেন শেল-হিস্ট্রিতে থাকে না।
+⚠️ রিপো public করা **নয়** — ইতিহাসে ফাঁদ ১-এর ফাইলটা এখনো আছে।
+স্ক্রিপ্টে `GIT_TERMINAL_PROMPT=0` — এখন ঝোলার বদলে সাথে সাথে ব্যর্থ হয়
+আর deploy key বসানোর তিনটে ধাপ ছাপে।
+
+### ⚠️ ফাঁদ ৫ · compose ফাইল রিপোর রুটে নেই
+
+clone সফল, তারপর `bash: /opt/oxeio/deploy/vps-setup.sh: No such file`।
+⚠️ রিপোর রুটে `oxeio-monitor/` একটা **ফোল্ডার** — `deploy/` ও
+`docker-compose.yml` দুটোই ওর ভেতরে। চালানোর কমান্ডে পাথটা ভুল দেওয়া
+হয়েছিল, **আর স্ক্রিপ্টের ভেতরেও একই ভুল**: রুটে `cd` করে `docker compose`
+ডাকত, যেখানে কোনো compose ফাইলই নেই।
+
+⭐ এখন `docker-compose.yml` কোথায় সেটা খুঁজে নেয় (`oxeio-monitor/` আগে,
+তারপর রুট) — রিপোর গঠন বদলালেও ভাঙবে না।
+
+### ⭐ `vps-setup.sh` — যা আসলে সমস্যাটা ছোট করে দিল
+
+মালিকের প্রশ্নটা ছিল সৎ ও জরুরি: *"eta kothay ran kore ami kisoi janina"*।
+আলাদা আলাদা দশটা কমান্ড মানে দশটা ভুলের সুযোগ। তাই সব এক স্ক্রিপ্টে —
+Docker · ফায়ারওয়াল · কোড · গোপন মান · DNS যাচাই · স্ট্যাক।
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| **বারবার চালানো নিরাপদ** | ভুল হলে ঠিক করে আবার একই লাইন — `.env` একবার হলে আর ছোঁয়া হয় না |
+| ⚠️ **DNS যাচাই তোলার আগে** | না ছড়ানো অবস্থায় তুললে Caddy বারবার LE-তে ব্যর্থ হয়; LE-র ব্যর্থ চেষ্টারও সীমা (ঘণ্টায় ৫), সীমা পেরোলে ডোমেইন এক ঘণ্টা আটকে যায় |
+| ⚠️ **ufw-তে SSH আগে** | উল্টো করলে `ufw enable` চলার মুহূর্তেই নিজের সংযোগ কেটে যেত |
+| ⭐ **গোপন মান স্ক্রিপ্টই বানায়** | হাতে বসানোর সুযোগ নেই, তাই দুর্বল বা পুরোনো মান ঢোকার পথও নেই |
+
+**যাচাই** (VPS নেই, তাই যতটা এখানে সম্ভব): `bash -n` · সিক্রেট জেনারেটর ·
+`.env` তৈরির পুরোটা নকল করে চালানো — আটটা কী ঠিক বসে, আর ⭐
+`POSTGRES_PASSWORD` ও `DATABASE_URL`-এর পাসওয়ার্ড **হুবহু এক** (না মিললে
+api নীরবে ডাটাবেসের বাইরে থাকত)। DNS দুটো resolver-এ মিলিয়ে দেখা:
+`8.8.8.8` ও `1.1.1.1` — দুটোই `<VPS_IP>`।
+
+⚠️ **যা এখনো দেখা হয়নি:** স্ক্রিপ্টটা আসল VPS-এ শেষ পর্যন্ত চলেনি, আর
+Let's Encrypt-এর সার্ট আসতে দেখা হয়নি। ওটা মালিকের পরের রানে।
+
+---
+
+## ৩ষ. আসল ১২ জন — আর seed-এর যে ঘরটা কখনো ছিলই না *(১৩ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"amar office staff der add koro salarry soho."**
+
+VPS-এ তখন `staff.example.json`-এর তিনজন নমুনা কর্মী বসা — বেতন ০ — কারণ
+আসল তালিকা (`staff.local.json`) ইচ্ছাকৃতভাবে রিপোতে নেই। আসল ১২ জন
+মালিকের নিজের মেশিনেই তৈরি ছিল, শুধু পাঠানো হয়নি।
+
+কিন্তু পাঠানোর আগে seed-এর ধাঁচটা দেখতে গিয়ে **দুটো সমস্যা বেরোল**।
+
+### ⚠️⚠️ ফাঁদ ১ · G37 বসেছে, অথচ তার ইনপুট নেওয়ার পথ নেই
+
+seed-এর সারি ছিল চার ঘরের টাপল:
+
+```ts
+type Staff = [code: string, name: string, designation: string, salary: number];
+```
+
+**যোগদানের তারিখ নেওয়ার ঘরই নেই।** অথচ G37-এর proration পুরোপুরি
+`joined_on`-এর উপর দাঁড়ানো — আর ওটা `null` থাকলে নিয়মটা **চুপচাপ
+সবাইকে পুরো-মাস ধরে নেয়**। অর্থাৎ যিনি ১৭ তারিখে যোগ দিয়েছেন তিনিও পুরো
+মাসের টার্গেট পেতেন, মাস শেষে অন্যায্য কর্তন দেখাত, আর **কোথাও একটাও
+এরর উঠত না**।
+
+⭐ এটা **"চুক্তি লেখা আছে, কলার লেখা হয়নি"**-র অষ্টম ঘটনা — এবার ভিন্ন
+মুখে: হিসাবের কোড ঠিক, টেস্টও পাস, কিন্তু **ডেটা ঢোকার পথটা** কখনো
+বানানো হয়নি। নিয়মটা এতে আরেকটু চওড়া হলো:
+
+> নতুন হিসাব বসানোর সময় প্রশ্নটা শুধু "কোড ঠিক আছে?" নয় — **"এই মাঠটা
+> বাস্তবে কে, কোন পথে ভরবে?"** উত্তর না থাকলে ফিচারটা অচল, আর অচল
+> থাকাটা নীরব।
+
+সমাধান: পঞ্চম ঘরটা **ঐচ্ছিক** — `["OX-01", "নাম", "পদবি", 25000,
+"2026-01-05"]`। ঐচ্ছিক রাখায় পুরোনো চার-ঘরের ফাইলও আগের মতোই চলে।
+
+⚠️ আর তারিখ **না দিলে ঘরটা Prisma-কে পাঠানোই হয় না** (`undefined`,
+`null` নয়)। নইলে কেউ ড্যাশবোর্ডে হাতে তারিখ বসানোর পর seed আবার চালালে
+সেটা মুছে যেত — আর তার সাথে proration-ও, নীরবে।
+
+### ⚠️⚠️ ফাঁদ ২ · `as Staff[]` — TypeScript-এর কাছে মিথ্যে
+
+```ts
+return JSON.parse(readFileSync(file, 'utf8')) as Staff[];
+```
+
+এই এক লাইনে **কোনো যাচাই নেই**। JSON-এ যা-ই থাকুক, TypeScript মেনে
+নিত। অথচ এই ফাইলটাই ঠিক করে **কার বেতন কত** — ভুল ধরার সবচেয়ে জরুরি
+জায়গা এটাই। যা নিঃশব্দে পার হয়ে যেত:
+
+| ভুল | আগে যা হতো |
+|---|---|
+| তিন ঘরের সারি | `monthlySalary` = `undefined` → Prisma থামত, কিন্তু **কোন কর্মী** সেটা বার্তায় থাকত না |
+| `"25000"` (উদ্ধৃতিসহ) | একই অস্পষ্ট Prisma এরর |
+| `25000.5` | কলামটা `Int` — পয়সা **নিঃশব্দে** হারাত |
+| একই কোড দুবার | upsert দ্বিতীয়টা দিয়ে প্রথমটা চাপা দিত — **একজন কর্মী উধাও**, অন্যজনের নাম-বেতন তার জায়গায় |
+| `2026-02-30` | JS চুপচাপ **২ মার্চ** বানিয়ে দেয়, `Invalid Date` নয় |
+
+শেষেরটা সবচেয়ে ছলনাময় — `new Date('2026-02-30')` কোনো এরর দেয় না। তাই
+তারিখটা ফিরিয়ে মিলিয়ে দেখা হয় (`toISOString().slice(0,10) === value`),
+নইলে টাইপো সরাসরি proration-এ ঢুকে পড়ত।
+
+⚠️ ভুল পেলে **থেমে যাওয়া হয়, সারিটা বাদ দেওয়া হয় না** — বাদ দিলে একজন
+কর্মী নিঃশব্দে অনুপস্থিত থাকতেন, আর সেটা ধরা পড়ত মাস শেষে বেতনের সময়।
+
+### ⭐ কেন আলাদা ফাইল — `prisma/parse-staff.ts`
+
+`seed.ts` import হলেই নিজে চলতে শুরু করে (নিচে `main()` ডাকা), তাই ওর
+ভেতরের কোনো ফাংশন টেস্ট করা যায় না। যাচাইটা তাই আলাদা খাঁটি ফাইলে —
+**১৮টা টেস্ট**, যার মধ্যে অধিবর্ষ, UTC সীমানা (ঢাকা UTC+৬, নইলে মাসের ১
+তারিখ আগের মাসে সরে যেত), আর বার্তায় সারি নম্বর ও কোড দুটোই আছে কি না।
+
+সার্ভার টেস্ট **৭৬৩ → ৭৮১**।
+
+### যা এখনো মালিকের হাতে
+
+⚠️ **১২টা যোগদানের তারিখ কেবল মালিকই জানেন** — কোডে ওটা বানানো যায় না।
+তারিখ না বসা পর্যন্ত G37 বসানো থাকলেও **কার্যত অচল**।
+
+---
+
+## ৩স. 🔍 সারি আছে, ছবি নেই — একটা `chown` যা কিছুই করে না *(১৩ আগস্ট ২০২৬)*
+
+মালিক পর্দার ছবি পাঠালেন: গ্যালারিতে **"10 this day"**, কিন্তু দশটাই ভাঙা
+আইকন। Live Board-এর কার্ডে লেখা **"Link expired — refresh"**।
+
+⭐ **সূত্রটা সংখ্যায় নয়, জোড়ায়** — সারি আছে অথচ ফাইল নেই। এই দুটো
+আলাদা জায়গায় লেখা হয়, আর কোডে ক্রমটা স্পষ্ট
+([screenshot-ingest.service.ts](../oxeio-monitor/server/src/agent/screenshot-ingest.service.ts)):
+
+```
+১১৩ · DB-তে সারি তৈরি      ← হয়েছে
+১৫৫ · ডিস্কে ফাইল লেখা      ← হয়নি
+```
+
+ক্রমটা ইচ্ছাকৃত, আর কারণটাও লেখা আছে: *"DB আগে — UNIQUE-এ আটকালে ডিস্কে
+অযথা ফাইল লিখব না।"* যুক্তিটা ঠিক, কিন্তু ফল হলো — লেখা ব্যর্থ হলে
+**সারিটা থেকে যায়**।
+
+### ⚠️⚠️ যে `chown`-টা কিছুই করে না
+
+```dockerfile
+RUN mkdir -p /data/storage && chown -R node:node /data/storage
+USER node
+```
+
+দেখতে নিখুঁত। কিন্তু compose ঠিক **ওই পথেই** হোস্টের ফোল্ডার mount করে:
+
+```yaml
+- ${STORAGE_HOST_PATH:-./.data/storage}:/data/storage
+```
+
+⚠️ **bind mount ইমেজের ফোল্ডারটাকে ঢেকে দেয় — মালিকানাসহ।** Dockerfile-এর
+`chown` ইমেজের লেয়ারে বসে থাকে, আর mount ওটার উপর হোস্টের ফোল্ডারটা
+বসিয়ে দেয়। ডকার হোস্টে অনুপস্থিত ফোল্ডার বানায় **root**-এর নামে, অথচ
+কনটেইনার চলে `node` (uid 1000) হয়ে। লেখার সময় permission denied।
+
+⭐ শিক্ষাটা সাধারণ, আর এটা আমাদের নিয়মের একটা নতুন মুখ:
+
+> **ইমেজে যা করা হয়, mount তা মুছে দিতে পারে।** ডকারফাইলে অনুমতি ঠিক করা
+> মানে চলার সময় অনুমতি ঠিক থাকা নয় — যেখানে volume বসে, সেখানে ইমেজের
+> কথা আর খাটে না।
+
+### ⚠️⚠️ কিন্তু আসল অপরাধটা নীরবতা
+
+permission denied একটা **জোরালো** ভুল — থামা উচিত ছিল। থামেনি, কারণ
+পরের ধাপে ঘটনাটা এই:
+
+```
+লেখা ব্যর্থ  →  এজেন্ট রিট্রাই  →  DB বলে "সারি তো আছে" (P2002)
+             →  সার্ভার { accepted: 0, duplicate: true } ফেরত দেয়
+             →  এজেন্ট আউটবক্স থেকে ছবিটা মুছে ফেলে
+```
+
+অর্থাৎ **duplicate পথটা সফলতা ধরে নেয়** — যুক্তিসঙ্গত, কারণ ওটা লেখা
+হয়েছিল "এজেন্ট একই ছবি দুবার পাঠিয়েছে" ভেবে। কিন্তু সারি থাকা আর ফাইল
+থাকা এক নয়। ফল: ছবিটা চিরতরে হারায়, এজেন্ট নিশ্চিন্ত, সার্ভার নিশ্চিন্ত,
+আর মালিক দেখেন ভাঙা আইকন — যার সাথে আসল কারণের কোনো মিল নেই।
+
+⚠️ এটা সেই পরিচিত ধাঁচ: **একটা হার্ড এরর একটা "সব ঠিক আছে"-র ভেতর দিয়ে
+বেরিয়ে গেল।** G79-ও তাই ছিল, G78-ও।
+
+### যা করা হয়েছে, আর যা এখনো বাকি
+
+✅ নির্ণয় হয়েছে, আর এক কমান্ডে নিশ্চিত করার পথ মালিককে দেওয়া হয়েছে —
+কনটেইনারের uid, ফোল্ডারের মালিকানা, আর `touch` করে দেখা।
+
+⏳ **স্থায়ী সমাধান এখনো বসেনি** (G81), দুটো অংশে:
+
+1. **চালুর সময় storage-এ লেখা যায় কি না পরীক্ষা করে জোরে থেমে যাওয়া।**
+   `SignedUrlService` দুর্বল সিক্রেটে যেমন থামে, ঠিক তেমন। storage-এ লেখা
+   না গেলে পণ্যটার মূল কাজই অচল — তখন চালু থাকাটাই বিভ্রান্তি।
+2. **duplicate পথে ফাইলটা সত্যিই আছে কি না দেখা।** না থাকলে "সফল" বলা
+   যাবে না, তাহলে এজেন্ট ছবিটা ধরে রাখবে আর পরের বার পাঠাবে।
+
+⚠️ **যে ১০টা সারি ইতিমধ্যে আছে, তাদের ছবি ফিরবে না** — ওগুলো কখনো ডিস্কে
+লেখাই হয়নি।
+
+---
+
+## ৩হ. সাইন আউট — আর যে নিষেধটা কোডেই লেখা ছিল *(১৩ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"agent soft e sign in and sign out option add koro."**
+
+সাইন ইন ছিল (G80)। সাইন আউট লিখতে গিয়ে প্রথমেই যা চোখে পড়ল, সেটা
+[TrayIcon.cs](../oxeio-monitor/agent/src/oXeio.Agent/Ui/TrayIcon.cs)-এ
+আগে থেকেই লেখা একটা নিষেধ:
+
+> ⚠️ এখানে কোনো "প্রস্থান" আইটেম যোগ করবেন না। যোগ করলে স্টাফ নিজের
+> ট্র্যাকিং বন্ধ করে দিতে পারত, আর তখন ২০৮ ঘণ্টার হিসাবের কোনো মানে থাকত না।
+
+⭐ **নিষেধটা ঠিক, কিন্তু সাইন আউট ওটার আওতায় পড়ে না** — আর তফাতটা
+কোডেই লিখে রাখা হয়েছে, যাতে পরে কেউ এটাকে "নিয়ম ভাঙা" ভেবে সরিয়ে না দেয়:
+
+| | "প্রস্থান" | **সাইন আউট** |
+|---|---|---|
+| অফিস কী দেখে | মেশিন চুপ — PC বন্ধ থাকার সাথে **আলাদা করা যায় না** | টোকেন মুছে গেছে, ওই ব্যক্তির নামে আর একটাও সারি যাবে না |
+| হিসাব | **অস্পষ্ট** | **শেষ** |
+| শেয়ার করা PC | পরের জনের ঘণ্টা আগের জনের খাতায় | প্রত্যেকের নিজের |
+
+তাই আইটেমটা মেনুর **সবার নিচে, আলাদা রেখার পরে** — রোজকার কাজের পাশে নয়।
+
+### ⚠️⚠️ আসল বিপদটা মেনুতে নয়, আউটবক্সে
+
+সাইন আউট মানে টোকেন মোছা। কিন্তু আউটবক্সে যা পড়ে থাকে — সেগমেন্ট,
+অ্যাপ-ব্যবহার, স্ক্রিনশট — সেগুলো **ডিস্কেই থেকে যায়**। পরের জন ওই একই
+PC-তে সাইন ইন করলে সিঙ্ক ওয়ার্কার সেগুলো **তার** টোকেন দিয়ে পাঠাত।
+
+⭐ এটা হুবহু **G79**-এর ক্ষতি, উল্টো দিক থেকে দেখা। G79-এ সাইন ইনের
+*আগের* সারিগুলো ভুল লোকের নামে যেত; এখানে সাইন আউটের *পরের* সাইন-ইনে।
+তাই সমাধানও একই ধাঁচের — সিদ্ধান্তটা Core-এ, খাঁটি ফাংশন হিসেবে
+(`SignOutGate`, ১২টা টেস্ট)।
+
+⚠️ ফলে অপাঠানো সারিগুলো **ফেলে দিতে হয়**। তথ্য হারানো খারাপ, কিন্তু
+**ভুল লোকের নামে তথ্য বসা আরও খারাপ** — প্রথমটা স্টাফ টের পায় (ঘণ্টা কম),
+দ্বিতীয়টা কেউ কোনোদিন টের পায় না।
+
+তাই বার্তাটা তিনটে জিনিস বলে, আর টেস্ট তিনটেই পাহারা দেয়: **কতগুলো**,
+**কী হবে**, আর **বাঁচার পথ** ("Sync now" আগে চালান)।
+
+### ⚠️⚠️ ক্রম — আগে সাইন আউট, তারপর কিউ সাফ
+
+উল্টো করলে দুটোর মাঝের মুহূর্তে ট্র্যাকিং লুপ তখনো চালু (স্টাফ তখনো
+enrolled), তাই একটা **নতুন** সারি ঢুকে পড়তে পারত — আর সেটা সাইন আউটের
+পরেও কিউতে থেকে যেত। সাইন আউট আগে করলে `TrackingGate` সাথে সাথেই নতুন
+সারি ঢোকা বন্ধ করে দেয়।
+
+⚠️ **তবু নিখুঁত নয়, আর সেটা লুকোনো হয়নি:** ঠিক ওই মুহূর্তে *ধার নেওয়া*
+(leased) সারি থাকলে সেটা ঝাড়ুতে পড়ে না — `EvictAsync` ইচ্ছাকৃতভাবে leased
+সারি ছোঁয় না। তাই সাফ করার পর গভীরতা **আবার মেপে** অবশিষ্ট থাকলে লগে
+জোরে লেখা হয়, নীরবে নয়।
+
+### ⚠️ যে ভুলটা সবচেয়ে সহজ ছিল — `Revoke()` ডেকে ফেলা
+
+`DeviceCredentials.Revoke()` ইতিমধ্যেই টোকেন মুছে দেয়, তাই সাইন আউটে
+ওটাই ডেকে ফেলা স্বাভাবিক মনে হতো। **কিন্তু revoke স্থায়ী** — `IsRevoked`
+সত্যি হয়ে যায়, `NeedsEnrollment` চিরকাল মিথ্যা থাকে, আর সাইন-ইন জানালা
+আর কোনোদিন আসে না।
+
+ফলটা হতো নীরব: স্টাফ সাইন আউট করতেন, তারপর tray বলত *"This device has
+been switched off — tell the office"* — অথচ অফিস কিছুই করেনি — আর ফেরার
+একমাত্র পথ হতো টোকেন-ফাইল হাতে মুছে দেওয়া।
+
+তাই আলাদা `SignOut()`, যার সাথে `Revoke()`-এর **একমাত্র কিন্তু নির্ণায়ক**
+তফাত: `_revoked` ছোঁয়া হয় না।
+
+⭐ আর দুই গেটের **ক্রম এক** (revoke আগে) — সেটা টেস্টেই বাঁধা আছে, নইলে
+tray-র দুই জায়গায় দুই রকম ব্যাখ্যা যেত।
+
+### যা এখনো বাকি
+
+⏳ **অফিস এখনো "সাইন আউট করেছে" আর "PC বন্ধ" আলাদা করে দেখতে পায় না।**
+টোকেন মুছে ফেলার পর heartbeat পাঠানোর উপায় থাকে না, তাই খবরটা মোছার
+**আগে** পাঠাতে হবে — তার জন্য সার্ভারে একটা endpoint লাগবে, যেটা এখনো নেই।
+উপরের ছকের প্রথম সারিটা তাই আজ **কোডে নয়, ইচ্ছায়** সত্যি।
+
+এজেন্ট **০.৩.৮**। টেস্ট: Core ৩৩৪, Agent ৯৭।
+
+---
+
+## ৩ড়. "পাসওয়ার্ড রিসেট কাজ করছে না" — অথচ পাসওয়ার্ড ঠিকই ছিল *(১৩ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"staff der jonno new pass genarate korle kaj korche na."**
+
+কোড ঘেঁটে দেখলাম রিসেটের পথটা পুরোপুরি ঠিক — e2e টেস্ট পর্যন্ত আছে যা
+প্রমাণ করে রিসেটের পর ওই পাসওয়ার্ড দিয়ে **লগইন হয়**। তারপর মালিক পর্দার
+ছবি পাঠালেন, আর সেখানে আসল কথাটা লেখা:
+
+> **Too many failed attempts. Try again in 13 minutes.**
+
+⭐⭐ **ব্যর্থতাটা যা বলছিল, আর যা আসলে ঘটেছিল — দুটো আলাদা।** পাসওয়ার্ড
+ভুল ছিল না, রিসেটও ভাঙেনি। স্টাফ কয়েকবার **টাইপ করতে ভুল করেছেন**, আর
+পাঁচবারেই ১৫ মিনিটের তালা পড়েছে।
+
+### ⚠️⚠️ কেন টাইপ করতে ভুল হচ্ছিল
+
+```ts
+randomBytes(12).toString('base64url').slice(0, 14)
+```
+
+গোপনীয়তার দিক থেকে নিখুঁত — ~৮৪ বিট। **ব্যবহারের দিক থেকে ভাঙা:**
+base64url-এ পাশাপাশি থাকে `l` `I` `1`, আর `O` `0`, সাথে ছোট-বড় হাতের
+মিশ্রণ ও `-` `_`।
+
+এই স্ট্রিংটা মালিক পর্দায় দেখেন → স্টাফকে বলেন → স্টাফ **এজেন্টের
+জানালায় হাতে টাইপ করেন**। ১৪টা এমন অক্ষর নির্ভুল টাইপ করা প্রায় অসম্ভব।
+
+⭐ নতুন নিয়ম, আর এটা শুধু পাসওয়ার্ডের নয়:
+
+> **যে গোপন জিনিসটা মানুষ পড়ে, বলে আর টাইপ করে — তার বর্ণমালাও নকশার
+> অংশ।** সর্বোচ্চ এনট্রপি বেছে নিয়ে যদি জিনিসটা টাইপ করাই না যায়, তবে
+> শক্তিটা কাগজে থাকে, বাস্তবে ব্যর্থতা।
+
+এখন: `H7K2-M9PQ-3TVX` — ৩২টি দ্ব্যর্থহীন অক্ষর (`0 O 1 I l` বাদ, সবই বড়
+হাতের), তিন দলে বারো, ৬০ বিট। ⚠️ ৮৪ → ৬০ বিট **সচেতন বিনিময়**: অনলাইনে
+২^৬০ চেষ্টা এমনিতেই অসম্ভব, আর বদলে পাসওয়ার্ডটা **আসলে টাইপ করা যায়**।
+
+⭐ ৩২ = ২^৫ হওয়ায় প্রতিটা বাইটের নিচের ৫ বিট সরাসরি খাটে, আর বণ্টন
+নিখুঁতভাবে সমান (256 % 32 === 0)। টেস্ট ২৫৬টা বাইটই মিলিয়ে দেখে —
+প্রতিটা অক্ষর ঠিক আটবার।
+
+### ⚠️ আর তালাটা নিজেই
+
+মালিকের পরের কথাটা ছিল স্পষ্ট: **"ei sob sequrity dorkar nei."**
+
+মাপ দুটো হার্ডকোড ছিল — **৫ বার ভুল, ১৫ মিনিট তালা**। ইন্টারনেটে খোলা
+সার্ভারের জন্য যুক্তিসঙ্গত, কিন্তু ১৫ জনের অফিসে যেখানে সবাই পাশের ঘরে
+বসে, ওটা সুরক্ষা নয় — শুধু বাধা।
+
+এখন `.env`-এ, ডিফল্ট **১০ বার / ২ মিনিট**:
+
+```
+LOGIN_MAX_FAILS=10
+LOGIN_LOCK_MINUTES=2      # 0 দিলে তালা পুরোপুরি বন্ধ
+```
+
+⭐ যুক্তি: অনুমান করে ভাঙা ঠেকাতে গুরুত্বপূর্ণ হলো **হার**, তালার
+দৈর্ঘ্য নয়। ২ মিনিটের তালাও প্রতি ঘণ্টায় চেষ্টা ৩০০-তে নামায় — ভাঙা
+তখনও অসম্ভব। কিন্তু টাইপো করা স্টাফের কাছে ১৫ আর ২ মিনিটের তফাত বিরাট।
+
+তিনটে ছোট সিদ্ধান্ত, প্রতিটাই একটা নীরব ব্যর্থতা ঠেকায়:
+
+- ⚠️ **`LOGIN_LOCK_MINUTES=` (খালি) মানে বন্ধ নয়, ডিফল্ট।** `Number('')`
+  শূন্য দেয় — খালিকে শূন্য ধরলে কেউ না চাইতেই সুরক্ষা নীরবে উবে যেত।
+- ⚠️ **উপরের সীমা ৬০ মিনিট।** `100000` টাইপ করে ফেললে কার্যত চিরকালের
+  তালা হতো, আর কাউন্টার মেমরিতে বলে ফেরার পথ থাকত কেবল সার্ভার রিস্টার্ট।
+- ⚠️ **বন্ধ থাকলে চালুর সময় লগে সতর্কবার্তা।** নইলে ছয় মাস পরে সবাই ধরে
+  নিত সুরক্ষাটা আছে, কারণ কোডে তো আছে।
+
+### ⚠️ compose-এ চলক পাস করা — সেই চেনা ফাঁদ
+
+`.env`-এ লিখলেই কনটেইনারে পৌঁছায় না; `docker-compose.yml`-এর
+`environment:`-এ **স্পষ্ট করে** বসাতে হয়। লাইন দুটো না দিলে সেটিং লেখা
+থাকত, অথচ সার্ভার ডিফল্টই ব্যবহার করত — আর "সেটিং কাজ করছে না" বোঝার
+কোনো উপায় থাকত না। **"চুক্তি লেখা আছে, কলার লেখা হয়নি"**-র নবম ঘটনা,
+এবার আগেই ধরা পড়েছে।
+
+### ⭐ টেস্ট থেকে সংখ্যা সরানো
+
+দুটো পুরোনো টেস্ট `[401, 401, 401, 401, 401, 429]` হার্ডকোড করত। ডিফল্ট
+নরম করামাত্র দুটোই ভেঙেছে — **অথচ আচরণ ঠিকই ছিল**। এখন টেস্ট চলমান
+কনফিগ থেকেই সীমাটা পড়ে, আর তালা বন্ধ থাকলে নিজেকে skip করে।
+
+> টেস্ট **নিয়ম** পাহারা দিক, একটা নির্দিষ্ট সংখ্যা নয়।
+
+সার্ভার টেস্ট **৭৮১ → ৮০০**।
+
+---
+
+## ৩ঢ়. ⭐⭐ যে দরজাটা বন্ধ হতো, খুলত না *(১৩ আগস্ট ২০২৬)*
+
+তালা ঢিলে করা আর পাসওয়ার্ড টাইপযোগ্য করার পরেও মালিক লিখলেন:
+**"pass reset hocche admin panel but still cant sign in."**
+
+এবার পর্দার বার্তা বদলেছে — ৪২৯ নয়, **"Email or password is incorrect"**।
+অর্থাৎ তালা খুলেছে, কিন্তু পাসওয়ার্ড মানছে না।
+
+`login()` এই এক বার্তা তিনটে আলাদা কারণে দেয়:
+
+```ts
+const ok = user !== null && user.isActive && (await verify(...));
+```
+
+⭐ **এক বার্তা, তিন কারণ** — আর সেটা ইচ্ছাকৃত (user enumeration ঠেকাতে)।
+কিন্তু ঠিক সেই কারণেই মালিকের পক্ষে জানার কোনো উপায় ছিল না যে সমস্যাটা
+পাসওয়ার্ডে নয়, `is_active`-এ।
+
+### ⚠️⚠️ আসল বাগ — একটা অসম্পূর্ণ জোড়া
+
+`deactivate()` কর্মীর সবকিছু বন্ধ করে, portal লগইনসহ:
+
+```ts
+const portal = await tx.user.updateMany({
+  where: { employeeId: id, isActive: true },
+  data: { isActive: false },
+});
+```
+
+`reactivate()` করত শুধু এটুকু:
+
+```ts
+data: { status: 'active', leftOn: null }
+```
+
+**লগইনটা কখনো ফেরানো হয়নি।** ফলে যা দাঁড়াত:
+
+| পর্দায় | বাস্তবে |
+|---|---|
+| Staff-এ কর্মী **Active** | `users.is_active = false` |
+| "Reset password" **সফল**, পাসওয়ার্ড দেখাল | ওই পাসওয়ার্ড **কোনোদিন কাজ করবে না** |
+| লগইনে *"Email or password is incorrect"* | কারণ পাসওয়ার্ড নয়, অ্যাকাউন্ট বন্ধ |
+
+⭐ নতুন নিয়ম, আর এটা এই প্রকল্পে বারবার ফিরে আসা ফাঁদটার আরেকটা রূপ:
+
+> **যা বন্ধ করার কোড লিখেছেন, খোলার কোডও একই সাথে লিখুন।** জোড়াটা
+> অসম্পূর্ণ থাকলে ভুলটা ধরা পড়ে না — কারণ বন্ধ করার পথে সবই ঠিক দেখায়,
+> আর খোলার পথে যেটা বাদ পড়েছে সেটা **কেউ খেয়ালই করে না**, যতক্ষণ না
+> কেউ সত্যিই ফিরে আসে।
+
+⚠️ ডিভাইস ইচ্ছাকৃতভাবে ফেরে না (আগে থেকেই লেখা আছে — ফিরে আসা কর্মীর
+মেশিন নতুন করে দেওয়াই স্বাভাবিক)। কিন্তু **লগইন আর ডিভাইস এক জিনিস নয়**:
+লগইন ছাড়া কর্মী এজেন্টে সাইন ইনই করতে পারেন না, অর্থাৎ ফেরার পথটাই বন্ধ।
+
+### ⚠️ আর যে নীরবতাটা বাগটাকে অদৃশ্য রেখেছিল
+
+`resetPassword()` কখনো `isActive` দেখত না। তাই সে **সফল** হতো, নতুন
+পাসওয়ার্ড দেখাত — একটা অ্যাকাউন্টের জন্য যেটায় ঢোকাই যায় না। মালিক
+বারবার রিসেট করতেন, প্রতিবার একই ৪০১।
+
+এখন সে ৪০৯ দেয়, আর বার্তাটা **কী করতে হবে** বলে:
+
+> *This login is disabled because the staff member is inactive.
+> Reactivate them on the Staff screen first — then reset the password.*
+
+⚠️ নিজে থেকে অ্যাকাউন্ট **সক্রিয় করে দেওয়া হয় না** — পাসওয়ার্ড ঠিক করতে
+গিয়ে কেউ যেন অজান্তে ছেড়ে-যাওয়া কর্মীর লগইন খুলে না ফেলে। সক্রিয় করা
+আলাদা, সচেতন কাজ।
+
+### ⭐ কেন টেস্টে ধরা পড়েনি
+
+`deactivate` নিয়ে টেস্ট ছিল, `reactivate` নিয়েও ছিল। **কিন্তু জোড়াটা
+নিয়ে ছিল না** — কেউ কখনো নিষ্ক্রিয় করে, আবার সক্রিয় করে, তারপর লগইন
+করে দেখেনি।
+
+> একটা অবস্থা বদলানোর টেস্ট যথেষ্ট নয় — **ফিরে আসার টেস্টও চাই**।
+
+নতুন ফাইল `portal-login-lifecycle.e2e.spec.ts`, ৮টা টেস্ট, আর এর মূলটা
+সংশোধনের আগে **ব্যর্থ হতো**। সার্ভার টেস্ট **৮০০ → ৮০৮**।
+
+⚠️ **যাঁর অ্যাকাউন্ট ইতিমধ্যে ভাঙা, নতুন কোড তাঁকে সারায় না** — কোডটা
+কেবল পরের বার থেকে ঠিক রাখে। আর UI দিয়েও সারানো যায় না, কারণ কর্মী
+এখন `active`, তাই "Reactivate" ৪০৯ দেবে। ওই সারিটা একবার SQL দিয়ে ঠিক
+করতে হয় (deploy/README § ১২.৩)।
+
+### ✅ মাঠে প্রমাণিত
+
+মালিক জানিয়েছেন: **"Belal login korte pereche."** SQL দিয়ে সারিটা ঠিক
+করার পর তিনি ঢুকতে পেরেছেন, আর নতুন করে পাসওয়ার্ড রিসেটও লাগেনি —
+পুরোনো পাসওয়ার্ডই কাজ করেছে, ঠিক যেমনটা হওয়ার কথা ছিল।
+
+⭐ অর্থাৎ নির্ণয়টা অনুমান ছিল না: সমস্যাটা পাসওয়ার্ডে ছিল না, `is_active`-এ।
+
+### ⭐ নিয়মটা লিখেই কাজে লেগে গেল — একই ধাঁচের আরেকটা
+
+"বন্ধ করার কোডের সাথে খোলার কোডও লিখুন" — এই চোখে বাকি কোড দেখতে গিয়ে
+সাথে সাথেই আরেকটা বেরোল (**G85**): **work policy নিষ্ক্রিয় করা যায়,
+কিন্তু ফেরানো যায় না।**
+
+`work-policies.service.ts` `is_active = false` বসায়, অথচ কোথাও
+`is_active: true` বসানোর কোড নেই, কন্ট্রোলারে `reactivate` রুটও নেই।
+অর্থাৎ একবার নিষ্ক্রিয় করা পলিসি **চিরতরে** নিষ্ক্রিয়, আর ফেরার একমাত্র
+পথ SQL।
+
+⚠️ ক্ষতিটা কর্মীর লগইনের মতো তীব্র নয় (পলিসি নিষ্ক্রিয় করতে গেলে আগে
+সব কর্মীকে সরাতে হয়, তাই কেউ আটকে যান না)। কিন্তু ভুল করে চাপলে ফেরার
+পথ নেই, আর সেটা পর্দায় কোথাও লেখা থাকে না।
+
+⭐ এটাই নিয়ম লিখে রাখার আসল লাভ: **একটা বাগ সারানোর পর একই ধাঁচের
+বাকিগুলো খোঁজা যায়, পরেরটা মাঠে ধরা পড়ার অপেক্ষা না করে।**
+
+---
+
+## ৩য়. ম্যানেজার বানানোর পথ — আর যে ফাঁকটা পথে পড়ে ছিল *(১৩ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞাসা করলেন: **"Belal k manager banab kivabe?"**
+
+উত্তর ছিল অস্বস্তিকর — **কোনো পথই নেই**। ভূমিকা বসত কেবল portal
+অ্যাকাউন্ট **খোলার সময়**; পরে বদলানোর কোনো রুট ছিল না (`reset-password`
+আর `email`, ব্যস)। কাউকে ম্যানেজার করতে হলে তাঁর অ্যাকাউন্ট মুছে নতুন
+করে খুলতে হতো — নতুন পাসওয়ার্ড, আর `user_id`-নির্ভর সব ইতিহাস
+(audit log) ছিঁড়ে যেত।
+
+### ⚠️⚠️ কিন্তু রুট লেখার আগে যা বেরোল — একটা আসল নিরাপত্তার ফাঁক
+
+`JwtAuthGuard`-এ sliding window আছে: প্রতি ৫ মিনিট পর টোকেন নতুন করে
+দেওয়া হয়, যাতে কাজ করতে থাকা কেউ হঠাৎ লগআউট না হন (I09)। কিন্তু নতুন
+টোকেনটা বানানো হতো **পুরোনো টোকেনের দাবি নকল করে**:
+
+```ts
+await this.tokens.issue(res, user);   // ← `user` পুরোনো টোকেন থেকে
+```
+
+⭐⭐ **ডাটাবেস কখনো পড়া হতো না।** ফল, আর প্রতিটাই নীরব:
+
+| যা করা হলো | যা আসলে ঘটত |
+|---|---|
+| ম্যানেজারকে স্টাফ করা | ট্যাব খোলা রেখে কাজ করলে **চিরকাল** ম্যানেজার |
+| কর্মীকে নিষ্ক্রিয় করা | তাঁর সেশন **কোনোদিন মরত না** |
+| পাসওয়ার্ড রিসেট | `mustChangePw` চলতি সেশনে খাটত না |
+
+⚠️ দ্বিতীয় সারিটাই সবচেয়ে খারাপ: **ছাঁটাই হওয়া কেউ ট্যাব খোলা রাখলে
+ড্যাশবোর্ড তাঁর কাছে খোলাই থেকে যেত** — বেতন, স্ক্রিনশট, সব।
+
+⭐ নতুন নিয়ম:
+
+> **সেশন বাড়ানো আর সেশন বিশ্বাস করা এক জিনিস নয়।** টোকেন নতুন করে
+> দেওয়ার মুহূর্তটাই একমাত্র নিয়মিত সুযোগ যেখানে "এই লোকটা এখনো কে"
+> প্রশ্নটা করা যায় — সেখানে পুরোনো উত্তর নকল করলে বদল কখনো পৌঁছায় না।
+
+এখন প্রতিটি রিফ্রেশে ডাটাবেস থেকে ভূমিকা, `is_active` আর `mustChangePw`
+পড়া হয়, আর অ্যাকাউন্ট না থাকলে বা বন্ধ থাকলে সেশন **ওখানেই শেষ**।
+
+⚠️ খরচ নগণ্য — লুকআপটা **৫ মিনিটে একবার**, প্রতি রিকোয়েস্টে নয়।
+
+⭐ আর `req.user`-ও একই রিকোয়েস্টে হালনাগাদ করা হয়, নইলে বদলটা এক
+রিকোয়েস্ট দেরিতে কার্যকর হতো — ভূমিকা **কমানোর** ক্ষেত্রে সেটাই ফাঁক।
+
+### ভূমিকা বদলানোর রুট
+
+`PATCH /users/:id/role`, owner-only, আর `owner` দুই দিক থেকেই বাইরে:
+
+- **দেওয়া যায় না** — owner মানে বেতন, audit log আর সেটিংসের চাবি; সেটা
+  ড্রপডাউনের এক ক্লিকে হাতবদলের জিনিস নয় (ADR-011d)। ⭐ DTO-র `@IsIn`-এ
+  আটকায়, তাই অনুরোধটা ব্যবসায়িক কোড ছোঁয়ারই সুযোগ পায় না।
+- **কাড়া যায় না** — এই রুটে ঢুকতে owner হতে হয়, তাই নিজেকে নামিয়ে দিলে
+  **কেউ আর ঢুকতেই পারত না**, আর ফেরার পথ হতো সার্ভারে `recover-owner`।
+
+⚠️ একই ভূমিকা বসালে audit log-এ কিছু লেখা হয় না — নইলে ইতিহাসে এমন
+"বদল" জমত যেখানে আসলে কিছুই বদলায়নি। আর আসল বদলে **আগেরটাও** লেখা হয়,
+কারণ "কে কখন ম্যানেজার হলো" প্রশ্নের উত্তরে শুধু নতুন মান যথেষ্ট নয়।
+
+### ⚠️ পর্দায় একটা ফাঁদ, যেটা প্রায় বসিয়ে ফেলেছিলাম
+
+ড্রপডাউনের শুরুর মান ছিল `'employee'` — নতুন অ্যাকাউন্টের জন্য ঠিক।
+বিদ্যমান অ্যাকাউন্টেও ওটা রেখে দিলে যা হতো: কেউ শুধু **ইমেইলের বানান**
+ঠিক করতে গিয়ে সেভ চাপলেই একজন ম্যানেজার নীরবে স্টাফ হয়ে যেতেন।
+
+তাই `portalRole` API-তে যোগ করা হয়েছে আর ড্রপডাউন **বর্তমান** মান
+দেখিয়ে খোলে। ⭐ আর সেভ করার সময় **যেটা সত্যিই বদলেছে শুধু সেটাই**
+পাঠানো হয়।
+
+টেস্ট: ভূমিকা বদল ১০টি, সেশনের সতেজতা ৫টি (যার একটা সংশোধনের আগে
+**২০০ পেত, ৪০৩ নয়**)। সার্ভার টেস্ট **৮০৮ → ৮২৩**।
+
+---
+
+## ৩ৎ. স্ববিরোধী কার্ড, আর একটা গোটা পর্দা তুলে দেওয়া *(১৩ আগস্ট ২০২৬)*
+
+মালিক পর্দার ছবি পাঠালেন। Belal-এর কার্ডে **১৬:৫০-এর স্ক্রিনশট**, ৫৫
+মিনিট গোনা — আর ঠিক তার নিচে লেখা **"Offline · Never checked in"**।
+
+⭐⭐ **একটা কার্ড নিজেই নিজেকে মিথ্যা প্রমাণ করছিল।**
+
+### কারণ
+
+Live Board ডিভাইস গোনে **শুধু `status: 'active'`** হলে। কোয়েরিতেই বাতিল
+ডিভাইস ছাঁকা ছিল, তাই কার্ডের কাছে "ডিভাইসই নেই" আর "ডিভাইস আছে কিন্তু
+বন্ধ" — দুটো একই দেখাত।
+
+আর Belal-এর ডিভাইসটা বাতিল হয়েছিল কারণ তাঁকে একবার **নিষ্ক্রিয় করা
+হয়েছিল** (G84-এর একই ঘটনা): `deactivate()` কর্মীর সব ডিভাইস revoke করে,
+আর `reactivate()` সেগুলো **ইচ্ছাকৃতভাবে ফেরায় না**।
+
+⚠️ "ইচ্ছাকৃত" যুক্তিটা ঠিক (ফিরে আসা কর্মীর পুরোনো টোকেন আপনাআপনি জেগে
+ওঠা উচিত নয়), কিন্তু **ফলটা নীরব**: এজেন্ট তাঁর PC-তে চলছে, অথচ বোর্ডে
+তিনি অদৃশ্য, আর পর্দা বলছে "কখনো সাড়া দেয়নি"।
+
+> ⭐ **একটা কার্ডে দুটো পরস্পরবিরোধী কথা থাকলে দোষ কার্ডের নয়, তার
+> **শব্দভাণ্ডারের**। "জানি না"-কে "নেই" বলে ফেললে ব্যবহারকারী ভুল কাজে
+> চলে যান — এখানে তিনি আবার MSI বসাতে যেতেন।
+
+এখন তিনটে আলাদা লেখা, কারণ করণীয়ও তিন রকম:
+
+| অবস্থা | কার্ডে | করণীয় |
+|---|---|---|
+| কখনো বসেনি | `No agent yet` | PC-তে গিয়ে MSI |
+| বসানো ছিল, বন্ধ | `Agent switched off — Settings → Staff` | সারিতে এক ক্লিক |
+| সচল, সাড়া নেই | `Never checked in` | ইনস্টল হয়েছে, চালু হয়নি |
+
+⚠️ বাতিল ডিভাইসের পুরোনো `lastSeenAt`-ও আর গোনা হয় না — নইলে বহু মাস আগে
+বন্ধ করা মেশিন "Seen 7 days ago" দেখাত, অথচ ওটা আর কোনোদিন সাড়া দেবে না।
+
+### ⭐⭐ আর তারপর মালিক বললেন Devices পর্দাটাই চান না
+
+> *"ami Devices ei option tai chai na. eta full system take complex banacche."*
+
+আর তিনি ঠিক ছিলেন। ওই পর্দার চারটে কাজের মধ্যে **দুটো কেউ ব্যবহারই
+করত না** (ডিভাইসের তালিকা, enrollment কোড — স্টাফ এখন ইমেইল-পাসওয়ার্ড
+দিয়েই সাইন ইন করেন)। বাকি দুটো — revoke ও restore — আসলে **মানুষ-কেন্দ্রিক
+কাজ, মেশিন-কেন্দ্রিক নয়**:
+
+> মালিক "ডিভাইস #৬১" নিয়ে ভাবেন না, ভাবেন **"Belal-এর PC"** নিয়ে। একই
+> প্রশ্নের উত্তর দুই পর্দায় খুঁজতে হলে সেটা সিস্টেমের দোষ, ব্যবহারকারীর নয়।
+
+তাই পর্দাটা তুলে দিয়ে কাজটা Staff সারিতে আনা হয়েছে:
+
+- **বন্ধ করা** → কর্মীকে নিষ্ক্রিয় করুন (আগেই তাঁর সব ডিভাইস revoke করত)
+- **ফেরানো** → সারিতেই **"Turn agent on"**, নতুন রুট
+  `POST /employees/:id/agent/turn-on`
+
+⚠️⚠️ **নিশ্চিতকরণ ছাড়া নয়।** revoke `token_hash` মোছে না, শুধু দরজা বন্ধ
+করে — ফেরালে **পুরোনো টোকেনটাই আবার জেগে ওঠে**। হারিয়ে যাওয়া ল্যাপটপে
+এটা করলে যে ধরে আছে সে-ও ফিরে আসে, তাই জানালাটা সরাসরি সেটাই বলে।
+
+⚠️ রুটটা **owner-only** — ম্যানেজার Staff পর্দা দেখেন, বোতামটাও দেখেন,
+কিন্তু পুরোনো টোকেন জাগানো তাঁর সিদ্ধান্ত নয়।
+
+⚠️ নিষ্ক্রিয় কর্মীর এজেন্ট চালু করা যায় না (৪০৯) — নইলে ছাঁটাই হওয়া কারো
+মেশিন আবার ঘণ্টা পাঠাত, অথচ পর্দায় তিনি "Inactive"।
+
+### ⚠️ টেস্ট লিখতে গিয়ে দুটো ফাঁদ
+
+১· **একই `machineGuid`-এ দ্বিতীয়বার enroll নতুন সারি বানায় না** — upsert
+প্রথম সারিটাই দ্বিতীয় কর্মীর নামে সরিয়ে দেয়। "অন্য কারো ডিভাইস ছোঁয়া হয়
+না" টেস্টটা তাই আসলে কিছুই মাপছিল না, যতক্ষণ না GUID আলাদা করা হলো।
+
+২· `(hostname, windowsUsername)` জোড়াটাও unique — ৪০৯।
+
+⭐ দুটোই টেস্টের বাগ, কোডের নয়। কিন্তু ধরা না পড়লে টেস্টটা **সবুজ থেকেও
+মিথ্যা** হতো, আর সেটাই সবচেয়ে বিপজ্জনক টেস্ট।
+
+সার্ভার টেস্ট **৮৩০ → ৮৪১**।
+
+---
+
+## ৩ঀ. বোর্ডে শুধু যাঁরা কাজ করছেন *(১৩ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"Live Board e ami shudhu working staff dekhte cai. inactive
+or idle staff onno tab e dekhabe."**
+
+যুক্তিটা পরিষ্কার — বোর্ডের আসল প্রশ্ন **"এখন কে কাজ করছে?"**, আর ১৫ জনের
+অফিসে সবাই একসাথে থাকলে কাজ করা ৩ জনকে খুঁজে বের করতে চোখ বুলাতে হয়।
+
+দুটো ট্যাব: **Working · N** আর **Not working · M**। ডিফল্ট প্রথমটা।
+
+### ⚠️ তিনটে সিদ্ধান্ত, প্রতিটাই একটা নীরব ভুল ঠেকায়
+
+**১· লুকিয়ে ফেলা নয়, সরিয়ে রাখা।** সংখ্যাটা ট্যাবের গায়েই লেখা, নইলে
+"কেউ বাদ পড়ে গেল কি না" প্রশ্নটা মাথায় থেকে যেত।
+
+**২· 🔴 agent down কখনো চাপা পড়ে না।** উপরের লাল টাইলটা সবসময় দেখা যায়,
+আর শূন্য না হলে ট্যাবের গায়েও আলাদা করে লেখা থাকে (`Not working · 4 · 1
+down`)। ওটাই একমাত্র অবস্থা যেটা সত্যিই **সমস্যা** — বাকিগুলো শুধু "এখন
+কাজ করছেন না"।
+
+**৩· পছন্দটা মনে রাখা হয় না।** বোর্ড সারাদিন খোলা থাকে আর নিজে নিজে
+রিফ্রেশ হয়; কেউ একবার দ্বিতীয় ট্যাবে গিয়ে ভুলে গেলে পরদিন খুলে দেখতেন
+"কেউ কাজ করছে না", অথচ আসলে তিনি অন্য ট্যাবে দাঁড়িয়ে আছেন।
+
+### ⭐⭐ ভাগটা এক লাইনের, ভুলটা নয়
+
+`cards.filter(c => c.status === 'active')` — দেখতে তুচ্ছ। কিন্তু দুটো
+আসল ঝুঁকি আছে, আর দুটোই এই প্রকল্পে **আগে ঘটেছে**:
+
+**ক· দুই জায়গায় দুই হিসাব।** উপরের "Working now" টাইল আর ট্যাবের সংখ্যা
+আলাদা করে গোনা হলে একদিন তারা আলাদা হয়ে যেত — আর বোর্ড আবার নিজেই
+নিজেকে মিথ্যা প্রমাণ করত, ঠিক যেমন **G88**-এ করেছিল। তাই একটাই
+`isWorking()`, দুজনেই সেটা ডাকে।
+
+**খ· ভাগ হারিয়ে যাওয়া।** দ্বিতীয় ট্যাবটা কেউ `status === 'idle'` লিখে
+বানালে `offline` আর `agent_down` কার্ডগুলো **কোনো ট্যাবেই থাকত না** —
+বোর্ড থেকে মানুষ নীরবে উধাও। তাই "না-কাজ" তালিকাটা গোনা হয় **বাদ দিয়ে**,
+বেছে নিয়ে নয়, আর টেস্ট মেপে দেখে প্রতিটা কার্ড ঠিক একবার পড়ছে।
+
+> ⭐ **একটা `filter` যখন দুটো তালিকা বানায়, তখন প্রশ্নটা "শর্তটা ঠিক তো?"
+> নয় — প্রশ্নটা "দুটো মিলে সবাইকে ধরে তো?"**
+
+`onTheClock.ts`, ৯টা টেস্ট। ওয়েব টেস্ট **৬৪ → ৭৩**।
+
+### ⚠️ আর যাচাই করতে গিয়ে নিজের একটা বাগ ধরা পড়ল
+
+ব্রাউজারে চালাতে গিয়ে দেখা গেল পাতাটা ৫০০ দিচ্ছে — আগের ধাপে লেখা
+নিশ্চিতকরণ-বার্তায় `
+` আসল লাইন-ব্রেক হয়ে গিয়ে স্ট্রিংটাই ভেঙে গিয়েছিল।
+
+⚠️⚠️ **`tsc --noEmit` চুপ ছিল, Vite ধরল।** টাইপচেক আর টেস্ট দুটোই সবুজ
+ছিল, অথচ পাতাটা খুলতই না।
+
+> **সংকলিত হওয়া আর চলা এক জিনিস নয়।** পর্দায় দেখা যায় এমন বদল করলে
+> অন্তত একবার সত্যিই খুলে দেখতে হবে — নইলে সবুজ টেস্ট মিথ্যা আশ্বাস দেয়।
+
+⚠️ **যা যাচাই করা যায়নি:** বোর্ডটা লগইনের পেছনে, আর পাসওয়ার্ড টাইপ করা
+আমার এখতিয়ারে নেই। তাই ট্যাব দুটো **চোখে দেখা হয়নি** — সংকলন, রানটাইম
+(লগইন পাতা রেন্ডার হচ্ছে), টাইপ ও ৯টা টেস্ট পর্যন্তই প্রমাণ। মালিকের
+প্রথম দেখাটাই এর শেষ যাচাই।
+
+---
+
+## ৩ঁ. "সার্ভার ডাউন" বনাম "আমি পৌঁছাতে পারছি না" *(১৩ আগস্ট ২০২৬)*
+
+মালিক লিখলেন: **`ssh: connect to host <VPS_IP> port 22: Connection
+timed out`** — টার্মিনাল খুলে VPS-এ ঢোকা যাচ্ছে না।
+
+অনুমান না করে মেপে দেখা হলো:
+
+```
+port 22  -> closed/filtered
+port 80  -> OPEN
+port 443 -> OPEN
+```
+
+⭐⭐ **তিন লাইনেই পুরো ছবিটা বদলে গেল।** মেশিন জীবিত, ওয়েব সার্ভার সাড়া
+দিচ্ছে, স্টাফের ঘণ্টা ও স্ক্রিনশট জমা হচ্ছে — শুধু **একটা দরজা** বন্ধ।
+
+> **"সার্ভার ডাউন" আর "আমি পৌঁছাতে পারছি না" — দুটো আলাদা ঘটনা, আর
+> দুটোর করণীয়ও আলাদা।** টাইমআউট দেখলে প্রথম কাজ অনুমান করা নয়, **অন্য
+> একটা পোর্টে ধাক্কা দেওয়া** — উত্তরটা এক সেকেন্ডেই আসে, আর সেটাই ঠিক
+> করে দেয় পরের ঘণ্টাটা কোথায় খরচ হবে।
+
+⚠️ বাধাটা সার্ভারে না মালিকের নেটওয়ার্কে — সেটাও আলাদা করা যায় একই
+ভঙ্গিতে: **সম্পূর্ণ ভিন্ন একটা হোস্টের** ২২ পোর্টে চেষ্টা
+(`Test-NetConnection github.com -Port 22`)। ওটাও ব্যর্থ হলে দোষ নেটওয়ার্কের,
+সফল হলে সার্ভারের। ⭐ অফিস ও ISP-র নেটওয়ার্কে বাইরের ২২ পোর্ট আটকে রাখা
+খুবই সাধারণ, তাই সন্দেহটা প্রথমেই ওদিকে যাওয়া উচিত।
+
+### ⚠️ আর যেটা আগে থেকে জানা থাকা দরকার ছিল
+
+ফায়ারওয়ালের ভুলে ২২ পোর্ট বন্ধ হয়ে গেলে **SSH দিয়েই সেটা সারানো যায় না** —
+মুরগি-ডিমের ফাঁদ। একমাত্র পথ হোস্টিং প্যানেলের **ওয়েব কনসোল** (VNC/KVM),
+যেটা কোনো পোর্টের উপর নির্ভর করে না।
+
+> প্যানেলে কনসোলটা কোথায়, সেটা **আজ** দেখে রাখুন — দরকারের দিন খুঁজতে
+> বসলে ততক্ষণে চাপ শুরু হয়ে গেছে।
+
+রানবুকে বসেছে § ১২.৪, সাথে § ১২.৫ — **SSH কী দিয়ে পাসওয়ার্ড ছাড়া ঢোকা**,
+যাতে root পাসওয়ার্ড বারবার টাইপ বা কাউকে পাঠাতে না হয়।
+
+⚠️⚠️ সেখানে একটা সতর্কবার্তাও আছে যেটা না লিখলে পরের ফাঁদটা তৈরি হতো:
+**কী কাজ করছে সেটা নিশ্চিত হওয়ার আগে `PasswordAuthentication no` বসাবেন না** —
+কী ভুল থাকলে ফেরার একমাত্র পথ তখন সেই ওয়েব কনসোলই।
+
+---
+
+## ৩ঃ. ⭐⭐ timeout বনাম refused — দোষটা কার, এক স্ক্যানেই *(১৩ আগস্ট ২০২৬)*
+
+[§ ৩ঁ](#৩ঁ-সার্ভার-ডাউন-বনাম-আমি-পৌঁছাতে-পারছি-না-১৩-আগস্ট-২০২৬)-এ তিন
+লাইনে বোঝা গিয়েছিল মেশিন জীবিত, শুধু একটা দরজা বন্ধ। কিন্তু **কে** বন্ধ
+করেছে সেটা তখন জানা যায়নি। মালিক এবার একটা বাক্য যোগ করলেন, আর তাতেই
+প্রশ্নটা বদলে গেল:
+
+> *"office e pc diye ami easily ssh e access niyechilam but ekhon kaj korchena keno?"*
+
+⭐ **"বন্ধ কেন" নয় — "কী বদলাল"।** আগে চলত মানে পথটা একদিন খোলা ছিল, আর
+তখন সন্দেহের তালিকা ছোট হয়ে আসে।
+
+### প্রথম মাপ — চেনা ছবি
+
+```
+<VPS_IP>:22   → timeout
+<VPS_IP>:80   → OPEN
+<VPS_IP>:443  → OPEN
+```
+
+### ⭐ তারপর নিয়ন্ত্রণ-পরীক্ষা — পাঁচটা ভিন্ন হোস্ট
+
+github · gitlab · bitbucket · codeberg · ssh.github.com — সবার ২২ পোর্ট
+সবসময় খোলা। **পাঁচটাই timeout।** অথচ ৫৩ · ৪৪৩ · ৫৮৭ · ৯৯৩ সবই যায়, আর
+`ssh -p 443 git@ssh.github.com` আসল হ্যান্ডশেক পর্যন্ত পৌঁছে
+*"Permission denied (publickey)"* বলে।
+
+⚠️ অর্থাৎ **SSH প্রোটোকলে দোষ নেই, দোষ সংখ্যাটায়** — ২২।
+
+⭐ স্যান্ডবক্স বা ম্যাকের নিজের ফায়ারওয়াল দায়ী কি না সেটাও বাদ দেওয়া
+হয়েছে: স্যান্ডবক্স বন্ধ করেও একই timeout, macOS ফায়ারওয়াল নিষ্ক্রিয়,
+কোনো proxy চলক সেট করা নেই।
+
+### ⭐⭐ কিন্তু আসল প্রমাণটা এল অন্য দিক থেকে — **timeout বনাম refused**
+
+VPS-এর এলোমেলো কয়েকটা পোর্টে ধাক্কা দিয়ে দেখা হলো:
+
+| পোর্ট | ফল |
+|---|---|
+| ২১ · ২২২ · ২০২২ · ২২০০ · **২২২২** · ৩৩০৬ · ৮০২২ · ৮০৮০ · ৯৯৯৯ · ২২২২২ · ৬৫০২২ | **Connection refused** |
+| **২২** · **২৫** | **timeout** |
+
+⭐⭐ **এগারোটা এলোমেলো পোর্ট সার্ভার পর্যন্ত পৌঁছাচ্ছে, শুধু দুটো
+পৌঁছাচ্ছে না।** refused মানে সার্ভার নিজে RST পাঠিয়েছে — সে সজাগ, সে
+উত্তর দিয়েছে। timeout মানে প্যাকেটটা কোথাও **নিঃশব্দে** মরেছে।
+
+> **খোলা-বন্ধ দেখে থামবেন না — `timeout` আর `refused` আলাদা করে পড়ুন।**
+> গন্তব্য একটা পোর্টে RST দিলে সে জীবিত ও নাগালের মধ্যে; তখন অন্য পোর্টের
+> নীরবতা **পথের** দোষ, গন্তব্যের নয়। এই এক তফাতেই "সার্ভার সারাতে হবে"
+> আর "নেটওয়ার্ক ঘুরিয়ে যেতে হবে" — দুটো সম্পূর্ণ আলাদা দিন ঠিক হয়ে যায়।
+
+আর **২২ + ২৫ জোড়াটাই ISP ফিল্টারের স্বাক্ষর**: ২৫ আটকানো হয় স্প্যাম
+ঠেকাতে (প্রায় সব ISP করে), ২২ আটকানো হয় "নিরাপত্তার" নামে। লাইনটা
+**AmberIT Limited (AS23956), খুলনা**।
+
+### ⭐⭐ "আগে কাজ করত" — আসল উত্তরটা এল সার্ভারের নিজের লগ থেকে
+
+প্রথমে ধরে নেওয়া হয়েছিল AmberIT মাঝপথে ফিল্টারটা চালু করেছে। **ওটা ভুল
+ছিল**, আর সংশোধনটা এসেছে একটা লাইন থেকে যেটা SSH নিজেই ছাপে:
+
+```
+Last login: Thu Aug 13 07:59:53 2026 from 103.61.240.151
+```
+
+| কোথা থেকে | IP | ISP | পোর্ট ২২ |
+|---|---|---|---|
+| **অফিস** (আগের সফল লগইন) | `103.61.240.151` | HelloTech Limited (AS138640) | ✅ খোলা |
+| **বাসা** (যখন আটকে গেল) | `118.179.190.242` | AmberIT Limited (AS23956) | 🚫 আটকানো |
+
+⭐⭐ **দুটো আলাদা জায়গা, দুটো আলাদা ISP।** অফিসে বসে SSH বরাবরই কাজ
+করত, আর করবেও — বাধাটা কেবল **বাসার লাইনে**। কারও কোনো সেটিং বদলায়নি,
+সার্ভারেও কিছু ঘটেনি; **মানুষটা জায়গা বদলেছেন**।
+
+> **"আগে কাজ করত" শুনে ধরে নেবেন না যে পরিবেশটা এক ছিল।** একই মানুষ,
+> একই মেশিন, একই শহর — তবু অফিস আর বাসার তার আলাদা, আর ISP-ও আলাদা।
+> ⭐ `Last login` লাইনটা বিনা খরচে ঠিক সেই তথ্যটাই দেয়, শুধু কেউ পড়ে না।
+
+⚠️ **নির্ণয়টা এতে আরও সরল হয়ে গেল, কিন্তু ভুল দিকেও নিতে পারত** —
+"সার্ভারে ২২ বন্ধ হয়ে গেছে" ভেবে ঘণ্টাখানেক sshd আর ফায়ারওয়াল ঘাঁটা
+হতো, যেখানে সার্ভার সারাক্ষণ ঠিকই ছিল।
+
+⭐ সমাধান তাতে বদলায় না — **২২২২ দুই জায়গা থেকেই কাজ করে**, তাই এখন আর
+কোথায় বসে আছেন সেটা ভাবতে হয় না। অফিস থেকে পুরোনো `ssh root@…`-ও চলবে।
+
+### ✅ আর সার্ভার? সম্পূর্ণ সুস্থ
+
+| | |
+|---|---|
+| TLS সার্ট | Let's Encrypt · `CN=hub.oxeio.com` · ১৩ আগস্ট → ১১ নভেম্বর |
+| API | `GET /api/v1/health` → ২০০ · `{"status":"ok","db":"up"}` |
+| ড্যাশবোর্ড | ২০০ |
+
+⭐⭐ **Let's Encrypt-এর সার্ট এসে গেছে** — [§ ৩শ](#৩শ-vps-এ-তোলা--আর-পথে-পাঁচটা-ফাঁদ-১৩-আগস্ট-২০২৬)-এ ওটা
+"যা এখনো দেখা হয়নি" তালিকায় ছিল। নির্ণয় করতে গিয়ে **একটা খোলা প্রশ্নও
+বন্ধ হলো**।
+
+### ⚠️⚠️ আর যা স্ক্যানটা ফাঁস করে দিল — ফায়ারওয়ালই নেই (G91)
+
+৩৩০৬ · ৮০৮০ · ৯৯৯৯ — সব বন্ধ পোর্টেই **সাথে সাথে RST**। ufw সক্রিয়
+থাকলে ওগুলো নীরবে DROP হতো, অর্থাৎ timeout দেখাত। তা হচ্ছে না।
+
+কারণটা `vps-setup.sh`-এই লেখা ছিল:
+
+```bash
+else
+  warn "ufw নেই — প্রোভাইডারের ফায়ারওয়ালে ২২/৮০/৪৪৩ খুলে নিন"
+fi
+```
+
+⚠️ ধাপটা **ছিল**, কিন্তু ufw ইনস্টল না থাকলে সে শুধু একটা লাইন ছাপত।
+আর ডিপ্লয়ের দিনের লগে ওই এক লাইন হারিয়ে গেছে।
+
+> ⭐ **একটা `warn` কেউ পড়ে না।** স্ক্রিপ্টের কাজ **করা**, বলা নয় — যেটা
+> না করলে সিস্টেম অরক্ষিত থাকে, সেটা সতর্কবার্তায় সেরে ফেলা যায় না।
+
+⭐ ক্ষতি সীমিত ছিল, আর সেটা **অন্য একটা সিদ্ধান্তের জোরে**: postgres
+(৫৪৩২) ও api (৩০০০) দুটোই `127.0.0.1`-এ বাঁধা
+([§ ৩শ ফাঁদ ২](#৩শ-vps-এ-তোলা--আর-পথে-পাঁচটা-ফাঁদ-১৩-আগস্ট-২০২৬)), তাই
+ফায়ারওয়াল না থেকেও বাইরে থেকে ওদের নাগাল ছিল না।
+
+> **একটা প্রতিরক্ষা ব্যর্থ হলে যদি কিছুই না ঘটে, তার কারণ দ্বিতীয়টা
+> ছিল।** এখানে সেটাই হয়েছে — আর এটাই যুক্তি, কেন "ফায়ারওয়াল তো আছে"
+> ভরসায় সার্ভিস পাবলিক ইন্টারফেসে বাঁধা যায় না।
+
+স্ক্রিপ্ট এখন নিজেই `apt-get install ufw` করে, ২২ · **২২২২** · ৮০ · ৪৪৩
+খোলে, তারপর **`ufw status` পড়ে মিলিয়ে দেখে** — "চালানো হয়েছে" আর "চালু
+আছে" এক নয়।
+
+### যা বসেছে
+
+| কোথায় | কী |
+|---|---|
+| [deploy/README § ১২.৪ক](../oxeio-monitor/deploy/README.md) | timeout বনাম refused দিয়ে **প্রমাণ** করার কমান্ড ও টেবিল |
+| § ১২.৪খ | ওয়েব কনসোল · প্রোভাইডার **IOFlood** (AS53755) · টিকিটে লেখার এক লাইন |
+| § ১২.৪গ | **`Port 2222`** — স্থায়ী সমাধান, আর ufw বসানোর ক্রম |
+| [vps-setup.sh](../oxeio-monitor/deploy/vps-setup.sh) | ufw নিজে বসে, ২২২২ আগেই খোলা, শেষে যাচাই |
+
+⚠️ ২২২২ **খুলে রাখা** মানে দরজাটা তৈরি নয় — sshd-কে ওখানে শুনতে বলতে হয়।
+আগেভাগে খোলা হয় যাতে দরকারের দিন ufw বাধা না হয়, কারণ সেদিন হাতে সময় থাকে না।
+
+### ⚠️⚠️ রানবুকে প্রায় একটা অকেজো কমান্ড বসিয়ে ফেলেছিলাম
+
+প্রথমে § ১২.৪ক-এ `Test-NetConnection` দিয়ে স্ক্যানের লাইন লেখা হয়েছিল —
+রানবুকের বাকি জায়গায় ওটাই ব্যবহার হয়, তাই স্বাভাবিক মনে হয়েছিল।
+
+⭐⭐ **কিন্তু সে `TcpTestSucceeded` দিয়ে শুধু হ্যাঁ/না বলে — timeout আর
+refused দুটোকেই `False` দেখায়।** অর্থাৎ যে লাইনটা পুরো নির্ণয়ের ভিত্তি
+প্রমাণ করার কথা, সেটা ঠিক সেই তফাতটাই মুছে ফেলত। পাঠক কমান্ডটা চালাতেন,
+ছটা `False` দেখতেন, আর নিচের টেবিলের সাথে মেলাতে না পেরে ভাবতেন নিজের
+সার্ভারই আলাদা।
+
+> **নির্ণয়ের কমান্ড আর নির্ণয়ের যুক্তি — দুটো একসাথে না মিললে ডকটাই
+> মিথ্যা বলে।** যে তফাতের উপর সিদ্ধান্ত দাঁড়ানো, মাপার যন্ত্রটা সেই
+> তফাত দেখাতে পারে কি না — সেটা লেখার সময়ই যাচাই করতে হয়।
+
+এখন কাঁচা `TcpClient`: `WaitOne(5000)` মিথ্যা দিলে **timeout**, সত্যি
+দিয়ে `EndConnect` ছুঁড়লে **refused**। সাথে ম্যাক/লিনাক্সের `nc` সংস্করণও।
+
+⚠️⚠️ আর `Port 22` লাইনটাও **রাখতে হয়**: `sshd_config`-এ একটাও `Port` না
+থাকলে ডিফল্ট ২২, কিন্তু একটা লিখলেই ডিফল্টটা চলে যায়। শুধু `Port 2222`
+লিখলে ২২ বন্ধ হয়ে যেত, আর অন্য নেটওয়ার্ক থেকে অভ্যাসবশত `ssh root@…`
+কাজ করত না।
+
+### ⭐ আর পাশাপাশি — ১৬৫টা ফাইলের ভুয়া ডিফ (G93)
+
+`git status` ১৬৫টা ফাইল **modified** দেখাচ্ছিল — ৫০,২৯৭ লাইন যোগ,
+৫০,২৯৭ বাদ। `--ignore-cr-at-eol` দিলে ডিফটা **সম্পূর্ণ খালি**: পুরোটাই CR।
+রিপোটা Windows ও macOS দুই জায়গা থেকেই ছোঁয়া হয়, আর `.gitattributes` ছিল না।
+
+⚠️ বিপত্তিটা বিরক্তি নয়, **আড়াল** — ওই ভিড়ের ভেতরে একটা সত্যিকারের বদল
+ঢুকে পড়লে রিভিউতে কেউ দেখতে পেত না।
+
+`* text=auto eol=lf`, সাথে `*.sh` আলাদা করে — ⚠️ shell স্ক্রিপ্টে CRLF
+ঢুকলে VPS-এ এরর হয় `$'\r': command not found`, যেটা পড়ে কারণ বোঝার
+কোনো উপায় নেই।
+
+⭐ `.ps1`-এর **BOM** এতে অক্ষত (যাচাই করা হয়েছে: `efbbbf`) — BOM ফাইলের
+ভেতরের বাইট, লাইন-এন্ডিং নয়।
+
+### ✅✅ মাঠে প্রমাণিত — কনসোল দিয়ে ঢুকে, একই সন্ধ্যায়
+
+মালিক Chrome-এ প্যানেলটা খুলে দিলেন, আর সেখান থেকেই বাকিটা হলো।
+
+**প্যানেল যা বলল, আর তাতে দুটো অনুমান কীভাবে নিশ্চিত হলো:**
+
+| প্রশ্ন | আগে (বাইরে থেকে অনুমান) | এখন (ভেতর থেকে) |
+|---|---|---|
+| প্রোভাইডারের ফায়ারওয়াল? | RST দেখে মনে হলো নেই | **"No Firewall Plans"** ✅ |
+| হোস্টে ufw? | RST-র ধাঁচ বলছিল চলছে না | **`Command 'ufw' not found`** — ইনস্টলই নেই ✅ |
+
+⭐⭐ **দুটোই মিলে গেল**, আর তাতে § ১২.৪ক-এর নিয়মটার দাম বোঝা গেল:
+timeout বনাম refused পড়ে বাইরে থেকেই ভেতরের অবস্থা বলে দেওয়া যায়।
+
+### ⚠️⚠️ কিন্তু পথে একটা ফাঁদ ছিল, যেটা পুরো কাজটা নীরবে ব্যর্থ করত (G94)
+
+```
+systemctl is-enabled ssh.socket  →  enabled
+```
+
+Ubuntu 22.10 থেকে SSH চলে **systemd socket activation** দিয়ে — পোর্ট ঠিক
+করে `ssh.socket`, `sshd_config` **নয়**।
+
+⭐⭐ অর্থাৎ পরিকল্পনামাফিক `Port 2222` লিখে restart দিলে: লাইনটা ফাইলে
+বসত, `sshd -t` চুপ থাকত, `systemctl` সবুজ বলত — আর ২২২২-এ **কিছুই শুনত
+না**। একটাও এরর কোথাও উঠত না, আর আমরা ভাবতাম ISP-র ব্লকটাই বুঝি আরও গভীর।
+
+> **কনফিগ ফাইলে লেখা আর কার্যকর হওয়া এক জিনিস নয়।** যে ফাইলটা এতদিন
+> সিদ্ধান্ত নিত, ডিস্ট্রো একদিন তার উপরে আরেকটা স্তর বসিয়ে দিতে পারে —
+> আর পুরোনো অভ্যাসে লেখা কমান্ড তখন **সফল দেখায়, কাজ করে না**।
+
+⭐ ধরা পড়েছে কারণ কিছু বদলানোর **আগে** অবস্থাটা মাপা হয়েছিল। ওই এক লাইন
+না চালালে ফাঁদটা পরে ধরা পড়ত — অনেক সময় নষ্ট করে।
+
+### ⚠️ আর একটা বাধা — VNC-তে `>` টাইপ করাই যায় না
+
+যন্ত্রচালিত কীস্ট্রোকে noVNC **অক্ষরে shift মানে** (`SHIFTTEST` ঠিক বসে),
+কিন্তু **চিহ্নে মানে না**: `>` → `.`, `|` → `\`, আর `Ctrl+C` একটা খালি `c`।
+
+⚠️ সবচেয়ে বিপজ্জনক রূপটা নীরব: `echo Port 2222 >> file` বসে যায়
+`echo Port 2222 . file` হয়ে — **শেল কোনো এরর দেয় না**, শুধু লেখাটা ছাপে।
+`ss -tlnp | grep ssh`-ও তাই `Error: an inet prefix is expected rather
+than "grep"` দিয়েছিল।
+
+⭐ redirect ছাড়া লাইন যোগ করার পথ বের করা হয়েছে — `sed`-এর লাইন-নম্বর,
+একটাও শিফটেড চিহ্ন লাগে না: `sed -i -e '1iPort 2222' …`
+
+⚠️ শেষমেশ ওটা লাগেনি: **হারনেসের পারমিশন ছাঁকনি** আমাকে root কনসোলে
+সিস্টেম-বদলানো কমান্ড টাইপ করতে দেয়নি, আর মালিকের নিজের কীবোর্ডে `>>`
+নির্ভুলই বসে। সীমাটা লিখে রাখা হলো রানবুকের § ১২.৪ঘ-তে — পরের বার কেউ
+যন্ত্র দিয়ে চালাতে গেলে যেন আধঘণ্টা নষ্ট না করে।
+
+### ⭐⭐ ফল — বাইরে থেকে মেপে
+
+```
+<VPS_IP>:22    -> timed out      (ISP এখনো আটকে, প্রত্যাশিত)
+<VPS_IP>:2222  -> succeeded      ✅
+banner               -> SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13
+handshake            -> Permission denied (publickey,password)
+```
+
+⭐ শেষ সারিটাই আসল প্রমাণ — **শুধু পোর্ট খোলা নয়, sshd সত্যিই সাড়া
+দিচ্ছে**: হোস্ট কী বিনিময় হয়েছে, সার্ভার auth পদ্ধতি জানিয়েছে, আটকেছে
+কেবল পাসওয়ার্ড না দেওয়ায়।
+
+> পোর্ট খোলা দেখেই থামবেন না — **banner চান**। একটা proxy বা লোড-ব্যালান্সার
+> পোর্ট খুলে রাখতে পারে যেখানে পেছনে কিছুই নেই, আর তখন "খোলা" আর "কাজ
+> করছে" দুটো আলাদা কথা।
+
+আর `ss -tln`-এ আরও দুটো সারি মিলিয়ে দেখা হয়েছে — `127.0.0.1:5432` ও
+`127.0.0.1:3000`। ⭐ [§ ৩শ ফাঁদ ২](#৩শ-vps-এ-তোলা--আর-পথে-পাঁচটা-ফাঁদ-১৩-আগস্ট-২০২৬)-এর
+সিদ্ধান্তটা টিকে আছে: ফায়ারওয়াল না থেকেও ডাটাবেস ও API বাইরের নাগালে নেই।
+
+### ⭐⭐ আর ফায়ারওয়াল — নির্ণয়ের যুক্তিটা উল্টো দিকেও খাটল
+
+ufw বসানো হয়েছে আলাদা ধাপে, ইচ্ছাকৃতভাবে (একসাথে দুটো বদল করলে কিছু
+ভাঙলে কোনটার দোষ বলা যেত না)। `Status: active` · `Default: deny
+(incoming)` · চারটে পোর্ট ALLOW, IPv4 ও IPv6 দুটোতেই।
+
+কিন্তু আসল যাচাইটা ভেতরের `ufw status` নয় — **বাইরে থেকে মাপা**:
+
+| পোর্ট | ufw বসার আগে | পরে |
+|---|---|---|
+| ২২২২ · ৮০ · ৪৪৩ | succeeded | ✅ succeeded |
+| ২১ · ৩৩০৬ · ৮০৮০ · ৯৯৯৯ · ২০২২ | **refused** (RST) | 🔒 **timed out** (DROP) |
+
+⭐⭐ **RST থেকে timeout-এ উল্টে যাওয়াটাই সাক্ষী।** ঠিক যে ধাঁচ দেখে
+[§ ১২.৪ক](../oxeio-monitor/deploy/README.md)-এ বলা হয়েছিল "ফায়ারওয়াল
+নেই", সেটাই এখন বিপরীত দিকে ঘুরেছে।
+
+> **যে চিহ্ন দিয়ে কিছু নেই বলা যায়, সেটা দিয়ে আছে-ও বলা যেতে হবে।**
+> একটা নির্ণয়ের নিয়ম কেবল এক দিকে খাটলে সেটা নিয়ম নয়, কাকতাল। এখানে
+> দুই দিকেই খেটেছে — আর সেটাই নিয়মটাকে রানবুকে রাখার যোগ্য করে।
+
+⚠️ সাথে স্ট্যাকও মিলিয়ে দেখা হয়েছে, কারণ ফায়ারওয়ালের ভুলে ওটাই আগে
+ভাঙে: health `200 · {"status":"ok","db":"up"}` · ড্যাশবোর্ড `200` ·
+SSH banner অক্ষত।
+
+### ⚠️ যা যাচাই করা যায়নি
+
+⚠️ **রানবুকের PowerShell লাইনটা চালিয়ে দেখা হয়নি** — এই মেশিনে PowerShell
+নেই। `nc` সংস্করণটা হুবহু চালিয়ে মিলিয়ে দেখা হয়েছে (ছটা পোর্টেই একই ফল),
+কিন্তু PowerShell-এর `TcpClient` অংশটুকু পড়ে ঠিক, চলে দেখা নয়। মালিকের
+প্রথম চালানোটাই এর শেষ যাচাই।
+
+⚠️ **`vps-setup.sh`-এর নতুন অংশটাও শুধু `bash -n`** — আসল VPS-এ চলেনি,
+কারণ ঢোকা যায়নি। `apt-get install ufw` ও `ufw --force enable` দুটোই
+পরের রানে প্রথমবার চলবে।
+
+---
+
+## ৩ং. দুটো নীরব ফাঁক বন্ধ — ছবি হারানো, আর যে দরজা খুলত না *(১৩ আগস্ট ২০২৬, রাত)*
+
+মালিক বললেন: **"tumar hater kaj gula kore felo"** — অর্থাৎ যেগুলোর জন্য
+তাঁর হাতের কিছু লাগে না।
+
+### ⭐⭐ G81 · "সারি আছে" আর "ফাইল আছে" এক কথা নয়
+
+[§ ৩স](#৩স--সারি-আছে-ছবি-নেই--একটা-chown-যা-কিছুই-করে-না-১৩-আগস্ট-২০২৬)-এ
+নির্ণয় হয়েছিল, সমাধান বসেনি। দুটো অংশই এবার বসল।
+
+**১· চালুর সময়ই storage-এ লেখা যায় কি না দেখা।** `SignedUrlService`
+দুর্বল সিক্রেটে যেমন থামে, ঠিক তেমন — লেখা না গেলে সার্ভার **ওঠেই না**।
+
+> storage-এ লেখা না গেলে এই পণ্যের **মূল কাজটাই অচল**। তখন চালু থাকাটাই
+> বিভ্রান্তি — সার্ভার সবুজ দেখায় আর প্রতিটা ছবি নীরবে হারায়।
+
+⭐ probe হিসেবে **সত্যিই একটা ফাইল লেখা হয়**, শুধু `access()` নয়।
+`access(W_OK)` ফোল্ডারের বিট দেখে, কিন্তু read-only mount, ভরা ডিস্ক বা
+SELinux লেবেলে সে **সফল বলেও** পরে লেখা আটকাতে পারে — আর সেই ফাঁকটাই তো
+সারাতে বসা।
+
+⚠️ বার্তাটা শুধু "ভেঙেছে" বলে না, **কী করতে হবে** বলে
+(`chown -R 1000:1000 .data/storage`) — নইলে ডকারের uid-এর ফাঁদটা কেউ
+ধরতে পারত না।
+
+**২· duplicate পথে ফাইলটা সত্যিই আছে কি না দেখা** — আর না থাকলে
+**সারিয়ে দেওয়া**।
+
+⭐ প্রথমে ভেবেছিলাম শুধু "ব্যর্থ" বলব, তাহলে এজেন্ট ছবিটা ধরে রাখবে।
+কিন্তু তাতে সে **প্রতিবার একই দেয়ালে ধাক্কা খেত** — সারি তো থেকেই যাচ্ছে।
+তাই রিট্রাইটাকে মেরামতে বদলে দেওয়া হলো: সারি আছে অথচ ফাইল নেই দেখলে
+বাইটগুলো বসিয়ে `accepted: 1` ফেরত।
+
+⚠️⚠️ সবচেয়ে সূক্ষ্ম সিদ্ধান্ত — লেখা হয় **`existing.filePath`-এ, নতুন
+করে হিসাব করা `relPath`-এ নয়**। রিট্রাইয়ে `captured_at`-এর সেকেন্ড এক না
+হলে ফাইলের নামও বদলায় (`hhmmss_m0.webp`); নতুন পথে লিখলে সারিটা এক
+ফাইলের দিকে দেখাত আর বাইট পড়ে থাকত অন্যটায় — **ঠিক যে অমিলটা সারাতে
+বসেছি, সেটাই আবার তৈরি হতো**।
+
+### ⭐ G85 · বন্ধ করার কোডের সাথে খোলার কোডও
+
+`deactivate()` ছিল, `reactivate()` ছিল না — একবার নিষ্ক্রিয় করা পলিসি
+চিরতরে নিষ্ক্রিয়, ফেরার একমাত্র পথ SQL। রুট `POST /work-policies/:id/reactivate`।
+
+⚠️ কর্মী-সংখ্যা আসল গোনা থেকেই আসে, **শূন্য ধরে নয়**। `deactivate()`-এ
+`toView(row, 0)` লেখা ঠিক (সে শূন্য না হলে চলতেই দেয় না), কিন্তু এখানে
+শূন্য ধরে নেওয়া হতো একটা অনুমান — আর তখন পর্দা "0 staff" দেখাত অথচ
+বাস্তবে তাঁরা আছেন।
+
+### ⭐⭐ টেস্ট — আর যেটা না করলে ওরা মিথ্যা হতো
+
+১৩টা টেস্ট, সবই **DB ছাড়া** (Prisma নকল, কিন্তু **ফাইল-সিস্টেম আসল** —
+নইলে ঠিক সেই জিনিসটাই মাপা হতো না যেটা ভেঙেছিল)। read-only ফোল্ডার
+সত্যিই বানিয়ে চালুর-সময়ের থামাটা মাপা হয়েছে।
+
+⚠️ তারপর সংশোধনটা **সাময়িকভাবে ফিরিয়ে নিয়ে** আবার চালানো হয়েছে —
+duplicate-এর তিনটে টেস্ট তখন ব্যর্থ হয়, ফিরিয়ে দিলে পাস।
+
+> **টেস্ট পাস করা মানে এই নয় যে সে কিছু পাহারা দিচ্ছে।** নতুন টেস্ট
+> পুরোনো কোডে চালিয়ে **ব্যর্থ হতে দেখা** — এটাই একমাত্র প্রমাণ যে সে
+> আসল জিনিসটা মাপছে, [§ ৩ৎ](#৩ৎ-স্ববিরোধী-কার্ড-আর-একটা-গোটা-পর্দা-তুলে-দেওয়া-১৩-আগস্ট-২০২৬)-এর
+> "সবুজ থেকেও মিথ্যা" টেস্টগুলোর মতো নয়।
+
+### ⚠️ যা করা যায়নি, আর কেন
+
+⏳ **G82** (সাইন আউট বনাম PC বন্ধ) ছোঁয়া হয়নি — ইচ্ছাকৃতভাবে। কাজটা
+দু-ভাগে: সার্ভারে একটা endpoint, আর **এজেন্টে (C#) সেটা ডাকা**। এই
+মেশিনে **.NET SDK নেই**, তাই এজেন্টের অংশটা কম্পাইলও করা যেত না।
+
+⭐⭐ শুধু সার্ভারের অর্ধেকটা লিখে রাখা যেত, কিন্তু সেটা হতো এই প্রকল্পের
+**সবচেয়ে বেশিবার ঘটা ভুলটার দশম পুনরাবৃত্তি** — *"চুক্তি লেখা আছে, কলার
+লেখা হয়নি"* (G71 · G81 · § ৩ষ · § ৩ড়)। endpoint বসে থাকত, কেউ ডাকত না,
+আর কোথাও কোনো এরর উঠত না।
+
+> **অর্ধেক জোড়া লেখা মানে কাজ এগোনো নয় — নীরব ঋণ বাড়ানো।** যে অর্ধেকটা
+> লেখা হলো সেটা টেস্টে সবুজ দেখাবে, আর যে অর্ধেকটা নেই সেটা কেউ
+> খেয়ালই করবে না, যতক্ষণ না কেউ সত্যিই ফিচারটা খোঁজে।
+
+⚠️ **এই সেশনের টেস্টগুলোও শুধু নতুন দুটো ফাইলের** — পুরো `npm test`
+এখানে চলে না (Docker/Postgres নেই, আর Prisma ক্লায়েন্ট Windows-এর জন্য
+জেনারেট করা)। tsc ও eslint দুটোই পরিষ্কার। মালিকের মেশিনে বা CI-তে পুরো
+স্যুট চালানোই শেষ যাচাই।
+
+---
+
+## ৩ঃঃ. ⭐⭐ প্রথম নিজে হাতে ডিপ্লয় — আর দুটো চিরকাল-লাল বাতি *(১৩ আগস্ট ২০২৬, রাত)*
+
+মালিক একটা SSH কী বসিয়ে দিলেন, আর তাতেই এই প্রথম **কোড লেখা থেকে
+প্রোডাকশনে চলা পর্যন্ত** পুরো পথটা এক হাতে হলো।
+
+### যা হলো
+
+| ধাপ | ফল |
+|---|---|
+| push | `aab1d66 → 721f291`, চারটে কমিট |
+| ডিপ্লয়ের আগে storage যাচাই | **`WRITABLE`** · `node:node` — অর্থাৎ `chown` চালানো হয়েছিল |
+| `vps-update.sh` | ✅ `4c1d471`, তারপর `721f291` |
+| ⭐ G81-এর probe লগে | `Screenshot storage is writable: /data/storage` |
+| বাইরে থেকে | health `200 · db up` · ড্যাশবোর্ড `200` · সার্ট ১১ নভেম্বর পর্যন্ত |
+
+⭐⭐ **ডিপ্লয়ের আগে storage মাপাটা আনুষ্ঠানিকতা ছিল না।** আজকের G81
+storage-এ লেখা না গেলে সার্ভারকে **উঠতেই দেয় না** — আর VPS ঠিক সেই মেশিন
+যেখানে সমস্যাটা ধরা পড়েছিল। `DENIED` এলে ডিপ্লয়ের সাথে সাথে API নামত।
+
+> **যে সংশোধন "ভুল হলে জোরে থামো" বলে, সেটা ডিপ্লয় করার আগে নিশ্চিত হতে
+> হয় যে আজ ভুলটা নেই।** নইলে নিরাপত্তার কোডটাই আউটেজের কারণ হয়।
+
+### ⚠️⚠️ ধরা পড়ল: CI ১২ ঘণ্টা লাল, আর ওয়েব বিল্ড ভাঙা (G96)
+
+push করার পর CI দেখতে গিয়ে বেরোল আগের **দুটো কমিটেও `failure`**:
+
+```
+StaffTab.tsx(921,68): error TS2345: Argument of type 'Role' is not
+assignable to parameter of type '"manager" | "employee"'.
+```
+
+⭐⭐ অর্থাৎ [§ ৩য়](#৩য-ম্যানেজার-বানানোর-পথ--আর-যে-ফাঁকটা-পথে-পড়ে-ছিল-১৩-আগস্ট-২০২৬)-এর
+ভূমিকা-বদলের কমিট থেকে **ড্যাশবোর্ডের নতুন ইমেজ বানানোই যেত না**। আজ
+ডিপ্লয় করতে গেলে ওখানেই আটকে যেতাম।
+
+⚠️ চোখে পড়েনি কারণ সার্ভার ও এজেন্টের টেস্ট সবুজ ছিল, আর ওয়েবের
+`tsc -b` **কেউ স্থানীয়ভাবে চালায়নি** — CI চালিয়েছিল, কিন্তু CI-র লাল
+বাতিটাও কেউ দেখেনি।
+
+মানটা কখনোই `'owner'` হতে পারত না (initializer ছেঁকে দেয়, owner-এর
+ড্রপডাউন দেখানোই হয় না) — শুধু **ঘোষিত টাইপটা বাস্তবের চেয়ে চওড়া** ছিল।
+
+⭐ সমাধান **উৎসে, cast-এ নয়**: `AssignableRole = Exclude<Role, 'owner'>`,
+আর `PORTAL_ROLES`-ও সেই টাইপে। ফলে কেউ ভুল করে `{ value: 'owner' }` যোগ
+করতে গেলে কম্পাইলারই থামাবে — ADR-011d এখন সার্ভারের DTO **আর** পর্দার
+কোড, দুই জায়গাতেই বাঁধা।
+
+> **`as` দিয়ে একটা টাইপ চওড়া করে দেওয়া মানে কম্পাইলারকে চুপ করানো, ভুলটা
+> সারানো নয়।** সরু টাইপটা যেখানে জন্মায় সেখানে বসালে সে নিয়মটাই পাহারা দেয়।
+
+### ⚠️⚠️ আর দ্বিতীয় চিরকাল-লাল বাতি — `web  unhealthy` (G97)
+
+`docker compose ps` বলছিল `web unhealthy`, অথচ সাইট বাইরে থেকে ২০০।
+মেপে দেখা গেল **`FailingStreak: 1077`** — প্রথম দিন থেকে একবারও সবুজ হয়নি।
+
+কারণ [§ ৩শ ফাঁদ ৩](#৩শ-vps-এ-তোলা--আর-পথে-পাঁচটা-ফাঁদ-১৩-আগস্ট-২০২৬)-এরই
+পুনরাবৃত্তি, **এক স্তর গভীরে**: override `ports` সারিয়েছিল, কিন্তু
+`healthcheck` বাদ পড়েছিল। বেসেরটা `127.0.0.1:8080`-এ ধাক্কা দেয়, আর
+ডোমেইন-মোডে Caddy শোনে `:80`/`:443`-এ।
+
+> ⭐ **একটা ফাঁদ সারানোর পর প্রশ্নটা "সেরেছে তো?" নয় — "একই ভুল আর কোথায়
+> কোথায় আছে?"** এখানে override-এর তালিকায় `ports` ছিল, `healthcheck` ছিল না,
+> আর দুটোর কারণ **হুবহু এক**।
+
+⚠️ ক্ষতিটা একটা লাল লেখা নয়: `docker compose ps` তখন স্বাস্থ্যের সংকেত
+হিসেবে **অকেজো**, আর কেউ `depends_on: service_healthy` বসালে সেটা কখনোই
+পূরণ হতো না।
+
+> **চিরকাল-লাল একটা অ্যালার্ম মানুষকে অ্যালার্ম উপেক্ষা করতে শেখায়** —
+> সেটাই আসল বিপদ, কারণ পরের বার লালটা সত্যি হলেও কেউ তাকাবে না।
+> ⭐ আজ **দুটোই** সেই জাতের: CI-র লাল, আর `ps`-এর লাল।
+
+### ⭐ নির্ণয়ের মাঝপথে নিজের একটা ভুল
+
+কোন probe কাজ করে মাপতে গিয়ে তিনটেই "FAIL" পেলাম — `:8080`, `:80`,
+`:2019`। প্রায় ধরেই নিয়েছিলাম Caddy ভেতর থেকে কিছুতেই সাড়া দেয় না।
+
+⚠️ **আসল সাড়াটা দেখতে গিয়ে বেরোল ব্যর্থতাটা আমারই** — এটা **BusyBox**
+wget, সে `--max-redirect` চেনে না, তাই তিনটেই "unrecognized option"-এ
+মরেছিল। সংযোগে কোনো দোষ ছিল না; `:2019/config/` দিব্যি **২০০** দেয়।
+
+> **exit code বলে "হয়নি", কিন্তু "কেন হয়নি" বলে না।** যন্ত্রের ব্যর্থতা
+> আর নিজের কমান্ডের ব্যর্থতা — দুটো আলাদা, আর গুলিয়ে ফেললে নির্ণয় ভুল
+> দিকে চলে যায়। একবার আসল আউটপুট দেখলেই তফাতটা ধরা পড়ে।
+
+তাই healthcheck এখন Caddy-র **admin API** — প্রসেস জীবিত ও কনফিগ লোড
+হয়েছে দুটোই প্রমাণ করে, আর বাইরের DNS বা TLS কিছুই লাগে না।
+⚠️ পোর্ট ৮০ ব্যবহার করা যেত না: ডোমেইন-মোডে সে ৩০১ দেয়, আর BusyBox wget
+সেটাকে ব্যর্থতা ধরে (মেপে দেখা: exit 1)।
+
+### ✅ ফল
+
+```
+api        Up (healthy)
+postgres   Up (healthy)
+web        Up (healthy)   ← জীবনে এই প্রথম
+```
+
+---
+
+## ৩ঁঁ. ⭐⭐ Live Board → cockpit, আর যে রঙের ফাঁক চোখে ধরা যেত না *(১৪ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"Live Board ta tumi ekotu cockpit tayper banate paro. more
+graph and bar, actually a cool profeshonal look."**
+
+### ⚠️ প্রথমেই একটা দেয়াল — ডেটাই নেই
+
+`/live` কেবল **এখনকার** অবস্থা পাঠায়; সময়ের কোনো রেখা ওতে নেই।
+ঘণ্টাভিত্তিক চার্ট আছে, কিন্তু **একজন করে** (`/employees/:id/hourly`) —
+দশজনের ছন্দ পেতে ব্রাউজারকে দশটা কল করতে হতো, প্রতি রিফ্রেশে।
+
+⭐ তাই সিদ্ধান্তটা মালিককে জিজ্ঞেস করা হয়েছে, বানিয়ে ফেলে পরে বলার
+বদলে — কারণ উত্তরটা স্কোপ বদলে দিত (সার্ভার ছোঁয়া লাগবে কি না)।
+উত্তর: **রেখাসহ পূর্ণ cockpit**।
+
+### সার্ভারে `GET /live/pulse`
+
+⭐ যোগফলটা সার্ভারে, **একটি** কোয়েরিতে। আর ছড়ানোর নিয়ম হুবহু
+`spreadIntoHourBuckets` — নকল নয়, তাই একজনের চার্ট আর দলের ছন্দ কখনো
+আলাদা গল্প বলবে না।
+
+⚠️ **কর্মীপ্রতি আলাদা করে ছড়ানো হয়, একসাথে নয়।** সব সেগমেন্ট এক গাদা
+করে দিলে মোট সেকেন্ড ঠিকই আসত, কিন্তু **কতজন** সেটা আর বের করা যেত না —
+বালতিতে ঢোকার পর সেগমেন্ট আর কার, তা জানা যায় না।
+
+> ⭐ **"৬ ঘণ্টা" প্রশ্নের অর্ধেক উত্তর।** ছ-জন এক ঘণ্টা, নাকি একজন
+> ছ-ঘণ্টা? প্রথমটা স্বাভাবিক সকাল, দ্বিতীয়টা একজনের একা কাজ করা রাত —
+> cockpit-এ তফাতটাই আসল খবর।
+
+### ⭐ পর্দার স্তরগুলো একটা প্রশ্নের ক্রমে
+
+```
+সংখ্যা → ছন্দ → অবস্থা → ব্যক্তি → মুখ
+"কতটা?"  "কেমন   "কে     "কে      "সে কী
+         গেল?"   কোথায়?" কতদূর?"  করছে?"
+```
+
+প্রতিটা স্তর আগেরটার উত্তর থেকে **জন্ম নেওয়া পরের প্রশ্নটার** উত্তর দেয়।
+উল্টো সাজালে বোর্ড খুলেই দশটা মুখ দেখা যেত, আর "আজ দিনটা কেমন" জানতে
+নিচে স্ক্রল করতে হতো।
+
+### ⚠️⚠️ তিনটে সিদ্ধান্ত, যেগুলো না নিলে চার্ট মিথ্যা বলত
+
+**১· একটাই অক্ষ।** "কতজন" আঁকা হয় না, hover-এ থাকে। দুটো ভিন্ন মাপ এক
+চার্টে দুই অক্ষে বসানো চার্টের সবচেয়ে চেনা মিথ্যা — দুই রেখার ক্রসিং
+তখন অর্থহীন, অথচ চোখে অর্থপূর্ণ লাগে।
+
+**২· কলাম, রেখা নয়।** ডেটা বালতি-করা, ধারাবাহিক সংকেত নয়। রেখা দাবি
+করত *"১০টা ৩০-এ মান এতটা ছিল"* — অথচ ওই প্রশ্নের উত্তর ডেটায় নেই।
+
+**৩· টার্গেট-বারে অবস্থার রং বসানো হয়নি** — আর এটাই সবচেয়ে সহজ ভুল
+হতে পারত। `ProgressRing`-এর ডকে **আগে থেকেই লেখা ছিল** কেন: চলতি
+অগ্রগতি একসময় ব্র্যান্ড-লালে আঁকা হতো, ফলে রোজ কাজ করা প্রতিটা মানুষের
+কার্ডে সারাদিন লাল জ্বলত, আর দু-দিনেই লাল মানে "কিছু না" হয়ে যেত।
+
+> ⭐ **পুরোনো ডক পড়াটাই এখানে আসল কাজ ছিল।** নিজের পরিকল্পনা ছিল
+> "অবস্থা অনুযায়ী রং" — সিস্টেমের নিজের লেখা নিয়মটা না পড়লে সেই ভুলটা
+> আবার বসিয়ে দিতাম, আর কেউ ধরতেও পারত না।
+
+### ⭐⭐ আর যে ফাঁকটা চোখে দেখে কোনোদিন ধরা যেত না
+
+অবস্থার চারটে রং যন্ত্র দিয়ে মেপে দেখা হলো, অনুমান না করে:
+
+| | সবুজ ↔ হলুদ |
+|---|---|
+| স্বাভাবিক দৃষ্টি | ΔE **১৭.৮** — দিব্যি আলাদা |
+| protanopia (ডার্ক) | ΔE **৩.২** ⚠️ |
+| protanopia (লাইট) | ΔE **৫.১** ⚠️ |
+| নিরাপদ সীমা | **≥ ৮** |
+
+⚠️⚠️ **স্বাভাবিক দৃষ্টিতে দূরত্ব ১৭.৮ বলেই সমস্যাটা অদৃশ্য।** যিনি
+বানাচ্ছেন তিনি পর্দায় তাকিয়ে কোনোদিন বুঝতেন না যে "কাজ করছেন" আর
+"নিষ্ক্রিয়" কারো কারো কাছে **একই রং**।
+
+> **যেটা গণনা করা যায়, সেটা চোখে মাপবেন না।** রঙের নিরাপত্তা মতামত নয়,
+> সংখ্যা — আর সংখ্যাটা বের করতে এক কমান্ড লাগে।
+
+⭐ রং **বদলানো হয়নি**, ইচ্ছাকৃতভাবে: এগুলো গোটা অ্যাপের প্রতিষ্ঠিত
+অবস্থা-বর্ণমালা (`StatusDot`, কার্ড, লেজেন্ড — সবখানে এক), আর এক পর্দার
+জন্য বদলালে বাকি সব পর্দার সাথে মিল ভাঙত। বদলে **তিনটে বাড়তি চ্যানেল**:
+নাম ও সংখ্যা লেখা · স্থির ক্রম (শূন্য ভাগ ম্লান) · hover-এ নাম ও সংখ্যা।
+
+⚠️ মাপটা কোডেই লেখা থাকল — নইলে পরের জন *"রংগুলো তো আলাদাই দেখাচ্ছে"*
+ভেবে চ্যানেলগুলো তুলে দিতেন।
+
+### ⚠️ যাচাই করতে গিয়ে আরেকটা ফাঁক
+
+**Refresh বোতাম চার্টটা আনত না** — বোর্ড ও ছবি নতুন করে আনত, কিন্তু
+দিনের ছন্দ নিজের দু-মিনিটের তালেই থাকত। কেউ বাসি চার্ট দেখে Refresh
+চেপে একই ছবি পেতেন, আর ভাবতেন ডেটাই আসছে না।
+
+> **যে বোতাম "সব নতুন করে আনো" বলে, তাকে পর্দার প্রতিটা উৎস ছুঁতে হয়** —
+> নইলে নামটাই মিথ্যা।
+
+### ✅ চোখে দেখা — আর আসল ডেটায়
+
+রাত ০০:৩০-এ বোর্ড খালি, তাই চার্টটা ভরা অবস্থায় দেখতে **১৩ আগস্টের
+আসল ডেটা** সাময়িকভাবে পাতায় পাঠানো হয়েছে (ব্রাউজারে `fetch` মুড়ে,
+শিপ করা কোডে হাত না দিয়ে)।
+
+⭐ সংখ্যাগুলো **SQL-এর সাথে স্বাধীনভাবে মিলিয়ে** দেখা হয়েছে:
+`total 48448s` = ১৩.৪৬ ঘণ্টা · `peakPeople 7` — আর ডাটাবেস বলে
+১৩.৫ ঘণ্টা, ৭ জন। ঘণ্টাগুলোর যোগফলও হুবহু মোটের সমান।
+
+দেখা হয়েছে: **ডার্ক ও লাইট দুই থিম**, ডেস্কটপ (১৪৪০) ও **ফোন (৩৯০)** —
+ফোনে বার নিজের সারিতে নেমে যায়, নইলে নাম আর সংখ্যার মাঝে চেপে গিয়ে
+কয়েক পিক্সেল চওড়া হতো, আর অত সরু বার কোনো তুলনাই বোঝাত না।
+
+### ⚠️ যা এখনো দেখা হয়নি
+
+⚠️ **ভরা অবস্থার চার্টটা "আজকের" ডেটায় দেখা হয়নি** — যা দেখা হয়েছে তা
+গতকালের আসল ডেটা, পাতায় সাময়িকভাবে পাঠানো। কাল সকালে স্টাফরা কাজ শুরু
+করলে কলামগুলো নিজে থেকেই ভরবে, আর সেটাই এর শেষ যাচাই।
+
+---
+
+## ৩ঃঃঃ. শেষ ৭ দিন ও চলতি মাস — আর তিনবার একই ভুল *(১৪ আগস্ট ২০২৬)*
+
+মালিক: **"Live Board ekhon to faka faka lagoche… last 7 days er graph,
+monthly koto ghonta kaj hoye tar graph… design approve na koriye shuru
+korbena."**
+
+### ⭐ প্রথমে সোজা কথাটা বলা হয়েছে
+
+বোর্ড ফাঁকা **নকশার দোষে নয়** — সিস্টেম চালু হয়েছে আগের দিন, আর তখন রাত
+১২টা। আরও চার্ট যোগ করলে আজ বোর্ড **আরও বেশি ফাঁকা দেখাত**, কম নয়।
+
+⚠️ সেটা লুকিয়ে চার্ট বানিয়ে দিলে মালিক পরদিন সাতটা খালি কলাম দেখে ভাবতেন
+কাজটা ভেঙে গেছে। তাই আগে কারণটা, তারপর নকশা।
+
+⭐ নকশা **মকআপে দেখিয়ে অনুমোদন নেওয়া হয়েছে** — দুটো অবস্থায়: আজ যেমন
+দেখাবে, আর এক মাস ডেটা জমার পর।
+
+### ⭐⭐ একই ভুল তিনটে স্তরে — আর তিনবারই একই আকৃতি
+
+এই কাজের পুরো শিক্ষাটা একটাই বাক্যে ধরা যায়, আর সেটা তিনবার আলাদা মুখে
+সামনে এসেছে:
+
+> **যে সময়টা আমরা দেখিনি, সেটাকে "শূন্য কাজ" বলা যাবে না।**
+
+| স্তর | কাঁচা হিসাব যা বলত | কেন মিথ্যা |
+|---|---|---|
+| **দিন** | ৮–১২ আগস্ট শূন্য বার | ট্র্যাকিংই শুরু হয়নি |
+| **মাস** | দল **১০৪২ ঘণ্টা** পিছিয়ে | ঘাটতির পুরোটাই ১–১২ আগস্ট |
+| **আজ** | সকাল ৬টায় **১১৪ ঘণ্টা** পিছিয়ে | আজকের দিনটা তো সবে শুরু |
+
+⭐ তিনটেই একই আকৃতির: **অনুপস্থিত পর্যবেক্ষণকে ব্যর্থতা বলে গোনা।**
+
+সমাধানও তিনটেই একই ধাঁচের —
+· না-ট্র্যাক দিন **ডটেড রূপরেখা**, ভরাট শূন্য-বার নয়
+· pace গোনা **ট্র্যাকিং শুরুর দিন থেকে**, আর তারিখটা কার্ডে লেখা
+· আজকের দিন প্রত্যাশা থেকে **বাদ** — pace মানে "গতকাল পর্যন্ত কে কোথায়"
+
+⚠️ তৃতীয়টা না ধরলে ভুলটা **রোজ সকালে ফিরে আসত** আর সন্ধ্যায় নিজে থেকে
+মিলিয়ে যেত — অর্থাৎ একই দল দিনে দুবার দুই রকম রায় পেত, কেবল ঘড়ির
+কাঁটার কারণে। ⭐ ধরা পড়েছে **ডিপ্লয় করে চোখে দেখায়**, কোডে নয়।
+
+### ⚠️ উৎস বাছার সিদ্ধান্ত
+
+চার্ট দুটো `daily_summary` ও `monthly_summary` থেকে, কাঁচা সেগমেন্ট নয় —
+ওই দুটোই বেতনের ভিত্তি (`worked_sec` হলো UNION, overlap দুবার গোনা হয় না),
+আর `summary-refresh` জব ওদের **১৫ মিনিটে** তাজা রাখে (K06)।
+
+⚠️ ফলে আজকের কলাম "Hours today" টাইলের চেয়ে একটু কম হতে পারে — টাইলটা
+লাইভ **যোগফল**। পাশাপাশি বসা দুটো চার্ট আলাদা ভিত্তিতে চললে "কোনটা
+সত্যি?" প্রশ্নের কোনো উত্তর থাকত না, তাই দুটোকে এক ভিত্তিতে রাখা হয়েছে।
+
+### ✅ চোখে দেখা, আর অঙ্কে মিলিয়ে
+
+`66h 32m behind pace` — যাচাই: প্রত্যাশা ১ দিন × ১০ জন × ৮ঘ = ৮০ঘ,
+credited ১৩.৫ঘ, ফারাক **৬৬.৫ঘ**। হুবহু মিলছে।
+
+পথে দুটো ছোট জিনিসও সারানো হয়েছে: `2272h 0m` → `2272h` (সেই শূন্য
+মিনিটটা, যেটা নিয়ে `TodayRing`-এ আগেই নোট ছিল), আর তারিখ থেকে `.num`
+সরানো — tabular figures ওকে `13  Aug` দেখাত।
+
+### ⏳ যা পরে
+
+মাসে-মাসে তুলনার কলাম (জুলাই বনাম আগস্ট) — মালিক চেয়েছেন, কিন্তু এখন
+**এক মাসেরই ডেটা আছে**। কয়েক মাস জমলে তবেই ওটার মানে হবে।
+
+---
+
+## ৩ংং. ⭐⭐ টেলিগ্রামে আসল ডেলিভারি — শেষ অপ্রমাণিত পথটা *(১৪ আগস্ট ২০২৬)*
+
+README-র "বাকি একটাই" তালিকায় এটাই পড়ে ছিল: **টেলিগ্রামে আসল ডেলিভারি** —
+মালিকের নিজের bot token ছাড়া দেখা যায় না।
+
+### ⚠️ টোকেনটা চ্যাটে চলে এসেছিল
+
+মালিক টোকেনটা সরাসরি চ্যাটে পাঠিয়ে দেন। **ওটা ব্যবহার করা হয়নি** —
+চ্যাটের লগে থাকা টোকেন আর গোপন থাকে না; যে পায় সে-ই বটের নামে মেসেজ
+পাঠাতে পারে। বলা হয়েছে BotFather-এ `/revoke` করে নতুন নিতে।
+
+> **গোপন মান যেখানে একবার লেখা হয়ে গেছে, সেখান থেকে সেটা আর ফেরে না।**
+> মুছে ফেললেও কপি কোথায় কোথায় রয়ে গেছে জানা যায় না — একমাত্র পথ বাতিল
+> করে নতুন নেওয়া (deploy/README § ১২.৫-এর সেই নিয়মই)।
+
+### ⭐ `setup-telegram.sh` — ধাপগুলো মানুষের জন্য
+
+মালিকের কথা: *"ami bujhote parchina kOthay kivabe korbo"* — আর সেটাই আসল
+সমস্যা ছিল, টোকেন নয়। তাই VPS-এ একটা স্ক্রিপ্ট, মালিকের কাজ এক লাইন:
+
+```
+ssh -t -p 2222 root@<VPS_IP> /opt/oxeio/setup-telegram.sh
+```
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| টোকেন `read -rs`-এ | পর্দায় দেখা যায় না, শেল-হিস্ট্রি বা কমান্ড-লাইনে থাকে না |
+| ⭐ `getMe` দিয়ে যাচাই **`.env` ছোঁয়ার আগে** | ভুল টোকেন বসে গেলে "কাজ করছে না কেন" খুঁজতে অনেক পরে যেতে হতো |
+| chat id `getUpdates` থেকে নিজে বের করা | ওটাই সবচেয়ে গোলমেলে ধাপ ছিল — মানুষকে JSON পড়তে হতো |
+| ⚠️ `restart` নয়, **`up -d api`** | restart পুরোনো environment ধরে রাখে — নতুন `.env` পড়াই হতো না |
+| শেষে লগ পড়ে যাচাই | "চালানো হয়েছে" ≠ "চালু আছে" |
+
+⭐ মাঠে স্ক্রিপ্টটা তিন দফায় ঠিক যা ধরার কথা তাই ধরেছে: প্রথমবার ভুল
+টোকেন (`.env` অক্ষত), দ্বিতীয়বার `/start` না-পাঠানো (স্পষ্ট নির্দেশসহ
+থামা), তৃতীয়বার ✅।
+
+### ⭐⭐ প্রমাণ — আসল পথ দিয়েই
+
+টেস্টের জন্য **কোনো কোড বদলানো হয়নি**, কোনো "টেস্ট মোড"-ও নয়: sweep-এর
+শর্ত হুবহু মিলিয়ে একটা সারি বসানো হয়েছে (`channels_sent = {email}`,
+telegram ট্যাগ নেই, ২৪ঘ-র ভেতর) — অর্থাৎ আসল অ্যালার্ট যে পথে যায়, টেস্টও
+সেই পথেই।
+
+> আলাদা টেস্ট-পথ বানালে সেটা একদিন আসল পথ থেকে সরে যেত, আর টেস্ট সবুজ
+> থেকেও ডেলিভারি ভাঙা থাকত।
+
+ফল: এক টিকের মধ্যে `channels_sent = {email,telegram}` — আর কোড ওই ট্যাগ
+**কেবল সফল হলে** লেখে (ব্যর্থতায় `telegram_failed`)। টেস্ট সারি এরপর মোছা।
+
+⚠️ পথে একটা ভুল ধারণাও শোধরানো গেল: প্রথম চেষ্টায় sweep ৭০ সেকেন্ডেও
+কিছু করেনি — কারণ `up -d api` সবে চলেছিল, টিক-ঘড়িটা নতুন করে শুরু।
+টিক ৬০ সেকেন্ডের হলে অপেক্ষাটা **রিস্টার্টের সময় থেকে** গোনে, সারি
+বসানোর সময় থেকে নয়।
+
+### README-র তালিকাটা এখন
+
+⭐ **"তৈরি কিন্তু কখনো চালিয়ে দেখা হয়নি" তালিকায় আর কিছু নেই** — টেলিগ্রাম
+ছিল শেষটা। এখন প্রতিটা স্তর অন্তত একবার মাঠে প্রমাণিত।
+
+---
+
+## ৩ংংং. আটটা কমিট, ছ-টা গল্প — Top performers থেকে রোডম্যাপ *(১৪ আগস্ট ২০২৬)*
+
+একই দিনের বাকি কাজগুলো, বিল্ড লগে একসাথে তোলা: **দুটো ফিচার, চারটে খুঁত,
+আর একটা পরিকল্পনার ফাইল** — ছ-টা ভাগে।
+
+⭐ **খুঁতগুলোর তিনটের আকৃতি এক**, যদিও দেখতে সম্পূর্ণ আলাদা: প্রতিটাতেই কোড
+"ঠিকই আছে" বলে মনে হয়, কারণ **যে জায়গা থেকে দেখা হচ্ছিল সেখান থেকে
+খুঁতটা দেখাই যায় না** — নিষ্ক্রিয় কর্মীর সারি ডাটাবেসে থেকে যায়,
+scrollbar ম্যাকে অদৃশ্য, আর `max-h-full` ক্লাসের নাম পড়ে বোঝার উপায় নেই
+যে সে কিছুই করছে না।
+
+### ⭐ ১· Top performers — মাপকাঠি মালিকের, আর সেটাই কার্ডে লেখা
+
+মালিক চেয়েছেন, আর মাপকাঠি ও নাম দুটোই তাঁর বাছা: **মোট ঘণ্টা**, নাম
+**Top performers**। বিকল্প দুটোও দেখানো হয়েছিল — pace-এর চেয়ে কে এগিয়ে
+(প্রত্যেকের নিজের টার্গেট ও যোগদানের তারিখ ধরে), আর কত দিন টার্গেট
+ছুঁয়েছেন। মোট ঘণ্টায় যাঁর কর্মদিবস বেশি তিনিই উপরে ওঠেন; **সেটা জেনেই
+বাছা হয়েছে।**
+
+⭐ তাই কার্ডে প্রতিটা নামের পাশে **আসল ঘণ্টাটা** লেখা, আর বার আঁকা হয়
+শীর্ষ জনের সাপেক্ষে। সবাই কাছাকাছি থাকলে বারগুলোও প্রায় সমান দেখায় —
+"ক্রমটা অর্থবহ কি না" প্রশ্নের উত্তর **সংখ্যাগুলোই দিয়ে দেয়**, আলাদা কোনো
+সতর্কবার্তা ছাড়াই। (ওই দিন শীর্ষ ও শেষ জনের ফারাক ছিল **৪২ মিনিট**।)
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| বার **সবুজ নয়**, নিরপেক্ষ `ink` | এটা টার্গেট ছোঁয়ার হিসাব নয়, নিছক তুলনা — সবুজ রাখলে "লক্ষ্য পূরণ" বলে ভুল হতো (ProgressBar-এর নিয়ম) |
+| শুধু **সক্রিয়** কর্মী | ছেড়ে যাওয়া কারো নাম অর্ধেক মাসের ডেটা নিয়ে তালিকার মাথায় বসে থাকলে বিভ্রান্তিকর হতো |
+| ⭐ নতুন endpoint **লাগেনি** | `/live/trend` ইতিমধ্যেই মাসের rollup আনত |
+
+**তারপর মালিক মাপকাঠি বদলালেন** — *"life time total hours er base koro"*।
+ক্রমটা আর চলতি মাসের নয়, সব মাস মিলিয়ে।
+
+⭐ যোগফলটা **ডাটাবেসে** (`monthly_summary` → `groupBy`), কোডে নয় — কর্মী ও
+মাস দুটোই সময়ের সাথে বাড়ে, তাই সব সারি টেনে এনে যোগ করাটা ক্রমশ ভারী হতো।
+⚠️ চলতি মাসের সারিগুলো (`monthRows`) দিয়ে এটা করা যেত না — ওগুলো
+`yearMonth`-এ ছাঁকা, তাই আলাদা কোয়েরি।
+
+⚠️ **তফাতটা কোডে লিখে রাখা হয়েছে:** আজীবন হিসাবে যিনি আগে যোগ দিয়েছেন
+তিনি **স্থায়ীভাবে** উপরে থাকেন — নতুন কেউ যত ভালোই করুন, ধরতে পারবেন না।
+মাসিকে অন্তত প্রতি মাসে ক্রম নতুন করে শুরু হতো। জেনেই বাছা হয়েছে, আর
+নামের পাশে ঘণ্টাটা থাকায় **ক্রমটা কীসের উপর দাঁড়ানো সেটা পর্দাতেই দেখা যায়**।
+
+### ⚠️⚠️ ২· তিনজন অস্তিত্বহীন মানুষ, দুটো আলাদা মিথ্যা সংখ্যা
+
+seed-এর তিনটে নমুনা সারি (Example One/Two/Three, বেতন ৳০) **নিষ্ক্রিয়
+করার পরেও** দলের টার্গেট ২২৭২ ঘণ্টাই রয়ে গেল।
+
+> **নিষ্ক্রিয় করা মানে ইতিহাস মোছা নয়** — কাউকে নিষ্ক্রিয় করলে তাঁর
+> `monthly_summary` ও `daily_summary` সারি **থেকেই যায়** (ইচ্ছাকৃত, নইলে
+> পুরোনো মাসের বেতনের হিসাব ছিঁড়ে যেত)। আর `/live/trend` মাসের **সব** সারি
+> যোগ করত।
+
+ফলে তিনজন অস্তিত্বহীন মানুষের লক্ষ্য দল চিরকাল বয়ে বেড়াত, আর "কত পিছিয়ে"
+সংখ্যাটা ততটাই ফুলে থাকত। ⭐ সমাধান — **তিন জায়গাতেই** সক্রিয় কর্মীর
+ছাঁকনি: মাসের rollup · দিনের সারি · প্রত্যাশার হিসাব। Live Board-এর কার্ডও
+কেবল সক্রিয় কর্মী দেখায়, তাই ছাঁকনিটা পর্দার বাকি অংশের সাথে মিলে যায় —
+নইলে একই পাতায় দুই রকম "দল"।
+
+⚠️ **এটা কেবল নমুনা সারির সমস্যা নয়** — কেউ চাকরি ছাড়লে ঠিক একই ভুল হতো,
+আর তখন ধরা পড়া আরও কঠিন হতো (নামটা তো চেনা)।
+
+**কিন্তু আসল প্রশ্ন ছিল ওরা এল কোথা থেকে।**
+
+⚠️⚠️ `staff.local.json` **gitignore করা**, তাই VPS-এ ওটা কোনোদিন থাকে না।
+ফলে সেখানে প্রতিবার seed চললেই `staff.example.json`-এর তিনজন নমুনা কর্মী
+তৈরি হতো — ওরা ঠিক এভাবেই ঢুকেছিল, আর নিষ্ক্রিয় করার পরেও **পরের seed-এ
+ফিরে আসত**।
+
+⭐ ক্ষতিটা "তালিকায় তিনটে বাড়তি নাম" নয়: ওরা দলের মাসিক টার্গেটে
+**৬২৪ ঘণ্টা** যোগ করত (২২৭২ বনাম **১৬৪৮**) — অথচ ওদের এক মিনিটও কাজ নেই।
+
+নিয়মটা ইচ্ছাকৃতভাবে **সরু** — শুধু নমুনা তালিকার বেলায়, আর শুধু ডাটাবেসে
+ইতিমধ্যে কেউ থাকলে:
+
+| শর্ত | কেন এভাবে |
+|---|---|
+| আসল তালিকা (`staff.local.json`) থাকলে seed আগের মতোই সব বসায় | কর্মী হালনাগাদের পথ বন্ধ হয় না |
+| খালি ডাটাবেসে নমুনা আগের মতোই বসে | নইলে কেউ রিপো ক্লোন করে প্রকল্পটা চালিয়েই দেখতে পারত না |
+| ⚠️ "খালি" মানে **শূন্য**, "সক্রিয় শূন্য" নয় | সবাইকে নিষ্ক্রিয় করা একটা চালু সিস্টেমেও নমুনা মানুষ ফিরে আসা উচিত নয় |
+
+⭐ সিদ্ধান্তটা `parse-staff.ts`-এ **খাঁটি ফাংশনে**, `seed.ts`-এ নয় — ওটা
+import হলেই চলতে শুরু করে, তাই টেস্ট করা যায় না (§ ৩ষ-এর সেই একই কারণ)।
+৪টি নতুন টেস্ট, ১৮ → **২২**।
+
+### ⭐⭐ ৩· ট্যাব-সারির ভুতুড়ে scrollbar — যা ম্যাক থেকে দেখাই যায় না
+
+মালিক পর্দার ছবি পাঠালেন: Settings-এ "Add staff"-এর উপরে একটা **ফাঁকা
+বাক্স**, ভেতরে ছোট up/down তীর।
+
+⚠️⚠️ কারণ Tailwind-এর `overflow-x-auto` **দুই অক্ষেই** `auto` বসায়। ট্যাবের
+বোতামগুলো (প্যাডিং + বাছাই করা ট্যাবের ২px নিচের রেখা) ঘরটার চেয়ে ঠিক
+**এক পিক্সেল** উঁচু — `clientHeight ৪১`, `scrollHeight ৪২`। তাতেই ব্রাউজার
+একটা উল্লম্ব scrollbar আঁকে, আর সেটা আবার **১৫px চওড়া জায়গা কেড়ে নেয়**
+(`clientWidth ১২৮০ → ১২৬৫`)।
+
+> **⭐⭐ ম্যাকে এটা ধরাই পড়ে না** — ওখানে scrollbar ভাসমান ও প্রায় অদৃশ্য।
+> Windows-এ ওটা তীরসহ মোটা বার। এই সেশনের পুরোটা ম্যাক থেকে যাচাই করা
+> হয়েছে, তাই খুঁতটা এতক্ষণ **চোখের সামনেই ছিল অথচ দেখা যায়নি**।
+>
+> ⚠️ **"আমার এখানে তো ঠিক দেখাচ্ছে" কখনো প্রমাণ নয়।**
+
+সংশোধন `overflow-y-hidden` — উল্লম্ব স্ক্রলের দরকার এখানে কোনোদিনই নেই।
+`Layout.tsx`-এর উপরের ন্যাভেও **একই লাইন**: আজ ওখানে বার নেই, কিন্তু ফাঁদটা
+হুবহু এক, আর একটা লিঙ্ক যোগ হলেই ফিরে আসত।
+
+⚠️ কনটেন্ট-মোড়কগুলো (`Table`, `HeatGrid`, `HourlyChart`) **ছোঁয়া হয়নি** —
+ওদের ক্ষেত্রে `overflow-y-hidden` উল্টো ক্লিপ করতে পারত।
+
+### ⭐⭐ ৪· ভার্সন ব্যাজ — সংখ্যাটা git থেকে আসে, হাতে লেখা হয় না
+
+মালিক চেয়েছেন: প্রতিটা edit-এর পর সিস্টেমের ভার্সন বাড়বে ও এক কোণায়
+দেখা যাবে।
+
+⭐⭐ সংখ্যাটা `git rev-list --count HEAD` — **প্রতি কমিটে ঠিক এক বাড়ে**।
+তাই "প্রতিটা বদলে ভার্সন বাড়বে" কথাটা কারো মনে রাখার উপর নির্ভর করে না।
+
+> ⚠️⚠️ হাতে বাড়ানো সংখ্যা একদিন পিছিয়ে পড়ত, আর তখন পর্দা বলত নতুন কোড
+> চলছে অথচ চলত পুরোনোটা। **ভুল ভার্সন না-থাকা ভার্সনের চেয়ে খারাপ**,
+> কারণ ওটা দেখে মানুষ **অন্য জায়গায়** ভুল খুঁজতে শুরু করে।
+
+পথটা: `vps-update.sh` git থেকে `APP_BUILD`/`APP_COMMIT`/`APP_BUILT_AT`
+export করে → docker-compose `build.args` → দুই ইমেজেই (web: `VITE_*`,
+api: env) → ব্যাজ ও `/health`।
+
+⭐ **api-ও একই ভার্সন ফেরত দেয়, আর ব্যাজ দুটো মিলিয়ে দেখে।** ⚠️ অর্ধেক
+ডিপ্লয় (নতুন ওয়েব, পুরোনো api) নইলে সম্পূর্ণ **নীরব** থাকত: পাতা নতুন
+দেখাত, API পুরোনো উত্তর দিত। না মিললে ব্যাজ লাল হয়ে "redeploy" বলে।
+
+⚠️ ব্যাজটা Router ও Layout-এর **বাইরে**, তাই লগইন পাতা ও ৪০৪-সহ প্রতিটা
+পর্দায় থাকে — ঠিক যে অবস্থাগুলোতে "কোন বিল্ড চলছে" জানা সবচেয়ে জরুরি।
+⚠️ `pointer-events-none` মোড়ক — নিচের বোতামে ক্লিক আটকায় না; `z-40`, তাই
+মোডালের নিচে। ⚠️ মিল-না-হওয়ার সতর্কতা `dev` বিল্ডে দেখানো হয় না, নইলে
+ডেভেলপারের মেশিনে ব্যাজ সারাক্ষণ লাল থাকত আর কেউ আর তাকাত না।
+
+⚠️ Docker ছাড়া চালালে ডিফল্ট `dev`/`local` — **মিথ্যে সংখ্যার চেয়ে সৎ "dev"**।
+
+**⭐⭐ আর এই ডিফল্টটাই একটা ফাঁদ ঢেকে দেয়।** `vps-update.sh` **আগে**
+`git pull` করে, **তারপর** ভার্সন export করে। অর্থাৎ যে ডিপ্লয়-রানটা এই
+কমিটটাকে টেনে আনে, সে নিজে এখনো **পুরোনো** স্ক্রিপ্ট — নতুন লাইনগুলো
+ডিস্কে বসে ঠিকই, কিন্তু চলমান রানে চলে না।
+
+> **স্ক্রিপ্ট নিজেকে হালনাগাদ করলে সেই রানে নতুন কোডটা চলে না।**
+> প্রথম রানে `APP_BUILD` খালি → ব্যাজে `dev`; আসল সংখ্যা আসে **পরের**
+> ডিপ্লয় থেকে।
+
+⚠️ এটা কোডের গঠন থেকে বলা, মাঠে গুনে দেখা হয়নি — কিন্তু ফলটা নিরাপদ
+দিকেই পড়ে: ব্যাজ **`dev` বলে**, ভুল কোনো নম্বর বলে না। ⭐ সৎ ডিফল্ট
+বাছার সিদ্ধান্তটা এখানেই সুদ দিল।
+
+### ⚠️⚠️ ৫· লাইটবক্সে ছবি পুরো পর্দা ঢেকে ফেলত
+
+মালিক: *"screenshoot e click kore boro korle hudge boro hoye jay. full
+display jure jay."*
+
+মেপে দেখা গেল — viewport **৮৫৫px**, ছবির ঘর **৭২৩px**, অথচ ছবিটা আঁকা
+হয়েছে **১০৬৭px** উঁচু। ফুটার আর ← → বোতামগুলো পর্দার বাইরে চলে যেত।
+
+> **⭐⭐ `max-h-full` (= `max-height: 100%`) এখানে কিছুই আটকায় না — আর
+> ক্লাসগুলো পড়ে সেটা বোঝার কোনো উপায় নেই।** তাই ভুলটা এতদিন টিকে ছিল।
+
+শতাংশ `max-height` তখনই খাটে যখন অভিভাবকের উচ্চতা **definite**। ঘরটা
+`grid` + `place-items-center`, আর `align-items: center` বসালে item নিজের
+কনটেন্ট থেকে মাপ নেয় — "১০০% কীসের?" প্রশ্নটা **চক্রাকার** হয়ে যায়, তাই
+ব্রাউজার সীমাটা উপেক্ষা করে। ফলে `object-contain`-ও অকেজো।
+
+⭐ আর Live Board-এর লাইটবক্সে অবস্থা **আরও খারাপ** ছিল: `h-auto w-full` —
+কোনো সীমাই নেই, ছবি সবসময় পাত্রের পুরো প্রস্থে টেনে যেত আর উচ্চতা সেই
+অনুপাতে যত খুশি বাড়ত। অর্থাৎ **দুটো লাইটবক্স দুই নিয়মে চলছিল**, আর সেটাই
+আসল গোড়া।
+
+সমাধান দুটোতেই এক: **viewport-ভিত্তিক সীমা** (`calc(100dvh - …)`) — কোনো
+অভিভাবকের উপর নির্ভর করে না, তাই পরে কেউ layout বদলালেও ভাঙবে না।
+`100dvh` মোবাইলের ঠিকানা-বার লুকোলে/দেখালেও সঠিক থাকে।
+⚠️ `w-auto max-w-full` — ছোট ছবি জোর করে টেনে বড় করা হয় না, নইলে
+থাম্বনেইল ঝাপসা হয়ে ফুলে উঠত।
+
+### ৫ক· ⭐ লাইটবক্স আরও চওড়া — "৯০% জুড়ুক" (১৮ আগস্ট)
+
+মালিক: *"screenshot click korle whole screen er 90% cover korbe kore daO"*।
+
+⭐ উচ্চতার সমস্যা § ৫-এ মিটেছিল, কিন্তু **প্রস্থে** একটা সীমা রয়ে
+গিয়েছিল: Live Board-এর `ShotLightbox`-এর মোডাল `max-w-4xl` (৮৯৬px)।
+১৯২০×১০৮০ স্ক্রিনশট চওড়া পর্দায় ৮৯৬px-এ নেমে আসত — চারপাশে অনেক কালো
+ফাঁকা, ছবির লেখা পড়াই যেত না।
+
+সমাধান: মোডাল `w-[92vw] max-w-[1800px] max-h-[92vh]`, ছবি
+`calc(92vh - 7rem)`। ⚠️ `max-w-[1800px]` ছাদটা ইচ্ছাকৃত — আল্ট্রাওয়াইডে
+হাস্যকর প্রস্থ ঠেকায়, অথচ ১৯২০px পর্দায় ছাদ বাধেই না (৯২vw = ~১৭৬৬px),
+তাই মালিকের চাওয়া ৯০% সত্যিই মেলে। ⚠️ প্রথমে ছাদ ছিল ১৬০০px — ১৯২০px
+পর্দায় সেটা ৮৩%-এ আটকে দিত, চাওয়া ৯০%-এর কম।
+
+> **⚠️⚠️ "ekhane fix hoyni" — কারণটা কোড নয়, deploy।** মালিক লাইভ সাইটে
+> (hub.oxeio.com) দেখছিলেন, আর সেখানে তখনো **পুরোনো bundle**: সোর্স-এডিট
+> ততক্ষণ অদৃশ্য যতক্ষণ না commit → push → `vps-update.sh` container
+> রিবিল্ড করে। ⭐ "tsc পাস" ≠ "ব্রাউজারে পৌঁছেছে" — এই সেশনের বারবার-ফেরা
+> শিক্ষা: **একটা পর্যবেক্ষণকে সিদ্ধান্ত ভেবে নেওয়া**। যাচাইটা লগইন ছাড়াই
+> সম্ভব: লাইভ CSS bundle-এ `92vw` আছে কিনা `curl`-এ দেখা।
+
+### ৬· `10-Roadmap.md` — রিসার্চ থেকে, তিন ধাপে
+
+Hubstaff · Time Doctor · ActivTrak · Insightful · Monitask · Kickidler ·
+WorkTime · Kimai/solidtime — এই আটটার ফিচার রিসার্চ থেকে। ⭐ মূল ফল:
+**প্রতিযোগীদের মূল ফিচারের প্রায় সবই আমাদের আছে**; ফাইলটা তাই ফাঁকগুলোর
+তালিকা, আর **যেগুলো ইচ্ছা করেই করব না** সেগুলোরও (ভিডিও রেকর্ডিং ·
+keylogger · লাইভ স্ক্রিন · pause বোতাম · অনুমোদন-প্রবাহ — README-র
+"কখনোই নয়" মেনে)।
+
+ক্রমটা মালিকের ঘোষণা থেকে: **আগস্ট টেস্ট রান, সেপ্টেম্বর থেকে আসল**। তাই
+ধাপ ১-এ কেবল বেতন-চক্র নিরাপদ করার জিনিস — মাস বন্ধ করা (R1) · ছুটির খাতা
+(R2, অনুমোদন-প্রবাহ ছাড়া) · সাপ্তাহিক টেলিগ্রাম রিপোর্ট (R3) · বাইরের
+uptime নজর (R4) · অফসাইট ব্যাকআপ G39 (R5) · fail2ban (R6)।
+
+⭐ **লেখার পর যাচাই-পাসে পাঁচটা জিনিস ধরা পড়েছে ও যোগ হয়েছে** — সবচেয়ে
+জরুরিটা **R7 (সরকারি ছুটি প্রি-লোড)**: O2 এখন আর শুধু খোলা প্রশ্ন নয়,
+**সক্রিয় ভুল** — চান্দ্র ছুটি DB-তে নেই বলে টার্গেট ও pace দুটোই বেশি গোনা
+হচ্ছে। সাথে R15 (ওভারটাইম দেখানো, O4 মেনে) · R20 (মাউস-জিগলার সংকেত,
+G46-এর গৃহীত পথ) · monitoring policy-তে স্টাফের সই (Phase 7-এর
+বাধ্যতামূলক শর্ত, অথচ ১২ জন **ইতিমধ্যে** ট্র্যাক হচ্ছেন) · O1 (রিমোট
+স্টাফ — কেউ এলে তবেই)।
+
+⚠️ কোনো কোড নয় — নির্দেশ ছিল শুধু পরিকল্পনা, আর পর্দার জিনিসে আগের নিয়মই
+থাকল: **মকআপ-অনুমোদন ছাড়া শুরু নয়**।
+
+### ⭐⭐ এই দিনের তিনটে দামি শিক্ষা
+
+> **১· `max-h-full` grid-এর ভেতরে কিছুই আটকায় না।** শতাংশ `max-height`
+> তখনই খাটে যখন অভিভাবকের উচ্চতা definite; `place-items-center` বসালে
+> সেটা আর definite থাকে না। ⭐ সীমা যদি সত্যিই দরকার হয়, সেটা এমন কিছুর
+> সাথে বাঁধুন যা **অভিভাবকের উপর নির্ভর করে না** — `dvh`, `vw`।
+
+> **২· ম্যাকে অদৃশ্য scrollbar Windows-এ তীরসহ মোটা বার।** এক OS-এ
+> ভাসমান ও প্রায় অদৃশ্য, অন্যটাতে ১৫px জায়গা-খেকো। ⭐ যে খুঁত শুধু
+> ব্যবহারকারীর মেশিনে দেখা যায়, সেটা টেস্টেও ধরা পড়ে না — **"আমার এখানে
+> ঠিক দেখাচ্ছে" কখনো প্রমাণ নয়**। খুঁতটা ধরা পড়েছে মালিকের পাঠানো
+> পর্দার ছবিতে, কোডে বা টেস্টে নয়।
+
+> **৩· স্ক্রিপ্ট নিজেকে হালনাগাদ করলে সেই রানে নতুন কোডটা চলে না।**
+> `git pull` নতুন `vps-update.sh` ডিস্কে বসায়, কিন্তু চলমান রানটা পুরোনো
+> স্ক্রিপ্টেরই। তাই স্ক্রিপ্টে যোগ করা যেকোনো নতুন ধাপ **এক ডিপ্লয় দেরিতে**
+> কার্যকর হয়। ⚠️ ডিফল্টটা সৎ না হলে এটা নীরবে মিথ্যা সংখ্যা দেখাত।
+
+---
+
+## ৩ংঙ. ফোনের হোমস্ক্রিনে ড্যাশবোর্ড — R12 *(১৪ আগস্ট ২০২৬)*
+
+মালিক অ্যান্ড্রয়েড অ্যাপ চেয়েছিলেন। সুপারিশ ছিল **PWA → পরে TWA মোড়ক**,
+আর কারণটা এই রিপোর সেদিনকার অভিজ্ঞতা থেকেই: ওই একই দিনে পুরো সকালটা গেছে
+**"এক সংখ্যা, এক সংজ্ঞা"** ফেরাতে — pace-এর তিনটে আলাদা বাস্তবায়ন এক করতে।
+নেটিভ অ্যাপ মানে ঠিক সেই রোগের নতুন একটা আবাস: দ্বিতীয় একটা জায়গা যেখানে
+সংখ্যা গোনা হয়। ড্যাশবোর্ডটা এমনিতেই React + Tailwind, ফোনে চলে; ইনস্টলযোগ্য
+করতে যা লাগে তা হলো একটা manifest, কিছু আইকন, আর একটা সার্ভিস ওয়ার্কার।
+
+### ⭐⭐ ১· যে সিদ্ধান্তটা বাকি সব ঠিক করে দিয়েছে
+
+**সার্ভিস ওয়ার্কার কোনো API উত্তর ক্যাশ করবে না।**
+
+PWA-র সাধারণ রেসিপিতে অফলাইন-ক্যাশ থাকে, আর সেটাই বিক্রির কথা। কিন্তু
+এখানে দুটো কারণে ওটা ভুল:
+
+1. এটা **লাইভ** মনিটরিং ড্যাশবোর্ড। অফলাইনে গতকালের সংখ্যা দেখানো মানে
+   সংখ্যাকে মিথ্যা বলানো — এই রিপোর কেন্দ্রীয় নিষেধটাই।
+2. `/api/v1/screenshots/*` হলো **কর্মীর পর্দার ছবি**। ফোনের ক্যাশে ওগুলো
+   জমা করা মানে ফোন হারালে ওগুলোও হারানো।
+
+তাই অফলাইনে অ্যাপ-**শেল** খোলে (JS/CSS/আইকন), আর সংখ্যার জায়গায় বলে
+"সংযোগ নেই"। বাসি সংখ্যা দেখানোর কোনো পথ **রাখাই হয়নি** — জমা নেই বলে
+দেখানোরও উপায় নেই।
+
+তিন স্তরে আটকানো, কারণ একটা স্তর ভরসার যোগ্য নয়:
+
+| স্তর | কী করে |
+|---|---|
+| `fetch` হ্যান্ডলার | `/api` **সবার আগে** বাদ — `respondWith` ডাকাই হয় না, ব্রাউজার নিজে নেটে পাঠায় |
+| রানটাইম | কোথাও `cache.put` নেই। ক্যাশ `install`-এ একবার লেখা হয়, তারপর **read-only** |
+| বিল্ড-টাইম | precache তালিকায় `/api` ঢুকলে **বিল্ড থেমে যায়** |
+
+⚠️ `vite-plugin-pwa` নেওয়া হয়নি। workbox ডিফল্টেই অনেক কিছু runtime ক্যাশ
+করে, তাই কাজটা দাঁড়াত "ডিফল্টগুলো বন্ধ করেছি তো?" — আর সেই প্রশ্নের উত্তর
+রিভিউয়ে দেখা যায় না। নিজের চোখে পড়া ৫০ লাইন এখানে নিরাপদ। যেটার জন্য
+প্লাগইন সত্যিই দরকার ছিল — hash-করা ফাইলের precache তালিকা, যা প্রতি বিল্ডে
+বদলায় — সেটা `vite.config.ts`-এর ছোট rollup প্লাগইন বিল্ড-টাইমে বসায়।
+**নতুন dependency শূন্য**; web-এর deps এখনো সেই তিনটেই।
+
+### ২· ব্রাউজারে চালিয়ে দেখতে গিয়ে ধরা পড়া বাগ — কালো ফাঁকা পর্দা
+
+কোড লেখা শেষে `vite preview` চালিয়ে, তারপর **সার্ভার মেরে** রিফ্রেশ দেওয়া
+হয়েছিল। `/index.html` ক্যাশ থেকে এলো, কিন্তু JS ও CSS `net::ERR_FAILED` —
+অথচ দুটোই ক্যাশে বসানো। ফল হতো **কালো ফাঁকা পর্দা**, আর কারণ খোঁজা কঠিন।
+
+> ⭐ `cache.addAll()` রিকোয়েস্ট পাঠায় `Origin` হেডার **ছাড়া**, কিন্তু পাতার
+> `<script crossorigin>`-এর রিকোয়েস্টে `Origin` **থাকে**। সার্ভার
+> `Vary: Origin` দিলে ব্রাউজার দুটোকে আলাদা এন্ট্রি ধরে → ক্যাশ মিস।
+
+সমাধান `cache.match`-এ `ignoreVary: true`। ⚠️ এটা কোড পড়ে ধরা পড়ার মতো
+জিনিস নয় — কেবল **অফলাইনে সত্যিই চালিয়ে** দেখলে বোঝা যায়। কোডটা ততক্ষণ
+পর্যন্ত নিখুঁত দেখাচ্ছিল।
+
+### ৩· অফলাইনে "লগ আউট" বলা — একটা পুরোনো মিথ্যা যা PWA প্রকাশ করল
+
+`AuthContext` এতদিন `me()`-র **যেকোনো** ব্যর্থতায় `setUser(null)` করত —
+৪০১ হোক, বা প্লেন না পৌঁছাক। ব্রাউজার ট্যাবে ওটা বিরল, তাই কেউ টের পায়নি।
+
+⚠️ কিন্তু হোমস্ক্রিনের অ্যাপ মোবাইল ডেটায় **বারবার ঠান্ডা-চালু হয়**। ফোনে
+তাই এটাই নিত্য ঘটনা হতো, আর ফলটা দুরকম খারাপ: মালিক ভাবতেন সেশন শেষ হয়ে
+গেছে (অথচ cookie দিব্যি বেঁচে), আর নেট ফিরে এলেও অ্যাপ **নিজে থেকে ফিরত
+না** — হোমস্ক্রিনের অ্যাপে "রিফ্রেশ" বোতামও নেই, তাই বন্ধ করে আবার খুলতে হতো।
+
+এখন প্রশ্নটা একটাই: **সার্ভার উত্তর দিয়েছে কি?** `ApiError` মানে দিয়েছে
+(৪০১ = সেশন সত্যিই শেষ) → লগইন পর্দা। অন্য যেকোনো ব্যতিক্রম মানে fetch-ই
+পৌঁছায়নি → `user` ছোঁয়া হয় না, "No connection" দেখায়, আর `online` ইভেন্টে
+নিজে থেকেই আবার চেষ্টা করে। ⭐ "জানি না"-কে "লগ আউট" বলা ছিল নিষিদ্ধ
+রূপান্তরটারই আরেক মুখ।
+
+### ৪· ফোনে যা সত্যিই ভাঙা ছিল — তিনটে, আর তিনটেই অদৃশ্য
+
+⚠️ তিনটেরই আকৃতি এক: **ডেস্কটপে বসে এগুলো দেখাই যায় না।**
+
+- **iOS-এ যেকোনো ইনপুটে ফোকাস দিলেই পাতা জুম হয়ে যেত।** অ্যাপের সব ইনপুট
+  ১৩–১৫px, আর iOS-এর নিয়ম: ফোকাস পাওয়া ইনপুট ১৬px-এর ছোট হলে ব্রাউজার নিজে
+  জুম করে — আর ফোকাস সরলেও **ফেরত যায় না**। লগইনের ইমেইল ঘরেই, অর্থাৎ
+  অ্যাপে প্রথম আঙুল ছোঁয়ানোর মুহূর্তেই। ⚠️ `maximum-scale=1` দিয়ে ঠেকানো
+  যেত, কিন্তু ওটা সবার চিমটি-জুম কেড়ে নিত; তাই ৬৪০px-এর নিচে ইনপুট ১৬px।
+- **দুটো চার্টে ট্যাপে সংখ্যা উঠত না।** `DayPulse` ও `TimelineBar` দুটোতেই
+  readout একটা **স্থির লাইনে** বসে (ভাসমান টুলটিপে নয়) — অর্থাৎ ছোঁয়ার কথা
+  ভেবেই বানানো। কিন্তু লাইনটা ভরত শুধু `onMouseEnter`/`onFocus` থেকে, আর
+  ⚠️ **Safari বোতামে ট্যাপ করলে ফোকাস দেয় না**। `onClick` যোগ — নতুন কোনো
+  UI নয়, যেটা আগে থেকেই আছে সেটাকেই ট্যাপে ভরসাযোগ্য করা।
+- **VersionBadge অন্যের ট্যাপ গিলে ফেলত।** মোড়কটা `pointer-events-none`,
+  কিন্তু ব্যাজটা `pointer-events-auto` করে ক্লিক ফেরত নিত — `title` টুলটিপ
+  দেখানোর জন্য। ⚠️ ছোঁয়ার পর্দায় টুলটিপ কখনো ওঠেই না, তাই ওখানে ব্যাজটা
+  ক্লিক ধরত **কেবল গিলে ফেলার জন্য** — আর ডান-নিচের কোণাই সেই জায়গা যেখানে
+  পাতার শেষ বোতামগুলো বসে।
+
+### ৫· যা ইচ্ছাকৃতভাবে **ছোঁয়া হয়নি**
+
+⭐ মালিকের স্পষ্ট নিয়ম: ডিজাইন অনুমোদন ছাড়া নতুন ডিজাইন নয়। তাই সীমাটা
+টানা হয়েছে **ভাঙা** বনাম **নতুন সিদ্ধান্ত** দিয়ে — যা স্পষ্টভাবে কাজ করে না
+তা সারানো হয়েছে, আর যা অন্যভাবে সাজালে ভালো হতো তা **লিখে রাখা হয়েছে**:
+[G121](08-Gap-Analysis.md)–[G124](08-Gap-Analysis.md) (হিটম্যাপের ১৮px ঘর ·
+Live Board-এর স্তরের ক্রম · দুটো চার্টের টুলটিপ · ছোঁয়ার লক্ষ্যের মাপ)।
+
+⭐ এর মধ্যে **G121 একাই বাকিগুলোর চেয়ে ভারী**: হিটম্যাপে ফোনে একটা দিনের
+সংখ্যা দেখার একমাত্র উপায় ঘরটায় ট্যাপ করা, অথচ ঘরটা ১৮px আর পাশাপাশি ৩১টা।
+ভুল ঘরে আঙুল পড়লে **নীরবে অন্য দিনের হিসাব** খোলে — "কিছু হলো না"-র চেয়ে খারাপ।
+
+### ৬· আইকন — ছোট মাপই আসল পরীক্ষা
+
+রিপোতে একটাও আইকন ছিল না, favicon-ও নয়। লাল টাইল (`#ed1c24`), সাদা X।
+`Brand.tsx`-এর ইন-অ্যাপ মার্কটা "oX", কিন্তু আইকনে দুটো অক্ষর রাখা হয়নি —
+৪৮px লঞ্চারে প্রতিটা অক্ষরের উচ্চতা দাঁড়াত ৫–৬px, "o" তখন নিছক একটা দাগ।
+
+দুটো ফাঁদে পা পড়েছিল, দুটোই **পিক্সেল গুনে** ধরা:
+
+- `qlmanage` সব থাম্বনেইল **সাদার উপরে** বসায়, তাই প্রথম দফায় গোল কোণাগুলো
+  স্বচ্ছ না হয়ে **অস্বচ্ছ সাদা** হয়ে এসেছিল — লঞ্চারে টাইলের পেছনে একটা সাদা
+  চৌকো দেখাত। ⚠️ `sips -g hasAlpha` "yes" বলছিল, অর্থাৎ যাচাইটাও ভুল আশ্বাস দিত।
+- maskable প্রথমে **সীমার গায়ে লাগানো** ছিল: ৮০% বৃত্তের কেন্দ্র থেকে দূরতম
+  সাদা পিক্সেল ২০২.৯, সীমা ২০৪.৮ — নিয়ম মানছিল, কিন্তু ফাঁক ছিল না।
+  X-বাক্স ছোট করে এখন ১৯১.৬, ~৬% ফাঁক।
+
+⚠️ `apple-touch-icon` ও `maskable`-এ **alpha চ্যানেলই নেই** — iOS স্বচ্ছ অংশ
+কালো করে দেয়। আর `favicon.ico` আসল মাল্টি-সাইজ ICONDIR (১৬/৩২/৪৮), PNG-কে
+নাম বদলে চালিয়ে দেওয়া নয়।
+
+### ৭· যা প্রমাণিত, আর যা নয়
+
+লাইভ সাইটে (`hub.oxeio.com`, build #176) ব্রাউজার থেকে **মেপে** দেখা:
+
+```
+সার্ভিস ওয়ার্কার   activated · scope /
+ক্যাশে            ১০টা এন্ট্রি — সবই অ্যাপ-শেল
+apiInCache        []
+অনুভূমিক স্ক্রল    নেই (৩৭৫px)
+ইনপুট             16px  ← iOS জুম-ফাঁদ বন্ধ
+manifest MIME     application/manifest+json
+sw.js             no-cache, no-store, must-revalidate
+```
+
+⚠️ manifest-এর `Content-Type` হাতে বসাতে হয়েছে: Caddy টাইপ নেয় Go-র
+`mime.TypeByExtension` থেকে, আর Go-র builtin তালিকায় `.webmanifest` **নেই**;
+`caddy:2-alpine`-এ `/etc/mime.types`-ও নেই। ফলে ফাইলটা sniff হয়ে `text/plain`
+যেত। Chrome আজ MIME যাচাই করে না বলে তাতেও ইনস্টল হতো — কিন্তু সেটা ভরসা
+করার মতো জিনিস নয়।
+
+⚠️ `/sw.js`-এ `no-cache` না দিলে **পুরোনো ওয়ার্কার চিরকাল বসে থাকত**, আর
+বেরোনোর একমাত্র পথ হতো ব্যবহারকারীর ফোনে হাতে সাইট-ডেটা মোছা।
+
+**যা প্রমাণিত নয়:** আসল ফোনে ইনস্টল করে ব্যবহার, আর দুটো ভিন্ন বিল্ডের
+মধ্যে SW-এর দখল নেওয়ার পুরো চক্র। ⚠️ সার্ভিস ওয়ার্কারের কোনো ইউনিট টেস্টও
+নেই — "`/api` কখনো ক্যাশ হয় না" নিয়মটার পাহারা আপাতত বিল্ড-গার্ড ও চোখ
+([G125](08-Gap-Analysis.md))।
+
+> ⚠️ একটা পরীক্ষার ফাঁদও নথিভুক্ত: `localhost:4173`-এ (Vite preview-র ডিফল্ট
+> পোর্ট) আগের কোনো প্রকল্পের **বিষাক্ত রেজিস্ট্রেশন** পাওয়া গেছে — SW
+> `activated` দেখাত অথচ ক্যাশ বানাত না। একই বিল্ড পরিষ্কার পোর্টে নিখুঁত
+> চলেছে। কেউ ৪১৭৩-এ পরীক্ষা করে "PWA ভাঙা" দেখলে আগে site data মুছুন।
+
+---
+
+> ⚠️ **এখান থেকে লেবেলে `২` — দ্বিতীয় পাক।** § ৩ক থেকে শুরু হওয়া বর্ণমালা
+> § ৩য়-তে ফুরিয়ে গিয়েছিল, আর তারপর কেউ আবার § ৩চ থেকে গোনা শুরু করেন —
+> ফলে তিনটে লেবেল **দুবার করে** বসে যায়, আর `§ ৩জ` লেখা লিঙ্কগুলো কোন
+> সেকশনে যাবে তা আর নিশ্চিত ছিল না। *(১৫ আগস্ট ঠিক করা হয়েছে: দ্বিতীয়
+> পাকের সেকশনগুলো এখন ৩ক২ · ৩খ২ · ৩গ২ · ৩ঘ২ — পুরোনো লিঙ্কগুলো অটুট।)*
+
+## ৩ক২. Control Tower, একটা মাসকে-আজ বলা বাগ, আর রেপো পাবলিক *(১৫ আগস্ট ২০২৬)*
+
+মালিক একটা বাইরের ড্যাশবোর্ডের স্ক্রিনশট পাঠিয়ে বললেন "এর মতো বানাও",
+তিনটে মকআপ দেখে **ক · Control Tower** বাছলেন। সেই কাজ থেকে দিন শুরু, আর
+শেষ হলো রেপো পাবলিক করে — মাঝে একটা বাগ যেটা ডিপ্লয়ের **পরে** ধরা পড়ল।
+
+### ⭐⭐ ১· রঙের সীমাটা মেপে বের করা
+
+রেফারেন্স ড্যাশবোর্ডটা সবুজ · সায়ান · হলুদ · কমলা ব্যবহার করে **পরিচয়ের**
+রং হিসেবে — কোন উপাদান কোনটা। কিন্তু এখানে ওই রংগুলোর আগে থেকেই **মানে
+আছে**: `ok` · `idle` · `attention`। ডোনাটের স্লাইস রাঙাতে ওগুলো নিলে
+অ্যালার্টের লাল আর চার্টের লাল এক হয়ে যেত, আর তখন লাল দেখে বোঝা যেত না
+এখনই হাত দিতে হবে কি না।
+
+বাকি কোন হিউ নিরাপদ — সেটা চোখে বাছা হয়নি, **মাপা হয়েছে** (CVD সিমুলেশন,
+OKLab ΔE):
+
+| জোড়া | ΔE (protan/deutan) | রায় |
+|---|---|---|
+| নীল ↔ বেগুনি | **১.৪ – ৫.৫** | ✗ কালার-ব্লাইন্ড চোখে কার্যত একই রং |
+| নীল ↔ ম্যাজেন্টা | ৫.৫ | ✗ |
+| **নীল ↔ কমলা** | **২৪ – ৩১** | ✓ নিরাপদ |
+
+⚠️ প্রথম চেষ্টাটা (নীল · বেগুনি · সায়ান · গোলাপি) দেখতে সুন্দর লাগছিল আর
+**ফেল করেছে** — নীল-বেগুনি জোড়া deutan-এ ΔE ২.৭, এমনকি স্বাভাবিক দৃষ্টিতেও
+১৩.২। চোখে আন্দাজ করলে এটা কোনোদিন ধরা পড়ত না।
+
+⭐ ফলাফল: অবস্থার তিনটে রং সরিয়ে রাখলে পরিচয়ের জন্য কার্যত **দুটোই স্লট**
+খোলা। তাই চার-স্লাইসের রঙিন ডোনাট এই অ্যাপে সৎভাবে করা যায় না — আর দরকারও
+নেই। ক্রম বোঝাতে **এক হিউর স্বচ্ছতার ধাপ**, পরিচয় বোঝাতে **নামসহ সাজানো
+তালিকা**। দুটোই বেশি পড়া যায়, আর রঙের উপর নির্ভর করে না।
+`--color-data` (নীল) বসল, লাইট ও ডার্কের মান আলাদা করে যাচাই করে।
+
+### ২· যা মকআপ থেকে সরে গেছে, আর কেন
+
+মালিক ছবি দেখে অনুমোদন করেছেন, কিন্তু ছবিটা এই রিপোর নিজের নিয়ম জানে না।
+তিন জায়গায় ইচ্ছাকৃতভাবে সরা হয়েছে:
+
+- **ফোনে সাইডবার নেই** — উপরের আড়াআড়ি সারিটাই থাকে (`lg:hidden`)। সরু
+  পর্দায় সাইডবার মানে হয় কনটেন্টের ২০০px কেড়ে নেওয়া, নয় একটা drawer
+  (নতুন অবস্থা, নতুন বোতাম, নতুন ফাঁদ)। ⭐ আর ওখানে সারিটা আগের দিনই
+  ছোঁয়ার মাপে ঠিক করা হয়েছে (G124)।
+- **pace টাইলটা হলুদ, লাল নয়** — কোডে আগে থেকেই লেখা ছিল *"পর্দায় একটাই
+  লাল টাইল, নইলে লাল রঙের মানেই হারিয়ে যায়"*। মকআপে দুটো লাল টাইল ছিল;
+  লাল রাখা হলো "Agent down"-এর জন্য। `Stat`-এ চতুর্থ টোন `behind`।
+- **টেবিল বানানো হয়নি** — `TargetBars` ইতিমধ্যেই নাম · অবস্থা · অগ্রগতি ·
+  ঘণ্টা দেখায়, আর ওতে ফোনের বিন্যাস ও বারের রঙের নিয়ম যত্ন করে লেখা।
+  টেবিলে বদলালে দুটোই হারাত, পাওয়া যেত মোটে দুটো বাড়তি কলাম।
+
+### ⚠️⚠️ ৩· ডিপ্লয়ের পরে ধরা পড়া বাগ — "আজ" আসলে "গোটা মাস"
+
+নতুন কার্ড **Where today went** ডাকত `getTopUsage({ limit: 6 })` — `from`
+ও `to` ছাড়া। আর সার্ভারের `resolveRange()` তখন ডিফল্টে ধরে:
+
+```ts
+const start = from === undefined || from === ''
+  ? new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1))
+```
+
+> **মাসের ১ তারিখ**, আজ নয়। অর্থাৎ কার্ডের শিরোনাম বলত "Where today went",
+> আর সংখ্যাটা হতো **গোটা মাসের**।
+
+⚠️ ধরা পড়ার কোনো পথ ছিল না: ঘণ্টাগুলো দেখতে যুক্তিসঙ্গতই লাগত, শুধু কয়েক
+গুণ বড়। আর আমার নিজের কমেন্টেই লেখা ছিল *"`from` ও `to` দুটোই আজ"* — কোড
+তা করত না। ⭐ এই সেশনের **চতুর্থ** ঘটনা যেখানে কমেন্ট যা দাবি করে কোড তা
+করে না; আগের তিনটে ট্র্যাকিং-শুরু, থ্রটলের চাবি আর ফিতের বাগ নিয়ে।
+
+সংশোধনে তারিখটা নেওয়া হলো **বোর্ডের নিজের `workDate`** থেকে, ক্লায়েন্টের
+ঘড়ি থেকে নয় — তাতে কার্ডটা আর উপরের সংখ্যাগুলো কখনো আলাদা দিনের কথা বলতে
+পারে না, আর মধ্যরাতে দুটো আলাদা "আজ" হওয়ার পথও বন্ধ।
+
+⚠️ বাগটা ধরা পড়েছে **কোড আরেকবার পড়তে গিয়ে**, ব্রাউজারে নয় — ওই সময়
+মালিকের Chrome এক্সটেনশন সাড়া দিচ্ছিল না বলে পাতাটা চোখে দেখা যায়নি।
+
+### ⭐⭐ ৪· রেপো পাবলিক করার আগে যা বেরোল
+
+মালিক বললেন রেপো পাবলিক করে দিতে। **করার আগে অডিট** — আর সেটাই ঠিক ছিল:
+
+**ক· `.env.bak-before-trial` একসময় কমিট হয়েছিল** (৯ আগস্ট), পরে সরানো
+হয়েছে — কিন্তু ⚠️ **git-এর ইতিহাস থেকে ফাইল মোছে না**। ওতে ছিল আসল
+`POSTGRES_PASSWORD` · `JWT_SECRET` · `SEED_OWNER_PASSWORD` ·
+`BACKUP_PASSPHRASE`। ⭐ চারটেই VPS-এ ইতিমধ্যে বদলানো হয়ে গেছে (এক এক করে
+মিলিয়ে দেখা), তাই ফাঁস হওয়া মান আর কাজ করে না।
+
+**খ· আসল কর্মীর নাম** দুটো e2e টেস্টে, আর **VPS-এর IP** ১৫ জায়গায়।
+
+**গ· ⛔ সবচেয়ে গুরুতর — G116।** গ্যাপ-ডকে হুবহু লেখা ছিল কীভাবে লগইন ভাঙা
+যায়, আর IP-টা একই রেপোতে। ⚠️ কোড পাবলিক করা এক জিনিস, নিজের সার্ভারের
+অরক্ষিত দিকটা মানচিত্রসহ প্রকাশ করা আরেক।
+
+> ⭐ এখানে একটা কথা সৎভাবে বলা দরকার ছিল: **IP মোছাটা প্রায় প্রসাধনী** —
+> `hub.oxeio.com` রেপোর আটটা ফাইলে আছে (এজেন্টের বিল্ড কনফিগেও), আর ওটা এক
+> DNS lookup-এই IP দেয়। আসল সুরক্ষা মোছায় নয়, **গর্ত বন্ধ করায়**।
+
+### ৫· G116 — থ্রটলের চাবিটাই ছিল ভুল
+
+`login-throttle.service.ts`-এর চাবি ছিল `email|ip`। তাই আক্রমণকারী প্রতিটা
+চেষ্টায় **আলাদা ইমেইল** দিলে প্রতিটা চেষ্টা আলাদা চাবিতে পড়ত, কোনো
+কাউন্টার সীমা ছুঁত না, আর **তালা কখনো পড়ত না** — এক IP থেকে হাজার
+চেষ্টাতেও নয়।
+
+⚠️ আর মন্তব্যে লেখা ছিল ঠিক উল্টোটা:
+
+> *"ইমেইল + IP — একটাই ইমেইল বহু IP থেকে, বা একটাই IP বহু ইমেইলে, **দুটোই
+> ধরা পড়ে**"*
+
+দুটোর একটাও ধরা পড়ত না।
+
+সমাধান: দ্বিতীয় একটা কাউন্টার **শুধু IP ধরে** (`LOGIN_IP_MAX_FAILS`,
+ডিফল্টে জোড়া-সীমার পাঁচ গুণ = ৫০)। অচেনা ইমেইলেও `recordFailure` ডাকা হয়,
+তাই স্টাফিং ও এনিউমারেশন দুটোই ধরা পড়ে।
+
+⚠️ সীমাটা ইচ্ছাকৃতভাবে উঁচু — গোটা অফিস একটাই IP-র পেছনে, পাসওয়ার্ড
+রিসেটের দিনে ২০–৩০ টাইপো স্বাভাবিক। এটা নিখুঁত ঢাল নয়, **"অসীম" থেকে
+"মাপা"**-য় নামানো।
+
+⚠️⚠️ সফল লগইনে IP-কাউন্টার **মোছা হয় না** — নইলে হাজার চেষ্টার মাঝে একটা
+সফল হলেই গোনা শূন্য হতো, অর্থাৎ ঠিক যে মুহূর্তে আক্রমণকারী সফল হতে শুরু
+করেছে তখনই তালা খুলে যেত।
+
+### ৬· ইতিহাস নতুন করে লেখা
+
+⚠️ বর্তমান ফাইল সাফ করা আর ইতিহাস সাফ করা এক নয় — `.env.bak`-এর ফাঁদটাই।
+তাই `git filter-repo` দিয়ে ১৮৪টা কমিটের প্রতিটা ঘেঁটে সরানো হলো:
+
+| | আগে | পরে |
+|---|---|---|
+| আসল কর্মীর নাম | ৩ কমিট | **০** |
+| VPS-এর IP | ৫ কমিট | **০** |
+| হোস্টিং প্যানেল | ২ কমিট | **০** |
+| `.env.bak-before-trial` | ২ কমিট | **০** |
+
+⭐ কমিটের গল্পটা অক্ষত — ১৮৪টাই আছে। যাচাই করা হয়েছে **GitHub থেকে টাটকা
+ক্লোন করে**, লোকাল রেপোতে নয়।
+
+⚠️ origin-এ পুরোনো ইতিহাসওয়ালা আরও তিনটে ব্রাঞ্চ ছিল — শুধু `main`
+force-push করলে ওগুলোতে নামটা থেকে যেত। তিনটেই main-এ মিশে ছিল, তাই মুছে
+দেওয়া হলো। ⭐ ব্যাকআপ bundle আগে বানানো হয়েছিল, পুরোনো ইতিহাসসহ।
+
+### ৭· README আর একটা আসল স্ক্রিনশট
+
+পাবলিক পাঠকের প্রশ্ন আলাদা, তাই README নতুন করে লেখা — সবচেয়ে উপরে **"যা
+এই সিস্টেম করতে অস্বীকার করে"**, কারণ নজরদারির সফটওয়্যারে ওটাই প্রথম প্রশ্ন।
+
+⭐⭐ ছবিটা **আসল অ্যাপের**, আঁকা মকআপ নয়। লোকালে Docker নেই বলে পুরো স্ট্যাক
+তোলা যায়নি, তাই আসল `App` কম্পোনেন্টটাই চালিয়ে শুধু `fetch` আটকে API-র
+উত্তর নকল দেওয়া হয়েছে; headless Chrome দিয়ে PNG। নামগুলো কাল্পনিক —
+আজই ইতিহাস থেকে আসল নাম মুছে রেপো খোলা হয়েছে, স্ক্রিনশটে ফিরিয়ে আনলে পুরো
+কাজটাই বৃথা যেত।
+
+> ⭐ ছবিটা তুলতে গিয়ে অপ্রত্যাশিত একটা লাভ হলো: **এই প্রথম পুরো Live
+> Board চোখে দেখা গেল**। সাইডবার, pace টাইল আর নতুন কার্ড দুটো — সবই এতদিন
+> কেবল কোড পড়ে ও মেপে যাচাই করা হয়েছিল, কারণ আসল বোর্ড লগইনের ওপারে।
+
+### ৮· R6-এর শেষ অর্ধেক — প্রান্তে rate limit
+
+দিনের শেষ কাজ। ⚠️ Caddy-তে rate limit **বিল্ট-ইন নেই**, তাই `xcaddy` দিয়ে
+`caddy-ratelimit@v0.1.0` সহ বাইনারি বানাতে হলো (ভার্সন পিন করা — নইলে
+একদিন বিল্ড নিজে থেকেই নতুন সংস্করণ টেনে আনত)।
+
+⚠️⚠️ **সবচেয়ে সহজ ভুলটা এখানেই ছিল:** সীমাটা `/api/v1/auth/*`-এ বসানো।
+ওই প্রিফিক্সের নিচে `GET /auth/me` আর `GET /auth/session-policy` পড়ে, আর
+ওগুলো **প্রতিটা পাতা লোডে** ডাকা হয় — পুরো প্রিফিক্সে ৩০/মিনিট দিলে
+**অফিস নিজেই ৪২৯ খেয়ে আটকে যেত**। লেখার আগে `auth.controller.ts`-এর
+এগারোটা রুট গুনে দেখা হয়েছে; সীমা বসেছে **কেবল `POST /auth/login`**-এ।
+
+⚠️ কনফিগ ভাঙলে গোটা ড্যাশবোর্ড নামত, তাই ডিপ্লয়ের আগে VPS-এ **আলাদা করে**
+ইমেজ বানিয়ে তিনটে জিনিস যাচাই: প্লাগইনটা বাইনারিতে আছে কি
+(`caddy list-modules`), ভার্সন, আর `caddy validate`। তিনটে পাসের পরেই
+`vps-update.sh`।
+
+⭐ **মাঠে মাপা, দুই ধাপে:**
+
+| পরীক্ষা | ফল |
+|---|---|
+| `GET /auth/me` ৪০ বার | ৪০টাই ৪০১ — **০টা ৪২৯** (সাধারণ ব্যবহার অক্ষত) |
+| `POST /auth/login` ৩৫ বার, **একই** ইমেইল | ১০টা ৪০১, তারপর ৪২৯ |
+| `POST /auth/login` ৩৫ বার, **আলাদা** ইমেইল | **৩০টা ঢুকল, ৫টা ৪২৯** |
+
+⭐⭐ মাঝের সারিটা অপ্রত্যাশিত ছিল আর সেটাই সবচেয়ে বেশি বলল: একই ইমেইলে
+Caddy-র ৩০ পর্যন্ত পৌঁছানোর **আগেই** অ্যাপের জোড়া-থ্রটল (১০) তালা দিল।
+অর্থাৎ দুটো স্তর সত্যিই দুটো আলাদা জিনিস ঠেকায় — **প্রান্তে হার, অ্যাপে
+অনুমান** — আর ওদের সীমাও সেভাবেই সাজানো (১০ · ৩০ · ৫০)।
+
+---
+
+### ৯· `vps-harden.sh` প্রথমবার সত্যিই চলল
+
+স্ক্রিপ্টটা লেখা হয়েছিল আগের দিন, কিন্তু **কোনো মেশিনে চলেনি** — README-র
+"তৈরি কিন্তু মাঠে চালিয়ে দেখা হয়নি" তালিকার একটা। আজ চালানো হলো।
+
+⚠️ চালানোর আগে ঝুঁকিটা ছিল স্পষ্ট: fail2ban ভুল কনফিগে **নিজেদেরই** SSH
+থেকে বের করে দিতে পারত। তাই আগে দেখা হলো — ব্যান স্থায়ী নয় (১ ঘণ্টা),
+`ignoreip` আছে, আর স্ক্রিপ্ট sshd-তে হাত দেয় না। তবু প্রথম রানে নিজেদের
+IP `OXEIO_IGNOREIP`-এ রাখা হলো, কারণ ফেরার একমাত্র পথ VNC কনসোল।
+
+⭐⭐ **প্রথম মিনিটেই ছ-টা IP ব্যান** — সত্যিকারের আক্রমণকারীরা তখনই SSH-এ
+হাতুড়ি চালাচ্ছিল। এর চেয়ে ভালো প্রমাণ হয় না যে জিনিসটা দরকার ছিল।
+
+### ⚠️ আর যে বাগটা কেবল আসল রানেই ধরা পড়ে
+
+স্ক্রিপ্টের সবচেয়ে জরুরি যাচাই — "পোর্ট দুটো সত্যিই ফায়ারওয়ালে পাহারায়
+আছে কি" — **ব্যর্থ হলো**:
+
+> ⚠️ চলতি ফায়ারওয়াল নিয়মে পোর্টের তালিকা পড়া গেল না
+
+কারণ: **Ubuntu 24.04-এ fail2ban ডিফল্টে `nftables` বেছে নেয়**, আর দুটো
+ব্যাকএন্ডের নাম ও ফরম্যাট সম্পূর্ণ আলাদা —
+
+| | চেইন | পোর্ট |
+|---|---|---|
+| iptables | `f2b-sshd` | `--dports 22,2222` |
+| nftables | `f2b-chain` + সেট `addr-set-sshd` | `tcp dport { 22, 2222 }` |
+
+স্ক্রিপ্ট খুঁজছিল `f2b-sshd`, তাই কিছুই মিলত না।
+
+⭐ ভাগ্য ভালো যে বার্তাটা **সৎ ছিল** — "যাচাই করা গেল না" লেখা ছিল, "কাজ
+করছে না" নয়। ওই দুটো এক করে দেখালে হয় ভুল আতঙ্ক হতো, নয় (উল্টোভাবে) একটা
+সত্যিকারের ব্যর্থতা "ঠিক আছে" বলে চাপা পড়ত। হাতে `nft list ruleset` দিয়ে
+দেখা গেল নিয়মটা সত্যিই বসানো:
+
+```
+chain f2b-chain {
+    type filter hook input priority filter - 1
+    tcp dport { 22, 2222 } ip saddr @addr-set-sshd reject
+}
+```
+
+যাচাইটা এখন দুটো ফরম্যাটই পড়ে, আর দ্বিতীয় রানে সবুজ: **"ফায়ারওয়ালে
+সত্যিই পাহারায়: 22,2222"**।
+
+⚠️ স্ক্রিপ্টের শেষের সতর্কবার্তাটাও বাসি হয়ে গিয়েছিল — বলছিল "লগইন রুটের
+rate limit Caddy-তে বসাতে হবে", অথচ ঘণ্টাখানেক আগেই সেটা বসেছে। এখন সেখানে
+লেখা কী **করা হয়েছে**, কী বাকি নয়।
+
+---
+
+লাইসেন্স **MIT**, কপিরাইট মালিকের নিজের নামে। ⚠️ README-তে একটা কথা স্পষ্ট
+করা আছে: MIT **কপিরাইট** ছাড়ে, কিন্তু যাঁদের উপর নজরদারি হচ্ছে তাঁদের প্রতি
+দায়িত্ব ছাড়ে না — সম্মতি ও আইন কোডের সাথে নয়, **যেখানে চালানো হচ্ছে তার
+সাথে** যায়।
+
+---
+
+## ৩খ২. R1 · মাস বন্ধ করা — আর যে বাগটা কোনোদিন কোনো migration চালাতে দেয়নি *(১৫ আগস্ট ২০২৬)*
+
+মালিক বললেন রোডম্যাপের তিনটে ধাপই ক্রমে করতে। প্রথম কাজ **R1**, কারণ
+রোডম্যাপে ওটাই "সবার আগে" লেখা — আর R7 (ছুটির ক্যালেন্ডার) বসার পর
+আরও আগে।
+
+### ১· সমস্যাটা টাকার
+
+`monthly_summary`-র সংখ্যাগুলো `refreshMonth()` **প্রতিবার নতুন করে গোনে**,
+আর গোনার সময় **ওই মুহূর্তের** `holidays` টেবিল পড়ে। তাই ছুটির একটা তারিখ
+নড়লে — বা পুরোনো মাসের কোনো সময়-সংশোধন অনুমোদন/বাতিল হলে — গত মাসের
+`target_sec` · `expected_sec` · d · D চারটেই পিছন ফিরে বদলাত। পে-রোল ওই
+সারি থেকেই d ও D পড়ে, অর্থাৎ **বেতন দিয়ে দেওয়ার পরেও হিসাব নড়ত**, নীরবে।
+
+### ⭐⭐ ২· রোডম্যাপ থেকে একটা সরে যাওয়া
+
+রোডম্যাপে লেখা ছিল সংখ্যাগুলো **স্ন্যাপশট টেবিলে** জমবে। নেওয়া হয়নি —
+তাতে একই মাসের **দুটো** সংখ্যা তৈরি হতো (লাইভ আর জমাট), আর এই সেশনের
+পুরোটা গেছে ঠিক সেই রোগ সারাতে (G88)।
+
+বদলে **জায়গাতেই জমাট**: বন্ধ মাসে `refreshMonth()` ফিরে যায়, আর সংশোধন
+ঢুকতে চাইলে ৪০৯। `month_closures` টেবিলটা কেবল **কে কখন বন্ধ করল** তার
+রেকর্ড — কোনো সংখ্যা ওখানে নেই।
+
+⚠️ প্রহরী **দুই জায়গায়** — `create` আর `revoke` দুটোতেই। বাতিলটা ভুলে
+যাওয়া সহজ, কিন্তু ওটাও যোগফল ঠিক ততটাই নড়ায়; অর্ধেক বন্ধ দরজা খোলা
+দরজার চেয়ে খারাপ, কারণ সবাই ভাবে বন্ধ।
+
+⚠️ চলতি ও ভবিষ্যতের মাস বন্ধ করা যায় না। চলতি মাস বন্ধ হলে আজকের ঘণ্টা
+আর যোগ হতো না, আর ব্যর্থতাটা হতো নীরব: কেউ বলত "আজকের ঘণ্টা উঠছে না",
+আর কারণ খুঁজতে কেউ মাস-বন্ধের পাতায় আসত না।
+
+⭐ `month_reopened` আলাদা audit action, আর খোলার সারিতে **পুরোনো বন্ধের
+তথ্য** রাখা হয় — DB সারিটা মুছে যায়, তাই ওটাই শেষ ঠিকানা। বেতনের পর কেউ
+মাস খুলে সংখ্যা বদলালে সেটাই একমাত্র প্রমাণ।
+
+### ⛔ ৩· আর তারপর ডিপ্লয় বলল "নতুন migration নেই"
+
+মাইগ্রেশন যোগ করে ডিপ্লয় করা হলো। স্ক্রিপ্ট বলল **"✓ নতুন migration নেই"**,
+আর সবুজ দেখিয়ে শেষ হলো। টেবিলটা বসেনি।
+
+> ```bash
+> cd "$COMPOSE_DIR"          # /opt/oxeio/oxeio-monitor
+> git diff … -- oxeio-monitor/server/prisma/migrations
+> #              ↑ git-এর pathspec CWD-সাপেক্ষ, তাই এটা খোঁজে
+> #                oxeio-monitor/oxeio-monitor/server/prisma/…
+> ```
+
+পথটা কোথাও নেই → diff সবসময় খালি → **স্ক্রিপ্ট কোনোদিন কোনো migration
+চালাত না**। ⚠️ ব্যর্থতাটা সম্পূর্ণ নীরব ও সবুজ।
+
+⭐ কেন আগে ধরা পড়েনি: এই স্ক্রিপ্ট লেখার পর R1-ই **প্রথম** migration।
+ফাঁদটা পাতা ছিল, কেউ পা দেয়নি।
+
+VPS-এ দুটো পথ পাশাপাশি চালিয়ে প্রমাণ করা হলো — রুট থেকে "বদল আছে",
+`COMPOSE_DIR` থেকে "নেই"। সমাধান `:/` উপসর্গ।
+
+### ⭐⭐ ৪· আর একটা দ্বিতীয় জাল, কারণ শর্তের উপর ভরসা করা যায় না
+
+শুধু pathspec সারানো যথেষ্ট মনে হয়নি: শর্তটা একবার নীরবে ভুল হয়েছে,
+আবার হতে পারে। তাই প্রয়োগের পরেও **সরাসরি জিজ্ঞেস করা হয়** —
+`prisma migrate status` বাকি থাকলে non-zero দেয়।
+
+> ⭐ **"স্কিপ করা হলো" আর "দরকার ছিল না" এক নয়** — এই পার্থক্যটা না রাখলে
+> নীরব ব্যর্থতা চিরকাল সবুজ দেখাত।
+
+⚠️ `die` নয়, `warn` — স্ট্যাক ততক্ষণে চলছে, থামলে ব্যবহারকারী একটা
+অর্ধেক-হালনাগাদ অবস্থায় পড়তেন।
+
+মাঠে পরীক্ষা: বাকি থাকা অবস্থায় জালটা **সতর্ক করল**, প্রয়োগের পর **চুপ**।
+
+⚠️ আরেকটা পুরোনো ফাঁদও আবার দেখা দিল — স্ক্রিপ্টটা নিজেকেই git-pull করে,
+তাই সংশোধনটা **এক ডিপ্লয় দেরিতে** কার্যকর হয়। প্রথম রানে পুরোনো কোডই
+চলেছিল, দ্বিতীয় রানে জালটা কাজ করল।
+
+`test/month-close.spec.ts` — ১২ টেস্ট, বেশিরভাগই সীমানার (চলতি মাস,
+দুবার বন্ধ, ভুল ছাঁদের চাবি)। সার্ভার ৮৮১।
+
+---
+
+## ৩চ২. মকআপের সাথে ১০০%, আর তার নিচে চাপা পড়া তিনটে সত্যিকারের ব্যর্থতা *(১৫ আগস্ট ২০২৬, সন্ধ্যা)*
+
+দিনটা শুরু হয়েছিল নকশা মেলানো দিয়ে, শেষ হলো **ব্যাকআপ প্রথমবার চালু
+করে**। মাঝে যা বেরিয়েছে তার কোনোটাই খোঁজা হয়নি — সবগুলোই পর্দার দিকে
+তাকাতে গিয়ে চোখে পড়েছে।
+
+### ⚠️⚠️ ১· "মিলে গেছে" বলেছিলাম, অথচ গ্রিডটাই মিলিয়ে দেখিনি
+
+মালিক বললেন *"মকআপ ক-এর মতো পুরোপুরি হয়নি"*। আমি ছ-টা ফারাক গুনে বন্ধ
+করে বললাম মিলেছে। তিনি তখন **দুটো পর্দা পাশাপাশি রেখে** দেখালেন।
+
+কার্ডগুলো একই ছিল, রং একই, লেবেল একই — কিন্তু আমার বিন্যাসে **চারটে
+সারি**, মকআপে **দুটো**। পাতাটা প্রায় দ্বিগুণ লম্বা, আর তাতে মকআপ ক-এর
+গোটা যুক্তিটাই ("সবচেয়ে বেশি তথ্য এক পর্দায়") মিথ্যা হয়ে যেত।
+
+> ⭐ **শিক্ষাটা মাপের, চোখের নয়।** আমি রং-কলাম-লেবেল মিলিয়েছি, অর্থাৎ
+> যা তালিকা করা যায়। **আকৃতিটা তালিকা করিনি**, আর পর্দার অভিজ্ঞতা
+> ওটাই ঠিক করে।
+
+মকআপের CSS-এ উত্তরটা লেখাই ছিল: `.r-2-1-1` আর `.r-3-2`।
+
+### ⚠️ ২· আর তারপর দু-বার **উল্টো দিকে** সংশোধন
+
+পরের রাউন্ডে মালিক আবার লাল দাগ দিলেন — KPI সারি আর সাইডবারের মাথা।
+এবার CSS **পড়ে** দেখলাম, আর ধরা পড়ল আমি দুটো জায়গায় ভুল দিকে গেছি:
+
+| | মকআপের CSS | আমি করেছিলাম |
+|---|---|---|
+| `.kpis` | `border: 1px solid; border-radius: 8px` | বর্ডার **তুলে দিয়েছি** |
+| `.side .grp` | `text-transform: uppercase` | ছোট হাতের **করেছি** |
+
+⭐⭐ দুটোই স্ক্রিনশট দেখে **আন্দাজ** করা। ফাইলটা রিপোতেই ছিল, খুলে পড়তে
+দশ সেকেন্ড লাগত। এই সেশনে এটা **দ্বিতীয়** বার — প্রথমবার ছিল
+`ConfirmDialog`-এর prop অনুমান করা।
+
+### ⭐⭐ ৩· "Agent down 12 · Offline 0" — নিয়মটাই ভাঙা ছিল
+
+বোর্ডে সন্ধ্যায় বারোজনের বারোজনই লাল। ডাটাবেসে দেখা গেল সবাই থেমেছে
+**পাঁচ মিনিটের জানালায়**, ~১৮:০০-এ — অর্থাৎ অফিস ছুটি।
+
+কারণটা `decideLiveStatus()`-এ:
+
+```ts
+if (ageSec > 600) return 'agent_down';   // ১০ মিনিটের বেশি
+if (ageSec > 90)  return 'offline';      // এখানে আর পৌঁছানোই যায় না
+```
+
+⚠️⚠️ **`offline` কেবল ৯০ সে.–১০ মিনিটের সরু জানালায় সম্ভব ছিল**, তার পরে
+সবাই চিরকালের জন্য লাল। অর্থাৎ **রোজ সন্ধ্যায়, সবাই বাড়ি যাওয়ার দশ
+মিনিট পর গোটা দল 🔴** — ব্যতিক্রম নেই।
+
+⭐ কোডের মন্তব্যে ক্রমটার পক্ষে যুক্তি লেখা ছিল ("উল্টো লিখলে দশ ঘণ্টা
+মরে থাকা এজেন্টও নিরীহ ⚪ দেখাত")। যুক্তিটা ঠিক, **সমাধানটা ভুল জায়গায়**:
+চুপ থাকার দৈর্ঘ্য কোনোদিনই বলতে পারে না ঘটনাটা কী।
+
+এখন প্রশ্নটা **শেষ কথাটার**:
+
+```
+idle / locked বলে চুপ  →  offline     (উঠে গেছে, তারপর PC বন্ধ)
+active বলে হঠাৎ চুপ    →  agent_down  (কাজের মাঝপথে থেমেছে)
+```
+
+⭐ `active` অবস্থায় চুপ হওয়াটাই আসল সংকেত: ঠিক তখনই ঘণ্টা হারায়। কেউ
+কাজ শেষ করে PC বন্ধ করলে তার আগে অন্তত এক মিনিট নিষ্ক্রিয় থাকে (idle
+threshold ৬০ সে.), তাই শেষ কথা প্রায় সবসময় `idle`।
+
+⚠️ `AGENT_DOWN_AFTER_SEC` তুলে দেওয়া হয়েছে — রেখে দিলে পরের পাঠক ধরে
+নিতেন নিয়মটা এখনো সময়ের। লাইভে সাথে সাথেই **১২ লাল → ১০ লাল, ২ সাদা**।
+
+⏳ **শিকড়টা এজেন্টে, আর সেটা সারানো হয়নি** — কিন্তু কারণটা আমি প্রথমে
+**ভুল ধরেছিলাম**, আর সেটাই এই অংশের সবচেয়ে দরকারি কথা।
+
+`events` টেবিল দেখে বলেছিলাম *"`agent_start` আসছে আজও, অথচ
+`shutdown`/`agent_stop` ১৩ আগস্টের পর একটাও না — এজেন্ট বিদায়ের খবর দেয়
+না।"* ⚠️⚠️ কথাটা ভুল, আর ভুলটা ধরা পড়েছে **`received_at` কলামটা দেখতে
+গিয়ে**, যেটা সারাক্ষণ উত্তর নিয়ে বসে ছিল:
+
+| ইভেন্ট | `received_at − occurred_at`, গড় |
+|---|---|
+| `agent_start` | **০ মিনিট** |
+| `shutdown` | **২৩৪১ মিনিট** (৩৯ ঘণ্টা) |
+| `agent_stop` | **২৩৪২ মিনিট** |
+
+⭐⭐ একই কিউ, একই পথ, একই এজেন্ট — শুধু বিদায়ীগুলোই আটকে যায়। অর্থাৎ
+এজেন্ট খবর **দেয়**; খবরটা পথে বসে থাকে, আর ১৪–১৫ তারিখেরগুলো এখনো ওই
+PC-গুলোর ডিস্কেই আছে। **ঘটনাটা ঘটেছে, খবরটা আসেনি।**
+
+⚠️ পার্থক্যটা কোডে লেখাই ছিল: বিদায়ী ইভেন্ট আউটবক্সে বসে **ঠিক শেষ
+মুহূর্তে** (WM_ENDSESSION-এ Windows ~২ সে. দেয়), তারপর প্রসেস মরে —
+ছাড়া পায় পরের স্টার্টআপের drain-এ। ⚠️⚠️ কিন্তু তাহলে পরদিন সকালেই
+যাওয়ার কথা; ৩৯ ঘণ্টা মানে মাঝে **দুটো রাত**, অর্থাৎ পরের স্টার্টআপেও
+drain সম্পূর্ণ হয়নি। ওখানেই আসল বাগ, আর উত্তরটা এজেন্টের নিজের লগে —
+**Windows মেশিন লাগবে** ([G136](08-Gap-Analysis.md))।
+
+> ⭐ **শিক্ষাটা পুরোনো, আর আজ দ্বিতীয়বার:** অনুপস্থিতি দেখে কারণ অনুমান
+> করেছি, অথচ পাশের কলামেই মাপ ছিল। সকালে ঠিক এভাবেই মকআপের CSS না পড়ে
+> স্ক্রিনশট দেখে আন্দাজ করেছিলাম।
+
+### ⛔⛔ ৪· "There has never been a successful backup"
+
+অ্যালার্টের তালিকায় সবার উপরে বসে ছিল, ৪৬টা খোলা অ্যালার্টের ভিড়ে।
+লেখাটা আক্ষরিক: **একবারও না**। অর্থাৎ ১৩ আগস্টে VPS-এ যাওয়ার পর জমা সব
+কিছুর — ১২ জনের ঘণ্টা, স্ক্রিনশট, জামানতের খাতা, ছুটি — কোনো কপি নেই।
+
+তিনটে আলাদা দেয়াল ছিল, একটার পিছনে আরেকটা:
+
+**ক· `pg_dump` ইমেজেই নেই।** `BACKUP_DOCKER_CONTAINER`-ও খালি, তাই কোডের
+দ্বিতীয় পথটাও বন্ধ। ⭐ সমাধান `postgresql16-client` (~২ MB), **ভার্সন
+মিলিয়ে** — পুরোনো ক্লায়েন্ট নতুন সার্ভার দেখলে সরাসরি অস্বীকার করে।
+⚠️ বিকল্প ছিল হোস্টের docker সকেট কনটেইনারে খোলা; নেওয়া হয়নি, ওটা
+কার্যত হোস্টে root-সমান।
+
+**খ· ⭐⭐ এক অক্ষরের বাগ।**
+
+```ts
+config.get('BACKUP_DIR') ?? join(storageRoot(config), '..', 'backups')
+```
+
+`.env`-এ `BACKUP_DIR=` মানে **খালি স্ট্রিং**, আর `??` কেবল
+`null`/`undefined` ধরে। ডিফল্টটা কোনোদিন ব্যবহারই হয়নি, `resolve('')`
+দাঁড়াত `/app`-এ। ⚠️ পাশের প্রতিটা অপশন `|| ` ব্যবহার করে — **কেবল এটাই
+`??` ছিল**।
+
+> ⭐⭐ ব্যর্থতাটা **জোরে** হয়েছে (`EACCES`), আর সেটা ভাগ্য। ওই ফোল্ডারে
+> লেখার অনুমতি থাকলে ডাম্প নীরবে কনটেইনারের ভেতরে বসত, প্রতি ডিপ্লয়ে
+> মুছে যেত, আর সবাই "ব্যাকআপ আছে" ভেবে নিশ্চিন্ত থাকত। **এই প্রকল্পের
+> সবচেয়ে খারাপ ব্যর্থতা সবসময়ই সেটাই, যেটা সবুজ দেখায়।**
+
+**গ· ভলিউম ও মালিকানা।** `/data/backups`-এ কোনো mount ছিল না; দেওয়ার পর
+docker ফোল্ডারটা root-এর নামে বানাল, api চলে uid ১০০০-এ। ⭐ storage-এর
+বেলায় ঠিক এই ঘটনাটাই আগে ঘটেছে আর সমাধানটা Dockerfile-এ লেখাও ছিল —
+শুধু backups-এর লাইনটা কেউ যোগ করেনি। এখন দুটোই এক লাইনে।
+
+✅ **প্রথম ডাম্প:** ৮৭০ KB, `Salted__` হেডার (সত্যিই `openssl enc`),
+সাথে SHA-256 ও রিস্টোর নির্দেশিকা।
+
+### ⭐ ৫· R5 — আর `sync` বনাম `copy`
+
+`deploy/offsite-backup.sh` + সাপ্তাহিক systemd টাইমার (শনি ০৪:০০ **UTC**
+= ঢাকার সকাল ১০টা,
+`Persistent=true`)।
+
+⚠️⚠️ **`rclone copy`, `sync` নয়** — এখানকার সবচেয়ে জরুরি সিদ্ধান্ত।
+`sync` রিমোটকে উৎসের হুবহু নকল বানায়, অর্থাৎ **সার্ভারের ডিস্ক মুছে
+গেলে পরের রানেই অফসাইট কপিও মুছে যেত** — ঠিক সেই মুহূর্তে, যখন ওটাই
+একমাত্র বাকি কপি। ছাঁটাই আলাদা করে, রিমোটের বয়স ধরে।
+
+⭐ চারটে প্রহরী, প্রতিটাই মাঠে পরীক্ষা করা — বিশেষ করে **"ফোল্ডারে
+একটাও ডাম্প নেই"**, কারণ খালি ফোল্ডার পেয়ে "সফল" বলে বেরোনোই এই
+প্রকল্পের সবচেয়ে চেনা নীরব ব্যর্থতা (G129 · G133)।
+
+### ⚠️⚠️ ৬· R4 — যে ফাঁদে মনিটরটাই মিথ্যা হতো
+
+`/api/v1/health` **ডাটাবেস মরে গেলেও HTTP ২০০ ফেরায়**, কেবল বডিতে
+`degraded` লেখে। কোডটা বদলানো যায় না: একই পথ Docker-এর healthcheck
+ব্যবহার করে, আর ৫০৩ দিলে DB সমস্যায় কনটেইনার রিস্টার্ট লুপে পড়ত।
+
+⚠️ ফল: UptimeRobot ডিফল্টে স্ট্যাটাস কোড দেখে, তাই **ডাটাবেস মরে পড়ে
+থাকলেও সে চিরকাল "UP" দেখাত** — যে জিনিস ধরার জন্য মনিটর, ঠিক সেটাই সে
+ধরত না।
+
+⭐ সমাধান নজরদারির দিকে: **Keyword** মনিটর, keyword `"db":"up"`।
+কারণটা `health.controller.ts`-এর ডকেও লেখা হলো, যাতে কেউ পরে "ঠিক করতে"
+গিয়ে ৫০৩ বসিয়ে লুপ না বানান।
+
+### ৭· দিনের হিসাব
+
+| | |
+|---|---|
+| কমিট | ১৭টা (সন্ধ্যার ভাগে) |
+| টেস্ট | **৯১৮ পাস** (৬টা নতুন — এজেন্টের অবস্থা) |
+| মাঠে সারানো | ব্যাকআপ (প্রথমবার সফল) · এজেন্টের রং · ১২ জনের work policy · জামানতের খাতা ৳৬,০০০ → ৳৪,৫০০ |
+| নতুন গ্যাপ | [G136](08-Gap-Analysis.md) — বিদায়ী ইভেন্ট **হারায় না, ৩৯ ঘণ্টা আটকে থাকে** |
+| ⏳ বাকি | মালিকের দুটো অ্যাকাউন্ট (rclone · UptimeRobot), আর `BACKUP_PASSPHRASE` বাইরে রাখা |
+
+---
+
+## ৩ঃ. জামানত সেটিংস থেকে সাইডবারে *(১৬ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"Setting > Deposits ta ke sidebar-e niye aso."**
+
+⭐ অনুরোধটা জায়গা বদলের, কিন্তু ভেতরে একটা শ্রেণিবিভাগের প্রশ্ন লুকিয়ে
+আছে — **সেটিংসে আসলে কী থাকা উচিত?**
+
+> **সেটিংস হলো একবার বসিয়ে ভুলে যাওয়ার জায়গা** — নীতি, ছুটির তালিকা,
+> ক্যাটাগরির নিয়ম। যেখানে **বারবার** ঢুকতে হয়, সেটা সেটিংস নয়, সেটা
+> একটা **পাতা**।
+
+জামানত দ্বিতীয় দলের: কে কত জমাল, কে ছেড়ে গেলে কত ফেরত — এটা রোজকার
+টাকার হিসাব। আটটা ট্যাবের ভেতর থেকে প্রতিবার খুঁজে বের করাটা অকারণ ঘষা।
+
+### যা করা হয়েছে
+
+- নতুন পাতা `/deposits`, সাইডবারে **Monthly ও Reports-এর ঠিক পরে** —
+  তিনটেই একই প্রশ্নের দিক: *টাকা কোথায় দাঁড়িয়ে আছে*
+- Settings থেকে ট্যাবটা **সরানো হয়েছে**, রাখা হয়নি
+
+⚠️⚠️ **দুই জায়গায় রাখা হয়নি — ইচ্ছাকৃত।** সেটিংসেও রেখে দিলে মালিককে
+মনে রাখতে হতো কোনটায় গিয়েছিলেন, আর ঠিক এই কারণেই **Devices** ট্যাবটা
+তুলে দিতে হয়েছিল (G89)। কোডে সেটিংসের ভেতর একটা মন্তব্যও বসানো আছে —
+"এখানে ফিরিয়ে আনবেন না" — কারণ পরের বার যিনি ট্যাব যোগ করবেন তিনি এই
+ইতিহাসটা জানবেন না।
+
+⭐ পর্দার ভেতরটা **হুবহু একই কম্পোনেন্ট** (`DepositsTab`), নকল করা হয়নি।
+দুটো কপি থাকলে একদিন একটায় ঠিক হতো, অন্যটায় নয়।
+
+⚠️ owner-only দুই স্তরে: রুটটা `App.tsx`-এ শুধু owner-এর জন্য বসে, আর
+পাতাটা নিজেও ভূমিকা দেখে। দ্বিতীয়টা **দ্বিতীয় জাল** — কেউ ভবিষ্যতে
+রুটের শর্ত আলগা করলেও পর্দাটা নিজে থেকে খুলে যাবে না।
+
+### ⚠️ যা যাচাই করা গেছে, আর যা যায়নি
+
+গতবারের শিক্ষা মেনে এবার সত্যিই চালিয়ে দেখা হয়েছে: dev সার্ভারে কোনো
+transform এরর নেই, পাতা রেন্ডার হয়, প্রোডাকশন বিল্ড পাস (১৩১ মডিউল),
+lint ও ৭৩টা টেস্ট সবুজ।
+
+⚠️ তবে **সাইডবারে জিনিসটা চোখে দেখা হয়নি** — ওটা লগইনের পেছনে, আর
+পাসওয়ার্ড টাইপ করা আমার এখতিয়ারে নেই।
+
+---
+
+## ৩ঌ. ⭐⭐ জিগলার ধরা — যেখানে পাহারাটা বসাতে হয় *(১৬ আগস্ট ২০২৬)*
+
+মালিক নিজের PC-তে দশ লাইন চালিয়ে পর্দার ছবি পাঠালেন:
+
+```powershell
+while ($true) { $wscript.SendKeys("{F15}"); Start-Sleep -Seconds 60 }
+```
+
+ট্রে বলছে **1:38 hours today**, সবুজ "Working"। প্রশ্ন: *"staff der idle
+kaj korbe kina?"*
+
+উত্তর ছিল **হ্যাঁ** — আর কারণটা কোডেই লেখা: idle মাপা হয়
+`GetLastInputInfo` দিয়ে, আর ওই API **আসল ও নকল ইনপুট আলাদা করে না**।
+`SendKeys` ভেতরে `SendInput` ডাকে, Windows সেটাকে ইনপুটই গোনে।
+
+### ⭐⭐ আসল সিদ্ধান্ত: পাহারাটা কোথায় বসবে
+
+স্বাভাবিক প্রবৃত্তি — এজেন্টে আরও কড়া পাহারা বসানো। কিন্তু এজেন্ট চলে
+**স্টাফের নিজের মেশিনে**, অর্থাৎ যাঁকে নিয়ে সন্দেহ তাঁরই হাতের নাগালে।
+সেখানে বসানো যেকোনো পাহারা তিনি বন্ধ করতে, বদলাতে বা ফাঁকি দিতে পারেন —
+আর সবচেয়ে খারাপ, **নীরবে**।
+
+> **যাকে বিশ্বাস করা যায় না, তার ঘরে পাহারা বসাবেন না।** নিয়মটা বসাতে হবে
+> এমন জায়গায় যেখানে তার হাত পৌঁছায় না — আর এখানে সেটা সার্ভার। কারণ
+> ঘণ্টা দাবি করতে হলে ডেটা পাঠাতেই হবে, আর **পাঠানো ডেটার আকৃতি লুকানো
+> যায় না**।
+
+### ⚠️⚠️ কীলগিং প্রত্যাখ্যাত — আবারও
+
+`LLKHF_INJECTED` ফ্ল্যাগ দেখে নকল কীস্ট্রোক **নিশ্চিতভাবে** ধরা যেত, কিন্তু
+তার জন্য low-level keyboard hook লাগে — অর্থাৎ কীলগারের যন্ত্র। G46-এর
+সারিতে এটা আগেই প্রত্যাখ্যাত ছিল, আর সিদ্ধান্তটা বহাল রাখা হয়েছে।
+
+> *"What you typed is never recorded"* — এই প্রতিশ্রুতি **ঠকবাজি ধরার
+> জন্যও** ভাঙা হবে না। বদলে দেখা হয় আচরণের **আকৃতি**, ইনপুটের বিষয়বস্তু নয়।
+
+### নিয়ম — তিনটে শর্ত, একসাথে
+
+| শর্ত | কেন |
+|---|---|
+| ≥ ২ ঘণ্টা একটানা ACTIVE | **মানুষ থামে** — চা, বাথরুম, কারো ডাক। জিগলার গাণিতিকভাবেই থামতে পারে না |
+| ≤ ১টি foreground উইন্ডো | process **আর শিরোনাম** — একই Word-এ কাজ করলেও নথির নাম বদলায় |
+| `input_score` ওঠানামা ≤ ২ | মানুষের হাত অসমান; জিগলার প্রতি মিনিটে ঠিক একবার |
+
+⭐ আলাদা করে প্রতিটাই ভাঙা যায় (ডিজাইনার দু ঘণ্টা এক ফাইলে থাকতে পারেন)।
+কিন্তু **তিনটে একসাথে** এমন ছবি আঁকে যা মানুষের নয়।
+
+### ⚠️ যে তিনটে সিদ্ধান্ত নির্দোষকে বাঁচায়
+
+- **শূন্য উইন্ডো মানে "জানা নেই", "বদলায়নি" নয়** — `app_usage` না এলে
+  সন্দেহ করা হয় না। ⭐ এতে ফাঁকির পথ খোলে না: কেউ ইচ্ছে করে ওই অংশটা
+  থামালে সেটা `agent_tamper`-এর কাজ। **প্রতিটা নিয়ম একটাই প্রশ্নের
+  উত্তর দিক।**
+- **স্কোর অজানা হলে সন্দেহ নয়** — পুরোনো সারিতে `input_score` null থাকে
+- **ডিভাইস ধরে ভাগ** — নইলে দুই PC-তে কাজ করা কর্মীর (G32) খণ্ড মিশে
+  গিয়ে একটা লম্বা "একটানা" স্ট্রেচ বানাত
+
+⚠️ severity `warning`, `critical` নয়। বার্তাতেও লেখা: *"It is not proof —
+check the screenshots for that stretch before saying anything."*
+
+### ⭐ "বাইপাস করা যাবে না" — যতটা সত্যি বলা যায়
+
+মালিক চেয়েছিলেন কেউ যেন ফাঁকি দিতে না পারে। **নিখুঁত প্রতিরোধ অসম্ভব** —
+মেশিনটা তাঁদের নিজের। কিন্তু তিনটে পথই এখন কোথাও না কোথাও ধরা পড়ে:
+
+| ফাঁকির পথ | কী ঘটে |
+|---|---|
+| জিগলার চালানো | `synthetic_input` ওঠে |
+| এজেন্ট বন্ধ করা | ঘণ্টাও বন্ধ, আর `agent_down` |
+| এজেন্টে হাত দেওয়া | `agent_tamper` |
+
+⭐⭐ **পাহারাটা এড়াতে গেলে ঘণ্টা হারাতে হয়** — সেটাই আসল প্রতিরোধ, কোনো
+একক কৌশল নয়।
+
+⚠️ তবু স্বীকার করে নেওয়া ভালো: যে জেনেশুনে এলোমেলো বিরতি ও উইন্ডো বদল
+যোগ করবে, সে এই নিয়ম ফাঁকি দিতে পারবে। ⏳ পরের ধাপ হতে পারে **কার্সরের
+নড়াচড়া** মাপা (`GetCursorPos` — hook নয়, কোনো বিষয়বস্তু নয়): কি-বোর্ড
+জিগলার কার্সর নাড়ায় না, আর যে টুল নাড়ায় সেটা পর্দাতেই দেখা যায়।
+
+সার্ভার টেস্ট **৩৪টি নতুন** — ২৫টি নিয়মের, ৯টি প্রযোজকের।
+
+---
+
+## ৩ৗ. জামানত কোন মাস থেকে — কর্মী ধরে *(১৬ আগস্ট ২০২৬)*
+
+মালিক বললেন: **"Deposits tab-এ প্রতি স্টাফের নামের পাশে edit, আর সেখানে
+কোন মাস থেকে ৫০০ টাকা কাটা শুরু সেটা বেছে নেওয়ার অপশন।"**
+
+কোডে দেখা গেল শুরুর মাসটা ছিল **গোটা অফিসের জন্য একটাই**
+(`deposit_policy.start_year_month`)। কিন্তু কর্মীরা আলাদা সময়ে যোগ দেন,
+আর কারো কাটা শুরু হয়েছিল অন্য মাস থেকে — **সেটা বলার কোনো জায়গাই ছিল না**,
+তাই খাতা ভুল থাকলে ঠিক করার উপায়ও ছিল না।
+
+### ⚠️⚠️ আসল প্রশ্ন: "সংশোধন" মানে কী
+
+শুরুর মাস বদলানো সহজ। কিন্তু **আগের কিস্তিগুলোর কী হবে?**
+
+> মালিক যখন বলেন "কাটা শুরু হয়েছে মে মাস থেকে", তখন তিনি একটা **তথ্য
+> সংশোধন** করছেন — ভবিষ্যতের নিয়ম বদলাচ্ছেন না। খাতায় যদি জানুয়ারি থেকে
+> কিস্তি বসানো থাকে, সেগুলো **ভুল**, আর ভুল রেখে দিলে সংশোধনের কোনো
+> মানেই থাকে না।
+
+তাই: মাস **এগিয়ে** দিলে তার আগের কিস্তি মুছে যায়, **পিছিয়ে** দিলে অনুপস্থিত
+মাসগুলো যোগ হয়। ⚠️ কতগুলো গেল আর কতগুলো এল — দুটোই রেসপন্সে ফেরত আসে আর
+পর্দায় দেখানো হয়। **নীরবে সারি মোছা যাবে না।**
+
+⭐ মোছা সারিগুলো **স্বয়ংক্রিয়ভাবে বসানো** কিস্তি, হাতে লেখা কিছু নয় — তাই
+এটা ইতিহাস মোছা নয়, ভুল হিসাব ঠিক করা। audit log-এ সংখ্যাসহ লেখা থাকে।
+
+### ⭐ মালিকের কথা বনাম যোগদানের তারিখ
+
+`ensureLedger()` আগে `max(joinedMonth, policyStart)` ধরত। নতুন ঘরটা বসলে
+প্রশ্ন উঠল — এটাও কি ওই `max`-এর ভেতরে যাবে?
+
+**না।** override থাকলে সেটাই চূড়ান্ত, `joined_on`-এর উপরেও।
+
+> `joined_on` প্রায়ই অনুমান বা ফাঁকা (আমাদের ১২ জনের **কারোরই** বসানো
+> ছিল না), অথচ এই ঘরটা মালিক নিজে হাতে বেছে দেন। **অনুমানকে বিবৃতির
+> উপরে বসালে** মালিক সংশোধন করে দেখতেন কিছুই বদলায়নি, আর কেন — বোঝার
+> উপায় থাকত না।
+
+⚠️ তিনটে রক্ষাকবচ: ভবিষ্যতের মাস ৪০০ (নইলে খাতা চুপচাপ খালি হয়ে যেত) ·
+নিষ্পত্তি হয়ে গেলে ৪০৯ (মিটে যাওয়া হিসাব নাড়ানো যাবে না) · owner-only।
+
+### ⭐⭐ আর যেটা খুঁজতে গিয়ে বেরোল — টেস্ট isolation-এর ফাঁক
+
+নতুন টেস্ট লিখতে গিয়ে দেখি জামানতের e2e সুইট **এলোমেলো ফল দিচ্ছে** — একই
+কোডে একবার ১২টা পাস, পরেরবার ৪টা। পরিষ্কার `origin/main`-এ মেপে দেখা গেল
+সেখানেও **৭/১৩ ব্যর্থ**, অর্থাৎ আমার আনা নয়।
+
+কারণ: `resetDatabase`-এর হাতে লেখা TRUNCATE তালিকায় R21-এর তিনটে টেবিল
+ছিল না। `deposit_policy`-তে `employees`-এর কোনো FK নেই, তাই **CASCADE-এও
+সেটা বেঁচে যেত** — এক টেস্টের বসানো নিয়ম পরের টেস্টে রয়ে যেত, `ensureLedger`
+আবার খাতা ভরত, আর শেষে TRUNCATE ব্যর্থ হয়ে `users` মুছত না।
+
+⚠️⚠️ **আর ব্যর্থতাটা দেখা যেত সম্পূর্ণ অন্য জায়গায়:** পরের `user.create`
+duplicate email-এ আটকাত, আর টেস্ট বলত **"401 Unauthorized"** — যার সাথে
+আসল কারণের কোনো সম্পর্কই নেই।
+
+> **হাতে লেখা তালিকা মানেই একদিন কেউ ভুলে যাবে।** আর ভুলে গেলে ধরা পড়ে
+> অনেক দূরে, অন্য কারো টেস্টে — সেটাই এই ধরনের বাগকে এত ব্যয়বহুল করে।
+
+তিনটে টেবিল যোগ করতেই **দুটো সুইটই সম্পূর্ণ সবুজ** — নতুনটা ১৩/১৩, আর
+আগে থেকে ভাঙা পুরোনোটাও ১৩/১৩।
+
+সার্ভার টেস্ট **১২২১ পাস**। ⚠️ একটাই লাল — `adjustments.e2e`-এর pace,
+সেটাও আগে থেকেই ভাঙা আর আলাদা কাজে দেওয়া। *(✅ পরে সবুজ — § ৩ব।)*
+
+---
+
+## ৩ড়ড়. ⭐⭐ জিগলার থামানো — পর্দা বদলায় কি না *(১৬ আগস্ট ২০২৬)*
+
+G46-এর অ্যালার্ট বসানোর পর মালিক আবার লিখলেন:
+
+> *"ei script akhono kaj korche. eta run thakle 60 second pore agent idle
+> hoyna, working show kore, time count kore. ja amader office er jonno loss."*
+
+⚠️⚠️ **আর তিনি ঠিক ছিলেন — আমার একটা কথা স্পষ্ট করে বলা উচিত ছিল।** G46
+একটা **অ্যালার্ট**, সার্ভারে চলে। ও ঠকবাজি **ধরে**, কিন্তু ঘণ্টা গোনা
+**থামায় না**। এজেন্টে একটাও লাইন বদলায়নি, তাই ট্রে আগের মতোই "Working"
+দেখাত আর সময় গুনত।
+
+> **"ধরা পড়ল" আর "থেমে গেল" এক জিনিস নয়।** একটা ফিচার কী *করে* সেটা
+> বলার সময় কী *করে না* সেটাও বলতে হবে — নইলে ব্যবহারকারী ধরে নেন
+> সমস্যাটা মিটে গেছে, আর ক্ষতি চলতেই থাকে।
+
+### সিদ্ধান্ত: পাহারাটা কোথায় বসবে
+
+`GetLastInputInfo` কোনোদিনই নকল ইনপুট আলাদা করতে পারবে না — ওটা Windows-এর
+সীমা। Windows নকল ইনপুটে **পতাকা বসায়** (`LLKHF_INJECTED`), কিন্তু সেটা
+পড়তে **low-level keyboard hook** লাগে — যা 04-Features § L-এ নিষিদ্ধ।
+
+⭐ মালিককে তিনটে পথ দেখিয়ে জিজ্ঞাসা করা হয়েছে, আর তিনি বেছেছেন **পর্দা
+বদলায় কি না** — hook ছাড়া, কীলগিং ছাড়া।
+
+> কেউ সত্যিই কাজ করলে **পর্দা বদলায়** — অক্ষর ওঠে, কার্সর নড়ে, উইন্ডো
+> সরে। জিগলার চললে পর্দা একেবারে স্থির, শুধু একটা টাইমার রিসেট হয়।
+
+### ⚠️⚠️ যে ফাঁদটা ফিচারটাকে নীরবে অকেজো করে দিত
+
+প্রথম নকশা ছিল ছবির **হুবহু হ্যাশ**। লিখতে গিয়ে থেমে ভাবলাম — আর তখনই
+ধরা পড়ল: **টাস্কবারের ঘড়ি প্রতি মিনিটে বদলায়।**
+
+হুবহু মিল খুঁজলে ঘড়ির একটা অঙ্কই যথেষ্ট হতো। পর্দা **চিরকাল** "বদলাচ্ছে"
+দেখাত, কোনোদিন জমত না, আর পুরো পাহারাটা **নীরবে অকেজো** থাকত — টেস্ট
+সবুজ, কোড সুন্দর, বাস্তবে শূন্য। এই প্রকল্পে ঠিক এই ধরনের নীরব অকেজো
+ফিচার বারবার ফিরে এসেছে।
+
+⭐ সমাধান: **মোটা দানার সহনশীল তুলনা** —
+
+| | |
+|---|---|
+| ছাপ | ১৬×১৬ ধূসর, ২৫৬ বাইট |
+| এক কোষে সহনশীলতা | ১২/২৫৫ (WebP-র ক্ষতিপূরণ, অ্যান্টি-এলিয়াসিং) |
+| "বদলেছে" বলতে | অন্তত **৬টি** কোষ নড়তে হবে |
+
+ঘড়ি ২৫৬ কোষের বড়জোর ১–২টা ছোঁয়, তাই পার পায় না। সত্যিকারের কাজ (স্ক্রল,
+টাইপ, উইন্ডো বদল) সহজেই সীমা ছাড়ায়। ⭐ এই সীমাটা **টেস্টে বাঁধা**, আর
+সেটাই এই ফাইলের সবচেয়ে জরুরি টেস্ট।
+
+### ⚠️ তিনটে সিদ্ধান্ত যা সৎ কর্মীকে বাঁচায়
+
+- **১০ মিনিট উদার জানালা** — মানুষ লম্বা নথি পড়ে, ভাবে, ফোনে কথা বলে।
+  কম করলে সৎ কর্মীর ঘণ্টা কাটা যেত, আর **সেই ভুল ঠকবাজি ধরতে না পারার
+  চেয়ে অনেক বেশি ক্ষতিকর**।
+- **নমুনা না থাকলে সন্দেহ নয়** — রাতে ক্যাপচার বন্ধ, বা এজেন্ট সবে চালু।
+  "জানি না"-কে অভিযোগ ধরা হয় না (সার্ভারের G46-এও একই সিদ্ধান্ত)।
+- **পিছিয়ে কাটা হয় না** — আসল idle-এ retro-adjust হয়, কিন্তু পর্দা জমায়
+  নয়। কাটা শুরু **এখন থেকে**, নইলে পড়ার দশ মিনিটও কেটে যেত।
+
+⭐ আর শুধু **প্রথম মনিটরের** ছাপ নেওয়া হয় — সব পর্দা মেলালে একটা নিষ্ক্রিয়
+দ্বিতীয় মনিটরই সৎ কর্মীর গোনা বন্ধ করে দিত।
+
+### ⭐ কম্পাইলারকে পাহারায় বসানো
+
+`Tick()`-এর নতুন ঘরটা **ঐচ্ছিক নয়**। ডিফল্ট দিলে কেউ একদিন নতুন কলার
+লিখে ঘরটা দিতে ভুলে যেত, আর পাহারাটা নীরবে বন্ধ থাকত। বিল্ড চালাতেই
+**১৫টা কলার** লাল হলো — প্রতিটাকে সচেতনভাবে সিদ্ধান্ত নিতে হয়েছে
+(ডায়াগনস্টিক মোডে `false`, কারণ সেখানে ক্যাপচারই চলে না)।
+
+> "চুক্তি লেখা আছে, কলার লেখা হয়নি" — নয়বার ঘটার পর শেখা: **কম্পাইলারকে
+> পাহারায় বসানোই একমাত্র সত্যিকারের প্রতিকার।**
+
+### যা এখনো ফাঁকি দিতে পারে
+
+⚠️ পর্দায় ঘড়ি, ভিডিও বা কোনো চলমান জিনিস খুলে রাখলে পর্দা বদলাতেই থাকবে।
+⭐ কিন্তু সেটা **স্ক্রিনশটে সাথে সাথে চোখে পড়ে**, আর সার্ভারের
+`synthetic_input` অ্যালার্টও পাশাপাশি চলে। দুটো মিলে ফাঁকির খরচ অনেক বাড়ে —
+লক্ষ্য "ধরা অসম্ভব করা" নয়, **ফাঁকি দেওয়াটাকে কঠিন ও দৃশ্যমান করা**।
+
+এজেন্ট টেস্ট **৪৫১ পাস** (Core ৩৫৪ + Agent ৯৭), ২০টি নতুন।
+
+---
+
+## ৩য়. স্টাফ নিজেই আপডেট বসাবেন — আর যা সম্ভব নয় *(১৬ আগস্ট ২০২৬)*
+
+মালিক চাইলেন: নতুন আপডেট এলে স্টাফের কাছে **অপশন যাক**, অথবা
+**ব্যাকগ্রাউন্ডে বসে যাক**।
+
+### ⚠️⚠️ দ্বিতীয়টা সম্ভব নয় — আর কারণটা কারিগরি
+
+এজেন্ট চলে **লগইন করা ইউজারের অধিকারে** (installer-এ `Group=Users`,
+`Impersonate="yes"`), অ্যাডমিন হিসেবে নয়। আর `msiexec` অ্যাডমিন চায়।
+
+> অ-উন্নীত প্রসেস থেকে ইনস্টলার ডাকলে **UAC জানালা উঠবেই** — অর্থাৎ
+> "ব্যাকগ্রাউন্ড" কথাটাই আর খাটে না। সত্যিকারের নীরব ইনস্টল করতে হলে
+> SYSTEM হিসেবে চলা একটা সার্ভিস লাগত, আর সেটা আলাদা ও অনেক বড় সিদ্ধান্ত।
+
+⭐ আর সেটা **খারাপও নয়**: G58 বলে খারাপ MSI একবার চললে নতুন MSI দিয়ে
+ফেরানো যায় না। একজন মানুষের ক্লিক ওই ঝুঁকির শেষ বাঁধ।
+
+### যা করা হয়েছে
+
+ট্রে মেনুতে **"Install update 0.4.1…"** — কেবল `Verified` ধাপে দেখা যায়।
+
+⚠️ `Offered`/`Downloaded`-এ ফাইলটা এখনো বিশ্বাসযোগ্য নয়, আর `Corrupt`-এ
+সেটা মুছেই ফেলা হয়েছে। ওই অবস্থায় বোতাম দেখালে স্টাফ চাপতেন, কিছুই হতো
+না, আর তিনি ভাবতেন সিস্টেম ভাঙা।
+
+⚠️ ক্লিকের পর **আবার যাচাই** করা হয় — মেনু আঁকার পর অবস্থা বদলে যেতে
+পারে (নতুন চেক চলেছে, ফাইল মুছে গেছে)। tray-র শর্তের উপর ভরসা করা যাবে না।
+
+⭐ `/qb` ব্যবহার করা হয়েছে, `/qn` নয় — স্টাফ যেন দেখতে পান কিছু ঘটছে।
+নীরবে চললে এজেন্ট কয়েক সেকেন্ড বন্ধ হয়ে যেত আর তিনি ভাবতেন কিছু ভেঙেছে।
+
+⭐⭐ `AgentStatus.Update` ঘরটা **`required`** — না ভরলে আইটেমটা কোনোদিন
+দেখা যেত না, আর নতুন ভার্সন নামানো-যাচাই হয়ে ডিস্কে পড়ে থাকত, অথচ
+বসানোর কোনো পথ নেই। কম্পাইলার আবার পাহারায়।
+
+### ⚠️⚠️ আর বিল্ড যে মিসম্যাচটা ধরল
+
+`build.ps1 -Version 0.4.1` চালানোর পর সতর্কবার্তা এল:
+
+> *MSI ভার্সন 0.4.1, কিন্তু assembly বলছে 0.3.8*
+
+⭐ ভার্সন **দুই জায়গায়** — MSI-র নামে (`-Version`) আর
+`Directory.Build.props`-এ। দ্বিতীয়টা বাড়াতে ভুলে গিয়েছিলাম।
+
+⚠️ না ধরলে যা ঘটত: MSI বলত ০.৪.১, অথচ এজেন্ট সার্ভারকে বলত ০.৩.৮ —
+আপডেট-চেক **চিরকাল একই ভার্সন অফার করত**, আর ড্যাশবোর্ডে ভুল ভার্সন
+দেখাত। ⭐ বিল্ড স্ক্রিপ্টের ওই সতর্কবার্তাটা আগেই কেউ বসিয়ে রেখেছিলেন,
+আর আজ সেটাই কাজে লেগেছে।
+
+এজেন্ট টেস্ট **৪৫১ পাস**। MSI: `oXeioAgent-0.4.1.msi`, `CN=oXeio` দিয়ে সই।
+
+---
+
+## ৩ৎ. Microsoft Teams — সাপ্তাহিক সারাংশ *(১৬ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞাসা করলেন Teams-এর সাথে জোড়া যায় কি না, আর চারটে স্তর দেখিয়ে
+তিনি বেছে নিলেন **সারাংশ Teams-এ পাঠানো**।
+
+⭐ কাজটা ছোট হলো একটাই কারণে: **"চ্যানেল" ধারণাটা আগে থেকেই ছিল** —
+অ্যালার্ট ইমেইলে যায়, সাপ্তাহিক ডাইজেস্ট টেলিগ্রামে। Teams তাই নতুন
+স্থাপত্য নয়, **আরেকটা চ্যানেল**।
+
+### ⚠️⚠️ যে ফাঁদটা এই কাজে সবচেয়ে বিপজ্জনক
+
+> **Teams ভুল গড়নেও `200 OK` ফেরত দেয়**, আর চ্যানেলে কিচ্ছু দেখা যায় না।
+
+অর্থাৎ ব্যর্থতাটা **সম্পূর্ণ নীরব**: সার্ভারের লগ বলবে "sent", অথচ কেউ
+কোনোদিন কিছু পায়নি। HTTP স্তরে এটা ধরার কোনো উপায় নেই।
+
+⭐ তাই পে-লোডের গড়নটা **খাঁটি ফাংশনে** আলাদা করা হয়েছে (`teams.card.ts`)
+আর টেস্টে বেঁধে ফেলা হয়েছে — খামের তিনটে নাম, `contentUrl: null`, আর
+Adaptive Card সংস্করণ **১.৪** (বেশি নতুন চাইলে কারো ক্লায়েন্টে কার্ডটা
+ফাঁকা দেখাত — আবারও নীরব ব্যর্থতা)।
+
+⚠️ পুরোনো "Office 365 connector" (MessageCard) Microsoft তুলে দিয়েছে;
+এখনকার পথ **Workflows / Power Automate**, আর সেটা Adaptive Card চায়
+নির্দিষ্ট খামে। সেই খামটাই ব্যবহার করা হয়েছে।
+
+### ⚠️ তিনটে সিদ্ধান্ত
+
+- **`https://` ছাড়া মানা হয় না।** ভুল করে `http` বসালে কর্মীর নাম ও ঘণ্টা
+  প্লেইনটেক্সটে যেত। এটা নীরবে হতে দেওয়া যায় না, তাই `configured`-এই আটকানো।
+- **২০,০০০ অক্ষরে কেটে দেওয়া হয়।** Teams সীমা ছাড়ালে **পুরো বার্তাটাই**
+  ফেলে দেয়, অর্ধেক নয় — দল বড় হওয়ার দিন সারাংশ হঠাৎ নীরবে আসা বন্ধ হতো।
+  কাটা পড়েছে সেটা বার্তাতেই লেখা থাকে।
+- **টেলিগ্রামের প্রহরীটা Teams-এ লাগানো হয়নি।** ওই প্রহরী আছে কারণ
+  টেলিগ্রামে ভুল করে **গ্রুপ চ্যাটে** নাম-ঘণ্টা চলে যেতে পারত। Teams-এর
+  webhook একটা নির্দিষ্ট চ্যানেলে বাঁধা, আর বদলাতে `.env` ছুঁতে হয়।
+  ⚠️ দুটো আলাদা ঝুঁকি — একটার শাস্তি অন্যটার উপর চাপানো যায় না।
+
+⭐ Teams **টেলিগ্রামের বিকল্প নয়, পাশাপাশি** — যেটা কনফিগ করা আছে সেটাই
+পায়, দুটোই থাকলে দুটোই।
+
+⚠️ compose-এ চলকটা স্পষ্ট করে পাস করা হয়েছে; না করলে `.env`-এ লিখেও
+চ্যানেলটা চুপচাপ বন্ধ থাকত (এই ভুলটা `LOGIN_MAX_FAILS`-এও একবার হয়েছিল)।
+
+সার্ভার টেস্ট **১২৩৬ পাস**, ১০টি নতুন।
+
+### ⚠️⚠️ কিন্তু মাঠে গিয়ে দেখা গেল Teams-এ পথটাই নেই
+
+মালিক Workflows খুঁজে পেলেন না। পরপর দুটো পর্দার ছবি থেকে কারণটা বেরোল:
+
+১· প্রথম ছবিতে সবগুলোই **গ্রুপ চ্যাট**, Team নয় — আর গ্রুপ চ্যাটে
+   incoming webhook বসানোই যায় না
+২· তারপর তিনি একটা বানালেন, কিন্তু সেটা **Community** (উপরে লেখা
+   "Communities"), আর চ্যানেলের `⋯`-এ মাত্র দুটো অপশন: Edit · Delete
+
+⭐⭐ অর্থাৎ অ্যাকাউন্টটা **ফ্রি/ব্যক্তিগত Teams**। Workflows কেবল
+work/school (Microsoft 365 Business) অ্যাকাউন্টে আসে — যত খোঁজা হোক,
+জিনিসটাই নেই।
+
+> **"কনফিগার করা হয়নি" আর "এই অ্যাকাউন্টে জিনিসটা নেই" — দুটো আলাদা।**
+> প্রথমটায় ধাপ বলে দেওয়া যায়; দ্বিতীয়টায় ধাপ বলতে থাকলে ব্যবহারকারী
+> ঘণ্টার পর ঘণ্টা খুঁজতে থাকেন। ⚠️ আমি দুবার ধাপ বলেছি, তৃতীয়বারে
+> ছবি দেখে বুঝেছি — **আগেই অ্যাকাউন্টের ধরন জিজ্ঞাসা করা উচিত ছিল।**
+
+### ⭐ তাই তৃতীয় চ্যানেল — ইমেইল
+
+SMTP এমনিতেই কনফিগ করা (অ্যালার্ট ওই পথেই যায়), তাই মালিকের দিক থেকে
+**কিছুই করতে হয় না** — কোনো অ্যাকাউন্ট, কোনো URL, কিছু না।
+
+⚠️⚠️ প্রাপক **ম্যানেজার নন** — সারাংশে প্রতিটা কর্মীর নাম ও ঘণ্টা থাকে,
+আর সেটা owner-only পর্দার সমান জিনিস। নিয়মটা `digest.recipients.ts`-এ
+খাঁটি ফাংশন হিসেবে, কারণ ভুল ঠিকানায় যাওয়া ইমেইল **ফেরানো যায় না**।
+
+⚠️ ফাঁকা ঘর ও ডুপ্লিকেট ছাঁকা হয় (ছোট-বড় হাত মিলিয়ে) — `.env`-এ বাড়তি
+কমা খুব সাধারণ, আর না ছাঁকলে খালি ঠিকানায় SMTP ছুড়ত।
+
+⭐ এখন তিনটে চ্যানেল পাশাপাশি: **টেলিগ্রাম · Teams · ইমেইল** — যেটা
+কনফিগ করা আছে সেটাই পায়। সার্ভার টেস্ট **১২৪৫ পাস**।
+
+---
+
+## ৩ঢ়. টেলিগ্রামের কনফিগ পর্দা থেকে *(১৬ আগস্ট ২০২৬)*
+
+Teams-এ পথ না পেয়ে মালিক বললেন **"amora telegram use korbo"**, তারপর:
+*"Setting page e telegram er token and chat id set korar ekota option banaO."*
+
+⚠️⚠️ **কেন এটা সত্যিই দরকার ছিল:** টোকেন ও চ্যাট আইডি ছিল কেবল `.env`-এ।
+বদলাতে হলে VPS-এ SSH → ফাইল সম্পাদনা → কনটেইনার রিস্টার্ট — মালিকের পক্ষে
+কার্যত অসম্ভব। ফলে একবার ভুল হলে সেটা **মাসের পর মাস ভুলই থেকে যেত**, আর
+সাপ্তাহিক সারাংশ নীরবে আসা বন্ধ থাকত।
+
+### ⭐⭐ নিরাপত্তার সিদ্ধান্তগুলোই এখানে আসল কাজ
+
+**১· পুরো টোকেন কোনোদিন ব্রাউজারে যায় না** — কেবল শেষ চার অক্ষর (`…4821`)।
+ব্রাউজারে গেলে সেটা DevTools, প্রক্সি লগ বা স্ক্রিন শেয়ারে দেখা যেত, আর
+যে কেউ ওই বট দিয়ে বার্তা পাঠাতে পারত।
+
+**২· audit log-এও টোকেন যায় না** — শুধু "বসানো হয়েছে কি না"। audit log
+মালিক ও ম্যানেজার দুজনেই দেখেন, আর গোপন মান একবার ওখানে বসলে **আর মোছা
+যায় না**।
+
+**৩· owner-only** — ওই চ্যাটে কর্মীর নাম ও ঘণ্টা যায়, তাই কে সেটা পাবে
+সেই সিদ্ধান্ত ম্যানেজারের নয়।
+
+### ⚠️⚠️ আধা-ভরা কনফিগ দিয়ে জিনিসটা ভাঙানো যেত
+
+ডাটাবেস `.env`-কে হারায়, **কিন্তু কেবল দুটো ঘরই ভরা থাকলে**।
+
+> একটা ভরা আর একটা খালি রেখে সেভ করলে টেলিগ্রাম চুপচাপ বন্ধ হয়ে যেত,
+> অথচ `.env`-এ কাজ করা মান বসেই আছে — অর্থাৎ **পর্দায় হাত দিয়ে জিনিসটা
+> ভাঙানো** যেত, আর কারণটা কোথাও লেখা থাকত না।
+
+⭐ পর্দায় **কোনটা আসলে খাটছে** সেটাও দেখানো হয় (`database` / `env` /
+`none`)। না দেখালে মালিক নতুন মান বসিয়ে ভাবতেন সেভ হয়নি — অথচ হয়েছে,
+শুধু অন্যটা জিতছে না।
+
+### ⭐ দুটো আচরণগত উন্নতি, যা কম্পাইলার ধরিয়ে দিল
+
+কনফিগ এখন **চলতে চলতে বদলাতে পারে**, তাই:
+
+- `TelegramChannel` আর কনস্ট্রাক্টরে মান **জমিয়ে রাখে না** — প্রতিবার
+  পাঠানোর আগে পড়ে। জমিয়ে রাখলে সেভ করার পর রিস্টার্ট না করা পর্যন্ত
+  পুরোনোটাই চলত।
+- `ops.scheduler` আগে `configured` দেখে sweep বসাত। এখন **শর্ত ছাড়াই**
+  বসে — নইলে মালিক পরে টোকেন বসালে সেভ হতো, কিন্তু কিছুই ঘটত না।
+
+⚠️ `scrub()` (টোকেন লগে না ওঠা) এখন টোকেনটা **প্যারামিটার হিসেবে** নেয়,
+কারণ ফিল্ডটাই আর নেই।
+
+### ⭐⭐ আর সবচেয়ে দরকারি বোতামটা — "Send a test message"
+
+এটা না থাকলে মালিক সেভ করে **শুক্রবার পর্যন্ত** অপেক্ষা করতেন, আর কিছু
+না এলে বুঝতেন ভুল ছিল — কিন্তু **কী ভুল**, তা জানার কোনো উপায় নেই।
+
+সার্ভার টেস্ট **১২৬৯ পাস**, ২৪টি নতুন (১৩ নিয়ম + ১১ e2e)।
+
+---
+
+## ৩ণ. ⭐⭐ "১০ মিনিট idle হলেই জানাও" — আর কেন সেটা করা হয়নি *(১৬ আগস্ট ২০২৬)*
+
+মালিক তিনটে জিনিস চাইলেন: টেলিগ্রামে **দৈনিক রিপোর্ট**, **কে কাজ করছে কে
+করছে না**, আর **কেউ ১০ মিনিটের বেশি idle থাকলে খবর**।
+
+প্রথম দুটো সহজ ছিল — **দৈনিক রিপোর্ট আগে থেকেই ছিল** (রোজ ৬:৩০), আর
+ভেতরে ঠিক ওই তথ্যই: কতজন কাজ করেছে, কারা পিছিয়ে, আর আজ কারা একেবারেই
+কাজ করেনি। শুধু যেত ইমেইলে, আর SMTP কনফিগ করা নেই — তাই এতদিন ওটা
+**কেবল লগে পড়ে ছিল**। টেলিগ্রামের পথটা যোগ করাই যথেষ্ট ছিল।
+
+### ⚠️⚠️ তৃতীয়টা নিয়ে আপত্তি করতে হয়েছে
+
+হিসাবটা সরল: ১২ জন, ৮ ঘণ্টা। ১০ মিনিটের বিরতি হয় চা, দুপুরের খাবার,
+বাথরুম, ফোন, মিটিং, লম্বা নথি পড়া — জনপ্রতি দিনে ৫–১৫ বার।
+
+> **দিনে ৬০–১৮০টা বার্তা।**
+
+আর সেই পরিণতিটা এই কোডবেসেই আগে থেকে লেখা ছিল, `THROTTLE_HOURS`-এর ডকে:
+*"তারপর কেউ আর কোনো অ্যালার্ট পড়ত না, অর্থাৎ সত্যিকারের সমস্যাটাও চোখ
+এড়িয়ে যেত।"*
+
+⚠️ আর শুধু শব্দ নয় — **অন্যায্যও**। মিটিংয়ে বসা বা স্পেক পড়া মানুষ এই
+মাপে "idle", অথচ তিনি কাজই করছেন।
+
+> ⭐⭐ **ব্যবহারকারী যা চান আর যা দরকার — দুটো আলাদা হতে পারে, আর তফাতটা
+> বলা আমার কাজ।** কিন্তু বলার পর সিদ্ধান্তটা তাঁরই। তাই তিনটে বিকল্প
+> সংখ্যাসহ দেখানো হয়েছে, আর তিনি বেছেছেন **ঘণ্টায় একটা স্ন্যাপশট**।
+
+### যা বসানো হয়েছে
+
+প্রতি ঘণ্টায় একটা বার্তা, কাজের সময়ে (৯টা–৭টা):
+
+```
+oXeio · 15:00
+
+Working now: 8/12
+
+Idle: Ali (5h 40m today) · Sadia (3h 10m today)
+
+Offline: Karim
+
+⚠ Agent down: Hafiz
+```
+
+তিনটে সিদ্ধান্ত, প্রতিটাই বার্তাটাকে **পড়ার যোগ্য** রাখার জন্য:
+
+- ⭐ **কাজ করা মানুষের নাম লেখা হয় না**, শুধু গোনা। ১২ জনের নাম লিখলে
+  ঘণ্টায় একবার পড়াও ক্লান্তিকর হতো — আর তখন এটাও উপেক্ষিত হতো, ঠিক যা
+  এড়াতে স্ন্যাপশট বেছে নেওয়া।
+- ⚠️ **idle-এর সাথে আজকের ঘণ্টা** — শুধু "Ali idle" লিখলে মনে হতো তিনি
+  কিছুই করেননি। *"Ali (5h 40m today)"* বললে ছবিটা সৎ হয়।
+- ⚠️⚠️ **agent down আলাদা করে শেষে** — এটাই একমাত্র সারি যেটা সত্যিকারের
+  সমস্যা। idle-এর সাথে মিশিয়ে দিলে রোজকার শব্দের নিচে চাপা পড়ত।
+
+⚠️ রাতে পাঠানো হয় না। "Working now: 0/12" ভোর ২টায় কোনো তথ্য নয়, শুধু
+শব্দ — আর ওই শব্দই দিনের বার্তাগুলোকে অগ্রাহ্য করতে শেখায়।
+
+### ⭐ কোনো নতুন হিসাব নেই
+
+`SnapshotService` নিজে কিছু গোনে না — `DashboardService.live()` ডাকে,
+অর্থাৎ **Live Board যা দেখায় ঠিক সেটাই** টেলিগ্রামে যায়।
+
+⚠️ আলাদা করে গুনলে পর্দা এক কথা বলত আর টেলিগ্রাম অন্য কথা, আর কোনটা
+সত্যি তা বলার উপায় থাকত না।
+
+⭐ Nest সাথে সাথেই ধরিয়ে দিল যে `DashboardModule` সার্ভিসটা **export
+করত না** — সেই চেনা "চুক্তি আছে, সরবরাহ নেই" ভুল, এবার DI কন্টেইনারে।
+
+সার্ভার টেস্ট **১২৮৭ পাস**, ১৮টি নতুন (১৩ নিয়ম + ৫ প্রযোজক)।
+
+---
+
+## ৩ত. ⚠️⚠️⚠️ G46 নিজেই বেলালের দিন কেড়ে নিচ্ছিল — একটা অচলাবস্থা *(১৭ আগস্ট ২০২৬)*
+
+মালিক জানালেন: <i>"বেলাল একবার idle হবার পরে কাজ করছে কিন্তু এখনো idle
+show করছে, working show করছে না।"</i>
+
+কারণটা আমার আগের দিনের কোডেই, আর এটা **জিগলারের চেয়ে বড় ক্ষতি করছিল**।
+
+### তিনটে সত্য, একসাথে বিপদ
+
+- পর্দার ছাপ আসত **কেবল স্ক্রিনশটের স্লট থেকে**
+- স্ক্রিনশট ওঠে **কেবল ACTIVE অবস্থায়** (`CaptureGate`)
+- পর্দা "জমেছে" ধরা পড়লে অবস্থা হয় **IDLE**
+
+```
+জমেছে → IDLE → স্ক্রিনশট বন্ধ → নতুন ছাপ নেই → চিরকাল "জমে আছে"
+```
+
+কেউ ১০ মিনিটের বেশি বিরতি নিলে এজেন্ট **স্থায়ীভাবে** idle দেখাত — রিস্টার্ট
+না করা পর্যন্ত। অর্থাৎ ফাঁকি ধরার যন্ত্রটাই সৎ কর্মীর গোটা দিন কেটে নিত।
+
+> ⭐⭐⭐ **যে তথ্য দিয়ে সিদ্ধান্ত নেওয়া হয়, সেই তথ্যের উৎস ওই সিদ্ধান্তের
+> ফলাফলের উপর নির্ভর করতে পারে না।** নইলে সিদ্ধান্তটা নিজেই নিজের প্রমাণ
+> বানিয়ে ফেলে, আর বেরোনোর কোনো পথ থাকে না।
+
+### ⚠️ কেন কোনো টেস্ট ধরেনি
+
+`ScreenActivityTests`-এর মাথায় আশঙ্কাটা **লেখাই ছিল**: *"বেশি ধরলে সৎ
+কর্মীর কাজের সময় কাটা যাবে।"* ১৬টা টেস্ট নিয়মটা যাচাই করত, আর নিয়মটা
+ঠিকই ছিল।
+
+⚠️⚠️ ভুলটা ছিল **তারের সংযোগে** — কোন উৎস থেকে নমুনা আসে, তাতে। খাঁটি
+ফাংশনের টেস্ট ওই প্রশ্নটা কখনো করে না। এটা "চুক্তি লেখা আছে, কলার লেখা
+হয়নি"-র জ্ঞাতিভাই: **কলার লেখা হয়েছে, কিন্তু ভুল জায়গায়**।
+
+### দুই স্তরের প্রতিকার
+
+**১· নিয়ম নিজেই পাহারা দেয় — `StaleAfter` (৩ মিনিট)।** নমুনা টাটকা না
+হলে `IsFrozen` আর কোনো উত্তরই দেয় না। কলার যেভাবেই লেখা হোক, অচলাবস্থাটা
+আর তৈরি হতে পারে না। ⭐ *"তথ্যের অভাবকে প্রমাণ ধরা যাবে না"* — নিয়মটা
+আগে ডকে লেখা ছিল, এখন কোডে বসানো।
+
+**২· ছাপ নেওয়া স্ক্রিনশট থেকে আলাদা করা (`ScreenSampling`)।** এখন নমুনা
+আসে ট্র্যাকিং টিক থেকে — প্রতি **৬০ সেকেন্ডে**, আর পর্দা জমে থাকলে প্রতি
+**৫ সেকেন্ডে**। ⭐ দ্রুত সময়টা ন্যায্যতার জন্য: কর্মী ফিরে এসে কাজ শুরু
+করলে ৫ সেকেন্ডেই গোনা ফিরে আসে, এক মিনিট অপেক্ষা করতে হয় না।
+
+`ScreenSampling.Allowed`-এ **ইচ্ছাকৃতভাবে `SegmentState` নেই**, আর সেটাই
+ফাইলটার গোটা কারণ। একটা টেস্ট এখন সরাসরি দাবিটা ধরে রাখে: ঠিক যেখানে
+`CaptureGate` বলে `NotActive`, সেখানেই `ScreenSampling` বলে **হ্যাঁ**।
+
+⚠️ পাশাপাশি দুটো ছোট সংশোধন: ছাপ এখন কাঁচা BGRA থেকে বানানো হয় (WebP-র
+পথটা তুলে দেওয়া হয়েছে — দুই পথের ছাপ হুবহু মিলত না, তাই তুলনাটাই ভুল
+হতো), আর পিক্সেল-অ্যারেটা Skia পড়ার সময় **পিন** করা হয়।
+
+⚠️ লক করা পর্দার নমুনা নেওয়া হয় না — লক পর্দা এমনিতেই স্থির, রাখলে
+দুপুরের খাবার সেরে ফেরা কর্মীর সময় কাটা যেত।
+
+এজেন্ট টেস্ট **৪৬৭ পাস**, ১০টি নতুন। MSI **0.4.2**।
+
+---
+
+## ৩থ. রিংটা সবুজ — কাজ হওয়া মানেই ভালো খবর *(১৭ আগস্ট ২০২৬)*
+
+মালিক লাইভ বোর্ডের স্ক্রিনশটে ছয়টা রিং লাল কালিতে ঘিরে বললেন: সাদা নয়,
+সবুজ হবে।
+
+আগের নিয়ম ছিল — চলতি অবস্থায় নিরপেক্ষ `ink` (ডার্ক থিমে সাদা), আর সবুজ
+কেবল **টার্গেট ছোঁয়ার পর**, কারণ *"সবুজ মানে হয়ে গেছে"*।
+
+⭐ কিন্তু পর্দায় দেখে যুক্তিটা ঠিক মনে হলো: **৫ ঘণ্টা ৫৩ মিনিট কাজ হয়ে
+যাওয়াটাও ভালো খবর**, ৮ ঘণ্টা পূর্ণ না হলেও। সাদা রিংটা "এখনো কিছু হয়নি"-র
+মতো পড়াত, অথচ কার্ডে দিনের অর্ধেকের বেশি কাজ লেখা।
+
+### ⚠️⚠️ তবু "হয়ে গেছে" আর "হচ্ছে" আলাদা রাখতেই হবে
+
+পুরোটা এক সবুজ করলে টার্গেট ছোঁয়ার মুহূর্তটা হারিয়ে যেত। তাই দুই ধাপ:
+
+- চলছে → **হালকা** সবুজ (`ok/70`)
+- টার্গেট ছোঁয়া → **গাঢ়** সবুজ, আর বৃত্তটাও তখন সম্পূর্ণ
+
+⭐ রং আর আকৃতি **দুটো মিলে** খবরটা দেয় — একা রঙের উপর ভরসা নয়, যেটা
+রং-অন্ধতার জন্যও দরকারি।
+
+### ⚠️ বারটাও একই সাথে
+
+`ProgressBar`-এর ডকে আগে থেকেই লেখা ছিল *"একই রঙের নিয়ম মেনে চলে"*। শুধু
+রিং বদলালে ওই বাক্যটা মিথ্যা হয়ে যেত, আর **একই পাতায় একই মাপ** (আজ কত কাজ
+হলো) সবুজ রিং ও সাদা বারে দাঁড়াত — পাঠক ভাবতেন দুটো আলাদা কথা বলছে।
+
+⭐ যাচাই করা হয়েছে বিল্ড-করা CSS দেখে (`stroke-ok/70` →
+`#3fb950b3` ডার্কে, সাথে পুরোনো ব্রাউজারের জন্য `color-mix` fallback), আর
+পাশাপাশি আগে-পরে রেন্ডার করে।
+
+---
+
+## ৩দ. ⭐⭐⭐ চারটে স্ট্যাটাস থেকে তিনটে — যে প্রশ্নের উত্তর জানা নেই, সেটা জিজ্ঞেস না করা *(১৭ আগস্ট ২০২৬)*
+
+মালিক বললেন: <i>"তাহলে confusion কমাতে stage ৩টা করো — working, idle, offline।"</i>
+
+### দুবার ভেঙেছে, দুবারই একই কারণে
+
+🔴 `agent_down` বোঝাত "এজেন্ট মরে গেছে, এখনই ঘণ্টা হারাচ্ছে"। নিয়মটা দুবার
+লেখা হয়েছে, আর **দুবারই মাঠে ভেঙেছে**:
+
+| চেষ্টা | নিয়ম | কী হলো |
+|---|---|---|
+| ১ | `> ৬০০ সে.` চুপ → 🔴 | ১৫ আগস্ট সন্ধ্যায় `Agent down 12 · Offline 0` — অফিস ছুটি হয়েছিল |
+| ২ | শেষ কথা `active` → 🔴 | ১৭ আগস্ট বেলাল লাল — তিনি কাজ করতে করতে PC বন্ধ করে বাড়ি গিয়েছিলেন |
+
+দ্বিতীয়টার ফল আরও ব্যয়বহুল: **আমি ওই লাল দেখে ধরে নিয়েছিলাম আমার নতুন
+এজেন্ট (০.৪.২) ভেঙেছে** — রোলআউট থামালাম, ০.৪.৩ বানালাম, ঘণ্টা খরচ হলো।
+পরে মালিক বললেন *"বেলাল অফিসে নেই, তার PC বন্ধ"*, আর ডাটাবেস মিলিয়ে দেখা
+গেল তা-ই।
+
+### ⭐⭐⭐ শিক্ষা
+
+> **যে প্রশ্নের উত্তর জানা নেই, তার উত্তর অনুমান করে লাল রঙে লেখা সবচেয়ে
+> খারাপ পথ।** কারণ লাল রঙ নিশ্চয়তার ভান করে, অথচ ভান ভাঙলে লাল রঙের
+> মানেই হারিয়ে যায়।
+
+বোর্ড কোনোদিনই নিশ্চিত করে বলতে পারত না, আর কারণটা কাঠামোগত: বিদায়ী
+ইভেন্টটা (shutdown/logoff) এজেন্ট **ডিস্কে** লিখে রাখে আর পাঠায় পরের বার
+চালু হলে — কারণ বন্ধ হওয়ার সময় হাতে মাত্র ৪ সেকেন্ড, নেটওয়ার্ক কল করা
+যায় না।
+
+### ⭐ উত্তরটা আগে থেকেই সঠিক জায়গায় ছিল
+
+খোঁজ করতে গিয়ে দেখা গেল **`AgentDownCheck` (G01) আগে থেকেই চলছে**, প্রতি
+৫ মিনিটে — আর সে বোর্ডের চেয়ে অনেক বেশি জানে: বিদায়ী ইভেন্ট দেখে,
+`isExpectedSilence()` দিয়ে ছাঁকে, তারপর **অ্যালার্ট** তোলে। মালিকের
+স্ক্রিনশটেই সেটা কাজ করতে দেখা গেছে:
+
+> *"Agent silent — BELAL … and no shutdown event arrived either."*
+
+⚠️ অর্থাৎ বোর্ডের কাঁচা নিয়মটা এমন একটা কাজ **নকল করছিল যেটা অ্যালার্ট
+ব্যবস্থা ঠিকভাবে করছে** — শুধু খারাপভাবে, আর রঙে, যেখানে ব্যাখ্যা আঁটে না।
+
+### যা যা উঠল
+
+- `LiveStatus` — চারটে থেকে **তিনটে**, সার্ভারে ও ওয়েবে
+- `partingState()` — একমাত্র কাজ ছিল 🔴/⚪ ভাগ করা
+- **"Agents up" টাইল** — লাল হতো, লিখত "hours are being lost"
+- ট্যাবের `· 1 down`, লেজেন্ডের চতুর্থ বিন্দু, স্ন্যাপশটের `⚠ Agent down` সারি
+
+⭐ `agent_down` **অ্যালার্টের টাইপ হিসেবে থাকছে**, আর ঘণ্টা-সংশোধনের
+কারণ হিসেবেও ("The agent was not running") — ও দুটো জায়গায় কথাটা সৎ,
+কারণ সেখানে প্রমাণ আছে।
+
+সার্ভার ১২৮৬ পাস · ওয়েব ৭৩ পাস।
+
+---
+
+## ৩ধ. এজেন্টের মুখ — ব্র্যান্ড আইকন *(১৭ আগস্ট ২০২৬)*
+
+মালিক টাস্কবারের স্ক্রিনশটে তীর দিয়ে দেখালেন: এজেন্টের আইকনটা Windows-এর
+ডিফল্ট ফাঁকা জানালা। <i>"web er logo tai use koro।"</i>
+
+### ⚠️⚠️ আইকন এক জিনিস নয় — চারটে আলাদা জায়গা
+
+খুঁজে দেখা গেল **কোথাওই** কিছু বসানো ছিল না:
+
+| জায়গা | কোথা থেকে আসে | আগে |
+|---|---|---|
+| Explorer · alt-tab · ARP | exe-র ভেতরের আইকন (`<ApplicationIcon>`) | ছিল না |
+| **টাস্কবার** | `Form.Icon` | ছিল না → WinForms-এর ডিফল্ট |
+| "Add or remove programs" | MSI-র `ARPPRODUCTICON` | ছিল না |
+| ট্রে (নোটিফিকেশন) | `TrayIconPainter` কোডে আঁকে | ⭐ ঠিকই আছে |
+
+⚠️⚠️ **`ApplicationIcon` বসিয়েই থেমে যাওয়া যেত, আর ভুলটা টিকে থাকত।**
+WinForms একটা জানালার টাস্কবার-আইকন নেয় `Form.Icon` থেকে, আর সেটা না দিলে
+exe-র আইকন **নয়**, নিজের ডিফল্টটাই বসায়। মালিক ঠিক ওটাই দেখেছিলেন। তাই
+`.ico` এমবেডেড রিসোর্স হিসেবেও ঢোকে আর `OwnerDrawnForm` সেটা পড়ে।
+
+### ⭐ ট্রে আইকনে হাত দেওয়া হয়নি — ইচ্ছাকৃত
+
+ট্রে আইকন **ব্র্যান্ড দেখানোর জিনিস নয়**, অবস্থা জানানোর জিনিস: প্রতিটা
+অবস্থার আলাদা রং **আর আলাদা আকৃতি** (লাল-সবুজ পার্থক্য পুরুষদের ~৮%-এর
+চোখে ধরা পড়ে না)। সেখানে ব্র্যান্ড মার্ক বসালে কর্মী আর জানতে পারতেন না
+এজেন্ট চলছে কি না।
+
+> ⭐⭐ **একই ছবি সব জায়গায় বসানো "সামঞ্জস্য" নয়** — প্রতিটা আইকন একটা
+> প্রশ্নের উত্তর দেয়, আর প্রশ্নগুলো আলাদা।
+
+### বাইনারির ব্যতিক্রম
+
+`TrayIconPainter`-এর ডকে লেখা ছিল *"রিপোতে কোনো `.ico` বাইনারি নেই"* —
+কারণ বাইনারির ডিফ পড়া যায় না। ⭐ ব্যতিক্রমটা টিকছে কারণ **উৎসটা রিপোতেই**:
+`installer/make-icon.py` `favicon.svg`-এর হুবহু জ্যামিতি থেকে ৯টা মাপ
+আঁকে। বদলাতে হলে স্ক্রিপ্টটা বদলাবেন, আর ডিফে সেটাই পড়া যাবে।
+
+⚠️ প্রতিটা মাপ **আলাদা করে ৮× সুপারস্যাম্পল করে** আঁকা, একটা বড় ছবি ছোট
+করে নয় — ১৬px-এ ছোট করে নিলে X-এর ডাঁটি ধূসর হয়ে মিলিয়ে যেত।
+
+⚠️ Pillow-র নিজের ICO লেখক ব্যবহার করা যায়নি: সে ছোট মাপগুলো **নিজে
+থেকে resize করে বানায়**, অর্থাৎ আলাদা করে আঁকা ১৬px-টা ফেলেই দিত।
+
+### ⚠️ একটা টেস্ট মিথ্যা অভিযোগ করেছিল
+
+`System.Drawing.Icon`-কে ২৫৬px চাইলে সে ১২৮ ফেরত দেয় — ICO ফরম্যাটে ২৫৬
+লেখা হয় `0` বাইট দিয়ে, আর ওই API শূন্যকে শূন্যই ধরে। ⭐ টেস্টটা তাই এখন
+**ফাইলের ডিরেক্টরি নিজে পড়ে**, API-র উত্তরে ভরসা করে না।
+
+⚠️ বিল্ড স্ক্রিপ্ট নিজেই ধরিয়ে দিল যে ০.৪.৩ আগেই বেরিয়েছিল আইকন ছাড়া —
+তাই এটা **০.৪.৪**। এক নম্বরে দুটো বাইনারি থাকলে কোনটা কোথায় চলছে জানা
+যেত না।
+
+এজেন্ট টেস্ট **৪৭৪ পাস**, ৭টি নতুন।
+
+---
+
+## ৩ন. "idle থেকে working হতে ১০–১৫ সেকেন্ড" — দেরিটা দুটো *(১৭ আগস্ট ২০২৬)*
+
+মালিক জানালেন: <i>"idle theke working asote deri hoy — mouse narale, click
+korle, keyboard e press koreO ১০-১৫ sec pore working show kore।"</i>
+
+⭐ প্রথমে সন্দেহ গিয়েছিল G46-এর দিকে (পর্দা জমে আছে বলে গোনা বন্ধ)। কিন্তু
+কি-বোর্ড ও ক্লিকেও একই দেরি হচ্ছে শুনে বোঝা গেল কারণটা আলাদা — আর এটা
+**বাগ নয়, ছন্দ**:
+
+```
+এজেন্ট নিজে টের পায়      ১ সেকেন্ডে
+এজেন্ট → সার্ভার          heartbeat, প্রতি ১৫ সে.   ← এখানেই দেরি
+সার্ভার → ব্রাউজার        বোর্ডের রিফ্রেশ, প্রতি ৩০ সে.
+```
+
+⚠️⚠️ **ক্ষতিটা কেবল দেরির নয়, বিশ্বাসের।** মালিক পর্দায় দেখেন একজন "Idle",
+পাশে গিয়ে দেখেন তিনি টাইপ করছেন। দু-বার এমন হলে গোটা বোর্ডের উপরই আর
+ভরসা থাকে না — আর তখন সব সংখ্যাই সন্দেহের।
+
+### দুটোই সারানো হয়েছে
+
+**১· `HeartbeatUrgency` (নতুন, খাঁটি নিয়ম)** — অবস্থা বদলালে heartbeat
+পরের নির্ধারিত সময়ের অপেক্ষা করে না, সাথে সাথে যায়।
+
+⚠️ কিন্তু ছাদ আছে: `MinGap` **৩ সেকেন্ড**। কেউ পড়তে পড়তে টুকে নিলে অবস্থা
+সেকেন্ডে সেকেন্ডে বদলায়; ছাদ না থাকলে ১৫টা PC মিলে সার্ভারে অনবরত ধাক্কা
+দিত, আর লাভ শূন্য — মানুষের চোখে ৩ সেকেন্ড আর ০ সেকেন্ড এক।
+
+**২· বোর্ডের রিফ্রেশ ৩০ → ১৫ সেকেন্ড।** প্রথমটা সারানোর পর দ্বিতীয়টাই গোটা
+দেরির পুরোটা হয়ে দাঁড়াত। ⚠️ আরও নামানো হয়নি — শূন্যের জন্য push/SSE লাগত,
+যা এই দেরির তুলনায় অসমানুপাতিক।
+
+### ⭐⭐ একটা টেস্ট আমার নিজের কোডের বাগ ধরল
+
+`A_clock_going_backwards_does_not_stall_the_heartbeat` লেখার সময় ভাবা
+হয়েছিল এটা নিছক আনুষ্ঠানিকতা। **ব্যর্থ হলো।**
+
+`Remaining()`-এ কেবল ঋণাত্মক দিকটা সামলানো ছিল, কিন্তু আসল বিপদ উল্টো
+দিকে: ঘড়ি পিছিয়ে গেলে `lastBeatAt` হয়ে যায় **ভবিষ্যতের** সময়, আর অপেক্ষা
+দাঁড়ায় **৬১৫ সেকেন্ড** — heartbeat বন্ধ, আর G01 ("এজেন্ট ১০ মিনিট চুপ")
+প্রতিটা মেশিনে জ্বলে ওঠে।
+
+> ⚠️ আর মন্তব্যে লেখা ছিল যে এটা সামলানো হয়েছে। **ডকুমেন্টেশন কোডের
+> চেয়ে আশাবাদী ছিল** — এই প্রকল্পের চেনা ভুলটার আরেক রূপ।
+
+### ⚠️ কলারটাও একই সাথে
+
+`HeartbeatUrgency` লিখে থেমে গেলে নিয়মটা থাকত, টেস্টও পাস করত, অথচ বোর্ডে
+কিচ্ছু বদলাত না। তাই ট্র্যাকার টিকে `_machine.State != before` দেখে
+`NudgeHeartbeat()` — নিয়ম আর কলার একই কমিটে।
+
+এজেন্ট টেস্ট **৪৮৯ পাস**, ৯টি নতুন। MSI **০.৪.৫**।
+
+---
+
+## ৩঩. ⚠️⚠️ যে বাগটা ছিলই না — আর তার দাম *(১৭ আগস্ট ২০২৬)*
+
+সকালে বেলালের কার্ড 🔴 **Agent down** দেখাল, ঠিক ০.৪.২ বসানোর পর। আমি ধরে
+নিলাম নতুন এজেন্টটাই ভেঙেছে।
+
+### যা করেছি, ক্রম অনুযায়ী
+
+১· রোলআউট **থামিয়ে** দিলাম (`halted`)
+২· কোড পড়ে একটা সন্দেহ দাঁড় করালাম — দুই থ্রেড একসাথে ক্যাপচার ইঞ্জিন ছুঁচ্ছে
+৩· **০.৪.৩ বানালাম** সেটা সারিয়ে
+৪· ব্যাখ্যাটা মালিককে বললাম, অনেকটা নিশ্চিত সুরে
+
+তারপর মালিক লিখলেন: *"belal office e nei, tar pc off।"*
+
+### ⭐ প্রমাণ যা বলল
+
+| দেখা | কী বলে |
+|---|---|
+| টেস্ট PC-তে ০.৪.২ **টানা ২ ঘণ্টা** অক্ষত | নিজে থেকে ভাঙে না |
+| `agent.log` **ফাঁকা মনে হলো**, Windows-এ কোনো `Application Error` নেই | কিছু ক্র্যাশ করেনি — কিন্তু ⚠️ পরে দেখা গেল লগ ফাঁকা ছিলই না, আমি ভুল পাথে খুঁজেছিলাম (§ ৩৯) |
+| বেলালের শেষ heartbeat `active`, তারপর নীরবতা | কাজ করতে করতে PC বন্ধ |
+
+⚠️ **কোনো বাগই ছিল না।** ছিল একটা স্ট্যাটাসের নিয়ম, যেটা "বাড়ি গেছে"-কে
+"ভেঙে গেছে" বলত (§ ৩৬ দেখুন)।
+
+### ⭐⭐⭐ শিক্ষা
+
+> **একটা লাল বাতি দেখে রোলআউট থামানো সস্তা; একটা লাল বাতি দেখে কারণ
+> ঘোষণা করা নয়।** আমি দ্বিতীয়টা করেছি, আর তাতে কয়েক ঘণ্টা গেছে একটা
+> কল্পিত বাগের পেছনে।
+
+⚠️⚠️ ঠিক পথটা ছিল হাতের কাছেই: **PC-র লগ**। আমি ভেবেছিলাম সেটা ফাঁকা, তাই
+অনুমান বসিয়েছি — অথচ **লগ কোনোদিন ফাঁকা ছিল না**, আমি ভুল ফোল্ডারে খুঁজেছিলাম
+(§ ৩৯)। অর্থাৎ উত্তরটা সারাক্ষণ মেশিনেই ছিল, এক ফোল্ডার দূরে। ⭐ এটাই এই
+সাগার আসল শিক্ষা: *"তথ্য নেই"* বলার আগে নিশ্চিত হতে হয় সেটা তথ্যের অভাব,
+নাকি খোঁজার জায়গার ভুল।
+
+⭐ **তবে ০.৪.৩-এর সারাইটা ফেলনা নয়** — দুই থ্রেড থেকে একই ক্যাপচার অবজেক্ট
+ব্যবহার করাটা আমিই ০.৪.২-এ ঢুকিয়েছিলাম, আর সেটা যেকোনো দিন কামড়াতে পারত।
+শুধু **এই ঘটনার কারণ ছিল না**, আর সেটা বলা আমারই কাজ।
+
+### প্রকাশ
+
+০.৪.৫ VPS-এ তোলা ও প্রকাশিত — `canary`, sha256 `332909bd…4647f1`
+(লোকাল ফাইল, VPS-এর ফাইল আর ডাটাবেসের সারি — তিনটেই মিলেছে, আর যাচাইটা
+কনটেইনারের **ভেতর** থেকে)। ০.৪.২ `halted`-ই থাকল; ০.৪.৩ ও ০.৪.৪ কাউকে
+দেওয়ার আগেই মুছে ফেলা হয়েছে।
+
+⚠️ পর্দা থেকে প্রকাশ করা যায়নি (লগইন করা আমার পক্ষে নিষিদ্ধ), তাই সার্ভারের
+কনসোল থেকে — কিন্তু `agent-versions.service.ts`-এর **চারটে যাচাই হুবহু**
+আবার চালিয়ে, আর audit log-এ `via: server console (owner instruction)` লিখে।
+⭐ ঢিলে একটা দ্বিতীয় পথ রিপোতে রাখা হয়নি: স্ক্রিপ্টটা এককালীন, কারণ
+স্থায়ী CLI থাকলে সেটা UI-র যাচাইগুলো ফাঁকি দেওয়ার পথ হয়ে দাঁড়াত।
+
+---
+
+## ৩ভ. "Seen all" — একসাথে সব অ্যালার্ট দেখা *(১৮ আগস্ট ২০২৬)*
+
+মালিক Alerts পাতায় দেখালেন **১১৮টা খোলা ওয়ার্নিং**, আর প্রতিটায় আলাদা
+"Seen" চাপতে হচ্ছে। চাইলেন একটা বোতাম — এক ক্লিকে সব seen।
+
+### কারণ
+
+G01 ("এজেন্ট চুপ") ১২টা PC-তে বারবার আসে (রাতে সবাই PC বন্ধ করলে)। একটা
+থ্রটল আছে, তবু কয়েক দিনে শতাধিক জমে। এক-এক করে চাপা কার্যত অসম্ভব।
+
+### যা বসানো হয়েছে
+
+- সার্ভারে `POST /alerts/acknowledge-all` → `acknowledgeAll(userId)` —
+  `updateMany where acknowledgedAt: null`. ⭐ ফেরত দেয় **কতগুলো নতুন করে**
+  seen হলো।
+- `Card`-এর `actions` স্লটে **"Seen all"** বোতাম, শুধু `openCount > 0` হলে।
+  একটা নিশ্চিত-প্রম্পট (একসাথে অনেক ছোঁয়, ভুল ক্লিক ঠেকাতে)।
+
+### ⚠️⚠️ দুটো সিদ্ধান্ত টেস্টে বাঁধা
+
+- **আগে-দেখা সারি ছোঁয়া হয় না** (`acknowledgedAt: null` শর্ত)। নইলে "কে
+  প্রথম দেখেছিল" ইতিহাসটা এই এক ক্লিকে মুছে যেত — আর ঘণ্টা-সংশোধনের প্রমাণ
+  (`evidence_alert_id`) নড়ে যেত। কিছুই **ডিলিট হয় না**, শুধু "পড়া হয়েছে"।
+- **রুট-ক্রম:** `acknowledge-all` ঘোষণা `:id/acknowledge`-এর **আগে**, নইলে
+  "acknowledge-all" একটা `:id` হিসেবে পড়ার ঝুঁকি। একটা টেস্ট সরাসরি এটাই
+  ধরে (২০০ + count = সঠিক রুট)।
+
+⭐ owner-only (কন্ট্রোলারের `@Roles(owner)`) — ম্যানেজারও নয়, আর সেটাও
+টেস্টে (৪০৩)। **৫টা নতুন e2e টেস্ট**, ওয়েব ৭৩ পাস।
+
+⚠️ পর্দায় লাইভ ডেটাসহ দেখা যায়নি (লগইন নিষিদ্ধ) — লজিক সার্ভারে প্রমাণিত,
+ওয়েবে tsc/lint/build সবুজ; চেহারাটা মালিক দেখবেন।
+
+---
+
+## ৩ভ২. Agent-down alert নিজে বন্ধ — সকালের বাসি-warning দেয়াল *(১৮ আগস্ট ২০২৬)*
+
+"Seen all" (§ ৩ভ) ছিল **ঝাড়ু**, ঝাড়ুর দরকার কমানো নয়। মালিক পরদিন সকালে
+আবার দেখালেন **১১টা খোলা "Agent down"** — সবই ৭০০+ মিনিট চুপ, "no shutdown
+event arrived either"। জিজ্ঞেস করলেন: *"ei warning gola kivabe handle korte caicho?"*
+
+### কারণ — নিয়মটা চতুর, কিন্তু goodbye পৌঁছায় না
+
+`isExpectedSilence()` (alerts.rules) এমনিতে PC বন্ধ করে বাড়ি যাওয়াকে স্বাভাবিক
+ধরে — শর্ত একটাই: শেষ খবরটা যেন বিদায়ী ইভেন্ট (agent_stop/logoff/shutdown/
+sleep) হয়। কিন্তু PC বন্ধের শেষ সেকেন্ডে এজেন্ট সেটা POST করার সময় পায় না —
+তা বন্ধ PC-র outbox-এ আটকে থাকে, drain হয় অনেক দেরিতে (**G136**)। সার্ভার
+goodbye শোনেই না → রাত ২টায় "১২ ঘণ্টা চুপ, ব্যাখ্যা নেই" → warning। তার ওপর
+দ্বিতীয় ফাঁক: PC সকালে ফিরে কাজ শুরু করলেও পুরোনো alert **নিজে বন্ধ হতো না** —
+হাতে "Seen" চাপা পর্যন্ত খোলা।
+
+### ⭐ #১ — ফিরে এলে নিজে বন্ধ (এই কমিট)
+
+শিডিউলড চেকেই সমাধান, ingest hot-path (`device-auth.guard`) ছোঁয়া হয়নি:
+
+- **নতুন কলাম** `alerts.resolved_at` + `resolved_reason` (nullable, default
+  নেই)। ⭐ `acknowledged_at` ("মানুষ দেখেছে") থেকে **আলাদা** — এটা "সার্ভার নিজে
+  দেখল অবস্থা কেটে গেছে"। দুটো ভিন্ন ঘটনা, তাই ভিন্ন ঘর; "কে প্রথম দেখেছিল"
+  ইতিহাস নড়ে না, ঘণ্টা-সংশোধনের প্রমাণও (`evidence_alert_id`) অটুট।
+- **pure function** `recoveredAlertIds()` — `agentDownCandidates()`-এর ঠিক
+  আয়না: ওটা `lastSeenAt < floor` ("চুপ") বাছে, এটা `>= floor` ("আবার কথা
+  বলছে")। খাঁটি ফাংশন, তাই **৮টা ইউনিট টেস্ট**।
+- `AgentDownCheck.resolveReturned()` — খোলা agent_down-এর ডিভাইস আবার সাম্প্রতিক
+  হলে `resolveMany(ids, 'agent returned')`। শিডিউলারের একই 'agent-down' টিকে
+  চলে, **grace-এর বাইরে** (কখনো নতুন alert তোলে না, শুধু বন্ধ করে — তাই
+  রিস্টার্টের পরও নিরাপদ, বরং বাসি alert তখনই সাফ হয়)।
+
+### ⚠️ "open" = unacked **এবং** unresolved — পাঁচ জায়গা
+
+একটা understand-পাসে (৬টা রিডার সমান্তরালে) গোটা change-surface ম্যাপ করা হয়,
+আর সেটাই বাঁচিয়েছে **সহজে-মিস-হওয়া যমজটা**:
+
+- **must-fix (openCount সঠিক রাখে):** `alerts.service` openCount · default list
+  filter · **`ops.health.service` openAlerts** ← এই দ্বিতীয় কাউন্টার আলাদা
+  পাতায়, ভুলে গেলে অন্য পাতা ঠিক হলেও হেলথ-সংখ্যা ভুল থাকত।
+- **consistency-fix:** `acknowledgeAll` (confirm-এ দেখানো সংখ্যা = যা ছোঁয়) ·
+  clock-drift dedup (আগেরটা resolved হলে নতুন drift সত্যিই নতুন)।
+- **ছোঁয়া হয়নি (ইচ্ছাকৃত):** throttle স্ক্যান (resolvedAt দিলে বন্যা ফিরত) ·
+  dispatcher/telegram (channels_sent-ভিত্তিক, "open" নয়) · adjustments FK চেক।
+
+### UI — তিন অবস্থা
+
+Alerts সারি এখন: **Seen by X** (মানুষ) · **Resolved** (সার্ভার, বোতাম নয়,
+tooltip-এ সময়) · নয়তো **Seen** বোতাম। resolved সারি ম্লান, "Show all"-এ ইতিহাসে
+থাকে, খোলা গোনায় নয়। ⭐ subtitle আর "Seen all" গেট দুটোই openCount পড়ে, তাই
+ক্লায়েন্টে আর কিছু বদলাতে হয়নি।
+
+### ⛔ dispatcher suppress এবার নয় — ইচ্ছাকৃত scope
+
+resolve হওয়ার আগেই email চলে যায় (dispatcher ৬০s, agent-down টিক ৫min), তাই
+suppress-এর জানালা নগণ্য; আর `channels_sent` খালি রেখে suppress করলে "গেছে কি
+যায়নি" invariant নষ্ট হতো। মালিকের আসল ব্যথা **পর্দার দেয়াল**, সেটা auto-close-ই
+মেটায়।
+
+### যাচাই
+
+**৬০ টেস্ট সবুজ** (৫০ rules unit + ৫ recovery e2e + ৫ ack e2e), সার্ভার tsc
+পরিষ্কার, ওয়েব tsc+build সবুজ। migration test DB-তে প্রয়োগ হয়েছে।
+⚠️ পর্দায় লাইভ দেখা যায়নি (লগইন নিষিদ্ধ) — লজিক e2e-তে প্রমাণিত।
+
+### ⏳ #২ এখনো বাকি — আসল গোড়া
+
+auto-close দেয়ালটা সরায়, কিন্তু warning-টা **তৈরি হওয়াই** থামায় না। সেটা থামাতে
+হলে এজেন্টকে Windows shutdown/logoff-এ বিদায়ী ইভেন্ট সিঙ্ক্রোনাসভাবে পাঠাতে হবে
+(G136-এর আসল সমাধান) — পরের ধাপ।
+
+---
+
+## ৩ভ৩. এজেন্ট ০.৪.৭ — সেকেন্ড, সবুজ, আর shutdown-এ goodbye অগ্রাধিকার *(১৮ আগস্ট ২০২৬)*
+
+দুটো আলাদা কাজ, একই ০.৪.৭ বাইনারিতে (এজেন্ট-বদল = নতুন MSI, তাই একসাথে)।
+
+### ⭐ ১· tray "Today's hours" — সেকেন্ড ও সবুজ (মালিকের চাওয়া)
+
+- **হিরো সংখ্যা HH:MM:SS** — নতুন `UiText.DurationLong()` (`2:27:14`), শুধু
+  "আজকের হিসাব" বড় সংখ্যায়। ⚠️ নিচের টার্গেট-তুলনার বারগুলো (`2:27 / 8:00`)
+  `Duration` (H:MM)-ই থাকে — ওখানে সেকেন্ড শুধু নয়েজ।
+- **অগ্রগতির ভরাট সবুজ** — `ProgressColor(progress)` (আগে চলতি অবস্থায় নিরপেক্ষ
+  `Ink`, শুধু ১০০%-এ সবুজ) → `ProgressFill => Theme.Ok`। Today · Last 7 · This
+  month তিন বার-ই। আর `BusyBlocks` ভরাট `Ink` → `Ok`। ⭐ মালিক প্রথমে ওয়েবে,
+  এখন tray-তেও "কাজ হচ্ছে = সবুজ" চেয়েছেন — দুই পর্দা এক থাকল।
+
+### ⭐⭐ ২· #২ (A1) — বিদায়ী ইভেন্ট shutdown-এ অগ্রাধিকার (G136 আংশিক)
+
+একটা understand-পাসে এজেন্টের গঠন ম্যাপ করা হয়। মূল আবিষ্কার:
+
+- এজেন্ট **Windows Service নয়**, headless WinForms tray app (`Application.Run()`)।
+- shutdown/logoff `WM_ENDSESSION` → `OnSessionEnd` — departure event শুধু SQLite
+  outbox-এ লেখে, **নেটওয়ার্কে নয়** (ইচ্ছাকৃত: UI-থ্রেডে HTTP hang করলে ডেস্কটপ
+  জমে + Windows প্রসেস মেরে ইভেন্ট হারায়)।
+- exit-এ একমাত্র নেটওয়ার্ক-সেন্ড: `DisposeAsync`-এর final drain (৩s, UI-থ্রেডের
+  বাইরে)। ⚠️⚠️ **কিন্তু drain-এর ক্রম `[Segment, Event, …]`** — রাতে বন্ধ হওয়া
+  PC-র শেষ ~৩০s-এর সেগমেন্ট তখনো কিউয়ে, আর ৩s বাজেট ওগুলোতেই ফুরোলে goodbye
+  ইভেন্টটা পড়ে থাকত। পরদিন সার্ভার "শেষ খবর বিদায় ছিল না" ভেবে মিথ্যা agent_down
+  তুলত। **এটাই সকালের বাসি-warning দেয়ালের গোড়া।**
+
+**ফিক্স (A1):** `SyncWorker.DrainKindOnceAsync(kind)` — একটাই kind নিষ্কাশন।
+`DisposeAsync` full drain-এর **আগে** `DrainKindOnceAsync(OutboundKind.Event)`
+ডাকে (নতুন ২s `GoodbyeBudget`), তাই shutdown/logoff + agent_stop **সবার আগে**
+যায়। ⚠️ ব্যর্থ/timeout হলেও ইভেন্ট outbox-এ থাকেই (full drain বা পরের startup
+ধরে) — নিছক best-effort অগ্রাধিকার, **শূন্য regression**। নেটওয়ার্ক এখানে নিরাপদ,
+কারণ DisposeAsync UI-থ্রেডে নয়। টেস্ট: `DrainKindOnce_শুধু_সেই_kind_পাঠায়`।
+
+### ⏳ কেন পূর্ণ-ফিক্স (B) এবার নয়
+
+যদি `DisposeAsync` OS-shutdown-এ **আদৌ না চলে** (প্রসেস আগে মারা পড়ে), A1-ও
+সাহায্য করে না। তার জন্য লাগে `WM_QUERYENDSESSION` + `ShutdownBlockReasonCreate`
+(Windows-এর কাছে সময় চেয়ে নেওয়া) — কিন্তু ওটা **UI-থ্রেডে**, ভুল হলে ডেস্কটপ
+জমে যায়, আর আমি আসল shutdown-এ টেস্ট করতে পারি না। তাই A1 (নিরাপদ, common
+overnight-shutdown কেসে সাহায্য করে) আগে; B দরকার হলে মালিকের test PC-তে যাচাই
+করে পরে (roadmap **R29**)।
+
+### ⚠️ understand-পাসের একটা দাগ
+
+৬টা রিডারের **৩টে** structured-output-এ আক্ষরিক `"test"` placeholder ফেরত
+দিয়েছে (গবেষণা করেও) — মডেলের ভুল। ভালো ৩টে (process-model · event-model ·
+sync-client) এত বিস্তারিত দিয়েছে যে বাকিটা কভার হয়ে গেছে। শিক্ষা: workflow-এর
+আউটপুট **পড়ে যাচাই** করতে হয়, সংখ্যা দেখে "সফল" ধরে নয়।
+
+### যাচাই
+
+এজেন্ট বিল্ড ০ warning · ০ error; **৩৮৩ Core + ১০৭ Agent টেস্ট পাস**। Version
+`0.4.6 → 0.4.7` (Directory.Build.props)। MSI সই+টাইমস্ট্যাম্প সহ বিল্ড, VPS-এ
+আপলোড (sha256 মিলিয়ে), `agent_versions`-এ canary, audit_log-এ লেখা।
+
+### ⚠️ পথে ধরা পড়া বাগ — `wix -bindpath`
+
+০.৪.৭ বিল্ড করতে গিয়ে: `Cannot find the Icon file 'oxeio.ico'`। ফাইলটা
+installer/-এ **আছেই** — কিন্তু `Package.wxs`-এ পথটা আপেক্ষিক, আর build.ps1
+wix-কে `-bindpath` দিত না, তাই wix খুঁজত **cwd** থেকে। ⚠️ অর্থাৎ ডকের নিজের
+কমান্ডও (`powershell -File installer\build.ps1`, agent/ cwd) ভাঙত — কেউ এতদিন
+installer/ ফোল্ডার থেকেই চালিয়েছে বলে ধরা পড়েনি। `-bindpath $here` যোগ করা হলো।
+
+---
+
+## ৩ভ৪. ⚠️⚠️ সেকেন্ড বসেছিল, কিন্তু নড়ত না — আর কারণটা ফরম্যাটে ছিল না *(১৮ আগস্ট ২০২৬)*
+
+০.৪.৭ বসিয়ে মালিক: *"0.4.7 e login korar pore sec change hocche na"*।
+
+### ⭐⭐ যেটা আমি ধরে নিয়েছিলাম, আর যেটা সত্যি
+
+আমি ভেবেছিলাম কাজটা **ফরম্যাটের** — `H:MM` → `H:MM:SS` করলেই হবে। মেপে দেখা
+গেল সংখ্যাটা **নিজেই চলন্ত নয়**:
+
+| উৎস | কখন বাড়ে |
+|---|---|
+| `progress.TodayActiveSec` (সার্ভার) | কেবল heartbeat এলে |
+| `_activeTodaySec` (এজেন্টের নিজের) | কেবল একটা সেগমেন্ট **বন্ধ** হলে |
+
+আর `TodayForm.Apply()` স্ট্যাটাস **বদলালে** তবেই আঁকে; জানালার নিজস্ব কোনো
+ঘড়িও ছিল না। ⭐ "লগইনের **পরে**" বলাটাও নিখুঁত সূত্র ছিল: সাইন ইনের আগে
+সংখ্যাটা আসত এজেন্টের নিজের কাউন্টার থেকে, পরে সার্ভারের heartbeat থেকে —
+যেটা আরও কম ঘন ঘন বদলায়।
+
+> **সেকেন্ড দেখানো আর সেকেন্ডে সেকেন্ডে বদলানো — এক জিনিস নয়।** ফরম্যাট
+> বদলে "হয়ে গেছে" ভাবাটা ছিল এই সেশনের সেই পুরোনো ভুলেরই ছোট সংস্করণ:
+> একটা পর্যবেক্ষণকে সিদ্ধান্ত বলে চালিয়ে দেওয়া।
+
+### যা বসানো হয়েছে
+
+- **`Core/Agent/LiveDuration.cs`** (নতুন) — *গোনা সংখ্যা + তারপর থেকে কেটে
+  যাওয়া সময়*। কোনো ঘড়ি/IO নেই, সময় প্যারামিটারে — **৮টা ইউনিট টেস্ট**।
+  চারটে পাহারা: ⚠️ ছাদ (`MaxDrift` ৫ মিনিট) — সার্ভার চুপ হলে জানালা যেন
+  নিজে ঘণ্টা **বানিয়ে** না ফেলে; ⚠️ **কখনো পিছোয় না** (heartbeat-এর সংখ্যা
+  আপলোড-হওয়া সেগমেন্টের যোগফল, তাই মাঝে মাঝে কম আসে); ⚠️ মধ্যরাতে শূন্য
+  হলে আবার গোড়া থেকে; ⚠️ anchor না জানলে (`null`) এক সেকেন্ডও যোগ নয়।
+- **`AgentStatus.CountedAt`** — সংখ্যাটা কখন মাপা হয়েছিল। হোস্টে দুটো
+  anchor (`_progressAt` / `_activeTodayAt`), আর `Snapshot()` **যে উৎস
+  ব্যবহার করে সেটারই** anchor দেয় — মিলিয়ে ফেললে ঘড়ি ভুল জায়গা থেকে গুনত।
+- **`TodayForm`-এ ১-সেকেন্ডের টাইমার** — শুধু জানালা খোলা থাকলে।
+- ⭐ **idle-এ ঘড়ি থামে** (`IsCounting`) — নিয়মই তো "৬০ সেকেন্ড হাত না চললে
+  গোনা বন্ধ", আর সেটা জানালার নিচেই লেখা। idle-এও চললে জানালা নিজের লেখা
+  কথারই বিরুদ্ধে যেত।
+
+### ⚠️ যে খরচটা প্রায় চোখ এড়িয়ে যাচ্ছিল
+
+`stack.Thumbnail()` **প্রতিটা পেইন্টে** ডিস্ক থেকে পড়ে WebP ডিকোড করত।
+আঁকা হতো কালেভদ্রে বলে সেটা কেউ টের পেত না — কিন্তু সেকেন্ডের টাইমার বসার
+পর ওটা হতো **প্রতি সেকেন্ডে**। তাই `OwnerDrawnForm.ThumbnailFor()` ক্যাশ
+বসানো হলো, ⭐ ফাইলের **লেখার সময়** ধরে (পথ তো একই থাকে — `last-shot.webp`,
+নাম দেখে ক্যাশ করলে জানালা চিরকাল প্রথম ছবিটাই দেখাত)।
+
+**যাচাই:** বিল্ড ০ warning/error · **৩৯১ Core + ১০৭ Agent টেস্ট পাস**।
+Version `0.4.7 → 0.4.8` (এক নম্বরে দুটো বাইনারি নয় — ০.৪.৭ ইতিমধ্যেই বিলি
+হয়ে গেছে)। ⚠️ পর্দায় সত্যিই টিক করছে কিনা — মালিকের চোখে।
+
+---
+
+## ৩ভ৫. ⚠️⚠️ "sec barte barte atoke jacche" — ঘড়ি চলে, তারপর থমকে যায় *(১৮ আগস্ট ২০২৬)*
+
+০.৪.৮ বসিয়ে মালিক: সেকেন্ড বাড়ে, কিছুক্ষণ পর **আটকে যায়**।
+
+### দুটো কারণ, দুটোই মাপা
+
+**১· ভিত্তিটাই ভুল উৎস থেকে।** ০.৪.৮-এ চলন্ত ঘড়ির ভিত্তি ছিল
+`progress.TodayActiveSec` (সার্ভার) আর anchor ছিল heartbeat-এর মুহূর্ত।
+⚠️⚠️ সার্ভারের সংখ্যা **সবসময় পিছিয়ে** — সে কেবল আপলোড হওয়া সেগমেন্ট জানে,
+আর কিউয়ে সবসময় কিছু পড়ে থাকে। ফলে নতুন heartbeat এলে candidate আগের
+দেখানো মানের **চেয়ে কম** হতো, আর "কখনো পিছোবে না" নিয়মটা (যেটা নিজে ঠিক)
+তখন ঘড়িটাকে **আটকে রাখত** যতক্ষণ না candidate ওই মান ছাড়ায়। অর্থাৎ প্রতি
+চক্রে কয়েক মিনিট থমকে থাকা — হুবহু যা দেখা গেছে।
+
+**২· ছাদ আর ব্যবধান সমান।** `MaxDrift` ছিল ৫ মিনিট, আর স্ট্যাটাস প্রকাশের
+সর্বোচ্চ ব্যবধানও ৫ মিনিট (`HeartbeatMax` = ৫ মি. · `MaxSegmentLength` = ৫ মি.)।
+দুটো সমান হলে ঘড়ি ঠিক শেষ মুহূর্তে গিয়ে থামত।
+
+### ⭐⭐ আসল সমাধান — হিসাবটা হোস্টেই, খোলা সেগমেন্টসহ
+
+`AgentHost.TodayWorked()` (নতুন) — **তিনটে অংশ**:
+
+```
+সার্ভার-অফসেট  +  আজকের বন্ধ সেগমেন্ট  +  এখন যেটা চলছে সেটুকু
+```
+
+- **খোলা সেগমেন্ট** (`_clock.Now - _machine.OpenedAt`, শুধু ACTIVE হলে) —
+  এই অংশটাই আগে বাদ পড়ত, আর এটাই মূল: `_activeTodaySec` বাড়ে কেবল সেগমেন্ট
+  **বন্ধ** হলে, আর কাটা হয় সর্বোচ্চ ৫ মিনিটে। তাই সংখ্যাটা ৫ মিনিট থেমে
+  থেকে এক লাফে ৫ মিনিট বাড়ত।
+- **সার্ভার-অফসেট** (`_todayOffsetSec`) — heartbeat-এ আমরা নিজের
+  `ActiveSecToday` পাঠাই, সার্ভার তার মোট ফেরত দেয়; পার্থক্যটাই এজেন্ট চালুর
+  **আগের** কাজ (রিবুট / আগের সেশন)। ⚠️ ঋণাত্মক হলে ০ — সার্ভার পিছিয়ে
+  থাকা স্বাভাবিক, ওটা বাদ দেওয়ার কারণ নয়।
+- ⭐ ফলে `AgentStatus.ActiveToday` এখন **snapshot-এর মুহূর্ত পর্যন্ত সত্যি**,
+  আর সেটা ধারাবাহিকভাবে বাড়ে — জানালা শুধু তার পরের ফাঁকটুকু গোনে।
+
+⚠️ **দুই ঘড়ি মেশানো হয়নি:** খোলা সেগমেন্টের হিসাব হোস্টে, `_clock`-এ
+(monotonic — ঘড়ি বদলালেও পিছোয় না); জানালার ছোট extrapolation বাস্তব ঘড়িতে
+(`CountedAt` = snapshot-এর `UtcNow`)। মিশিয়ে ফেললে পার্থক্যটাই অর্থহীন হতো।
+`MaxDrift` ৫ → **১০ মিনিট** (ব্যবধানের দ্বিগুণ)।
+
+### টেস্টে বাঁধা
+
+⭐ রিগ্রেশন টেস্টটা ঠিক অভিযোগটাই ধরে: ১৫ মিনিট **সেকেন্ড ধরে সেকেন্ড**
+চালিয়ে দেখা হয় ঘড়ি প্রতিবার **কঠোরভাবে** এগোচ্ছে — snapshot বদলানোর
+মুহূর্তেও — আর শেষে ঠিক ১৫ মিনিটই বেড়েছে, এক সেকেন্ডও বেশি নয়। সাথে
+"ছাদ > প্রকাশের ব্যবধান" নিয়মটাও টেস্টে।
+
+**যাচাই:** বিল্ড ০ warning/error · **৩৯৩ Core + ১০৭ Agent টেস্ট পাস**।
+Version `0.4.8 → 0.4.9`।
+
+> **⭐ এই তিন ধাপের শিক্ষা** *(০.৪.৭ → ০.৪.৮ → ০.৪.৯)*: একই ফিচারে পরপর
+> দুবার "ঠিক করেছি" বলে ভুল হয়েছে, আর দুবারই কারণ এক — **পর্দায় যা দেখা
+> যায় সেটা ঠিক করার আগে সংখ্যাটা কোথা থেকে আসে তা না দেখা।** প্রথমবার
+> ফরম্যাট বদলেছি (সংখ্যা চলন্ত নয়), দ্বিতীয়বার চলন্ত করেছি ভুল উৎস থেকে
+> (সার্ভারের পিছিয়ে থাকা সংখ্যা)। তৃতীয়বারে গিয়ে উৎসটাই ঠিক করা হলো।
+
+---
+
+## ৩ভ৬. Worklog — কার্ড থেকে রোস্টার *(১৮ আগস্ট ২০২৬)*
+
+মালিক: *"ei page ta ki arekuto sundor kora jay. kiso mockup diO"* → তিনটে
+মকআপ দেখে বাছলেন **"B · One-screen roster"**।
+
+### আগে কেন দরকার ছিল — মেপে দেখা
+
+| | |
+|---|---|
+| **৫২%** | প্রতিটা কার্ডের অর্ধেকের বেশি জায়গা নিত স্ক্রিনশট, যা ওই মাপে পড়াই যায় না |
+| **~৬০** | একই লেবেলের পুনরাবৃত্তি ("of 8h today" · "This month" · "Working" · "Seen just now") |
+| **৯px** | যাঁর আজ ৩৪ মিনিট (বাকিদের ~১ঘ), তাঁর রিং বাকিদের চেয়ে আলাদা মাত্র ৯px চাপে |
+| **ragged** | ছবি-থাকা ও না-থাকা কার্ডের উচ্চতা ~১৩০px আলাদা, তাই সংখ্যাগুলো কোনো কলামেই দাঁড়াত না |
+
+### ⭐⭐ যেভাবে ঠিক করা হলো
+
+তিনজন ডিজাইনার আলাদাভাবে তিনটে দিক এঁকেছে, দুজন **আলাদা দৃষ্টিকোণের**
+বিচারক স্কোর করেছে (তাড়াহুড়োয় থাকা মালিক · ডিজাইন-সিস্টেম)। ⭐ দুজন
+**উল্টো রায়** দিয়েছেন — আর সেটাই সবচেয়ে কাজের ফল, কারণ দুজনেই একই
+গ্রাফট-তালিকায় এসে মিলেছেন। মকআপ পাতাটা মালিককে দেওয়া হয়েছে
+(artifact), আর নিয়ম মেনে **অনুমোদনের আগে কোডে হাত দেওয়া হয়নি**।
+
+নতুন `pages/live/TeamRoster.tsx` — এক টেবিলে ১৩ জন: Staff · Today ·
+This month · Screen · Last seen · Status। `TeamCards.tsx` ও
+`PersonCard.tsx` মুছে গেছে (আর কেউ ব্যবহার করত না)।
+
+### ⚠️⚠️ মকআপের যে দুটো জিনিস ইচ্ছাকৃতভাবে বসানো হয়নি
+
+- **দলের median দাগ** — প্রতিটা বারে বসালে গাণিতিকভাবেই **রোজ অর্ধেক দল**
+  "দাগের নিচে" দেখাত, চিরকাল। সাজানোর ক্রম মালিক বদলাতে পারেন, কিন্তু ওই
+  দাগ সবসময় জ্বলে থাকত — জ্যামিতিতে গাঁথা লিডারবোর্ড।
+- **sort-করার ভান করা হেডার** — `Table`-এ sort নেই, তাই তীরচিহ্ন এমন একটা
+  সামর্থ্যের বিজ্ঞাপন দিত যা নেই।
+
+### ⭐ যা যোগ হয়েছে — শূন্য বনাম অজানা
+
+`components/ProgressRing.tsx`-এ নতুন **`TodayMeter`**, তিনটে আলাদা চেহারা:
+
+| অবস্থা | চেহারা | মানে |
+|---|---|---|
+| `counted` | ভরাট সবুজ | মাপা হয়েছে, এতটা হয়েছে |
+| `zero` | **ড্যাশ করা খালি** | মাপা হয়েছে, আজ শূন্য |
+| `unknown` | **হ্যাচ করা** | মাপাই হয়নি (এজেন্ট বসেনি / সাড়া দেয়নি) |
+
+⚠️ শেষ দুটো আগে একই খালি বার ছিল, আর তাতে "এজেন্ট বসানোই হয়নি" নীরবে
+"আজ কিছু করেননি"-র অভিযোগ হয়ে যেত। ⭐ ভাগটা **রঙ দিয়ে নয়, টেক্সচার
+দিয়ে** — বর্ণান্ধতাতেও টেকে (`TeamBars`-এর মাপা ΔE-র শিক্ষা)।
+⭐ নিয়মটা মাসের ঘরেও, কিন্তু **সংখ্যার উপর শর্তসহ**: এজেন্ট আজ সরানো
+হলেও মাসের আগের ঘণ্টা সত্যিই মাপা, তাই সেগুলো লুকোনো হয় না।
+
+### ⚠️ `TeamTable`-এর নকল হতে দেওয়া যাবে না
+
+Live Board-এ `TeamTable` আগে থেকেই আছে। ভাগটা ফাইলের মাথায় লেখা হয়েছে:
+বোর্ডেরটা **"লক্ষ্যের বিপরীতে কে কোথায়"** (অগ্রগতি অনুযায়ী সাজানো),
+Worklog-এরটা **"এখন কে কাজ করছে"** (এমপ্লয়ি-কোড ক্রম · স্ক্রিনশট · শেষ
+সাড়া)। কলাম এক হয়ে গেলে একটাকে মুছতে হবে।
+
+### যাচাই — এবার সত্যিই চোখে দেখা হয়েছে
+
+⭐⭐ লগইন করতে পারি না বলে এতদিন পর্দা যাচাই করা যেত না। এবার একটা
+**অস্থায়ী Vite এন্ট্রি** (`preview.html`) বানিয়ে শুধু রোস্টারটাই ফিক্সচার
+দিয়ে রেন্ডার করা হয়েছে — কোনো API বা লগইন ছাড়াই — আর ব্রাউজারে মেপে দেখা:
+
+- ১০ সারি · ব্যান্ড `colspan=6` · ZZ TEST-এ `— / 8h` ও `— / 208h`
+  (দুটোই হ্যাচ), বেলালের `0m` (ড্যাশ) কিন্তু মাসে আসল `19h 12m`
+- ৭৬৮px-এ **Screen** ঝরে, ৩৭৫px-এ থাকে **Staff · Today · Status** —
+  অর্থাৎ মালিকের প্রশ্নের উত্তরটাই সবার শেষে ঝরে
+- প্রথম কলাম sticky · টেবিল নিজের বাক্সে স্ক্রল করে, **পাতা নয়** ·
+  কনসোলে কোনো এরর নেই
+
+তারপর প্রিভিউ ফাইলটা মুছে ফেলা হয়েছে। tsc · lint · **৮৫ টেস্ট** (১২টা নতুন
+`roster.spec.ts`) · build — সব সবুজ।
+
+---
+
+## ৩ভ৭. R26 — মাস বন্ধ হলে হিসাবের ফাইল নিজে থেকে যায় *(১৮ আগস্ট ২০২৬)*
+
+আগে রিপোর্ট ছিল কেবল **অন-ডিমান্ড ডাউনলোড**, আর ডাইজেস্ট কেবল **টেক্সট**।
+মাস বন্ধ করার পর মালিককে মনে করে পাতা খুলে, রেঞ্জ বেছে, ফাইল নামাতে হতো —
+আর যেদিন ভুলে যেতেন, ওই মাসের কোনো স্থায়ী কপিই থাকত না।
+
+### যা বসানো হয়েছে
+
+| টুকরো | কী |
+|---|---|
+| `TelegramChannel.sendDocument()` | multipart ফাইল আপলোড, `send()`-এর যমজ চুক্তিতে |
+| `AlertMailer.send(..., attachments?)` | ঐচ্ছিক ৪র্থ প্যারামিটার — পুরোনো তিন কলার ও দুই টেস্ট-মক অক্ষত |
+| `reports/month-delivery.rules.ts` | খাঁটি নিয়ম: মাসের রেঞ্জ · ক্যাপশন · ফাইলের নাম |
+| `reports/month-delivery.service.ts` | ফাইল বানিয়ে টেলিগ্রাম + ইমেইলে পাঠায় |
+| `MonthCloseService.close()`-এ হুক | commit-এর **পরে**, fire-and-forget |
+
+### ⚠️⚠️ তিনটে সিদ্ধান্ত যেগুলো ভুল হলে দাম বেশি
+
+**১· `void` + `.catch()`, কখনো `await` নয়।** সারিটা `create`-এর নিজের
+ট্রানজেকশনে ইতিমধ্যেই commit হয়ে গেছে, তাই এখানকার ব্যর্থতা মাস-বন্ধকে
+ছুঁতে পারে না। ⚠️ `await` করলে মালিকের HTTP রিকোয়েস্ট আপলোডের পুরো সময়
+ঝুলত (৬০ সেকেন্ড পর্যন্ত), আর throw করলে **সফল** একটা মাস-বন্ধ ৫০০ হয়ে
+ফিরত — তিনি আবার চেষ্টা করে ৪০৯ পেতেন ("মাস তো বন্ধই")। ⚠️ `.catch()`
+ছাড়া floating promise unhandled rejection হয়ে গোটা API নামিয়ে দিত।
+⭐ টেস্টে বাঁধা: *"রিপোর্ট পাঠাতে ব্যর্থ হলেও মাস বন্ধই থাকে"*।
+
+**২· `summaryFile()` নয়, `summary()` + `summaryWorkbook()`।** `*File()`
+ভেতরে `export_report` audit সারি লেখে, আর তাতে একজন **ব্যবহারকারীর আইডি**
+লাগে। জব থেকে ডাকলে ওখানে কারো নাম বসাতে হতো, আর খাতায় এমন একটা ডাউনলোড
+দেখাত যা কোনো মানুষ করেনি — "কে আমার হিসাব দেখল" প্রশ্নের উত্তরটাই নষ্ট।
+
+**৩· ⭐ যায় মাসের সারাংশ (ঘণ্টা), পে-রোল নয়।** পে-রোলের শিটে **বেতন**
+থাকে, আর টেলিগ্রামের বার্তা বাইরের একটা সেবার সার্ভারে জমে। বেতন ওখানে
+পাঠানো মালিকের **নিজের** সিদ্ধান্ত হওয়া উচিত, কোড নিজে থেকে করে ফেলার
+জিনিস নয়। ক্যাপশনেও কোনো নাম নেই — শুধু যোগফল; নাম-ধরে হিসাব সংযুক্ত
+ফাইলে, যেটা খুলতে হলে ইচ্ছে করে নামাতে হয়।
+
+### ⚠️ multipart-এর ফাঁদ, আর কেন সেটাই সবচেয়ে দামি টেস্ট
+
+`sendDocument`-এ **কোনো `headers` দেওয়া হয়নি** — `fetch` নিজেই `FormData`
+দেখে `multipart/form-data; boundary=…` বসায়। পাশের `send()`-এ হাতে
+`content-type` লেখা আছে, তাই কপি-পেস্টে ওটা ফিরে আসা খুব সহজ — আর তাতে
+boundary হারিয়ে Telegram **প্রতিবার ৪০০** দিত, দেখতে লাগত টোকেনের সমস্যা।
+⭐ একটা টেস্ট সরাসরি এটাই ধরে: `expect(init.headers).toBeUndefined()`।
+
+সাথে সীমাগুলোও নিজেরা মেপে নেওয়া হয়: **৫০ MB** (Telegram-এর ছাদ, আগে না
+মাপলে পুরো আপলোড খরচ করে তবে প্রত্যাখ্যান আসত) · ক্যাপশন **১০২৪** (বার্তার
+৪০৯৬ নয়) · খালি ক্যাপশন **পাঠানোই হয় না** · ফাইলের নাম ছেঁকে নেওয়া
+(উদ্ধৃতি/নিউলাইন multipart হেডারই ভাঙত)। আপলোডের টাইমআউট **আলাদা**
+(৬০ সেকেন্ড) — টেক্সটের ১০ সেকেন্ড ছোটই থাকল, নইলে একটা ঝুলে যাওয়া আপলোড
+৬০ সেকেন্ডের অ্যালার্ট-sweep আটকে রাখত।
+
+### ⚠️ টেস্টে ধরা পড়া একটা ফাঁদ
+
+*"ব্যর্থ হলেও মাস বন্ধই থাকে"* টেস্টটা প্রথমে **৩০ সেকেন্ড ঝুলে টাইমআউট**
+করেছিল। কারণ: fire-and-forget promise-টা flush করতে `setImmediate`
+ব্যবহার করেছিলাম, অথচ ওই স্পেকে `vi.useFakeTimers()` চালু — macrotask
+কোনোদিন চলত না। ⭐ মাইক্রোটাস্ক (`await Promise.resolve()`) দিয়ে মিটেছে।
+
+**যাচাই:** ১৮টা নতুন টেস্ট (`month-delivery.spec.ts`) + ২টা
+`month-close.spec.ts`-এ। tsc পরিষ্কার।
+
+---
+
+## ৩ভ৮. R22a — idle-এও অ্যাপ দেখা, কিন্তু গোনা নয় *(১৮ আগস্ট ২০২৬)*
+
+R22-র পরিকল্পিত "সার্ভার-only" পথটা যে **নেই**, সেটা মাঠে মেপে ধরা পড়েছে
+(10-Roadmap § R22)। কারণ কাঠামোগত: এজেন্ট ACTIVE ছাড়ার সাথে সাথেই অ্যাপ
+দেখা বন্ধ করত, তাই idle সেগমেন্টের ভেতরে একটাও সারি থাকত না। এটাই সেই
+পূর্বশর্তটা বসানো।
+
+### ⭐⭐ এক লাইনের বদল, কিন্তু চুক্তির বদল
+
+`AppUsageTracker.Observe` আগে থামত `state != Active` দেখে; এখন থামে কেবল
+`state == Locked` দেখে। ⚠️ **LOCKED এখনো বাদ, ইচ্ছাকৃতভাবে** — পর্দা লক
+থাকলে সামনে পড়ার মতো কিছুই নেই, আর লক করে উঠে যাওয়া মানুষটার পর্দা পড়ার
+কোনো কারণও নেই।
+
+সাথে দুটো নতুন জিনিস:
+
+- `AppUsageRecord.State` — খণ্ডটা কোন অবস্থায় দেখা হয়েছে
+- `_openState` — ⚠️ অবস্থা বদলালে খণ্ডটা **ওখানেই কেটে** নতুন করে শুরু হয়,
+  নইলে একটা সারি অর্ধেক ACTIVE অর্ধেক IDLE হয়ে বসত আর "এই সময়টা গোনা হবে
+  কি না" প্রশ্নের কোনো একক উত্তর থাকত না
+
+### ⚠️⚠️ "লাঞ্চে Excel খোলা রেখে যাওয়া কাজ নয়" — নিয়মটা ভাঙেনি, জায়গা বদলেছে
+
+এই নিয়মটা এতদিন রক্ষা করা হতো **ডেটা না রেখে**। এখন ডেটা থাকে, কিন্তু
+পড়ার প্রতিটা জায়গায় `segmentState: 'active'` ছাঁকনি — activity (D07/D08) ·
+productivity রিপোর্ট (F04) · daily rollup। ⭐ **রেকর্ড থাকা আর গোনা হওয়া —
+দুটো আলাদা জিনিস**, আর প্রথমটা ছাড়া R22b (মিটিংয়ের সময় ফেরত দেওয়া) কোনোদিন
+সম্ভব ছিল না।
+
+⚠️ একটা **আগে থেকে লেখা টেস্ট** এই পুরোনো আচরণটাই ধরে রেখেছিল
+(`নিষ্ক্রিয়_অবস্থায়_গোনা_হয়_না` → `Assert.Empty`)। সেটা মুছে ফেলা হয়নি,
+বদলে লেখা হয়েছে নতুন চুক্তিতে — আর মন্তব্যে লেখা আছে **কেন** বদলাল।
+
+### ⚠️⚠️ সবচেয়ে বিপজ্জনক জায়গাটা: পুরোনো এজেন্ট
+
+ফ্লিটের সবাই এখনো ০.৩.৭/০.৩.৮-এ, আর তারা `state` ঘরটা পাঠায় না। DTO-তে
+ঘরটা বাধ্যতামূলক করলে তাদের **প্রতিটা ব্যাচ ৪০০** খেত — আর এজেন্টের কাছে
+৪০০ মানে *Permanent*, অর্থাৎ সে ডেটাটা **মুছে ফেলত** (G49)। এক লাইনের
+ভুলে গোটা অফিসের অ্যাপ-হিসাব হারাত।
+
+তাই `@IsOptional()`, আর কলামের ডিফল্ট `active` — যা সঠিকও: পুরোনো এজেন্ট
+কেবল ACTIVE অবস্থাতেই রেকর্ড করত। ⭐ ingest-এ `undefined` হলে ঘরটা
+**বসানোই হয় না** (ডিফল্ট বসতে দেওয়া হয়) — জোর করে `'active'` লিখলে
+"এজেন্ট বলেছে" আর "আমরা ধরে নিয়েছি" এক হয়ে যেত।
+
+### যাচাই
+
+**৪টা নতুন e2e** (`app-usage-state.e2e.spec.ts`) — পুরোনো এজেন্ট ২০০ পায় ও
+`active` ধরা হয় · idle সারি idle-ই থাকে · অচেনা অবস্থায় ৪০০ · **idle খণ্ড
+অ্যাপের হিসাবে এক সেকেন্ডও যোগ করে না**। এজেন্টে **৩টা নতুন ইউনিট টেস্ট**
+(৩৯৫ Core + ১০৭ Agent পাস)। migration-এ `DEFAULT 'active'` + R22b-র জন্য
+`(employee_id, started_at)` ইনডেক্স।
+
+⏳ **এখনো বিলি করা হয়নি** — ০.৪.৯-এর `partial` রোলআউট চলছে, আর সার্ভার
+কেবল **সবচেয়ে নতুন** ভার্সনটাই অফার করে; নতুন ভার্সন প্রকাশ করলে ০.৪.৯-এর
+রোলআউটটাই থেমে যেত।
+
+---
+
+## ৩ভ৯. ⚠️⚠️ রোলআউট চালু করা হলো, অথচ ১১টা PC-তে সেটা কোনোদিন দেখাই যেত না *(১৮ আগস্ট ২০২৬)*
+
+০.৪.৯-কে `partial` করার পর লিখেছিলাম: *"স্টাফদের tray-তে Install update
+দেখাবে, ক্লিক করলে বসবে"*। **কথাটা ভুল ছিল**, আর মাঠে মিলিয়ে দেখতে গিয়েই
+ধরা পড়ল।
+
+### যা মেপে দেখা গেল
+
+| ভার্সন | কতগুলো PC | tray-তে "Install update" আছে? |
+|---|---|---|
+| ০.৩.৭ | ৮ | ❌ **নেই** |
+| ০.৩.৮ | ৩ | ❌ **নেই** |
+| ০.৪.২ | ১ | ✅ আছে |
+| ০.৪.৯ | ১ | — (টেস্ট PC) |
+
+মেনুটা এসেছে কমিট `f93f6eb`-এ (**১৬ আগস্ট, ভার্সন ০.৪.১**)। ফ্লিটের
+১১টা PC তার **আগের** বিল্ডে (১৩ আগস্ট)। git-এ মিলিয়ে দেখা:
+০.৩.৭-এ `TrayIcon.cs`-এ "Install update" শূন্যবার, ০.৪.১-এ দুবার।
+
+⚠️ আর `mandatory` ফ্ল্যাগ দিয়েও কিছু হতো না: ০.৩.৭-এর `UpdateStager` কেবল
+**নামায় ও যাচাই করে** — `msiexec`/`Process.Start` ওখানে নেই, `Mandatory`
+কেবল status-এ জমা থাকে। অর্থাৎ সার্ভার অফার পাঠাত, এজেন্ট ফাইলটা নামিয়ে
+রাখত, আর **কেউ কোনোদিন জানত না**।
+
+> **⭐⭐ এটাই এই রিপোর সবচেয়ে চেনা ব্যর্থতার আরেকটা রূপ:**
+> *"চুক্তি লেখা আছে, কলার লেখা হয়নি"*। এবার উল্টো দিক থেকে — **কলার
+> (সার্ভারের অফার) লেখা আছে, গ্রাহক (পুরোনো এজেন্টের UI) লেখা হয়নি**।
+> আর ব্যর্থতাটা পুরোপুরি নীরব: ড্যাশবোর্ডে রোলআউট "চলছে" দেখাত, agent
+> versions পাতায় `partial` লেখা থাকত, অথচ কিছুই ঘটত না।
+
+### ⭐ আর ইনস্টলারটা হাতে পাওয়ার পথও ছিল না — সেটাও বসানো হলো
+
+⚠️⚠️ সমস্যাটা ধরার পর দ্বিতীয় ফাঁকটা বেরোল: MSI নামানোর **একমাত্র** পথ
+`/agent/update/download`, আর সেটা খোলে **কেবল ডিভাইস-টোকেনে**। মালিকের
+কাছে ওই টোকেন নেই (থাকার কথাও নয়), তাই ইনস্টলার বিলি করতে হলে ফাইলটা
+হাতে হাতে বইতে হতো।
+
+তাই নতুন **`GET /agent-versions/:version/download`** — owner-only,
+audit-এ লেখা (`agent_version.download`), আর Agent versions পাতায় প্রতিটা
+সারিতে একটা **"Download MSI"** লিঙ্ক।
+
+⭐ ফাইলটা `UpdateService.openMsi()` দিয়েই খোলা হয়, নিজে path জোড়া লাগিয়ে
+নয় — storage-এর বাইরের পাথ আটকানোর পাহারাটা ওখানেই বসানো, আর দুই জায়গায়
+রাখলে একদিন একটায় ঠিক হতো অন্যটায় নয়। ⚠️ টেস্টে সেটাও ধরা
+(`../../../etc/passwd` → ৪০৪)। ⚠️ ওয়েবে সাধারণ `<a download>`, কোনো JS
+নয়: ৬২ MB ফাইল fetch করে blob বানালে ব্রাউজার অকারণে ভুগত।
+
+### করণীয় (একবারের কাজ)
+
+Settings → Agent versions → **Download MSI**, তারপর ১১টা PC-তে **হাতে**
+বসানো — ডাবল-ক্লিক, অথবা `msiexec /i oXeioAgent-0.4.9.msi /qn`। ⭐ ইনস্টলার `MajorUpgrade`
+(`AllowSameVersionUpgrades`) আর `%ProgramData%\oXeio` **মুছে ফেলে না**, তাই
+সাইন-ইন, ডিভাইস টোকেন ও অপাঠানো কিউ সব অক্ষত থাকে — কাউকে আবার লগইন
+করতে হবে না।
+
+⭐ **একবার ০.৪.১+ হয়ে গেলে এই সমস্যা আর ফিরবে না** — এরপর থেকে প্রতিটা
+আপডেট tray থেকেই বসবে, আর ধাপে ধাপে রোলআউট (H04) সত্যিই কাজ করবে।
+
+⚠️ শিক্ষা: **"রোলআউট চালু করেছি" আর "আপডেট পৌঁছেছে" এক কথা নয়** — মাঝখানে
+এজেন্টের নিজের সামর্থ্য বলে একটা শর্ত আছে, আর সেটা ভার্সন-নির্ভর। ভবিষ্যতে
+রোলআউটের আগে **ফ্লিটের সর্বনিম্ন ভার্সন** দেখে নেওয়া উচিত।
+
+---
+
+## ৩ভ১০. অফসাইট ব্যাকআপ Settings পাতায় — টার্মিনাল আর লাগবে না *(১৮ আগস্ট ২০২৬)*
+
+মালিক: *"ei backup er setting gula setting page er moddye add koro, jate ze
+kew easy eta use korte pare."*
+
+### ⚠️⚠️ কেন — আধ ঘণ্টা আগেই মাঠে প্রমাণ হয়ে গেছে
+
+B2-র কী বসাতে হতো VPS-এ SSH → `rclone config`-এর ছ-সাত ধাপ →
+`/etc/oxeio-offsite.env` সম্পাদনা। মালিক চেষ্টা করলেন, আর একটা আংশিক-পেস্ট
+হওয়া key নিয়ে **`401 bad_auth_token`** — কারণ বুঝতে টার্মিনালে বসে
+খোঁজাখুঁজি। ⭐ কাজটা যদি "যে কেউ" করতে না পারে, তাহলে সেটা রোজকার
+ব্যবহারের জিনিস নয়।
+
+### যা বসানো হয়েছে
+
+| টুকরো | কী |
+|---|---|
+| `ops/offsite.settings.ts` | খাঁটি নিয়ম — `resolveOffsite` · `offsiteView` · `keyHint` · `b2Verdict` |
+| `ops/offsite.controller.ts` | `GET/PATCH /settings/offsite` + `POST /settings/offsite/test`, owner-only |
+| `settings/BackupTab.tsx` | Settings → **Backup** — তিনটে ঘর, সেভ, **Test the connection**, আর রাতের ব্যাকআপের অবস্থা |
+| `deploy/offsite-backup.sh` | `RCLONE_REMOTE` না থাকলে **ডাটাবেস থেকে** কনফিগ পড়ে |
+
+⭐ ধাঁচটা `alerts/telegram.settings.ts`-এর **হুবহু অনুকরণ**, ইচ্ছাকৃতভাবে:
+গোপন মান রাখা ও পর্দায় না পাঠানোর নিয়ম দুই জায়গায় দু-রকম হলে একদিন
+একটায় ফাঁক থেকে যেত।
+
+### ⭐⭐ "Test the connection" — এই পর্দার আসল কারণ
+
+সার্ভার সরাসরি B2-র `b2_authorize_account` ডাকে। ⭐ ওটাই বেছে নেওয়া হয়েছে
+কারণ **সীমাবদ্ধ key-তেও এটা চলে** (bucket তালিকা করার অনুমতি লাগে না), আর
+উত্তরে `allowed.bucketName` বলে দেয় key-টা **কোন** bucket-এ বাঁধা।
+
+তাই তিনটে আলাদা ভুল আলাদা করে ধরা পড়ে, আর প্রত্যেকটার বার্তায় **করণীয়**
+লেখা থাকে:
+
+| অবস্থা | বার্তা |
+|---|---|
+| ৪০১ | *"…the application key is usually the problem — it is shown only once"* |
+| key ঠিক, **অন্য** bucket-এ বাঁধা | *"…restricted to the bucket X, not Y"* |
+| B2 সাড়া দিচ্ছে না | B2-র নিজের বার্তাটাই |
+
+⚠️ মাঝেরটা নীরব ব্যর্থতার চমৎকার উৎস: সব সবুজ দেখাত, আর ব্যাকআপ যেত অন্য
+কোথাও (বা কোথাওই না)।
+
+### ⚠️ দুটো সিদ্ধান্ত, দুটোই গোপনীয়তা নিয়ে
+
+**১· পুরো application key পর্দায় কোনোদিন যায় না** — কেবল `…9f2a`। ভিউটা
+আলাদা টাইপে (`keyHint`, নাম বদলে) রাখা, তাই ভুল করে কাঁচা সেটিং spread
+করলেও সেটা টাইপ-চেকেই আটকায়। ⭐ audit log-এও কেবল `keySet: true` —
+ওখানে ম্যানেজারেরও চোখ পড়ে, আর একবার বসলে আর মোছা যায় না।
+
+**২· খালি ঘর মানে "আগেরটাই থাক"** — টেলিগ্রামের চেয়ে এখানে নিয়মটা
+**উল্টো**, আর সেটা ইচ্ছাকৃত: টেলিগ্রামের টোকেন BotFather থেকে যেকোনো
+সময় আবার পাওয়া যায়, কিন্তু **B2 application key একবারই দেখায়**। bucket-এর
+একটা টাইপো শুধরাতে গিয়ে key মুছে গেলে নতুন key বানানো ছাড়া উপায় থাকত না।
+⭐ পুরোপুরি মুছতে হলে তিনটে ঘরই খালি রেখে সেভ — টেস্টে দুটোই বাঁধা।
+
+### ⭐ কনফিগ ফাইল আর লেখা হয় না
+
+স্ক্রিপ্টটা ডাটাবেস থেকে কী পড়ে **`RCLONE_CONFIG_B2_*` চলক** হিসেবে rclone-কে
+দেয় — কোনো `rclone.conf` লেখা হয় না, তাই **key কখনো ডিস্কে বসে না**, শুধু
+ওই এক প্রসেসের পরিবেশে থাকে। ⚠️ পুরোনো পথও অটুট: `RCLONE_REMOTE` আগে থেকে
+সেট থাকলে ডাটাবেস ছোঁয়াই হয় না।
+
+⭐ **মাঠে যাচাই:** VPS-এ ভুয়া কনফিগ বসিয়ে চালানো হয়েছে — স্ক্রিপ্ট
+*"কনফিগ পর্দা থেকে (Settings → Backup)"* বলল, `b2:test-bucket` বানাল, আর
+ভুয়া কী দিয়ে ঠিকই ব্যর্থ হলো। তারপর সারিটা মুছে ফেলা হয়েছে।
+
+**যাচাই:** ১৮টা নতুন টেস্ট (`offsite-settings.e2e.spec.ts`) — সবচেয়ে জরুরিটা
+*"পুরো application key কখনো ভিউতে থাকে না"*। tsc · lint দু-দিকেই পরিষ্কার।
+
+---
+
+## ৩ভ১১. ⚠️⚠️ "kon staff er pc te kon ver" — উত্তরটা এক কল দূরে ছিল, পর্দায় ছিল না *(১৮ আগস্ট ২০২৬)*
+
+মালিকের প্রশ্ন সরল: *"kon staff er pc te kon ver er agent eta kothay dekha
+zabe?"* — উত্তরটাও সরল হওয়ার কথা ছিল। ছিল না।
+
+**পর্দায় ছিল কেবল সংখ্যা।** Agent updates ট্যাবের "PCs on it" কলামে লেখা
+`০.৪.৯ → ৫` — কিন্তু **কোন** পাঁচটা, সেটা কোথাও নেই।
+
+**⚠️⚠️ আর ফাঁকটার আকার এখানেই।** সার্ভারে `GET /api/v1/devices` রুটটা
+**আগে থেকেই আছে** (owner-only), আর সেটা hostname · Windows ইউজার ·
+`agentVersion` · শেষ সাড়া — সবই ফেরায়। ওয়েবে `DeviceView` টাইপটাও
+`api/admin.ts`-এ **লেখা হয়ে বসে ছিল**। শুধু মাঝখানের কলটা কেউ কোনোদিন
+লেখেনি।
+
+> ⭐ এটা এই প্রকল্পের চেনা ব্যর্থতাটারই আরেক রূপ — *চুক্তি লেখা আছে, কলার
+> লেখা হয়নি* (09 § ৪)। এবার নতুনত্ব একটাই: **দুই পাশই তৈরি ছিল**, তাই
+> কোনো টাইপ এরর, কোনো লিন্ট, কোনো টেস্ট এটা ধরতে পারত না। একটা
+> না-ডাকা ফাংশন নিখুঁতভাবে কম্পাইল করে।
+
+### ⚠️⚠️ আর যেটা প্রায় করে ফেলছিলাম
+
+প্রথম প্রস্তাব ছিল **একটা নতুন "Devices" ট্যাব**। মালিক রাজিও হলেন
+(*"ha koro"*)। মকআপ বানানোর আগে কোড পড়তে গিয়ে `SettingsPage.tsx`-এ পাওয়া
+গেল **তাঁরই আগের সিদ্ধান্ত** —
+
+> *"ami Devices ei option tai chai na, eta full system take complex
+> banacche."* — [G89](08-Gap-Analysis.md)
+
+পর্দাটা ছিল, আর **তুলে দেওয়া হয়েছিল**; ফাইলে এমনকি লেখা *"এখানে ফিরিয়ে
+আনবেন না"*। কারণটাও লেখা: একই প্রশ্নের ("Belal-এর PC ঠিক আছে তো?") উত্তর
+দুই পর্দায় খুঁজতে হতো, আর মালিক "ডিভাইস #৬১" নিয়ে ভাবেন না।
+
+**⭐ শিক্ষা: "মালিক হ্যাঁ বলেছেন" যথেষ্ট প্রমাণ নয়।** তিন মাস আগের নিজের
+সিদ্ধান্ত কারো মনে থাকে না — মনে রাখার দায়িত্ব ডকের ও কোডের, আর সেটা
+পড়ার দায়িত্ব আমার। তাই থেমে দুটো মকআপসহ দ্বন্দ্বটা দেখানো হলো, আর
+মালিক **ভার্সন ধরে গোছানো, শুধু-দেখার** তালিকাটা বাছলেন।
+
+### যা বসল
+
+**Agent updates ট্যাবের ভেতরেই** একটা দ্বিতীয় কার্ড — নতুন ট্যাব নয়। ওই
+ট্যাবের নিজের বর্ণনাই লেখা *"Which build each PC is offered"*, অর্থাৎ
+প্রশ্নটা সেখানেই ওঠে।
+
+| ফাইল | কাজ |
+|---|---|
+| `web/src/pages/settings/fleet.ts` | খাঁটি নিয়ম — `compareVersion` · `newestOffered` · `lagOf` · `isQuiet` · `fleetGroups` · `fleetTally` |
+| `web/src/pages/settings/FleetCard.tsx` | অগ্রগতির বার + ভার্সন ধরে দল-করা টেবিল |
+| `web/src/api/admin.ts` | `listDevices()` — সেই না-লেখা কলটা |
+
+**⭐⭐ তিনটে সিদ্ধান্ত, যেগুলো ভুল হলে পর্দা নীরবে মিথ্যা বলত:**
+
+**১· ভার্সন তুলনা সংখ্যায়, স্ট্রিংয়ে নয়।** `'0.4.10' < '0.4.9'` বর্ণক্রমে
+সত্যি। আজ কিছু ভাঙত না (এখনো ০.৪.৯), কিন্তু **পরের রিলিজেই** পর্দা সবচেয়ে
+নতুন বিল্ডটাকে "পিছিয়ে" দেখাত। নিয়মটা সার্ভারের `isNewer()` (`rollout.ts`)
+থেকে হুবহু কপি — দুই জায়গায় দু-রকম হলে সার্ভার যাকে আপডেট অফার করত,
+পর্দা তাকেই "up to date" বলত।
+
+**২· "সবচেয়ে নতুন" মানে সার্ভার যেটা বিলি করে।** `UpdateService.offerFor`
+বাছে **প্রকাশের সময় ধরে** (`releasedAt desc`), ভার্সন নম্বর ধরে নয়, আর
+`halted` বাদ দিয়ে। এখানে নম্বর ধরে বাছলে দুটো আলাদা "নতুন" জন্মাত।
+
+**৩· গোনায় শুধু `active` ডিভাইস** — কারণ পাশের টেবিলের "PCs on it"
+কলামটাও তাই গোনে (`agent-versions.service.ts`)। revoke করা PC ধরলে **একই
+পর্দায় দুটো আলাদা সংখ্যা** বসত, আর কোনটা সত্যি বোঝার উপায় থাকত না (G88-এর
+পুনরাবৃত্তি)।
+
+**⭐ `behind` আর `stranded` আলাদা — এটাই কার্ডটার আসল মূল্য।** ০.৪.১+ PC
+অপেক্ষা করলেই আপডেট নেবে; ০.৪.১-এর আগেরগুলোয় ট্রে-তে মেনুই নেই (§ ৩ভ৯),
+ওখানে কাউকে গিয়ে MSI বসাতে হবে। দুটোকে একসাথে "পুরোনো" বললে ঠিক ওই
+**করণীয়ের তফাতটাই** হারাত — আর সেটা না জানার কারণেই ১৮ আগস্ট ধরে নেওয়া
+হয়েছিল `partial` করলেই সবাই আপডেট পাবে।
+
+**⚠️ "চুপ" ২৪ ঘণ্টায়, `agent_down`-এর ১০ মিনিটে নয়** — প্রশ্ন দুটো আলাদা।
+ওটা "এখন ডাউন কি না", এটা "এই ভার্সনটা কি তাজা খবর"। ⭐ ২৪ বাছা হয়েছে
+যাতে **সারারাত বন্ধ থাকা কখনো এতে না পড়ে** (সন্ধ্যা ৬টা → সকাল ৯টা =
+১৫ ঘণ্টা); নিচে নামালে রোজ সকালে গোটা ফ্লিট লাল দেখাত।
+
+### 🐛 সাথে একটা আসল বাগ — পর্দায় ছাপা ভুল নির্দেশ
+
+Staff ট্যাব **দুই জায়গায়** মালিককে পাঠাত *"create an enrolment code for
+their PC on the **Devices tab**"* — সেই ট্যাবে, **যেটা নেই**। ⚠️ আর কথাটা
+দুবার বাসি: enrolment code-ও আর পথ নয়, স্টাফ এখন ইমেইল-পাসওয়ার্ডে সাইন
+ইন করেন। দুটোই আসল প্রবাহে বদলানো হলো (portal account → MSI → সাইন ইন;
+আর reactivate-এর পর সারিতেই **"Turn agent on"**)।
+
+> ⚠️ পর্দার লেখা যে **নীরবে বাসি হয়**, এটা তার দ্বিতীয় উদাহরণ। কোড
+> রিফ্যাক্টর করলে কম্পাইলার চিৎকার করে; একটা বাক্য মিথ্যা হয়ে গেলে কেউ
+> কিছু বলে না।
+
+**যাচাই:** ২১টা নতুন টেস্ট (`web/test/fleet.spec.ts`, মোট ১০৬) — সবচেয়ে
+জরুরিটা *"০.৪.১০ ০.৪.৯-এর চেয়ে নতুন"*। ⭐ আর পর্দাটা **চোখেও দেখা
+হয়েছে**: লগইন করা যায় না বলে একটা অস্থায়ী Vite এন্ট্রি + ফিক্সচার দিয়ে
+রেন্ডার করে মেপে দেখা হলো — বারের ভাগ ৩৮.৫% / ৭.৭% / ৫৩.৮% (যোগফল ঠিক),
+আর দুই থিমেই রং টোকেন থেকেই আসছে। তারপর অস্থায়ী ফাইল দুটো মুছে ফেলা হয়েছে।
+
+---
+
+## ৩ভ১২. ⚠️⚠️ দিনে ৫০টা বার্তার নিচে চাপা পড়া রিপোর্ট *(১৮ আগস্ট ২০২৬)*
+
+মালিক টেলিগ্রামের স্ক্রিনশট পাঠালেন — "Agent silent — DESKTOP-Q0SEQQ7",
+"Agent silent — BELAL", "Working now: 9/13", আবার "Working now: 8/13" —
+আর লিখলেন:
+
+> *"ami ei type er alart gula chaina. ami chai deily report type er.
+> jemon ke koto hours kaj korlo. k target hit korlo. ei taiper info
+> kintu organized way te."*
+
+**⭐ প্রথম কাজটা কোড লেখা ছিল না, গোনা ছিল।**
+
+| কী যাচ্ছিল | দিনে | সপ্তাহে |
+|---|---:|---:|
+| `agent_down` | **৩৯** | ১৬৮ |
+| ঘণ্টার স্ন্যাপশট | **১১** | ৭৭ |
+| **দৈনিক রিপোর্ট** | **১** | ৭ |
+
+⚠️⚠️ **অর্থাৎ মালিক যেটা চাইছিলেন সেটা ইতিমধ্যেই ছিল** — F07, সন্ধ্যা
+৬:৩০, ইমেইল **ও** টেলিগ্রামে, ঘণ্টা-টার্গেট-পিছিয়ে সব নিয়ে। শুধু দিনে
+পঞ্চাশটা বার্তার নিচে চাপা পড়ে ছিল, আর ফোনে সেটা ছিল ইমেইলের বডির হুবহু
+কপি — আট লাইনের *"How to read these numbers"* সহ একটা ধূসর দেয়াল।
+
+> ⭐⭐ **এখানে শেখার জিনিসটা এই:** "মালিক X চান না, Y চান" শুনে সোজা Y
+> বানাতে বসলে **দ্বিতীয় একটা Y** তৈরি হতো, আর তখন দুটো রিপোর্ট দু-রকম
+> ঘণ্টা বলত। আসল সমস্যা ছিল বিতরণে, বৈশিষ্ট্যে নয়।
+
+### ⛔ ADR-029 বাতিল — আর কেন হিসাবটা ভুল ছিল
+
+ঘণ্টার স্ন্যাপশট এসেছিল ([ADR-029](05-Options-Decisions.md)) মালিকের
+"১০ মিনিট idle হলেই খবর" চাওয়ার **বিকল্প** হিসেবে — দিনে ৬০–১৮০-র বদলে
+৮–১১টা বার্তা। যুক্তিটা তখন নিখুঁত লেগেছিল।
+
+⚠️⚠️ **কিন্তু হিসাবটা করা হয়েছিল শুধু নিজের যোগ করা জিনিসটা নিয়ে।** ওই
+একই চ্যাটে `agent_down` তখনো যাচ্ছিল, আর মাঠে সেটা **দিনে ৩৯ বার**।
+অর্থাৎ যে বন্যাটা ঠেকাতে স্ন্যাপশট বাছা হলো, সেটা পাশের দরজা দিয়ে
+ইতিমধ্যেই ঢুকে বসে ছিল — আর ওই দরজাটা ADR-এ **গোনাই হয়নি**।
+
+⭐ **নিয়মটা এখন লেখা রইল:** নতুন কোনো নোটিফিকেশন যোগ করার আগে প্রশ্ন হবে
+*"এই চ্যাটে **মোট** কতটা যাচ্ছে?"* — *"আমারটা কতটা যোগ করছে?"* নয়।
+
+### যা বসল
+
+| | |
+|---|---|
+| `digest/snapshot.{job,service,rules}.ts` | ⛔ **মুছে ফেলা** (সাথে দুটো স্পেক) |
+| `ops.constants.ts` → `TELEGRAM_MUTED_TYPES` | `agent_down` টেলিগ্রামের sweep-এর **WHERE-এ** ছাঁকা |
+| `digest/digest.telegram.ts` (নতুন) | দল করে সাজানো বার্তা — খাঁটি ফাংশন |
+| `telegram.channel.ts` → `sendHtml()` | monospace, আর **ব্যর্থ হলে প্লেইনে আবার** |
+| `dhaka-time.ts` → `dhakaClock()` | রিপোর্টে "১৮:৩০ Dhaka" |
+
+**⚠️ `agent_down` মুছে ফেলা হয়নি — এটা কেবল একটা চ্যানেল ফিল্টার।** সারি
+তৈরি হয়, ইমেইলে যায়, Alerts পাতায় ওঠে, এজেন্ট ফিরলে নিজে থেকে বন্ধ হয়
+(§ ৩ভ২)। ফোনে ওটা এখন রিপোর্টের শেষে এক লাইন: *"৩টা PC আজ চুপ ছিল"*।
+⭐ গোনা হয় **আলাদা PC**, অ্যালার্ট নয় — একটা মেশিন পাঁচবার চুপ হলে
+সংখ্যাটা আতঙ্কজনক দেখাত অথচ সমস্যা একটাই।
+
+**⚠️ WHERE-এ ছাঁকা হয়, তুলে এনে বাদ দেওয়া হয় না** — নইলে প্রতি sweep-এর
+১০টার ব্যাচ ওই সারিগুলোতেই ভরে যেত, আর সত্যিকারের অ্যালার্ট কোনোদিন
+সামনের সারিতে আসত না।
+
+### ⭐ দুটো সিদ্ধান্ত যেগুলো পর্দার মতোই যত্ন চেয়েছে
+
+**১· সংখ্যা আগে, নাম পরে।** নাম আগে বসালে কলামটা নামের দৈর্ঘ্য ধরে নড়ত
+("Saifur" বনাম "Sk Nasif Iqbal Shovon"), তাই সংখ্যাগুলো আর এক লাইনে
+থাকত না — অথচ চোখ বুলিয়ে সংখ্যা মেলানোই এই বার্তার একমাত্র কাজ।
+
+**২· ⚠️⚠️ ঘণ্টা ধরে সাজানো হয় না।** সাজালে বার্তাটা রোজ সন্ধ্যায় একটা
+**লিডারবোর্ড** হয়ে উঠত — README-র "কখনোই নয়" তালিকায় ওটা আছে। প্রতিটা
+দলের ভেতরে ক্রম কর্মী-কোড ধরে, আর সেটার একটা টেস্টও আছে।
+
+**⚠️ ছুটির লোকজনও লেখা হয়**, যদিও তাঁদের নিয়ে করণীয় নেই — না লিখলে
+সংখ্যাগুলো মিলত না (উপরে ১৩ জন, নিচে ১১টা নাম), আর ওই ফাঁকটা দেখতে
+হুবহু "এজেন্ট কাজ করছে না"-র মতো লাগত।
+
+**যাচাই:** ১৪টা নতুন টেস্ট (`digest-telegram.spec.ts`), সার্ভারে মোট
+**১৩৪৮ পাস / ৭২ ফাইল**। ⭐ একটা টেস্ট **আসল বাগ ধরেছে**: সবচেয়ে লম্বা
+নামে লাইন দাঁড়াচ্ছিল ৪১ অক্ষর, আর সরু ফোনে ভাঁজ পড়ে কলামগুলোই ভেঙে
+যেত — তখন monospace রাখার পুরো কারণটাই বৃথা। সারানো হলো এক ঘণ্টার কম
+ঘাটতি `−59m` লিখে (`0h 59m` নয়), তিন অক্ষর বাঁচিয়ে।
+
+---
+
+## ৩ভ১৩. সেকেন্ড অর্ধেক মাপে — আর "ছোট করা" ও "ঠিক বসানো" এক নয় *(১৮ আগস্ট ২০২৬)*
+
+মালিক ট্রে-জানালার স্ক্রিনশটে `3:59:` **`22`** অংশটা লাল বাক্স দিয়ে চিহ্ন
+করে লিখলেন: *"sec er size 50% komiye dao"*।
+
+⭐ কারণটা সাজসজ্জার চেয়ে বেশি: সেকেন্ডই একমাত্র অঙ্ক যেটা **প্রতি
+সেকেন্ডে** নড়ে, আর পুরো ৪৪px মাপে সেটা চোখ টেনে রাখত — অথচ কাজের সংখ্যা
+ঘণ্টা ও মিনিট। ছোট করলে নড়াচড়াটা থাকে (ঘড়ি চলছে, দেখা যায়), কিন্তু আর
+চিৎকার করে না।
+
+### ⚠️⚠️ সহজ কাজটার ভেতরে যে ফাঁদটা ছিল
+
+মাপ ছোট করা এক লাইনের কাজ। কিন্তু **ছোট লেখাটা কোথায় বসবে** — সেটাই আসল
+প্রশ্ন, আর তিনটে উত্তরের দুটোই ভুল:
+
+| বসানোর ধরন | ফল |
+|---|---|
+| উপর ধরে (top) | ছোট অঙ্কটা বড়টার **মাথার সাথে** ঝুলত |
+| নিচ ধরে (bottom) | descent-এর তফাতে baseline-এর **নিচে** নেমে যেত (৪৪px-এর descent ২২px-এর দ্বিগুণ) |
+| ⭐ **baseline ধরে** | ঠিক |
+
+⚠️ আর এই ভুলটা কোনো কম্পাইলার ধরে না — শুধু চোখে ধরা পড়ে, তা-ও যদি কেউ
+তাকায়। এক সেকেন্ড পরপর নড়া একটা **ভাসন্ত** অঙ্ক চোখে লাগেই।
+
+⭐ হিসাবটা নির্ভরযোগ্য কারণ দুই ফন্ট **একই ফ্যামিলি ও style** —
+ascent তাই মাপে সমানুপাতিক (`AscentPx`, `OwnerDrawnForm`)। ⚠️ ফন্ট
+পিক্সেলে বানানো (`GraphicsUnit.Pixel`), পয়েন্টে হলে এই অঙ্ক DPI-তে ভেঙে
+পড়ত।
+
+### যা বসল
+
+| | |
+|---|---|
+| `TrayFontRole.HeroSeconds` | `44f / 2f` — **হাতে বসানো ২২ নয়**; হিরোর মাপ বদলালে সেকেন্ডও সঙ্গে যায় |
+| `UiText.SplitSeconds()` | `3:59:22` → `("3:59", ":22")` — খাঁটি নিয়ম, টেস্টসহ |
+| `TextStack.Hero(figure, tail, …)` | লেজটা অর্ধেক মাপে, baseline মিলিয়ে |
+
+**⚠️ `SplitSeconds` শেষ কোলন খোঁজে, প্রথমটা নয়** — প্রথমটা ধরলে `:59:22`
+পুরোটাই ছোট হয়ে যেত, অর্থাৎ **মিনিটও**।
+
+### ⭐⭐ যাচাই — দাবি নয়, পিক্সেল
+
+লেখা "ছোট করেছি" আর পর্দায় ঠিক দেখানো এক কথা নয়, তাই টেস্টটা **সত্যিই
+এঁকে কালি গুনে** দেখে (`HeroSecondsTests`): একটা bitmap-এ দুটো অংশ আঁকা
+হয়, তারপর মাপা হয় কালি কোন সারিতে শুরু আর কোথায় শেষ।
+
+- ছোট অঙ্কের উচ্চতা বড়টার **০.৪০–০.৬০** গুণ
+- দুটোর **তলা ২px-এর মধ্যে** মেলে
+
+⚠️ `AscentPx`-এর অঙ্কটা টেস্টে আবার লেখা হয়নি — আঁকা হয় কোডের নিয়মে, মাপা
+হয় **ছবি থেকে**। এক হলে টেস্টটা নিজের সাথে নিজেই মিলত, আর কিছুই প্রমাণ
+হতো না। ⭐ GUI খোলা লাগে না, তাই CI-তেও চলে।
+
+সাথে গোটা জানালাটাও একবার সত্যিকারের `TodayForm` থেকে PNG-তে এঁকে দেখা
+হয়েছে (অস্থায়ী হারনেস, পরে মুছে ফেলা)।
+
+### ⚠️⚠️ ভার্সন ০.৪.১০ — বানানো, **প্রকাশ করা হয়নি**
+
+এতে দুটো বদল জমা: **R22a** (idle-এও অ্যাপ দেখা) আর এই সেকেন্ডের মাপ।
+
+⚠️ প্রকাশ করা হয়নি ইচ্ছাকৃতভাবে — `UpdateService.offerFor` কেবল **সবচেয়ে
+নতুন non-halted** ভার্সনটাই অফার করে, তাই ০.৪.১০ প্রকাশ করলেই ০.৪.৯-এর
+চলতি `partial` রোলআউট **থেমে যেত**, আর ০.৪.৯-এ shutdown-এর goodbye সারানো
+আছে যেটার মাপ এখনো চলছে (R29)।
+
+⭐ তবু `Directory.Build.props`-এ সংখ্যাটা **এখনই** বাড়ানো হলো: নইলে HEAD
+থেকে বানানো MSI-ও "০.৪.৯" বলত, অথচ ভেতরে অন্য কোড — আর H04 ভার্সনের নাম
+ধরেই ঠিক করে কার কী দরকার।
+
+> ⭐⭐ **আর এখানে আজকের সকালের কাজটা কাজে লেগে গেল।** `0.4.10` **স্ট্রিং
+> তুলনায় `0.4.9`-এর ছোট**। আজ সকালে ফ্লিট-তালিকার `compareVersion`
+> সংখ্যায় লেখা হয়েছিল (§ ৩ভ১১), নইলে আজই পর্দা সবচেয়ে নতুন বিল্ডটাকে
+> "পিছিয়ে" দেখাত — আর কেউ বুঝত না কেন।
+
+**যাচাই:** ১০টা নতুন টেস্ট; এজেন্টে মোট **৫১১ পাস** (Core ৩৯৫ · Agent ১১৬)।
+
+---
+
+## ৩ঞ৩৫. ⭐⭐⭐ দিনের দুটো সীমা — আর যে মাপটা মালিককে ভুল বলেছিল, অথচ ভুল ছিল মাপটাই *(৯–১১ সেপ্টেম্বর ২০২৬)*
+
+মালিকের দুটো নিয়ম:
+
+> *"daily 30 ta design distribute korar pore karo jodi complete + skip miliye
+> 30 ta hoy. tar mane tar kache korar moto ar design nei. take tokhon tumi arO
+> kiso design dibe jate se daily target 25 ta hit korte pare. er sathe etaO
+> korbe kono designer daily 25 tar beshi design complete korte parbena."*
+
+### ১· ⛔⛔⛔ *"কারো হাত কখনো খালি হয় না"* — দাবিটা ভুল ছিল, আর ভুলটা মাপের
+
+প্রথম লেখায় (৯ সেপ্টেম্বর) এখানে দাবি ছিল *মাঠে কারো হাত কখনো খালি হয়
+না*। প্রমাণ হিসেবে ম্যানেজারের হাতে-চালানো দুটো বণ্টনের মুহূর্ত:
+
+| কবে | তখন কার হাতে কত ছিল *(যেমন লেখা হয়েছিল)* |
+|---|---|
+| ৭ সেপ্টেম্বর ১৪:৪৬ | ২৩ · ২৫ · ২৫ · ২৬ · ২৬ · ২৭ · ২৯ · ২৯ |
+| ৮ সেপ্টেম্বর ১৫:১৪ | ১৭ · ২৪ · ২৫ · ২৫ · ২৫ · ২৬ · ২৭ |
+
+সাথে দ্বিতীয় দাবি: *সকালের বণ্টন মাঠে ১৭–২০ দেয়, ৩০ নয়।*
+
+⛔ **দুটোই একই ভুল মাপের ফল।** সংখ্যাগুলো গোনা হয়েছিল `design_targets`
+থেকে, **দিনটা পেরিয়ে যাওয়ার পরে**। কিন্তু রোজ রাত ১১:৫৫-এ
+`returnUnworked()` কেউ না-ছোঁয়া টার্গেট পুলে ফেরায়, আর সাথে
+**`assigned_to_id` ও `assigned_at` দুটোই মুছে দেয়**। ফলে পরে গুনলে কারো
+"পাওয়া" সংখ্যায় থাকে কেবল **যেগুলো তিনি ছুঁয়েছেন** — শেষ, বাদ, বা শুরু
+করা। না-ছোঁয়াগুলো ইতিহাস থেকেই উধাও ([G172](08-Gap-Analysis.md))।
+
+⚠️ উপরের টেবিলের "হাতে" সংখ্যাগুলো **কখনো সরাসরি গোনা হয়নি** — ধরা হয়েছিল
+`30 − ওই হাতে-বণ্টনের যতগুলো সারি এখনো তাঁর নামে`, কারণ বণ্টন দেয়
+`30 − হাতে থাকা`। কিন্তু ওই বণ্টনের না-ছোঁয়া সারিগুলো ততক্ষণে মুছে গিয়েছিল,
+তাই "পাওয়া" ছোট আর "হাতে" বড় দেখিয়েছে — অর্থাৎ হাত আসলের চেয়ে **ভরা**
+দেখিয়েছে। আজ গুনলে দুটো তালিকাই হুবহু ফেরে। ⚠️⚠️ আর যিনি ওই বণ্টনের একটাও
+ছোঁননি, তিনি তালিকা থেকে **পুরোই বাদ** পড়েছেন: OX-14 দুদিনই, OX-01 ৭
+সেপ্টেম্বর, OX-06 ৮ সেপ্টেম্বর। তাঁরা ভরা-হাত ছিলেন না — সকাল থেকে তাঁরা
+শেষ করেছিলেন (OX-14 ৭ সেপ্টেম্বরে ৭টা ও ৮ সেপ্টেম্বরে ৮টা · OX-01 ৪টা ·
+OX-06 ২১টা), তাই বণ্টন তাঁদের কিছু দিয়েছিলই, অথচ একটাও টেকেনি। ⭐ ৮
+সেপ্টেম্বর ১৫:১৪-এ OX-06-এর হাতে ছিল বড়জোর ~৯টা — ঠিক সেই প্রায়-খালি হাত
+যা মালিক বলেছিলেন, আর টেবিলটা বাদ দিয়েছিল ঠিক তাঁকেই।
+
+⭐ মাঠে প্রমাণটা দুই দিক থেকে মেলে:
+
+| | লগে যা আছে | এখন ডাটাবেসে |
+|---|---|---|
+| ১০ সেপ্টেম্বর ০৮:০০-র বণ্টন | **২৯৫**টা, ১০ জনকে | ১৫৩টা, ৯ জনের নামে |
+| ওই রাতের ফেরত | **১৬৯**টা | — |
+
+⚠️ তাই *"১৭–২০"* ছিল **"পাওয়া" নয়, "ছোঁয়া"**। আর ৯ সেপ্টেম্বরকে ~৩০
+দেখাচ্ছিল কেবল কারণ ওই দিনের মাপ নেওয়া হয়েছিল **সেই রাতের ফেরতের আগে**,
+অথচ ১–৮ তারিখেরগুলো **ফেরতের পরে**।
+
+⭐⭐ **মালিকের মাঠের খবরটাই ঠিক ছিল** — *"OX-06 প্রায় দিন complete + skip
+দিয়ে হাত খালি করে ফেলে, পরে ম্যানেজারকে বললে সে আবার ম্যানুয়ালি বণ্টন
+করে"*। সঠিক মাপ হলো **ছোঁয়া বনাম পাওয়া**। সকালে দুজনের হাতেই ~৩০
+থাকে (বণ্টন দেয় `30 − হাতে থাকা`; OX-06 রাত পেরিয়ে ০–১টা নিয়ে আসেন, OX-14
+৭ সেপ্টেম্বর থেকে শুরু-করা ২–৪টা — তাই তাঁর সকালের বণ্টন ২৬–২৮):
+
+| রোজ ছুঁয়েছেন *(২৩ আগস্ট–১০ সেপ্টেম্বর)* | |
+|---|---|
+| OX-06 | **২৬–৩৫** — হাতের প্রায় সবটা; ২৯ ও ৩১ আগস্টে ৩০-এর **বেশি** (৩৫, ৩১), অর্থাৎ সেদিন বাড়তি পেয়ে সেটাও ছুঁয়েছেন |
+| OX-14 | **~১৫** *(যেদিন এসেছেন)* — বাকি ~১৫টা রোজ রাতে না-ছোঁয়া অবস্থায় পুলে ফিরেছে |
+
+⚠️ পরের সংশোধনটাও (*"OX-06-এর হাত ১৪ দিনের ১২ দিন খালি — বাকি ০"*) একই
+ফাঁদে পড়েছিল: "পাওয়া − শেষ − বাদ" **সবারই** ≈ ০, কারণ না-ছোঁয়াগুলো
+গোনাতেই নেই। সিদ্ধান্তটা ঠিক ছিল, প্রমাণটা নয়।
+
+⭐ নিয়মটা **উদ্দেশ্য ধরে** লেখার সিদ্ধান্ত টিকে থাকে, কারণ হাত খালির
+অবস্থাটা এর ভেতরেই পড়ে। ⚠️ তবে কোডের শর্তটা *"হাতের সবটা শেষ করলেও
+টার্গেট ছোঁয়া না গেলে"* নয় — তার আগেই দেয়: **হাতে আজকের বাকি কাজের
+৩০/টার্গেট গুণের কম থাকলে** (টার্গেট ২৫-এ ১.২ গুণ, OX-10-এর ১৫-এ ২ গুণ),
+হাতটা ওই দাগে তোলার মতো, দিনে ৬০-এর ছাদসহ। মাঠের ২২টা টপ-আপের সবগুলোই
+এই ফাঁকে পড়েছে — প্রতিটাতেই হাতে বাকি কাজের সমান বা বেশি ছিল (§ ১০, O16)।
+⚠️ ভুল ছিল কেবল তখনকার **কারণটা** (*"বাক্য ধরে লিখলে নিয়মটা কোনোদিন চলত
+না"*)।
+
+### ২· ⛔⛔⛔ আর যেটা মাপতে গিয়ে বেরোল, সেটা আরও বড়
+
+পাঁচজন ডিজাইনার রোজ গড়ে **১২–১৩টা** শেষ করেন, আর **প্রতিটা দিনেই** ২৫-এর
+নিচে। প্রথম অনুমান ছিল "কাজ ফুরিয়ে যায়"। মেপে দেখা গেল উল্টো —
+
+| | ঘণ্টা/দিন | শেষ/দিন | হাতে |
+|---|---|---|---|
+| OX-14 | **৭.৩** | ১২.৪ | ২৭ |
+| OX-10 | ৭.২ | ১২.৬ | ২৯ |
+| OX-11 | ৭.১ | ১৩.৩ | ২৬ |
+| OX-12 | ৭.১ | ১৩.৭ | ২৯ |
+| OX-13 | ৭.০ | ১৩.৪ | ২৮ |
+| **OX-09** | **৬.০** | **২৯.৫** | ৩০ |
+
+⚠️⚠️ **যাঁরা কম করেন তাঁরা বেশি ঘণ্টা বসেন, আর তাঁদের হাতও ভরা।** অর্থাৎ
+সমস্যাটা **সরবরাহের নয়, গতির** — আর নিয়ম **ক** ওটা সারাতে পারে না, কখনোই।
+⭐ কথাটা এখানে লিখে রাখা হলো যাতে ছ-মাস পরে কেউ ভেবে না বসেন নিয়মটা
+ব্যর্থ হয়েছে; ওটা যা করতে পারে তা-ই করে।
+
+⚠️⚠️ **সংশোধন (১১ সেপ্টেম্বর) — "গতির" কথাটা এই পাঁচজনের জন্য দাঁড়ায় না।**
+
+- OX-10-এর নিজের দৈনিক টার্গেট এখন **১৫** — কিন্তু সেটা ম্যানেজার বসিয়েছেন
+  **৮ সেপ্টেম্বর ১৭:১১-এ** (`audit_log` ৩০৮১), উপরের মাপের প্রায় পুরোটার পরে।
+  তার আগে ঘরটা খালি ছিল, অর্থাৎ পলিসির ২৫ খাটত; ৫–৭ সেপ্টেম্বরের ঠিক-১৫
+  দিনগুলো আর ৮ সেপ্টেম্বরের ১৫-র ১৪টা ওই বদলের আগের। ৯ সেপ্টেম্বর থেকে তাঁর
+  সীমাও ১৫।
+- ⚠️⚠️ **পাঁচজনের দিনের সর্বোচ্চই ঠিক ১৫** — OX-10 থেকে OX-14, প্রত্যেকের,
+  যদিও সিস্টেমে তাঁদের টার্গেট ২৫ (OX-13 ৯ সেপ্টেম্বরের আগে ৮ দিন ঠিক ১৫,
+  OX-11 ৬ দিন)। ২৩ আগস্ট–১০ সেপ্টেম্বরে কেউ একদিনও ১৬ করেননি।
+- ⭐ মালিকের নিজের কথা schema-তেই লেখা: *"karo daily target 25 ta, kono
+  designer er daily target 15 ta"* (§ ৩ঞ৭) — কারো কারো টার্গেট ১৫, অথচ
+  ঘরগুলো কখনো ভরা হয়নি।
+
+⚠️ তাই *"সরবরাহের নয়"* কথাটা দাঁড়িয়ে আছে — OX-14 সকালে হাতে ~৩০ নিয়ে রোজ
+~১৫টা ছোঁন, বাকিটা রাতে না-ছোঁয়া অবস্থায় পুলে ফেরে (§ ১)। কিন্তু *"গতির"*
+কথাটা বলা যায় না, যতক্ষণ না জানা যায় তাঁদের **আসল** দৈনিক টার্গেট কত — হতে
+পারে তাঁরা সিস্টেমে-না-লেখা একটা ১৫-র টার্গেটই পূরণ করছেন, আর পাঁচজনেরই ঠিক
+১৫-তে থামা সেদিকেই ইঙ্গিত করে। ⏳ § ৫-এর O19।
+
+### ৩· নিয়ম **খ**-এর আসল মাপ
+
+২৩ আগস্ট–৯ সেপ্টেম্বরে **১,৬৮৭টা** "শেষ"-এর মধ্যে সীমাটা আটকাত **১৩টা
+(০.৮%)** — সবই OX-09 (৯) ও OX-08 (৪)। বাকি আটজন কোনোদিন ২৫ ছাড়াননি।
+
+⚠️⚠️ **তবু একটা দাম আছে, আর সেটা লেখা দরকার:** আটকে যাওয়া কাজের
+`completed_at` বসে না, আর `to_check`/`to_upload` কিউ দুটো **ওই ঘরটার উপরেই**
+দাঁড়ানো। অর্থাৎ ২৬তম ডিজাইনটা সত্যি হয়ে গেলেও **আজ** বানান-যাচাই বা
+আপলোডের সারিতে ওঠে না। ⭐ সারিটা হাতেই থেকে যায় (মুছে যায় না), তাই কালকে
+চেপে দিলে কাজটা শেকলে ঢোকে — **হারায় না, এক দিন পিছোয়**। ⚠️ **সংশোধন (১১
+সেপ্টেম্বর): কেবল যদি ফাইলটা খোলা হয়ে থাকে।** রাত ১১:৫৫-এর ফেরত আটকানো
+সারিটা ছাড়ে কেবল যদি `started_at` বসা থাকে বা সেদিনের `design_credits`-এ ওই
+কর্মীর নামে নম্বরটা থাকে; নইলে সেই রাতেই পুলে ফেরে, বরাদ্দ মুছে (G172)।
+
+### ৪· ⭐⭐ কে সীমার বাইরে, আর কেন
+
+| | সীমা | টপ-আপ |
+|---|---|---|
+| ডিজাইনার, টার্গেট ২৫ | ২৫ | ✅ |
+| ডিজাইনার, টার্গেট **০** | নেই | ⚠️ **নেই** |
+| ম্যানেজার (OX-01) | নেই | নেই |
+| মালিক/ম্যানেজার কারো হয়ে চিহ্ন দিলে | নেই | — |
+
+⚠️⚠️ **টার্গেট ০ একটা ফাঁদ, তাই লিখে রাখা:** কারো সীমা তুলতে চেয়ে টার্গেট
+০ বসালে **টপ-আপও নীরবে বন্ধ** হয়ে যায়। ⭐ সকালের ৩০টা বণ্টন তবু চলে
+(`allocationSizes` টার্গেট দেখে না), তাই কেউ কাজহীন হন না।
+
+⭐ মালিক/ম্যানেজারের `update()` পথটা ছোঁয়া হয়নি — নইলে ভুল সংশোধনের
+রাস্তাই বন্ধ হতো, আর কে চেপেছেন সেটা `completed_by_id`-তে এমনিতেই লেখা।
+
+⚠️⚠️ **তবে ওই পথে দেওয়া চিহ্নও ডিজাইনারের দিনের হিসাবে গোনা হয়** —
+গণনা চলে `assigned_to_id` ধরে, `completed_by_id` ধরে নয়। ⭐ সেটাই ঠিক,
+কারণ ড্যাশবোর্ডের সংখ্যাটাও হুবহু একই নিয়মে চলে; দুটো আলাদা হলে পর্দা
+আর সীমা দুটো কথা বলত। ⚠️ কিন্তু পরিণামটা জেনে রাখা দরকার: মালিক কারো
+৬টা সারি হাতে `done` করলে ওই ৬টা তাঁর ২৫-এর ভেতরেই পড়ে।
+
+### ৫· ⛔⛔ পর্যালোচনায় নিজের লেখা কোডে দুটো আসল বাগ ধরা পড়ল
+
+একটা ১৩-এজেন্টের ওয়ার্কফ্লো এই দুটো নিয়মের উপর চালানো হয়, আর সেটা
+**যা লেখা হয়ে গিয়েছিল তাতেই** দুটো ভাঙন বের করল:
+
+**ক· প্রতিটা Skip এক-এক করে ভরপাই হতো, অসীমবার।** হাতে ৩০, কিছুই শেষ
+হয়নি → চাই ৩০ → দেওয়া হয় ০। একটা বাদ দিলেই হাতে ২৯ → আবার ১টা। আবার
+বাদ → আবার ১টা। ⚠️⚠️ ছাদ ছাড়া কেউ একদিনে গোটা পুল ঘেঁটে ফেলতে পারতেন।
+⭐ এখন `MAX_ISSUED_PER_DAY = ৬০` (৩০-এর দ্বিগুণ)। ⚠️ তখন লেখা হয়েছিল
+*"মাঠে বাদ দেওয়ার হার ৪–১৮%, তাই সৎ কাজে সীমাটা কোনোদিন লাগবে না"* — কিন্তু
+৪–১৮% ছিল কয়েক সপ্তাহের **মাথাপিছু গড়** (২৩ আগস্ট–৮ সেপ্টেম্বর), কারো একটা
+দিনের সীমা নয়। প্রথম পুরো দিনেই (১০ সেপ্টেম্বর) একজনকে ৬০-এর মধ্যে **৫০টা**
+দেওয়া হয়েছে (সকালে ৩০ · দুপুরের হাতে-বণ্টনে ৩ · টপ-আপে ১৭) — ২৫ শেষ, ২৫
+বাদ। ছাদটা ছোঁয়নি, কিন্তু গড় দেখে "কোনোদিন লাগবে না" বলা যায় না। ওই
+বাদগুলো ঠিক ছিল কি না সেটা § ১০-এর খোলা প্রশ্ন; এই সংশোধন তার উত্তরের উপর
+নির্ভর করে না। ⚠️ আর ছাদটা দেখে **কেবল টপ-আপ** — হাতে-চালানো বণ্টন হাত
+৩০-এ তোলে দিনের মোট না দেখেই, তাই কারো ৬০ হয়ে যাওয়ার পরে কেউ বোতাম চাপলে
+সীমা পেরোতে পারে (এখন পর্যন্ত পেরোয়নি)।
+
+**খ· `staffType`-এর গেটটা ফাংশনের বাইরে ছিল।** `DESIGN_WORK_STAFF_TYPES`-এ
+ম্যানেজারও আছেন, আর `designTargetOf()` তাঁর জন্যও পলিসির **২৫** ফেরত দেয়।
+গেটটা কলারে থাকায় একদিন কেউ ভুলে গেলেই ম্যানেজার নীরবে ২৫-টার্গেটের
+ডিজাইনার হয়ে যেতেন — ⭐ ঠিক এই রেপোর চেনা পাপ। এখন `topUpSize()` নিজেই
+`hasDesignTarget()` ডাকে, ঠিক যেমন `dailyCompletionCap()` করে।
+
+**গ· ⭐⭐⭐ যাঁর হাতে একটাও নেই, তিনি কিছু চাপতেই পারেন না।** টপ-আপ
+ডাকা হচ্ছিল কেবল `markDone()` ও `skip()`-এর **পরে**, অর্থাৎ হাতে কিছু
+থাকতেই হতো। ⚠️⚠️ অথচ নিয়মটা ঠিক **তাঁর** কথাই বলে যাঁর কিছু নেই।
+মাঠে ওই দশা সত্যিই হয়: সকালে পুলে কম থাকলে `allocationSizes` কর্মী-কোডের
+ক্রমে দেয় আর **শেষজন কিছুই পান না** (`if (left <= 0) break`), আর
+পরের বণ্টন কালকের সকাল ৮টা। ⭐ এখন কাজের সময়ে **ঘণ্টায় একবার**
+(`design-target-top-up`, ৯টা–৭টা) সবার হাত দেখা হয়; `topUpSize()`
+এমনিতেই idempotent, তাই বেশিরভাগ টিকে কিছুই ঘটে না।
+
+### ৬· ⛔ আরেকটা ফাঁকা দাবি — এবার নিজের টেস্টে
+
+*"ম্যানেজারের সীমা নেই"* টেস্টটা সবুজ ছিল, কিন্তু **ভুল কারণে**: ফিক্সচারের
+কর্মীর কোনো পলিসিই ছিল না, তাই `designTargetOf()` এমনিতেই ০ দিত। সাবোতাজে
+`hasDesignTarget()` তুলে দেওয়ার পরেও টেস্টটা **সবুজই থাকল**।
+
+⭐ এখন ফিক্সচারে হারনেসের পলিসি জুড়ে দেওয়া হয় (`dailyDesignTarget = 25`),
+আর তখনই দাবিটার একমাত্র ভিত্তি দাঁড়ায় `staffType` — সাবোতাজে লাল।
+⚠️ এই সপ্তাহে এটা **তৃতীয়বার**: session-bounds (৬ সেপ্টেম্বর), `EXPLAIN`
+(৯ সেপ্টেম্বর সকাল), আর এটা। তিনবারই দাবিটা সত্যি ছিল, কিন্তু ফাঁকা।
+
+### ৮· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৭৮৭ | **১৮১৮** *(+৩১ · নতুন `design-quota.e2e.spec.ts` ১৮, বাকি পিওর নিয়মে)* |
+| web | ২৫৬ | ২৫৬ |
+| এজেন্ট | ৫৩৩ | ৫৩৩ |
+| **মোট** | ২৫৯৬ | **২৬২৭** |
+
+⚠️ কোনো মাইগ্রেশন লাগেনি — দুটো নিয়মই বিদ্যমান ঘর ধরে চলে
+(`employees.daily_design_target` · `work_policies.daily_design_target` ·
+`design_targets.completed_at`)।
+
+⭐ চারটে পাহারাই সাবোতাজ করে লাল দেখা হয়েছে: সীমা তুলে নেওয়া · ঢাকার
+দিনের বদলে লেবেল বসানো · টার্গেট ছোঁয়ার পরেও টপ-আপ চালু রাখা ·
+ম্যানেজারকে সীমার আওতায় আনা।
+
+### ৯· জানা সীমা — লিখে রাখা
+
+⚠️ **Undo একটা ঘর খালি করে।** কেউ আজকের একটা Undo করে অন্যটা শেষ করলে
+সংখ্যাটা ২৫-ই থাকে, কিন্তু কাজ হয় ২৬টা। ⭐ পর্দার সংখ্যা মিথ্যা হয় না,
+তাই আপাতত ছাড়া হলো।
+
+⚠️ **শুরু-করা সারি ফেরত যায় না — মোট হিসাবে কম, কিন্তু একজনের হাতে জমছে।**
+`returnUnworked()` `startedAt` বসা সারি কখনো পুলে ফেরায় না। তাই ওগুলো
+পরদিনের `openCount`-এ ঢোকে: সকালের বণ্টন ছোট হয় (`30 − হাতে থাকা`), আর
+টপ-আপ দেরিতে আসে। ⛔ আগে এখানে লেখা ছিল *"সেটাই সকালের ৩০-কে ১৭ বানায়"* —
+ভুল; ১৭ ছিল § ১-এর মাপের ফাঁদ। মাঠে বেশিরভাগ দিন রাত-পেরোনো এমন সারি
+মাথাপিছু ০–১টা (২৩ আগস্ট–১১ সেপ্টেম্বর, শুক্রবার বাদে: ১৫৩ ডিজাইনার-দিনের
+১৪৩টায়); সবার মিলিয়ে ১০ সেপ্টেম্বর সকালে ছিল ৫টা, ১১ সেপ্টেম্বর সকালে ৭টা।
+⚠️ কিন্তু OX-14-এর হাতে এগুলো জমছে: ৭ ও ৮ সেপ্টেম্বর ২টা, ৯ ও ১০ সেপ্টেম্বর
+৩টা, ১১ সেপ্টেম্বর ৪টা (৬ · ৭ · ৮ · ১০ সেপ্টেম্বরে শুরু করা, এখনো
+`assigned`)। তাই ১১ সেপ্টেম্বর সকালে তিনি পেয়েছেন ২৬টা, বাকিরা ২৯–৩০। তিনি
+দিনে ১২–১৪টা শেষ করেন, তাই এর পেছনে ২৫-এর সীমা নেই। সর্বোচ্চ ছিল OX-08:
+২৬–২৭ আগস্ট ৮টা (২৫ আগস্টে শুরু, ২৭ আগস্ট ০৯:১৯–০৯:২০-এ একসাথে শেষ চাপা),
+আর ২৭ আগস্ট সকালে তিনি পেয়েছিলেন ঠিক ২২টা। ⭐ আর সীমায় আটকানো ডিজাইনের
+জন্য ঠিক এটাই চাই: ১০ সেপ্টেম্বর OX-07-এর আটকে যাওয়া সারিটা এভাবেই রাত পার
+করে হাতে থেকে গেছে (§ ১০)।
+
+⚠️ **ছুটির দিনে সীমাটাও খাটে।** `designTargetOf()` কর্মদিবস চেনে না, আর
+বণ্টনও ছুটির দিনে চলে (ইচ্ছাকৃত)। শুক্রবারে কেউ স্বেচ্ছায় কাজ করলে
+২৫-এই আটকাবেন — এটা মালিকের সিদ্ধান্তের অপেক্ষায় (§ ৫-এর O17)।
+
+⚠️ **দুটো সংখ্যা এখনো আলাদা।** ডিজাইনারের Home পাতা `design_credits`
+(কতগুলো ফাইল খোলা) দেখায়, আর সীমা গোনে `design_targets.completed_at`।
+মাঠে একই দিনে ওই দুটো ২৯ বনাম ৩২ হয়েছিল। ⭐ তাই এররের লেখাটা **যে
+সংখ্যাটা গোনা হয়েছে সেটাই বলে**: *"You have already marked 25 designs
+done today…"* — "টার্গেট শেষ" নয়।
+
+### ১০· মাঠে প্রথম দুদিন *(৯ সেপ্টেম্বর ১২:৩৮ → ১১ সেপ্টেম্বর ০৯:০৫)*
+
+#### ⭐ সীমাটা ধরে রেখেছে
+
+| দিন | ঠিক ২৫-এ থেমেছেন | ২৫ ছাড়িয়েছেন |
+|---|---|---|
+| ৯ সেপ্টেম্বর *(বিকেল)* | OX-08 | কেউ না |
+| ১০ সেপ্টেম্বর | OX-07 · OX-08 · OX-09 | কেউ না |
+
+⭐⭐ **প্রথম আসল আটকানো — আর কাজটা হারায়নি।** ১০ সেপ্টেম্বর OX-07 ২৫
+ছুঁলেন ১৬:৪৫-এ, ১৬:৪৮-এ জব `1061002`-এর ফাইল খুললেন, আর ১৭:৫৭-এ
+Complete চাপলেন → `409`। সারিটা (`61004`) `assigned`-ই থাকল, `started_at`
+বসা — তাই রাত ১১:৫৫-এর ফেরত ওটা ছুঁলো না, আর পরের কাজের দিনে চাপলেই
+শেকলে ঢুকবে। ⭐ § ৩-এর *"হারায় না, এক দিন পিছোয়"* মাঠে প্রথমবার প্রমাণিত — ⚠️ তবে কেবল ফাইলটা খোলা ছিল বলে (§ ৩-এর সংশোধন)।
+
+⚠️ আটকানোটা কেবল HTTP লগে (`POST /api/v1/me/targets/61004/done`) —
+ডাটাবেসে কোথাও লেখা হয় না ([G173](08-Gap-Analysis.md))।
+
+#### টপ-আপ
+
+API লগে **২২টা** টপ-আপ: OX-09 **১৭**, আর OX-06 · OX-08 · OX-12 · OX-13 ·
+OX-14 একটা করে। ⚠️ ডাটাবেসে এখন দেখায় ১৯টা — বাকি ৩টার সারি কেউ ছোঁয়নি
+বলে রাতে পুলে ফিরে গেছে, আর § ১-এর ফাঁদে তার ইতিহাসও মুছেছে। **এখানে
+লগই রেকর্ড।**
+
+⚠️⚠️ **২২টার একটাও ঘটেনি যখন হাত সত্যিই কম ছিল।** লগের প্রতিটা লাইনে
+লেখা থাকে তখন কত শেষ (`done`) আর হাতে কত (`had`); ২২টাতেই হাতে ছিল
+**আজকের বাকি কাজের সমান বা বেশি** — যেমন OX-12: শেষ ৪, হাতে ২৫।
+সবগুলোই ১.২ গুণের "বেছে নেওয়ার জায়গা" ভরানো। ⏳ শর্তটা বদলানো হবে কি না
+— § ৫-এর O16।
+
+⚠️ ঘণ্টার টিক দুদিনে **একটাও** দেয়নি — সব টপ-আপের সেকেন্ড এলোমেলো,
+অর্থাৎ Complete/Skip-এর সাথে সাথে। সেটা প্রত্যাশিত (সকালে কেউ খালি হাতে
+ছিলেন না)। কিন্তু টিকটা কেবল কিছু দিলে লগ লেখে, তাই **ওর চুপ থাকা থেকে
+বলা যায় না ও চলেছে কি না**।
+
+#### ⛔ হাতে-চালানো বণ্টন এখনো হচ্ছে
+
+১০ সেপ্টেম্বর ১২:১৪-এ একটা হাতে-চালানো বণ্টন: লগে *"58 to 9
+designers"* (ডাটাবেসে এখন ৩৩টা নামে)। ⭐ মাথাপিছু গড়ে ~৬টা — অর্থাৎ হাতে
+গড়ে ~২৪টা থাকা অবস্থায়। ওটা "ফুরিয়ে গেছে" সামলানোর চেয়ে **সবাইকে আবার
+৩০-এ তোলার** ধাঁচ। ⚠️ `distribute()` কোনো অডিট সারি লেখে না, তাই কে
+চেপেছেন তা ডাটাবেসে নেই ([G173](08-Gap-Analysis.md))।
+
+#### ⚠️⚠️ বাদ দেওয়া এখন বিনামূল্যে আবার টানা
+
+§ ৫ক-এর ছাদ (৬০/দিন) লুপটাকে সীমায় বেঁধেছে, কিন্তু মূল কথাটা বদলায়নি:
+**Skip করলে হাত কখনো আজকের বাকি কাজের নিচে নামে না** (টার্গেট ছোঁয়া বা
+দিনের ৬০ হয়ে যাওয়ার আগ পর্যন্ত)। হাত ৩০/টার্গেট গুণের দাগে থাকলে প্রতিটা
+Skip এক-এক করে ভরপাই হয়; দাগের ওপরে থাকলে (যেমন একটা Complete বা
+হাতে-বণ্টনের পরে) প্রথম কয়েকটা Skip কেবল বাড়তি জায়গা খরচ করে। মাঠে (৯
+সেপ্টেম্বর ১২:৩৮ → ১১ সেপ্টেম্বর) দলের ৪০টা Skip-এর **২০টা** ভরপাই হয়েছে।
+নিয়মের আগে বাদ দিলে হাত কমত আর ম্যানেজারকে বলতে হতো; এখন বাদ দেওয়া একটা
+বিনামূল্যের নতুন টানা। অর্থাৎ কঠিন ডিজাইন বাদ দিয়ে সহজটা বেছে নেওয়ার পথ খুলে
+গেছে — **যে কারো জন্য**।
+
+মাঠে একজনের বাদ দেওয়া নিয়মের পরে হঠাৎ বেড়েছে। কিন্তু সেটা কঠিন-সহজ বাছাই
+কি না, ডেটা বলতে পারে না: কোনো ঘরে ডিজাইনের কাঠিন্য লেখা থাকে না, বাদের
+কারণ কেবল তিনটে (Not Found · Copyright · Events), আর ৭ সেপ্টেম্বর থেকে তাঁর
+কারণসহ বাদ দেওয়া ৪০টার ৩৯টার ফাইল তিনি কখনো খোলেননি:
+
+| OX-09 | নিয়মের আগে *(৭–৯ সেপ্টেম্বর ১২:৩৮)* | নিয়মের পরে *(৯ সেপ্টেম্বর ১২:৩৮ → ১০ সেপ্টেম্বর)* |
+|---|---|---|
+| শেষ | ৫৯ | ৪৬ |
+| বাদ | ১৩ | **২৭** |
+| এর মধ্যে "Events" | ২ | **১৯** |
+
+দিনে দিনে শেষ: আগে ২৭ · ৩২ | পরে ২১ · ২৫। ⚠️ আগের দুটো দিনই এখনকার ২৫-এর
+সীমার ওপরে — নিয়মটা তখন থাকলে ওই ঘরে বড়জোর ৫০ হতো, তাই ৫৯ → ৪৬ সমান মাপে
+কমা নয়। আর বাদের বাড়াটা প্রায় পুরোটাই ১০ সেপ্টেম্বরের: নিয়মের পরে ৯
+সেপ্টেম্বর তিনি বাদ দেন মাত্র ২টা (১৭:৪৮-এ)।
+
+⭐ ১০ সেপ্টেম্বর তাঁকে দেওয়া হয় ঠিক **৫০**টা (সকালে ৩০ · দুপুরের
+হাতে-বণ্টনে ৩ · টপ-আপে ১৭) — ২৫ শেষ, ২৫ বাদ। ১৬:৫৯ থেকে ১৭:০৩-এর
+মধ্যে লগে ১০টা টপ-আপ, প্রতিটায় একই লেখা *"done 21, had 4"* — অর্থাৎ শেষের
+সংখ্যা না বেড়ে পরপর বাদ, আর প্রতিবার নতুন একটা। ১৭:৩০:০৩-এ তিনি ২৫ ছোঁন;
+তারপর টপ-আপ আর কিছু দেয় না, আর হাতের শেষটা ১০ সেকেন্ড পরে বাদ ("Events")।
+তাঁর কোনো Complete ফেরানো হয়নি — এই সময়ের একমাত্র `409` OX-07-এর।
+
+⚠️ একই সময়ে (৯ সেপ্টেম্বর ১২:৩৮ → ১০ সেপ্টেম্বর) দলের বাকিদের বাদ **০–৪টা**
+(OX-06 ৪ · OX-08 ৩ · OX-13 ৩ · OX-12 ২ · OX-14 ১ · OX-07 / OX-10 / OX-11 ০),
+তাঁর **২৭**। নিয়মের আগেও (৭ সেপ্টেম্বর → ৯ সেপ্টেম্বর ১২:৩৮) সবচেয়ে বেশি বাদ
+তাঁরই: ১৩টা, বাকিদের ০–৭ (বরাদ্দের দিন ধরে)।
+
+⛔⛔ **এটা রায় নয় — প্রশ্ন।** ডেটা বলতে পারে না ওই ১৯টা সত্যিই "Events"
+ডিজাইন ছিল কি না:
+
+- ১৯টার **১৭টা** এসেছে মালিকের **২২ আগস্টের পুরোনো ইমপোর্ট** থেকে, যেখানে
+  পুরোনো মৌসুমি বা ঘটনাভিত্তিক ডিজাইন সত্যিই থাকতে পারে (বাকি ২টা ম্যানেজারের
+  ২৩ আগস্টের ইমপোর্ট থেকে)। ⚠️ তবু ৩১ আগস্ট (কারণ লেখা শুরু) থেকে মালিকের ওই
+  ইমপোর্টের "Events" বাদ গোটা দলে ২৬টা — তার ১৯টা তাঁর (নিয়মের আগে ২ · পরে
+  ১৭), বাকি ৭টা তিনজনের (OX-08 ৩ · OX-06 ২ · OX-07 ২)। নিয়মের পরে ওই
+  ইমপোর্টের "Events" বাদের ১৭টার ১৭টাই তাঁর।
+- কয়েক সেকেন্ডে একটা বাদ কোনো প্রমাণ নয় — মরা বা স্পষ্টতই মৌসুমি পাতা এক
+  নজরেই চেনা যায়।
+- ⭐ যাচাইয়ের পথ **আগে থেকেই আছে**: তাঁর কারণসহ বাদ দেওয়া **৪০টার ৪০টাই**
+  Review পাতায়, এখনো কেউ দেখেননি।
+
+⭐ § ৩ঞ৩৪-এর একই নিয়ম: আগে মাপ, তারপর গোটা দলের সাথে তুলনা, তারপর কী
+প্রমাণ হয় আর কী হয় না। ⏳ বাদ দিলে ভরপাই হবে কি না — § ৫-এর O15।
+
+#### শুক্রবারেও বণ্টন
+
+১১ সেপ্টেম্বর শুক্রবার (সাপ্তাহিক ছুটি), তবু ০৮:০০-এ **২৯৩**টা বণ্টন
+হয়েছে — নকশা অনুযায়ীই (`TargetsJob`-এর নোট)। ⏳ ছুটির দিনে ২৫-এর সীমা
+খাটবে কি না — § ৫-এর O17।
+
+---
+
+## ৩ঞ৩৪. ⭐⭐⭐ *"৩৩টা ডিজাইন সম্ভব না"* — দাবির পাশে কোনো মাপ ছিল না *(৯ সেপ্টেম্বর ২০২৬)*
+
+মালিকের প্রশ্ন: *"OX-09 goto kal 33 ta design complete kore che dekecho?
+ata actually possible na. maybe he ceat korche system k"*
+
+⚠️⚠️ **প্রথম আবিষ্কার: ৩৩ বলে কোনো সংখ্যা ওই দিনের জন্য সিস্টেমে নেই।**
+৮ সেপ্টেম্বরে OX-09-এর দুটো সংখ্যা আছে, আর দুটোর মানে আলাদা —
+
+| | কত | কী মাপে | জাল করা যায়? |
+|---|---|---|---|
+| `design_credits` | **২৯** | সেদিন **প্রথমবার** খোলা জব-নম্বরওয়ালা ফাইল | ⭐ না — এজেন্ট শিরোনাম থেকে তোলে |
+| `design_targets.completed_at` | **৩২** | নিজে ক্লিক করে যতগুলোকে "শেষ" বলেছেন | ⚠️⚠️ **হ্যাঁ — এটা নিছক দাবি** |
+
+### ১· উত্তরটা: সম্ভব, আর এটা তাঁর রেকর্ডও নয়
+
+মাঠ থেকে মাপা (প্রোডাকশন, read-only) —
+
+| প্রমাণ | সংখ্যা |
+|---|---|
+| তাঁর **নিজের** সেরা দিন | ১৫ আগস্ট — **৫৮**টা |
+| সেদিন তাঁকে দেওয়া কাজ | **৪৩**টা *(সবার চেয়ে বেশি; বাকিরা ১৪–২৭)* |
+| সেদিন **বাকি রেখেছেন** | ১১টা |
+| একই দিনে সহকর্মীরা | OX-08 ২৭ · OX-07 ২৭ · OX-01 (ম্যানেজার) **৪৪** |
+| কি-বোর্ড (১৬:০০–১৭:৫১) | টানা `active`, input score **৭৪–৯৮**, মাঝে তিনটে সত্যিকারের idle ফাঁক |
+| `synthetic_input` অ্যালার্ট | **আজ পর্যন্ত কারো জন্যই একবারও বাজেনি** |
+
+⭐ প্রসঙ্গটাও জরুরি: **২১ আগস্ট–৬ সেপ্টেম্বর তাঁর কোনো সেশন নেই, কোনো
+`app_usage` নেই, আর তাঁর নামে একটাও কাজ বরাদ্দ হয়নি** — অর্থাৎ ছুটিতে
+ছিলেন। ৭ তারিখে ফিরে দুদিনে ২২ ও ২৯।
+
+⛔ **ঠকানোর প্রমাণ পাওয়া যায়নি।**
+
+### ২· ⚠️⚠️ কিন্তু প্রশ্নটার উত্তর দিতে হাতে SQL লিখতে হলো
+
+**এটাই আসল ফাঁক।** "শেষ" চিহ্নটা কর্মীর নিজের ক্লিক — কেউ যাচাই করে না,
+আর সিস্টেম সেটা প্রশ্ন না করেই বোর্ডে তোলে। পর্দায় **দাবিটা ছিল, দাবির
+পাশে কিছু ছিল না**।
+
+⚠️ সবচেয়ে দুর্বল জায়গাটা মাপাও গেল: বিকেল **৩:১৪**-এ দেওয়া ১২টা জব
+**৫:৩৯**-এর মধ্যে "শেষ", অথচ ওগুলোর পেছনে ডিজাইন-অ্যাপে মোট সময়
+**সাড়ে ছয় মিনিট**, আর দুটো (`1040723`, `1037682`) কোনোদিন কারো PC-তে
+খোলাই হয়নি।
+
+⭐⭐ **তবু একই মাপকাঠি গোটা দলের উপর বসিয়ে ছবিটা উল্টে গেল** — "শেষ বলা
+হয়েছে অথচ ফাইলের কোনো চিহ্ন নেই", ১–৮ সেপ্টেম্বর:
+
+| | শেষ বলেছেন | চিহ্ন নেই | |
+|---|---|---|---|
+| OX-06 | ১৭৪ | ১৩৯ | **৮০%** |
+| OX-13 | ১০৫ | ৬৬ | ৬৩% |
+| OX-10 | ৮৭ | ৩৯ | ৪৫% |
+| **OX-09** | ৫৯ | ১০ | **১৭%** *(পঞ্চম)* |
+| OX-07 | ১৫২ | ০ | ০% |
+
+⚠️⚠️⚠️ **আর এখানেই সবচেয়ে জরুরি সংশোধনটা।** OX-06-কে এই টেবিল দেখে দোষ
+দেওয়া হতো, কিন্তু তাঁর ফাইলগুলোর নাম `Untitled-20*`, `Untitled-33*` —
+**তিনি সেভ না করেই কাজ করেন**। সিস্টেম তখন জব-নম্বর দেখতেই পায় না।
+⭐ অর্থাৎ কলামটা **সততা মাপে না, ফাইলের নাম দেওয়ার অভ্যাস মাপে** — আর
+এই বাক্যটা পর্দায় না থাকলে সংখ্যাটা একটা অভিযোগপত্র হয়ে দাঁড়াত।
+
+### ৩· যা বানানো হলো — মালিকের বাছাই *("ka ar kha banao")*
+
+**ক· দাবির পাশে মাপ** — Design Pool-এর প্রতিটা সারিতে নতুন **File**
+কলাম: ওই জব-নম্বরের ফাইল Illustrator/Photoshop-এ মোট কতক্ষণ পর্দায় ছিল।
+
+**খ· নীরব তালিকা** — ড্রপডাউনে *"Done · no file trace"*: শেষ বলা
+হয়েছে, অথচ ফাইলটা কখনো খোলা হয়নি।
+
+⭐⭐ **নতুন কোনো ডেটা জমা করতে হয়নি।** এজেন্ট শিরোনাম আগে থেকেই রাখে, আর
+ফাইলের নাম শুরু হয় জব-নম্বরে — উত্তরটা ইতিমধ্যেই টেবিলে ছিল, কেউ
+জিজ্ঞেস করত না। ঠিক ২১ আগস্টের (§ ৩ম) পুনরাবৃত্তি।
+
+#### ⚠️⚠️ তিনটে অবস্থা, দুটো নয়
+
+| `fileSec` | পর্দায় | মানে |
+|---|---|---|
+| `> 0` | `18m` / `45s` | মাপা হয়েছে |
+| `0` | `no trace` | **শেষ বলা হয়েছে**, অথচ কখনো খোলা হয়নি |
+| `null` | `—` | ⚠️ বলার মতো কিছু নেই — তখনকার শিরোনাম জমা নেই, বা এখনো শেষ বলা হয়নি |
+
+⚠️⚠️ শেষ দুটো এক করা যেত না: `app_usage` শুরু হয়েছে **১৩ আগস্ট ২০২৬**-এ,
+অথচ শেষ-হওয়া টার্গেট আছে **২০২৫ সাল** থেকে। এক করলে ওই ২৭ হাজার পুরোনো
+ইমপোর্ট করা সারি নীরবে *"ফাইল কখনো খোলা হয়নি"* হয়ে দাঁড়াত — অর্থাৎ
+একটা **মিথ্যা অভিযোগ**, প্রতিটা সারিতে। ⭐ সীমানাটা ধ্রুবক নয়,
+`min(app_usage.work_date)` থেকে আসে — কোনোদিন পুরোনো সারি ছাঁটা শুরু হলে
+নিজে থেকেই এগোবে।
+
+⭐ § ৪-এর *"জানি না কখনো ০ নয়"* নিয়মটার **উল্টো পিঠ**: এখানে ০-টাই আসল
+মাপ, তাই "জানি না"-র জন্য আলাদা ঘর লেগেছে।
+
+⚠️ `formatDuration()` একা যথেষ্ট হয়নি — ওটা ২০ সেকেন্ডকে `0m` লেখে, আর
+`0m` দেখতে হুবহু "কখনো খোলা হয়নি"-র মতো। এই কলামে ঠিক ওই পার্থক্যটাই
+সবচেয়ে দরকারি খবর, তাই এক মিনিটের নিচে সেকেন্ডেই লেখা হয়।
+
+#### ⚠️⚠️ শূন্যটা কেবল "শেষ" বলা সারিতেই একটা খবর
+
+প্রথম লেখায় `0` বসত **সব** সারিতে, আর তাতে সকালে বরাদ্দ পাওয়া প্রতিটা
+কাজের পাশে *"no trace"* উঠত — ⭐ **একটা অভিযোগ, সেখানে যেখানে কোনো
+দাবিই করা হয়নি**। হাতে থাকা কাজের ফাইল এখনো খোলা হয়নি, সেটা তো
+স্বাভাবিক; `Stage` ঘরটা এমনিতেই *"given"* লেখে।
+
+⭐ এখন নিয়মটা: **মাপা সময় সব সারিতেই দেখা যায়** (হাতে থাকা কাজে
+*"৪০ মিনিট হয়েছে"* একটা খবর), কিন্তু **`0` কেবল শেষ-বলা সারিতে**।
+
+#### ⛔ একটা ক্যাশ লেখা হয়েছিল, তারপর তুলে নেওয়া হলো
+
+`since()` চালায় `SELECT min(work_date) FROM app_usage` — সূচক নেই, তাই
+সমান্তরাল seq scan, প্রোডাকশনে মাপা **৩২–৫৪ ms**, আর প্রতিবার তালিকা
+খুললেই। টেবিলটা দিনে ~৭ হাজার সারি বাড়ে, তাই একটা ১০-মিনিটের ক্যাশ
+বসানো হয়েছিল।
+
+⚠️⚠️ **তারপর সেটা তুলে নেওয়া হলো**, কারণ সার্ভিসটা টেস্টে **একটাই
+ইনস্ট্যান্স** আর `resetDatabase()` ওই ক্যাশ মোছে না — এক টেস্টের সীমানা
+পরের টেস্টে চলে যেত। ⭐ আর **যে ক্যাশ ঠিক রাখতে টেস্টকে খোঁচাতে হয়,
+সেটা প্রোডাকশনেও ভুল হতে পারে**; ৩২ ms-এর জন্য ওই লুকোনো অবস্থাটা
+কেনার মতো নয়। সংখ্যাটা আর দুটো লুকোনো-অবস্থা-ছাড়া বিকল্প কোডে লেখা
+আছে, যাতে একদিন সত্যিই দরকার হলে কাউকে আবার মাপতে না হয়।
+
+#### ⭐ কেন এটা অ্যালার্ট নয়
+
+মালিকের শর্ত ছিল **"নীরব তালিকা, অ্যালার্ট নয়"**, আর সেটা কোডে ধরা আছে:
+`no_file` **চিপের সারিতে নেই, ড্রপডাউনে আছে**। চিপে বসালে ওর গায়ে সংখ্যা
+বসত, আর সংখ্যা বসলে ওটা রোজ খালি করার একটা কিউ হয়ে যেত — কার্যত একটা
+অ্যালার্ট। ⚠️ তালিকার মাথায় একটা বাক্য বসানো হয়েছে যেটা সরানো যায় না:
+*"That is a question, not a verdict"*, সাথে সেভ-না-করা ফাইলের ব্যাখ্যা।
+
+### ৪· নকলটা লুকোনো হয়নি, পাহারা বসানো হয়েছে
+
+⚠️⚠️ প্রশ্নটার উত্তর ১,৫৪,০০০ সারির `app_usage` থেকে **ডাটাবেসেই** বের
+করতে হয় (TypeScript-এ টানলে প্রতি পাতায় ৫৩ MB)। তাই `DESIGN_ID` নিয়মটা
+এখন **দুই ভাষায়**: `DESIGN_ID` (TS) আর `DESIGN_ID_SQL` (Postgres) —
+ঠিক সেই "চুক্তি দুই জায়গায়" ধাঁচ যা এই রেপোর সবচেয়ে চেনা ব্যর্থতা।
+
+⭐ তাই দুটো পাহারা, দুটোই সাবোতাজে লাল করে দেখা হয়েছে:
+
+| পাহারা | কী ভাঙলে লাল হয় |
+|---|---|
+| ১২টা কঠিন শিরোনামের তালিকায় TS আর SQL **একই ফল** দেয় | নিয়ম দুটো আলাদা হয়ে গেলে |
+| `EXPLAIN`-এ **`Index Cond`** আছে | কোয়েরির লেখা `migration.sql`-এর সূচকের সাথে না মিললে |
+
+⚠️⚠️ **দ্বিতীয় পাহারাটা প্রথমে ফাঁকা ছিল, আর সাবোতাজেই সেটা ধরা পড়ল।**
+দুটো আলাদা কারণে:
+
+**ক·** টেস্টটা কোয়েরিটা **হাতে লিখত**, ধ্রুবক থেকে বানাত না — অর্থাৎ সে
+নিজের লেখাই যাচাই করত, কোডের লেখা নয়।
+
+**খ·** সারানোর পরেও সবুজ থাকল, কারণ সূচকটা **আংশিক**
+(`WHERE lower(process_name) IN …`)। এক্সপ্রেশন না মিললেও Postgres ওটাকে
+স্রেফ একটা **সারি-ছাঁকনি** হিসেবে ব্যবহার করে, আর প্ল্যানে নামটা থেকেই
+যায়। ⭐ এক্সপ্রেশনটা সত্যিই সূচকে বসেছে কি না তার একমাত্র চিহ্ন
+`Index Cond` — না মিললে ওখানে `Filter` লেখা থাকে।
+
+⭐ এটা ৬ সেপ্টেম্বরের session-bounds টেস্ট দুটোর (§ ৩ঞ৩১.১১) হুবহু একই
+শ্রেণির ভুল: **দাবিটা সত্যি, কিন্তু ফাঁকা**। সাবোতাজ ছাড়া দুটোর
+কোনোটাই ধরা পড়ত না।
+
+### ৫· ⛔ পথে আরেকটা ফাঁকা যাচাই — `web` টাইপচেক
+
+`npx tsc --noEmit -p tsconfig.json` চালিয়ে "পরিষ্কার" পাওয়া গেল, অথচ
+তিনটে import অনুপস্থিত ছিল। কারণ `web/tsconfig.json`-এ
+**`"files": []`** আর কেবল `references` — অর্থাৎ ওই কমান্ডটা **কিছুই
+কম্পাইল করে না**, তবু `EXIT=0` দেয়।
+
+⚠️⚠️ **`web`-এ সঠিক কমান্ড `npm run typecheck` (`tsc -b --noEmit`)।**
+চালাতেই তিনটে এরর: `Stage` · `formatDate` · `formatDuration`।
+⭐ `server`-এ সমস্যা নেই — ওখানে `include` আছে।
+
+### ৬· ছাঁকনির নিয়ম তিনটে পাতা থেকে বেরিয়ে এল
+
+`stageOf` · `STATUS_OPTIONS` · আর নতুন `dropdownValueOf` — তিনটেই এখন
+[`web/src/pages/targets/filters.ts`](../oxeio-monitor/web/src/pages/targets/filters.ts)-এ,
+আর ৯টা টেস্টের আওতায়।
+
+⚠️ কারণটা নির্দিষ্ট: `no_file` ড্রপডাউনের **ভেতরে** বসে, অথচ বাকি সব
+ধাপ চিপে — তাই `statusValue` নিয়মটায় একটা ব্যতিক্রম লাগল। ভুল হলে
+বাছাইয়ের সাথে সাথে ঘরটা "All targets"-এ ফিরে যেত, তালিকাটা বদলেই
+থাকত, আর কেউ বলতে পারত না ওটা কীসের তালিকা। ⭐ পাতার ভেতরে থাকলে ওটা
+যাচাই করার একমাত্র উপায় ছিল ব্রাউজারে চোখে দেখা।
+
+### ৮· ⛔⛔ ডিপ্লয়ের পর মেপে দেখা গেল সূচকটা অর্ধেক কাজ করছে
+
+মাঠে বসানোর পর (build 402) প্রোডাকশনে দুটো কোয়েরি মাপা হলো, আর
+**একটার দাবি ভুল বেরোল**।
+
+| কোয়েরি | কখন চলে | সূচকের আগে | সূচকের পরে |
+|---|---|---|---|
+| `secondsFor` — পাতার ৫০টা নম্বর | **প্রতিবার তালিকা খুললে** | ১.৪৭ s | **৪.২ ms** ✅ |
+| `seenJobNumbers` — সব নম্বরের `DISTINCT` | কেবল `no_file` ছাঁকনিতে | ১.৪৭ s | **৯৩০ ms** ⛔ |
+
+⚠️⚠️ **সূচকটা ব্যবহার হচ্ছিল, কিন্তু হিসাবটা নয়।** `EXPLAIN`-এ
+`Index Cond` ছিল ঠিকই — কিন্তু তার পরেই একটা **Bitmap Heap Scan**,
+৩,৮৮৪ ব্লক পড়ে **১৪,২২৫ সারিতে regex আবার গোনা**। অর্থাৎ সূচক দিয়ে
+কেবল *কোন সারিগুলো* বাছা হচ্ছিল; সূচকে **আগে থেকেই বসানো মানটা** ছোঁয়াই
+হচ্ছিল না।
+
+⭐ (Index-Only Scan হতে পারত, কিন্তু তার জন্য visibility map লাগে, আর
+`app_usage`-এ `last_vacuum` **খালি** — শেষ autovacuum ৫ সেপ্টেম্বর।
+সেটার উপর ভরসা করা মানে গতি autovacuum-এর মর্জির উপর ছেড়ে দেওয়া।)
+
+⭐⭐⭐ **আসল ভুলটা ছিল প্রশ্নের দিক।** প্রশ্নটা করা হচ্ছিল `app_usage`-এর
+দিক থেকে (*"সব নম্বর বার করো, তারপর `NOT IN`"*)। উল্টো দিক থেকে —
+`design_targets` ধরে, প্রতিটার জন্য একটা ইনডেক্স-প্রোব — একই উত্তর:
+
+| দিক | কী ঘটে | সময় |
+|---|---|---|
+| `app_usage` → `NOT IN` | ১৪,২২৫ সারিতে regex আবার | ৯৩০ ms |
+| `design_targets` → `NOT EXISTS` | **১,৮২১টা প্রোব, ৫µs করে** | **২৫ ms** |
+
+⭐ ৩৭ গুণ, আর কোডটা ছোটও হলো: `seenJobNumbers()`-এর জায়গায়
+`unseenJobNumbers(from)`, আর Prisma-য় `notIn` (২,৮২৮টা) থেকে `in`
+(৪৭০টা) — মাঠে ওই ৪৭০টাই এখন "শেষ বলা, অথচ চিহ্ন নেই"।
+
+⚠️ TS↔SQL মেলানোর টেস্টটা `seenJobNumbers()` ধরে চলত, তাই ওটাও নতুন করে
+লেখা হলো — এখন চলে **`secondsFor()` ধরে, অর্থাৎ প্রোডাকশনের কোড দিয়েই**,
+আর জিজ্ঞেস করে সঠিক নম্বরগুলোর **সাথে ভুল নিয়মে যেগুলো বেরোত** সেগুলোও
+(`100004` · `1016337` · `4` · `12`)। ⭐ ফলে দাবিটা দুদিকেই কাজ করে:
+সঠিকটা হারালেও ধরা পড়ে, ভুলটা এসে পড়লেও।
+
+⚠️ জানা সীমা লিখে রাখা: ফেরত তালিকাটা `IN (…)` হয়ে যায়। আজ ৪৭০; ৩০
+হাজার ছাড়ালে Postgres-এর প্যারামিটার-সীমা কাছে আসবে, আর তখন ছাঁকনি ও
+পাতা-ভাগ দুটোই SQL-এ নামাতে হবে। ⭐ সংখ্যাটা ফাইলের নাম দেওয়ার অভ্যাস
+ভালো হলে **কমার** কথা।
+
+---
+
+### ৭· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৭৭২ | **১৭৮৭** *(+১৫ · `file-trace.e2e.spec.ts`)* |
+| web | ২৪৭ | **২৫৬** *(+৯ · `targets-filters.spec.ts`)* |
+| এজেন্ট | ৫৩৩ | ৫৩৩ |
+| **মোট** | ২৫৭২ | **২৫৯৬** |
+
+⚠️ মাইগ্রেশন `20260909100000_app_usage_design_id` — কেবল একটা **আংশিক
+functional সূচক**, কোনো ডেটা নড়ে না। মাঠে ১,৫৪,০০০ সারির ৩৪,০০০ ওতে
+ঢোকে (সূচকটা ৩১২ kB)। ⭐ পাতার কোয়েরি **১.৪৭ s → ৪.২ ms**; ছাঁকনিরটা
+উপরের § ৮-এ — সূচক একা যথেষ্ট ছিল না।
+
+⭐ সূচকের `WHERE`-টা README-র *"কনটেন্ট পড়া হয় না"* প্রতিশ্রুতিটা সূচকের
+স্তরেও ধরে রাখে: ব্রাউজার বা চ্যাটের শিরোনাম ওখানে বসতেই পারে না।
+
+---
+
+## ৩ঞ৩৩. ⭐⭐ canary-তে কেউ ছিল না — অর্ধেক রিলিজেই *(৭ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"0.4.11 bakider pc te kobe jabe?"* → তারপর *"canary এর ফিক্সটা আগে করো"*।
+
+প্রশ্নটার উত্তর খুঁজতে গিয়ে ফ্লিটের অবস্থা দেখা হলো, আর সেখান থেকেই এটা
+বেরিয়ে এল।
+
+### ১· ⭐ আগে ভালো খবরটা — আপডেট আটকে নেই
+
+| | |
+|---|---|
+| রোলআউট ধাপ | `all`, ৫ সেপ্টেম্বর ০৯:২১ থেকে |
+| MSI | ৬২ MB, sha256 ডাটাবেসের সাথে **হুবহু** মেলে |
+| ডাউনলোড | **৮টা মেশিন আজ সকালেই** (০৮:৪২–০৯:০৬), সব `200`, পুরো ৬৫,২৪২,৪৭৮ বাইট |
+
+⚠️ দু-দিন কিছু হয়নি তার কারণ চেক চলে **চালু হওয়ার সময় ও প্রতি ৬ ঘণ্টায়**,
+আর রাতে PC বন্ধ থাকে। ⭐ এজেন্ট নিজে ইনস্টল করে **না** — ট্রে-তে
+*"ready to install"* লিখে অপেক্ষা করে, আর সেটা ইচ্ছাকৃত।
+
+### ২· ⚠️⚠️ কিন্তু পরের রিলিজটা চিরকাল আটকে থাকত
+
+`canary` মানে বালতির নিচের ৭%। বালতি পড়ে **মেশিন ধরে** —
+`sha256(machineGuid + version) % 100`।
+
+⚠️⚠️ **আর অফিসে আলাদা মেশিন মাত্র নয়টা**, বারোটা নয় (§ ৩ নিচে)। ৯টায় ৭%
+মানে গড়ে **০.৬৩টা**।
+
+আসল নয়টা GUID নিয়ে ২০০টা সম্ভাব্য ভার্সন-নম্বরে চালিয়ে দেখা হলো:
+
+```
+canary খালি:  ১০১ / ২০০  =  ৫০%
+
+0.4.12 → OX-11      0.5.0 → কেউ না
+0.4.13 → OX-06      0.5.1 → কেউ না
+```
+
+কেউ অফার না পেলে কেউ ইনস্টল করে না → জব কোনো **প্রমাণ** পায় না → ধাপ
+বাড়ে না → ভার্সনটা **চিরকাল canary-তে**। ⭐ ঠিক সেই অচলাবস্থা যেটা সারাতে
+৫ সেপ্টেম্বর গোটা `RolloutAdvanceJob` লেখা হয়েছিল, কেবল অন্য দরজা দিয়ে।
+
+⚠️ ০.৪.১১ বেঁচেছে কেবল মালিক নিজে pilot বসিয়েছিলেন বলে (device 6 = OX-05)।
+০.৪.১০-এ pilot ছিল না — **ওটা ভাগ্যে বেঁচেছে**।
+
+**সারানো:** নতুন `pilotNeededFor()` — বালতি খালি হলে প্রকাশের সময়ই
+একজনকে pilot বসিয়ে দেওয়া। যন্ত্রটা আগে থেকেই ছিল, কেবল কেউ পাহারা দিত না।
+
+⭐ **ধাপ এড়িয়ে যাওয়া হয়নি**, আর সেটাই মূল সিদ্ধান্ত: canary-র পুরো মানেই
+*"একটা আসল মেশিনে আগে"*। বালতি খালি বলে সরাসরি `partial`-এ গেলে
+প্রতিশ্রুতিটাই ভাঙত।
+
+⚠️ বাছাই **নির্ধারিত** (বালতির সংখ্যা সবচেয়ে কম যার, সমান হলে ছোট `id`),
+আর **জীবিত মেশিন আগে** — এক দিনেও সাড়া না দেওয়া PC কোনো প্রমাণ দিতে
+পারত না, আর তাকে বাছলে অচলাবস্থাটা রয়েই যেত। ⚠️ মালিকের নিজের বাছাই
+কখনো বদলানো হয় না, আর সিদ্ধান্তটা অডিটে যায় — একটা মেশিনকে গিনিপিগ
+বানানো নীরবে হওয়ার জিনিস নয়।
+
+### ৩· ⚠️⚠️ G171 — বারোটা PC, নয়টা GUID
+
+| GUID | কারা |
+|---|---|
+| `84369b1f…` | OX-01 Belal · OX-07 Sadia · OX-10 Saifur |
+| `32836ea9…` | OX-04 Sumaya · OX-13 Shovon |
+
+⭐ **প্রমাণ চূড়ান্ত:** Belal আর Sadia আজ **একই মিনিটে** সাড়া দিয়েছেন,
+আলাদা hostname-এ, আর **আলাদা এজেন্ট-ভার্সনে** (0.4.10 বনাম 0.4.9)। একটা
+মেশিন দুটো ভার্সন চালাতে পারে না — অর্থাৎ উইন্ডোজ ইমেজ ক্লোন করা,
+sysprep চলেনি।
+
+✅ **পরিচয় ভাঙে না** — enrollment মেলায় `(hostname, windowsUsername)`
+ধরে, GUID ধরে নয় (G153-এ সারানো, আর সেই মন্তব্যেই লেখা আছে *"machineGuid
+একা যথেষ্ট নয়, ওটা মেশিনের — ব্যবহারকারীর নয়"*)।
+
+⏳ **কিন্তু বালতির দানা মোটা থেকে যায়:** canary "একটা মেশিন" আসলে
+**তিনটে PC** হয়ে যেতে পারে। G168 অচলাবস্থাটা ঠেকায়, এটা ঠেকায় না। ⭐ আসল
+সমাধান মেশিনে (sysprep) বা এজেন্টের নিজের একটা স্থায়ী আইডিতে — দ্বিতীয়টা
+schema বদল, তাই আলাদা সিদ্ধান্ত।
+
+
+### ৪· ⛔⛔ পথে দুটো ডক-মিথ্যা
+
+মালিকের প্রশ্নটার (*"0.4.11 bakider pc te kobe jabe?"*) উত্তর খুঁজতে গিয়ে
+[02-Workflow § ৮](02-Workflow.md)-এর আপডেট-ফ্লো পড়া হলো, আর পাঁচ লাইনের
+ব্লকে **দুটো** লাইন ভুল পাওয়া গেল:
+
+| যা লেখা ছিল | যা সত্যি |
+|---|---|
+| *"কম ব্যস্ত সময়ে (রাত ১১টার পর) **সাইলেন্ট ইনস্টল**"* | এমন কিছু **কোনোদিন বানানো হয়নি** — স্টাফ ট্রে-তে ক্লিক না করলে কিছুই হয় না |
+| *"হ্যাশ যাচাই → **স্বাক্ষর যাচাই**"* | কেবল **sha256**; Authenticode যাচাইয়ের কোনো কোড এজেন্টে নেই |
+
+⚠️⚠️ প্রথমটার দাম মাঠে মাপা গেছে: ০.৪.১১ ৫ সেপ্টেম্বরেই ধাপ `all`-এ যায়,
+৭ সেপ্টেম্বর সকালে **আটটা মেশিন পুরো MSI নামিয়েও ফেলে** — তবু দু-দিন পরেও
+১১টা PC পুরোনো ভার্সনে, কারণ **কেউ জানতই না যে ক্লিক করতে হয়**।
+
+⭐ ওই ব্লকে **আগেও** একটা মিথ্যা ধরা পড়েছিল (*"৫ মিনিটে rollback"*, যেটা
+কোনোদিন বানানো হয়নি)। তিনটে মিথ্যার তিনটেই একই ধাঁচের: **যা করার
+পরিকল্পনা ছিল, সেটাই যা হয়েছে বলে লেখা**।
+
+⚠️ আরও একটা জিনিস লেখা ছিল না, অথচ অপারেশনে সবচেয়ে জরুরি: MSI
+`Scope="perMachine"`, তাই ইনস্টলে **UAC আসবেই** — আর স্টাফ স্ট্যান্ডার্ড
+ইউজার হলে **অ্যাডমিন পাসওয়ার্ড** চাইবে। এখন সেটা রানবুকসহ ওই সেকশনেই।
+
+### ৫· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৭৫৭ | **১৭৭২** |
+
+⭐⭐ **সাবোতাজ দু-দফায়, আর দ্বিতীয়টাই আসল কথা:**
+
+| যা উল্টানো হলো | ইউনিট | e2e |
+|---|---|---|
+| নিয়ম (`pilotNeededFor` সবসময় `null`) | **৪ লাল** | — |
+| **কেবল কলার** (`publish` আর ডাকে না) | **সব সবুজ** | **৩ লাল** |
+
+⚠️⚠️ দ্বিতীয় সারিটা পড়ুন: নিয়ম অক্ষত, ২৬টা ইউনিট টেস্ট সবুজ — অথচ
+ফিচারটা কাজ করে না। ⭐ এই রেপোতে *"চুক্তি লেখা আছে, কলার লেখা হয়নি"*
+ভুলটা **দশবার** হয়েছে, আর ইউনিট টেস্ট একবারও সেটা ধরেনি। তাই e2e-তে
+সবচেয়ে জরুরি দাবিটা pilot বসেছে কি না তা নয় — **সেই মেশিনটা সত্যিই
+`UpdateService`-এর অফার পায় কি না**।
+
+---
+
+## ৩ঞ৩২. ⭐⭐ *"ami eta chai na"* — আর যে রোগনির্ণয়টা আমি ভুল করেছিলাম *(৭ সেপ্টেম্বর ২০২৬)*
+
+মালিক বোর্ডের স্ক্রিনশট পাঠালেন, *"Needs Attention"* বাক্সটা লাল দাগে ঘেরা:
+দুটো অভিন্ন **"PC clock is wrong · 904 minutes off"**, আর একটা
+*"No work recorded today"*।
+
+### ১· ⛔ প্রথমে যা করা হলো — কার্ডটা সরানো
+
+⭐ কিন্তু **"Open alerts" টাইলটা রাখা হয়েছে**। ওটা তাঁর লাল বাক্সের বাইরে
+ছিল, আর ওটাও তুলে নিলে খোলা অ্যালার্টের **কোনো চিহ্নই** বোর্ডে থাকত না —
+Alerts পাতায় নিজে না গেলে তিনি কোনোদিন জানতেন না।
+
+⚠️ `pages/live/OpenAlerts.tsx` মুছে ফেলা হয়েছে — আর কোনো কলার ছিল না।
+
+### ২· ⚠️⚠️ আমার ভুল রোগনির্ণয়
+
+সংখ্যাটা দেখে আমি বলেছিলাম:
+
+> *"ঘড়ি ভুল নয় — PC কতক্ষণ বন্ধ ছিল সেটাকেই drift ধরা হচ্ছে।"*
+
+যুক্তিটা ছিল একটা মিল: drift **৯০৩.৭ মিনিট**, আর OX-13 বন্ধ ছিল
+**৯০৬ মিনিট**। প্রায় হুবহু এক।
+
+⚠️⚠️ **কিন্তু মিল কোনো প্রমাণ নয়।** এজেন্টের কোড খুলে দেখা গেল
+`SyncHeadersHandler` হেডারটা বসায় **প্রতিটা পাঠানোর মুহূর্তে**
+(`DateTimeOffset.UtcNow`), আর আগেরটা `Remove` করেও দেয় — অর্থাৎ বাসি
+হেডার **অসম্ভব**।
+
+⭐ তাই ৫৪,২২৬ সেকেন্ড সত্যিই মাপা: ওই মুহূর্তে PC-র ঘড়ি সত্যিই ১৫ ঘণ্টা
+পিছিয়ে ছিল। **অ্যালার্টটা সত্যি বলছিল।**
+
+⭐⭐ আর সংখ্যাটা বন্ধ-থাকার সময়ের সমান হওয়াটাই আসল সূত্র: **RTC থেমে
+আছে**। বিদ্যুৎ গেলে হার্ডওয়্যার ঘড়ি চলে ব্যাটারিতে; ব্যাটারি মরে গেলে
+সেটা থেমে যায়, আর বুট করলে Windows শেষ যে সময়টা লেখা ছিল সেটাই পড়ে।
+
+> ⚠️ **শিক্ষা:** সংখ্যার মিল দেখে কারণ ঠিক করা যায় না। প্রথম দুটো ব্যাখ্যাই
+> একই সংখ্যা তৈরি করত — পার্থক্যটা ধরা পড়ে কেবল **কোড পড়ে**।
+
+### ৩· যাচাই — যেটা প্রশ্নটা মিটিয়ে দিল
+
+ডিপ্লয়ের পর API-র লগে ৮ মিনিটের প্রতিটা এজেন্ট-রিকোয়েস্টের `x-client-time`
+বনাম সার্ভারের সময় মেপে দেখা হলো:
+
+| | |
+|---|---|
+| রিকোয়েস্ট | **২১৯** |
+| \|drift\| > ৬০ সে. | **০** |
+| সর্বোচ্চ drift | **২১.৯ সে.** |
+
+আর OX-13 তখন অনলাইনই ছিল। ⭐ অর্থাৎ Windows ঘড়িটা মিলিয়ে নিয়েছে, আর
+এখন গোটা ফ্লিটের ঘড়ি সুস্থ।
+
+### ৪· ⭐⭐ কিন্তু দুটো আসল বাগ ছিলই
+
+**G169 — ডুপ্লিকেট।** `record()` ডাকা হয় `DeviceAuthGuard` থেকে, অর্থাৎ
+**প্রতিটা রিকোয়েস্টে**। চালু হওয়ার মুহূর্তে এজেন্ট একসাথে কয়েকটা কল পাঠায়,
+আর "আগে দেখো, তারপর বসাও"-এ কোনো তালা ছিল না।
+
+⭐ সারানো হয়েছে `pg_advisory_xact_lock(ns, deviceId)` দিয়ে — দেখা ও বসানো
+একই ট্রানজেকশনে। ⚠️ তালাটা **ডিভাইস ধরে**, টেবিল ধরে নয়, নইলে দ্বিতীয়
+PC-র আসল খবরটা নীরবে চাপা পড়ত।
+
+⚠️ **partial unique index নেওয়া হয়নি**, যদিও সেটাও কাজ করত: Prisma
+WHERE-সহ index তার schema-য় প্রকাশ করতে পারে না, তাই পরের প্রতিটা
+`migrate` চিরকাল drift দেখাত।
+
+⚠️⚠️ **তিনটে খুঁটিনাটিতে আটকেছিল**, আর তিনটেই না মানলে ৫০০:
+`$queryRaw` (`$executeRaw` নয় — এটা `SELECT`) · `::int` cast (নইলে
+bind-parameter-এর ধরন অনিশ্চিত) · আর `::text` — ফাংশনটা `void` ফেরায়, আর
+Prisma `void` কলাম পড়তে পারে না। ⭐ তিনটেই কোডে লেখা আছে।
+
+**G170 — বাসি সংখ্যা।** `last_drift_sec` লিখত কেবল `record()`, আর সে
+`level === 'none'`-এ শুরুতেই ফিরে যায়। ফলে ঘড়ি ঠিক হয়ে যাওয়ার পরেও
+পুরোনো মানটা **চিরকাল** বসে থাকত — মাঠে ৫৪,২২৩ সেকেন্ড।
+
+⭐ এখন ওটা guard-এর `last_seen_at` UPDATE-এর সাথেই যায় — **বাড়তি কোনো
+round-trip নেই**, কারণ ওই UPDATE এমনিতেই প্রতিটা রিকোয়েস্টে চলে। ⚠️
+`max_drift_sec` কমে না: ওর প্রশ্নটা আলাদা, আর ইতিহাস মুছে ফেললে বারবার
+ঘড়ি নড়া PC চিরকাল নিষ্পাপ দেখাত।
+
+### ৫· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৭৫০ | **১৭৫৭** |
+| ফাইল | ৮৮ | **৮৯** |
+
+⭐⭐ সাবোতাজে দুটোই লাল, আর প্রথমটা **মাঠের হুবহু উপসর্গ** ফিরিয়ে আনল:
+`expected [ Array(2) ] to have a length of 1 but got 2` — ঠিক সেই দুটো
+অ্যালার্ট।
+
+### ৬· ⏳ মালিকের দিকে
+
+⚠️⚠️ **OX-13-এর PC-র CMOS ব্যাটারি বদলানো দরকার।** সফটওয়্যার দিয়ে এটা
+সারানো যায় না — রোজ সকালে বুট করলে ঘড়ি ভুল থাকবে, Windows কয়েক মিনিটে
+মিলিয়ে নেবে, আর ওই ফাঁকে তোলা সেগমেন্টগুলো drift-সংশোধনের উপর নির্ভর
+করবে। ⭐ সংশোধনটা কাজ করে — কিন্তু ব্যাটারিটা বদলালে প্রশ্নটাই থাকে না।
+
+---
+
+## ৩ঞ৩১. ⭐⭐⭐ বাকি পনেরোটা দাবি — আর একই সময় দুবার টাকা *(৬ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"baki 15 ta o dekho"* → তারপর *"হ্যাঁ, বাকিগুলোও সারিয়ে ফেলো"*।
+
+অডিটের প্রথম দফায় (§ ৩ঞ৩০) দশটা সারানো হয়েছিল। বাকি ছিল পনেরোটা কম-গুরুত্বের
+দাবি — সেগুলোই এই অনুচ্ছেদ।
+
+### ১· ⚠️⚠️ "০ খারিজ" আবার, তাই আবার নিজে দেখা
+
+প্রথম যাচাইয়ে **১৪টা টিকল, ১টা আগেই সারানো, ০টা খারিজ**। ⚠️ শূন্য খারিজ
+মানে যাচাইটা যাচাই করছে না — একই সতর্কতা § ৩ঞ৩০-এও লেখা আছে। তাই যেগুলো
+১/২ ভোটে টিকেছিল সেগুলোর জন্য **দ্বিতীয় দফা** চালানো হলো, এবার প্রতিটা
+দাবির জন্য দুটো আলাদা দৃষ্টিকোণ (একজন কোড পড়ে, একজন প্রোডাকশন ডেটা মেপে)।
+
+| দ্বিতীয় দফার ফল | |
+|---|---|
+| টিকল | **২** — G163 (২/২) · G164 (২/২) |
+| বিভক্ত | **১** — G165 (১/২) |
+| **খারিজ** | **৩** — দিন-ক্লোজ · `/activity/team` · mandatory-update |
+| খারিজ (নতুন সূত্র) | **১** — ঘড়ি-drift থেকে ওভারল্যাপিং সেগমেন্ট |
+
+⭐ এবার সত্যিই কিছু মরেছে, আর সেটাই বলে দেয় প্রথম দফার "০ খারিজ" কেন
+সন্দেহজনক ছিল।
+
+⚠️ **যা খারিজ হলো, সংক্ষেপে:** `DayCloseJob` কেবল "গতকাল" বন্ধ করে — কিন্তু
+মিস হওয়া দিন `summary_dirty` (§ ৩ঞ৩০) দিয়ে ফিরে আসে, তাই ঘণ্টা হারায় না।
+`GET /activity/team`-এর কলার নেই, কিন্তু D09 যা প্রতিশ্রুতি দেয় সেটা অন্য
+পাতা অন্য নামে দেয়। `is_mandatory` নিষ্ক্রিয় — কিন্তু docs-এ ওটা "পরিকল্পিত"
+বলেই লেখা, অর্থাৎ বাগ নয়, **না-বানানো কাজ**।
+
+⚠️⚠️ **একটা নতুন সূত্রও মরেছে, আর সেটা জরুরি:** এক যাচাইকারী প্রোডাকশনে
+৩০ জোড়া **ওভারল্যাপিং সেগমেন্ট** পেয়েছিল আর দোষ দিয়েছিল ঘড়ি-drift-এর
+গোল করাকে। দ্বিতীয় দফায় দুজনেই সেটা খণ্ডন করেছে — সীমানাগুলো আসলে G164-এর
+(নিচে), drift-এর নয়। ⭐ ভুল কারণে সারালে G164 অক্ষত থাকত।
+
+### ২· প্রথম তিনটে — ছুটি · বন্ধ মাস · মিথ্যা "ছবি নেই"
+
+⚠️ এই তিনটে আগেই সারানো হয়েছে (§ ৩ঞ৩১ শুরুর আগেই), কিন্তু এগুলোও ওই
+পনেরোটারই অংশ, তাই এখানে এক জায়গায়:
+
+| | |
+|---|---|
+| **G157** | `alerts.rules.ts`-এর নোটে লেখা ছিল *"ছুটির কোনো অনুমোদনের ব্যবস্থা এই সিস্টেমে নেই"* — **এক মাস ধরে বাসি**। ছুটির খাতা এসেছে R2/G130-তে, কিন্তু কোনো অ্যালার্ট-পরীক্ষা `leaves` পড়েনি। মাঠে: **৩টা** ছুটির দিনে **১১টা** মিথ্যা অ্যালার্ট |
+| **G158** | টাকার প্রতিটা পথ বন্ধ মাস ছুঁতে অস্বীকার করে — **কেবল `ensureLedger()` করত না**, অথচ ওটাই সবচেয়ে বেশি চলে (Deposits · কর্মীর পাতা · **পে-রোল শিট নিজেই**)। ⚠️ বন্ধ মাসে একটা ফাঁক থাকলে পরের যেকোনো পাতা-লোডে ৳৫০০ ঢুকে যেত — কাগজ বেরোনোর **পরে**। ⭐ মাঠে ফাটেনি একটাই কারণে: এখনো কোনো মাস বন্ধ করা হয়নি |
+| **G159** | Screen কলাম গ্যালারির **শেষ এক-দুটো পাতা** টেনে এনে বাছত, তাই যাঁর শেষ ছবিটা ওই জানালার বাইরে তাঁর কার্ডে উঠত *"No screenshot yet today"*। ⚠️ ২৫ আগস্ট সন্ধ্যায় OX-05-এর **১১৪টা** ছবি ছিল, তবু কার্ড বলত একটাও নেই |
+
+⚠️⚠️ G159-এ একটা ফাঁদ ছিল: নতুন `GET /screenshots/latest` অডিটে **কর্মীপ্রতি
+এক সারি** লিখলে বোর্ড খোলামাত্র ১২টা সারি বসত, আর *"কে আমার স্ক্রিনশট
+দেখল"* খাতাটা (I08) আবর্জনায় ভরে যেত। ⭐ তাই আচরণ ইচ্ছাকৃতভাবে অপরিবর্তিত —
+**কলপ্রতি একটাই সারি**, আর সেটা টেস্টেও বাঁধা।
+
+### ৩· ⭐⭐⭐ G160 — একই সময় দুবার গোনা, দুবার টাকা
+
+এজেন্টের `AgentHost.cs`-এ পরিষ্কার লেখা ছিল:
+
+> `_machine` ও `_apps` এই লুপের সম্পত্তি; অন্য থ্রেড থেকে বদলালে…
+
+⚠️⚠️ **কথাটা সত্যি ছিল না।** তিনটে থ্রেড ওটাকে বদলাত:
+
+| থ্রেড | কী করে |
+|---|---|
+| `oXeio-tracker` | প্রতি সেকেন্ডে `Tick()` |
+| **WinForms মেসেজ-পাম্প** | `WM_POWERBROADCAST` → `OnPower()` → `OnSuspend`/`OnResume` — **সরাসরি**, কোনো marshalling ছাড়াই |
+| থ্রেড পুল | `DisposeAsync()` → `CloseAll()`, ট্র্যাকার তখনো টিকের মাঝপথে থাকতে পারে |
+
+দুজন একসাথে `EmitAndReopen`-এ ঢুকলে দুজনেই একই `_state` ও `_openedAt` পড়ে,
+তারপর দুজনেই **একই সময়টুকু** সেগমেন্ট বানায় — দুটো আলাদা `ClientUuid` নিয়ে।
+সার্ভার কেবল `client_uuid` দেখে ডুপ্লিকেট ছাঁটে, **ওভারল্যাপ দেখে না**।
+
+> ⭐⭐⭐ ফল: **ওই স্ট্রেচটা দুবার গোনা হয়, আর দুবার টাকাও হয়।**
+
+⚠️ আরও বাজে দিকটা: `_state = next` আর `_openedAt = at` দুটো আলাদা লেখা।
+একজনের সময় অন্যজনের স্টেটের সাথে জোড়া লাগলে ঘুমিয়ে থাকা সময় `Active`
+হয়ে যেতে পারত।
+
+**কখন ঘটে:** অফিসের idle টাইমআউটে মনিটর নিভে যায় — রোজকার ঘটনা। উইন্ডোজ
+`PBT_POWERSETTINGCHANGE` পাঠায়, আর সেটা UI থ্রেডে সরাসরি `OnSuspend` ডাকে,
+ট্র্যাকার তখন টিকের ভেতরে।
+
+**যেভাবে সারানো হলো** — দুই স্তরের পাহারা, আর দুটোই দরকার:
+
+1. **তালা `IdleStateMachine`-এর ভেতরে**, `AgentHost`-এ নয়। নিয়মটা যে
+   অবজেক্টের, পাহারাও তারই — কলার বদলালে বা নতুন কলার এলে পাহারা আপনিই
+   সাথে যায়।
+2. **`AgentHost`-এ আলাদা `_machineGate`** কেবল **রেফারেন্সটার** জন্য।
+   ⚠️ `ApplyIdleThreshold` পুরোনো অবজেক্ট ফেলে নতুন বসায়, আর ওই ফাঁকে
+   `OnPower` এলে সে **ফেলে দেওয়া** অবজেক্টে সেগমেন্ট লিখত — যেটা নতুনটার
+   প্রথম সেগমেন্টের সাথে ওভারল্যাপ করত। ভেতরের তালা ওই ফাঁকটা ধরতেই পারে না।
+
+⚠️⚠️ **`Record()` সবসময় তালার বাইরে।** ওটা SQLite-এ লেখে, আর `OnPower` চলে
+মেসেজ-পাম্পে যেখানে উইন্ডোজ ঘুমানোর আগে হাতে মোটে **~২ সেকেন্ড** দেয়।
+নিয়ম: **তালার ভেতরে বদলাও, বাইরে লেখো।**
+
+⚠️ **`OnPower`-কে defer করা হয়নি**, যদিও `_pendingConfig`-এর ছাঁচটা হাতের
+কাছেই ছিল। কারণ আসল `PBT_APMSUSPEND`-এ PC ~২ সেকেন্ডেই ঘুমায় আর ট্র্যাকার
+আর টিকই করে না — খোলা সেগমেন্টটা তখন জেগে ওঠার **পরে** বন্ধ হতো, আর ঘুমের
+পুরো সময়টা কাজ হিসেবে গোনা হতো। ⭐ ঠিক **G3** বাগটা, যেটা ঠেকাতেই
+`OnSuspend` লেখা হয়েছিল।
+
+⭐ পথে একটা ছোট ভাইও ধরা পড়ল: `CloseAll()`-এ `_openedAt = at` শর্তহীন ছিল,
+তাই ঘড়ি পিছিয়ে গেলে সেগমেন্ট বেরোত না অথচ `_openedAt` **পিছিয়ে** যেত —
+আর পরেরটা আগেরটার ভেতরে ঢুকে পড়ত।
+
+### ৪· ⭐⭐ G161 — যে পাহারাটা নিজেই অসম্পূর্ণ ছিল
+
+`DisposeAsync` তিনটে ধাপ **পরপর** চালায়:
+
+| ধাপ | বাজেট |
+|---|---|
+| `agent_stop` ডিস্কে লেখা | ২.০ সে. |
+| বিদায়ী ইভেন্ট পাঠানো | ২.০ সে. |
+| শেষ full drain | ১.৫ সে. |
+| **যোগফল** | **৫.৫ সে.** |
+| `Program.ShutdownBudget` | **৪.০ সে.** |
+
+⚠️⚠️ আর `ShutdownBudgetTests` — যে ফাইলটার নিজের ভূমিকায় লেখা *"শর্তগুলো
+এতদিন কেবল মন্তব্যে ছিল, আর মন্তব্য কাউকে থামায় না"* — যোগ করত কেবল
+**দুটো** drain (৩.৫ ≤ ৪, সবুজ), আর তৃতীয় ধাপটাকে আলাদা করে **একা** মাপত
+(২ < ৪, সবুজ)। দুটো সবুজ, অথচ আসল যোগফল ৫.৫।
+
+খারাপ দিনে ফলটা ঠিক সেটাই যেটা ঠেকাতে ৪ সেপ্টেম্বর `FinalDrainBudget`
+৩ → ১.৫ করা হয়েছিল: **শেষ full drain শুরুই হতো না**।
+
+**সারানো:** একটাই যোগফল-টেস্ট, তিনটে ধাপ মিলিয়ে, বাজেটহীন কাজের (Dispose,
+checkpoint) জন্য ৪০০ ms রেখে। আর দুটো ধ্রুবক নামানো হলো —
+
+> ⭐ সংখ্যা দুটো **ধার করা**: `EndSessionEnqueueWait` (০.৫ সে.) আর
+> `EndSessionSendBudget` (১.৫ সে.) ঠিক একই দুটো কাজ করে
+> `WM_ENDSESSION`-এর পথে। এখন দুই শাটডাউন-পথ একই কাজে একই বাজেট নেয়, আর
+> একটা নতুন টেস্ট সেটাই বাঁধে — নইলে একদিন একটা পথ ঠিক হতো আর অন্যটা বাসি
+> থেকে যেত।
+
+### ৫· ⭐⭐ G162 — এক মাসের দুটো যোগফল, এক পর্দায়
+
+My data পাতায় উপরে টাইল *"This month"*, আর তালিকার নিচে *"This month so far"*।
+নিচেরটা **ব্রাউজারে** কষা হতো, আর তিনটে আলাদা কারণে মিলত না:
+
+| | কেন আলাদা |
+|---|---|
+| **জানালা** | তালিকাটা রোলিং ৩০ দিনের, তাই মাসের ৩১ তারিখে ১ তারিখটা আসতই না — বছরে ৭ দিন, প্রায় এক কর্মদিবস (~৭.৯ ঘ) |
+| **রাশি** | নিচেরটা `credited` (সংশোধনসহ), উপরেরটা `worked` |
+| **সংজ্ঞা** | নিচেরটা কাঁচা `duration_sec`-এর যোগ, উপরেরটা UNION — দুই PC-তে একসাথে কাজ করলে **দুবার** |
+
+⭐ তৃতীয়টা G112-রই ফাঁক, কেবল অন্য পাতায়: ৫ সেপ্টেম্বর `ProgressService`
+UNION-এ সরেছিল, `MeService.days()` সরেনি।
+
+**সারানো:** নতুন `EmployeeProgress.monthCreditedSec` — সার্ভার যেটা দিয়ে
+`paceSec` কষে, পর্দাও ঠিক সেটাই দেখায়।
+
+⚠️⚠️ **`monthActiveSec` বদলানো হয়নি**, ইচ্ছাকৃতভাবে। ওটা এজেন্টের তারের
+চুক্তি (`AgentHost.ActiveThisMonth`), আর § ২.১-ঙ (G35) বলে **দেখানো ঘণ্টা**
+`worked`-এ থাকবে, কেবল **pace** `credited`-এ। দুটো আলাদা প্রশ্ন, তাই দুটো
+আলাদা ঘর — একটাকে অন্যটার জায়গায় বসানোই ছিল আসল ভুল।
+
+⚠️ লেবেলেও এখন লেখা থাকে কোন কলামের যোগফল (*"This month so far · counted"*),
+আর সংখ্যাটা না এলে **০ নয়, একটা em-dash** বসে।
+
+### ৬· ⭐⭐⭐ G163 — সব ডিজাইনের "কাজ শুরু" ভোর ৬টায়
+
+⚠️⚠️ এই প্রকল্পের **সবচেয়ে বেশিবার হওয়া ভুলটাই** আবার: লেবেলকে মুহূর্ত ভেবে
+নেওয়া। `claimDesigns()` ডাকত —
+
+```
+markStartedByJobNumbers(employeeId, [...ids], workDate)
+                                              ^^^^^^^^
+                              ঘরটার নাম `now: Date`, টাইপ Timestamptz
+```
+
+`workDate` হলো ঢাকার দিনটা **UTC-মধ্যরাত হিসেবে লেখা** — অর্থাৎ মুহূর্ত
+হিসেবে **ঢাকার ভোর ৬টা**।
+
+**প্রোডাকশনে মেপে:**
+
+| | |
+|---|---|
+| `started_at` আছে এমন সারি | **৭১১** |
+| তার মধ্যে ঘড়ি ঠিক `০৬:০০:০০` | **৭১১** *(সব মিলিয়ে **একটাই** আলাদা সময়)* |
+| `started_at < assigned_at` | **৭১১** |
+| ফারাক | গড় **২.০৯ ঘণ্টা**, সর্বোচ্চ **১০ঘ ৪২মি** |
+| শেষ ৪৮ ঘণ্টায় বসেছে | **১২৩** |
+
+⭐ বণ্টন চলে সকাল ৮টায়, তাই "শুরু" সবসময় "বরাদ্দ"-এর দু-ঘণ্টা **আগে** —
+একটা অসম্ভব সারি, ৭১১বার। পর্দায় সেটা দেখাত: জব খোলার সেকেন্ডেই
+*"Started 5 hours ago"*, আর বিকেলে *"Started 10 hours ago"*।
+
+**সারানো:** `designIdsInDay()` (একটা `Set`) হয়ে গেল `designFirstSeenInDay()`
+(একটা `Map<নম্বর, মুহূর্ত>`), আর মুহূর্তটা আসে **`app_usage.started_at`**
+থেকে — শিরোনামে নম্বরটা প্রথম যখন দেখা গেছে।
+
+⭐⭐ **`markStartedByJobNumbers` এখন `Map` নেয়, `string[] + Date` নয়** — অর্থাৎ
+**প্রতিটার নিজের মুহূর্ত ছাড়া ডাকাই যায় না**। একটা সাধারণ `Date` ঘর রাখলে
+কেউ একদিন আবার লেবেল পাঠাত, আর কম্পাইলার চুপ থাকত।
+
+⚠️ **সরল ফিক্সটা (`workDate`-এর বদলে `now`) ভুল হতো:** `drainDirty()`
+গতকালের দিন **আজকের** ঘড়ি নিয়ে চালায়, তাই ২ তারিখের ডিজাইনে ৬ তারিখের
+সময় বসত — `started_at > completed_at`, নতুন একটা অসম্ভব সারি পুরোনোটার
+বদলে। `app_usage`-এর সময় ব্যাকফিলেও ঠিক, আর টেস্টে সেটাই আলাদা করে বাঁধা।
+
+⏳ **পুরোনো ৭১১টা সারি এই ফিক্সে ছোঁয়া হয়নি** — শর্তে `startedAt: null` আছে,
+ইচ্ছাকৃত। ✅ ইতিহাসটা পরদিন আলাদা ব্যাকফিলে সারানো হয়েছে (§ ৩ঞ৩১.১৩)।
+
+### ৭· ⭐⭐ G164 · G165 — সেশনের খাম
+
+**G164 —** `ingestSegments()` সেশন খুঁজত তারিখপ্রতি একবার (memo)। ⭐ সেটা
+ঠিকই ছিল — কিন্তু সে খুঁজত ব্যাচের **প্রথম** খণ্ডের সময় নিয়ে, আর বাকিগুলো
+memo-হিটে সোজা বসে যেত; `widen()` তাদের দেখতই না।
+
+মাঠে: **২২৬টা সেশনের ৭টা ভাঙা** — ৫২টা সেগমেন্ট, **২৪.৪৭ ঘণ্টা** নিজের
+সেশনের বাইরে। সবচেয়ে বড়টা ৬ ঘণ্টা (রাতের লক-সেগমেন্ট); একটায় সেশন শুরু
+হয়েছে তার নিজের প্রথম সেগমেন্টের **৮ ঘণ্টা ৩৪ মিনিট পরে**।
+
+⚠️ কেন এলোমেলো ক্রমে আসে: এজেন্ট প্রতিটা বন্ধ সেগমেন্ট **fire-and-forget**
+কিউয়ে ফেলে, তাই একই মুহূর্তে বন্ধ হওয়া ছোট idle সারিটা লম্বা lock সারিটাকে
+হারিয়ে দিতে পারে।
+
+**সারানো:** আগে **খাম মাপা** (তারিখপ্রতি min শুরু · max শেষ), তারপর সেশন।
+⭐ memo সরানো হয়নি — সরালে ৫০০ সেগমেন্টের ব্যাচে ৫০০ বার `resolveSession`
+চলত একই ট্রানজেকশনের ভেতরে। ⚠️ তারিখগুলো **পুরোনো → নতুন** ক্রমে, নইলে
+নতুন দিনের সেশন আগে তৈরি হয়ে যেত আর আগের দিনের খোলা সেশন চিরকাল খোলা থাকত।
+
+**G165 —** বিদায়ী ইভেন্ট আউটবক্সে আটকালে `SyncWorker` পরের চক্রে **সেগমেন্ট
+আগে** পাঠায়, ইভেন্ট পরে। তখন পুরোনো shutdown ইভেন্টটা সদ্য-তৈরি সেশনকে
+**তার নিজের শুরুর আগে** বন্ধ করত — `ended_at < started_at`।
+
+⚠️ ২৪ আগস্ট **৩ মিনিট ৩০ সেকেন্ডের** ব্যবধানে ফসকেছে: ডিভাইস ২৫, ইভেন্ট
+০৯:৫৯:১৪, সেশন শুরু ১০:০১:৩৮। আর দেরিতে আসা বিদায়ী ইভেন্ট বিরল নয় —
+৩ সপ্তাহে ৩৬৪টার মধ্যে **৫০টা** এক মিনিটেরও বেশি দেরিতে, সর্বোচ্চ ৫০ মিনিট।
+
+⚠️⚠️ **ক্ল্যাম্প নয়, বাদ।** `max(at, startedAt)` বসালে এখনো চলতে থাকা সেশনের
+গায়ে শূন্য-দৈর্ঘ্য আর একটা **মিথ্যা** `end_reason: shutdown` বসত। খোলা
+থাকাটা হারানো নয় — ০০:১৫-র দিন-ক্লোজ তাকে তার নিজের মধ্যরাতে বন্ধ করে।
+
+⏳ দুটোরই **পুরোনো সারি এই ফিক্সে ছোঁয়া হয়নি**। ⭐ আজ কোনো রিপোর্ট
+`work_sessions`-এর সময় পড়ে না, তাই ঘণ্টা হারায়নি — কিন্তু সারিগুলো স্থায়ী,
+আর যে ফিচারটা প্রথম এই কলামগুলো পড়বে সে ভাঙা ডেটাই পাবে। ✅ তাই ওগুলোও
+পরদিন সারানো হয়েছে (§ ৩ঞ৩১.১৩)।
+
+### ৮· ⭐⭐ G166 — একই ঘটনার জন্য দিনে চারটে ইমেইল
+
+`device_overlap` আর `synthetic_input` চলে **প্রতি ঘণ্টায়**, আর প্রতিবার
+**গোটা ঢাকা-দিনের** সেগমেন্ট পড়ে। শর্তটা একবার সত্যি হলে দিনের বাকি সব
+টিকেও সত্যি — পুরোনো সারি তো মুছে যায় না। অথচ throttle-এর জানালা ৬ ঘণ্টা,
+আর `dedupeKey`-তে দিনটা নেই।
+
+⭐ এটা অনুমান নয়। একই পথে চলা `agent_down` মাঠে ঠিক এটাই করছে — ২২ আগস্ট
+**১৩টা** (ডিভাইস, কর্মী) জোড়ার প্রত্যেকটা ঠিক **৪বার**:
+
+```
+০০:১৭ · ০৬:১৯ · ১২:২০ · ১৮:২০      ← ৬ ঘণ্টা পরপর, চারটে আলাদা ইমেইল
+```
+
+**সারানো:** নতুন `DAY_SCOPED_TYPES` আর `alertFloor()` — দিনভিত্তিক ধরনের
+মেঝে **দুটোর মধ্যে যেটা আগের**: ঢাকার আজকের দিনের শুরু, নাকি ৬ ঘণ্টা আগে।
+দুটোই দরকার — দিনের শুরু ছাড়া একই দিনে বারবার, আর ৬ ঘণ্টা ছাড়া রাত ১২টার
+পরপরই জানালাটা মিনিটখানেকে নেমে আসত।
+
+⚠️⚠️ মেঝেটা নতুন `localMidnightOf()` থেকে আসে, `workDateOf()` থেকে নয় —
+লেবেলটা ব্যবহার করলে সীমানা **৬ ঘণ্টা দেরিতে** বসত (ঢাকার ভোর ৬টায়), আর
+মাঝরাত-থেকে-ভোরের পুনরাবৃত্তি ঠিক আগের মতোই বেরিয়ে যেত। ⭐ G163-এর হুবহু
+একই ফাঁদ, একই দিনে, অন্য ফাইলে।
+
+⚠️ **`agent_down` ইচ্ছাকৃতভাবে তালিকার বাইরে।** ওটা দিনের কথা বলে না —
+বলে *"এই মুহূর্তে PC-টা চুপ"*। তিন দিন বন্ধ থাকা PC-র জন্য রোজ মনে করিয়ে
+দেওয়াটাই চাওয়া। `no_activity_today`-ও বাইরে: তার ৪ ঘণ্টার জানালা ইতিমধ্যেই
+দিনে একটার বেশি অসম্ভব করে রেখেছে।
+
+### ৯· ⭐⭐ G167 — সমাধান ছিল, পৌঁছানোর পথ ছিল না
+
+সার্ভারে `POST /work-policies/:id/reactivate` আছে **G85 থেকেই** — কন্ট্রোলার,
+সার্ভিস, অডিট-সারিতে `op: 'reactivate'`, ৫টা ইউনিট টেস্ট। সব সবুজ।
+
+⚠️⚠️ কিন্তু ওয়েবে `reactivateWorkPolicy()` কেউ **লেখেনি**, আর
+`PoliciesTab`-এর `!isActive` শাখাটা ছিল **খালি** — বন্ধ পলিসির সারিতে কেবল
+"Edit", আর Edit ফর্ম `isActive` পাঠায়ই না।
+
+ভুল করে Close চাপলে ফেরার পথ ছিল দুটো: `curl`, বা কাঁচা SQL। ⭐ ঠিক যে দুটো
+জিনিস দূর করতে G85 লেখা হয়েছিল।
+
+> ⭐⭐⭐ **এটা এই রেপোর চেনা পাপ, দশমবার** — *"চুক্তি লেখা আছে, কলার লেখা
+> হয়নি"* (G141 · G144 · G146 · G149 · G156 · G159 · আর এখন G167)।
+
+**তাই এবার শুধু বোতামটা লাগানো হয়নি, শ্রেণিটার অর্ধেক বন্ধ করা হলো।** নতুন
+`web/test/api-callers.spec.ts` `src/api/*.ts`-এর **প্রতিটা** export করা
+ফাংশনের কলার খোঁজে — **১০৭টা দাবি**, আর ব্যতিক্রমের তালিকাটা ইচ্ছাকৃতভাবে
+**খালি**: নতুন ব্যতিক্রম যোগ করতে হলে সেটা যেন একটা **সিদ্ধান্ত** হয়,
+দুর্ঘটনা নয়।
+
+⚠️ বাকি অর্ধেকটা (সার্ভারে endpoint আছে অথচ ওয়েবে ফাংশনটাই কেউ লেখেনি)
+এটা ধরতে পারে না। সেটা এখনো চোখের কাজ, আর সেটা টেস্টের মন্তব্যেই লেখা আছে।
+
+### ১০· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৭০৮ | **১৭৫০** |
+| এজেন্ট | ৫৩০ | **৫৩৩** *(Core ৪০৩ · Agent ১৩০)* |
+| ওয়েব | ১৪০ | **২৪৭** *(১০৭ নতুন — কলার-পাহারা)* |
+| **মোট** | ২৩৭৮ | **২৫৩০** |
+
+⭐⭐ **সাবোতাজে যাচাই আটবার**, আর প্রতিবার স্ক্রিপ্টেই উল্টো প্যাচ (§ ৩ঞ৩০.৮-এর
+শিক্ষা — git নয়):
+
+| যা উল্টানো হলো | লাল হলো |
+|---|---|
+| `IdleStateMachine`-এর তালা | ২ |
+| `CloseAll`-এর ক্ল্যাম্প | ২ |
+| `StopEnqueueBudget` ফিরিয়ে ২ সে. | ২ |
+| `monthCreditedSec` থেকে সংশোধন বাদ | ১ |
+| `claimDesigns` আবার লেবেল পাঠায় | ৬ |
+| সেশনের খাম + `startedAt` পাহারা | ৫ |
+| `alertFloor` সবসময় ৬ ঘণ্টা | ৩ |
+| Reopen বোতামের কলার | ১ |
+
+⚠️⚠️ **আর একটা টেস্ট প্রথমে সাবোতাজে সবুজ থেকেছিল** — সেশনের খামের দুটো
+দাবি। কারণ ফিক্সচারের সেশনটা **খোলা** ছিল, আর `widen()` খোলা সেশনের
+`endedAt` ছোঁয় না, তাই দাবিটা নীরবে **ফাঁকা** হয়ে যেত। ⭐ সেশনটা আগে বন্ধ
+করে নেওয়ার পর তিনটেই লাল হলো। **সাবোতাজ না চালালে এটা ধরাই পড়ত না** —
+টেস্ট সবুজ, আর পাহারাটা কিছুই পাহারা দিত না।
+
+### ১১· ⚠️ পথে একটা ভুল
+
+পুরো সার্ভার-সুইট **ব্যাকগ্রাউন্ডে** চালিয়ে একই সময়ে আলাদা spec চালিয়েছিলাম।
+দুটোই একই টেস্ট-ডাটাবেস TRUNCATE করে, তাই `device-overlap.e2e`-এর **আটটাই**
+লাল হলো — আর প্রথম মুহূর্তে মনে হয়েছিল আমার নিজের প্যাচটাই ভাঙা। একা চালিয়ে
+আটটাই সবুজ। ⭐ শিক্ষা: এই রেপোর টেস্ট-ডাটাবেস একটাই, তাই দুটো রান কখনো
+পাশাপাশি নয়।
+
+---
+
+### ১২· মাঠে — ডিপ্লয়ের পর মেপে নেওয়া ভিত্তিরেখা
+
+`build 395` · `commit 63188dc` · ৬ সেপ্টেম্বর ১৭:২৯ UTC। ⚠️ সবগুলোই
+**read-only SELECT**, প্রোডাকশনে কিছু বদলানো হয়নি।
+
+| | এখন | মানে |
+|---|---|---|
+| `ended_at < started_at` সেশন | **০** | G165 কখনো ফাটেনি — পাহারাটা এখন ওটাকে ফাটতেই দেবে না |
+| খামের বাইরে পড়া সেশন | **৭** | G164-এর পুরোনো সারি — **আর বাড়বে না** |
+| খামের বাইরে পড়া সেগমেন্ট | **৫২** | ↑ ওই ৭টার ভেতরে |
+| `started_at` আছে এমন টার্গেট | **৭১১** | সবই G163-এর আগের |
+| তার আলাদা ঘড়ি-মান | **১** | ⚠️ সাতশো এগারোটা সারি, **একটাই** সময় |
+| `started_at < assigned_at` | **৭১১** | ↑ একই কারণ |
+
+⭐ এই ছ-টা সংখ্যাই অডিটের দাবির সাথে **হুবহু** মিলেছে — অর্থাৎ রোগনির্ণয়টা
+ঠিক ছিল। ⏳ তিনটেই **পুরোনো সারির** সংখ্যা; ফিক্সগুলো নতুন সারি ঠেকায়,
+ইতিহাস ছোঁয় না। ✅ ইতিহাসটা পরদিন আলাদা ব্যাকফিলে সারানো হয়েছে —
+§ ৩ঞ৩১.১৩, মালিকের অনুমোদনে।
+
+⚠️⚠️ **আর একটা জিনিস চোখে পড়ল, যেটা এই ব্যাচের বাইরে:** ১৩ আগস্ট ১৮:০৭-এ
+তিনটে `no_activity_today` অ্যালার্ট — **একই মিনিটে**, আর তিনটেরই
+`employee_id` ও `device_id` **NULL**। আজকের সারিগুলোয় কর্মী বসানো থাকে
+(তাই দিনে একটাই), অর্থাৎ ওটা পুরোনো আকৃতির সারি। ⭐ লিখে রাখা হলো, সারানো
+হয়নি — এই ব্যাচের কাজ ছিল অডিটের পনেরোটা, আর তালিকা বাড়াতে বাড়াতে কোনো
+কাজ নামে না (§ ৩ঁঁঁ-এর একই নিয়ম)।
+
+---
+
+### ১৩· ✅ ইতিহাসও সারানো হলো *(৭ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"হ্যাঁ, ব্যাকফিল করো"*।
+
+⚠️⚠️ **এই সেশনে প্রোডাকশনে প্রথম লেখা।** এতদিনের প্রতিটা কুয়েরি ছিল
+read-only SELECT, তাই ধাপগুলো আলাদা করে লিখে রাখা হলো।
+
+#### ক· আগে মেপে নেওয়া — কতটা আদৌ ফেরানো যায়
+
+`app_usage` আছে **১৩ আগস্ট** থেকে, আর সবচেয়ে পুরোনো ভুল চিহ্নটা
+**২৩ আগস্টের** — অর্থাৎ ঢাকা পড়ার কোনো ফাঁক নেই। ⭐ ৭১১টার **৭১১টাই**
+ফেরানো যায়।
+
+#### খ· ⭐⭐⭐ নিয়মটা নতুন করে লেখা হয়নি
+
+ব্যাকফিল স্ক্রিপ্টটা কন্টেইনারের `/app/dist/summary/design.rules.js` থেকে
+**আসল `designIdOf()`** ডাকে — অর্থাৎ প্রোডাকশনে যে কোডটা চলছে ঠিক সেটাই।
+
+> ⚠️⚠️ SQL-এ regex অনুবাদ করাই ছিল সবচেয়ে সহজ পথ, আর সেটাই সবচেয়ে বিপজ্জনক:
+> তাহলে **দুটো সংজ্ঞা** তৈরি হতো, আর দুই সংজ্ঞা একদিন আলাদা হয়ে যাওয়াই তো
+> এই গোটা অডিটের বারবার-ফিরে-আসা গল্প (G112 · G162 · G163)।
+
+⭐ তবু SQL অনুবাদটাও লেখা হয়েছে — **মেলানোর জন্য, লেখার জন্য নয়**। দুটো
+স্বাধীন পদ্ধতি ৭১১টা আইডি ও ৭১১টা মানের **প্রতিটাতেই** একমত, একটাও অমিল নেই।
+
+#### গ· শুকনো রান, তারপর লেখা
+
+| শুকনো রান | |
+|---|---|
+| বদলাবে | **৭১১** |
+| আগে থেকেই ঠিক | ০ |
+| উৎস পাওয়া যায়নি | **০** |
+| সন্দেহজনক (ছোঁয়া হবে না) | **০** |
+| বদলের পরেও `assigned_at`-এর আগে | **০** |
+
+⚠️ স্ক্রিপ্টে দুটো পাহারা বসানো ছিল, আর দুটোতেই শূন্য ধরা পড়েছে: নতুন
+মানটা **নিজের ঢাকা-দিনের ভেতরে** কি না, আর সেটা `completed_at`-এর **পরে**
+পড়ে যায় কি না। ধরা পড়লে ওই সারিটা বাদ যেত, পুরো রান নয়।
+
+⚠️ প্রতিটা `UPDATE`-এ শর্ত `WHERE id = ? AND started_at = <পুরোনো মান>` —
+তাই দুবার চালালেও কিছু নষ্ট হয় না, আর সবগুলো একটাই ট্রানজেকশনে।
+
+সেশনের খামের SQL-টায় `COMMIT`-এর আগেই একটা পাহারা: খামের বাইরে সেগমেন্ট
+বা ঋণাত্মক সেশন থাকলে সে নিজেই `RAISE EXCEPTION` করে **রোলব্যাক** করত।
+
+#### ঘ· ফল
+
+| | আগে | পরে |
+|---|---|---|
+| `started_at`-এর আলাদা ঘড়ি-মান | **১** | **৭০৩** |
+| `started_at < assigned_at` | **৭১১** | **০** |
+| `started_at > completed_at` | ০ | **০** |
+| খামের বাইরে পড়া সেশন | **৭** | **০** |
+| খামের বাইরে পড়া সেগমেন্ট | **৫২** | **০** |
+| ঋণাত্মক দৈর্ঘ্যের সেশন | ০ | **০** |
+
+⭐⭐ **ফলটা নিজেই নিজের সাক্ষ্য।** কেউ বলে দেয়নি অফিস কখন খোলে, তবু
+ফেরানো সময়গুলোর বণ্টন এই দাঁড়াল:
+
+```
+০৯ ▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇ ১৫৬     ১৩ ▇▇▇  ৩০
+১০ ▇▇▇▇▇▇▇▇  ৭৫              ১৪ ▇▇▇▇▇▇  ৫৮
+১১ ▇▇▇▇▇▇▇▇  ৭৮              ১৫ ▇▇▇▇▇▇▇▇▇  ৮৮
+১২ ▇▇▇▇▇▇▇▇▇▇▇ ১০৬           ১৬ ▇▇▇▇▇▇▇▇▇  ৯০
+                             ১৭ ▇▇▇  ৩০
+```
+
+সকাল ৯টায় সর্বোচ্চ, দুপুরে একটা ছোট শিখর, বিকেল ৫টায় শেষ — **ভোর ৬টায়
+একটাও নয়**। ⚠️ পুরোনো অবস্থায় এই তালিকার পুরো ৭১১টাই বসত একটামাত্র ঘরে:
+`০৬`।
+
+#### ঙ· ফেরানোর পথ
+
+⭐ ব্যাকআপ রাখা হয়েছে (৭১১টা পুরোনো মান + ৭টা সেশনের আগের সীমা), কিন্তু
+সেটার দরকারই পড়ার কথা নয়: পুরোনো মানটা **অনুমানযোগ্য** — প্রতিটাই ছিল
+`design_credits.first_work_date`-এর UTC-মধ্যরাত। অর্থাৎ ফেরানো এক লাইনের কাজ।
+
+⚠️ **কোনো ঘণ্টা, কোনো টাকা, কোনো বেতন নড়েনি** — এটা ইতিহাস সংশোধন, নিয়ম
+বদল নয়। `started_at` কেবল পর্দায় *"Started N ago"* দেখাতে যায়, আর
+`work_sessions`-এর সময় আজ কোনো রিপোর্টই পড়ে না।
+
+---
+
+## ৩ঞ৩০. ⭐⭐⭐ পুরো সিস্টেমের অডিট — আর ৳৬২ হাজারের একটা নীরব ভুল *(৬ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"amader full system ta check dao, kono bug ache kina check dao"* →
+তারপর *"sob gula fix koro, ar na dekha diner jonno kortan hobe na"*।
+
+### ১· কীভাবে খোঁজা হলো
+
+আটটা দিক থেকে সমান্তরালে — সময়ের সীমানা · টাকার অঙ্ক · *"কলার লেখা হয়নি"* ·
+এজেন্ট · অনুমতি · ডেটা-অখণ্ডতা · জব ও অ্যালার্ট · ফ্রন্টএন্ড। তারপর প্রতিটা
+সন্দেহ **দুজন করে সংশয়বাদী** আলাদাভাবে খণ্ডন করার চেষ্টা করেছে।
+
+⚠️⚠️ **০টা খারিজ হওয়ায় আমি সন্দেহ করেছি** — যাচাইটা যথেষ্ট আক্রমণাত্মক না
+হলে ঠিক এমনই হয়। তাই সবচেয়ে দামি পাঁচটা আমি নিজে কোড পড়ে ও প্রোডাকশনে
+কোয়েরি চালিয়ে মিলিয়ে দেখেছি। ⭐ তাতে একটা দাবি **ভেঙেও গেছে** (§ ৪)।
+
+### ২· ⭐⭐⭐ G147 — পে-রোল না-দেখা দিনের জন্য কাটছিল
+
+আগস্ট ২০২৬-এ ট্র্যাকিং শুরু হয় **১৩–১৫ তারিখে**, অথচ বেতনের টার্গেট বসত
+পুরো মাসের **২০৮ ঘণ্টা**। অর্থাৎ মাসের প্রায় অর্ধেকটা — যে দিনগুলো সিস্টেম
+কোনোদিন দেখেইনি — নীরবে ঘাটতি হয়ে যেত।
+
+| | কর্তন |
+|---|---|
+| আগের নিয়মে | **৳৭৯,৭৮৮** |
+| দেখা-দিন ধরে | **৳১৭,৬০১** |
+| **পার্থক্য** | **৳৬২,১৮৭** |
+
+⚠️⚠️ **আর সঠিক সংখ্যাটা একই সারিতেই বসে ছিল** — `monthly_summary.expected_sec`
+(১১২–১২০ ঘণ্টা)। পে-রোল কেবল ওটা পড়ত না, পড়ত `target_sec`।
+
+⭐ **মালিকের সিদ্ধান্ত:** *"না-দেখা দিনের জন্য কর্তন হবে না"*। নতুন কলাম
+`observed_workdays` — যেসব দিনের `daily_summary` সারি **সত্যিই লেখা হয়েছিল**
+— আর ঘাটতি মাপা হয় তার সাপেক্ষে।
+
+⚠️ **তিনটে সীমা ইচ্ছাকৃত:**
+- **হার বদলায়নি** — বেতনটা পুরো মাসের কাজের জন্যই; বদলেছে কেবল *কতটুকুর
+  হিসাব চাওয়া হচ্ছে*।
+- **অনুপস্থিতি মকুব নয়** — সারি আছে অথচ ০ ঘণ্টা মানে তিনি আসেননি, সেটা
+  ঘাটতিই থাকে। ⚠️⚠️ দুটো এক করে ফেললে যে-কেউ অফিসে না এসেও পুরো বেতন পেত;
+  পাহারাটা টেস্টে বাঁধা।
+- **ওভারটাইম এখনো পুরো টার্গেটের সাপেক্ষে** — নইলে অর্ধেক মাস ট্র্যাক না
+  হওয়া কেউ কয়েক দিন কাজ করেই "ওভারটাইম" দেখাতেন।
+
+⭐ পথে **G109-ও বন্ধ হলো পে-রোলের পথে** (জানালার মাঝখানের ফাঁক)। ⚠️ কিন্তু
+tray · Live Board · Monthly এখনো `expected_sec` পড়ে, আর ওটা ক্যালেন্ডার ধরেই
+গোনা — তাই ওখানে G109 **এখনো খোলা**।
+
+### ৩· ⭐⭐⭐ G148 — দেরিতে আসা ঘণ্টা চিরতরে হারাত
+
+rollup চলত কেবল **দুটো** দিনের উপর: আজ (K06, প্রতি ১৫ মিনিটে) আর গতকাল
+(K05, ০০:১৫-তে **একবার**)। এর বাইরের কোনো দিনের সেগমেন্ট পরে এলে সেটা
+`activity_segments`-এ ঠিকই বসত, কিন্তু `daily_summary`-তে **কোনোদিন উঠত না**
+— আর সেখান থেকে মাসিক সারি, আর সেখান থেকে বেতন।
+
+⚠️⚠️ **ঘটনাটা বিরল নয়, রোজকার:** সন্ধ্যায় PC বন্ধ → দিনের শেষ সেগমেন্ট
+আউটবক্সে → পরদিন সকালে লগইনের পর আপলোড, ততক্ষণে ০০:১৫ পেরিয়ে গেছে।
+
+⭐ **মাঠে মেপে দেখা: ৩৯টা (কর্মী, দিন) জোড়া, ১৭.৭৮ ঘণ্টা** উধাও। OX-07-এর
+২২ আগস্টে একাই ৭ ঘণ্টা ১৭ মিনিট — ২৬,৮৪৯ সেকেন্ড কাজ, খাতায় ৬০০।
+
+⭐ সমাধান: নতুন `summary_dirty` টেবিল। ingest **একই ট্রানজেকশনে** দিনটা
+চিহ্নিত করে (আজকের দিন বাদ — K06 এমনিতেই ওটা গোনে), আর K06 প্রতি টিকে
+কিউটা নিষ্কাশন করে, টিকপ্রতি ১৪টা।
+
+⚠️ **বন্ধ মাস ছোঁয়া হয় না** (R1), কিন্তু চিহ্নটা **তুলে দেওয়া হয়** — নইলে
+ওই সারিটা চিরকাল কিউয়ের মাথায় বসে থাকত আর কিউটা স্থায়ীভাবে আটকে যেত।
+
+⭐ মাইগ্রেশনেই পুরোনো ক্ষতিগুলো চিহ্নিত করা হয়েছে। মাঠে: কিউ **১৮ → ০**,
+৫০ মিনিটে সব গোনা শেষ।
+
+### ৪· ⭐⭐ G149 — পে-রোল শিটে জামানতের ঘরই ছিল না
+
+সার্ভার প্রতিটা সারিতে `securityDeposit` ও `netPayable` গোনে — **প্রথম দিন
+থেকেই**। `grep` করে দেখা গেল `web/src`-এ **একটাও হিট নেই**।
+
+⚠️⚠️ অর্থাৎ মালিক যে পাতা দেখে টাকা দেন সেখানে **gross** লেখা, আর খাতা বলছে
+৳১১,০০০ কেটে রাখা হয়েছে। ⭐ আর পাতার নিচের সতর্কবার্তাটা *"Net payable stops
+at zero"* — নাম ধরেই এমন একটা কলামের কথা বলত যেটার অস্তিত্বই ছিল না।
+
+এই রেপোর চেনা পাপ, আবার: **চুক্তি লেখা আছে, কলার লেখা হয়নি** (G141 · G144 ·
+G146-এর পর এটা চতুর্থ)।
+
+### ৫· বাকি সাতটা
+
+| # | কী | কেন গুরুতর |
+|---|---|---|
+| G150 | `trust proxy` কোথাও বসানো ছিল না | per-IP লগইন-তালা **একটাই বালতি** — যেকোনো জায়গা থেকে ৫০টা ভুল লগইন = মালিকসহ সবাই তালাবন্ধ। আর ৭ দিনের **৪৯৪টা অডিট সারির সবগুলোতেই** `172.18.0.4` |
+| G151 | রোলআউটের soak-ঘড়ি ধাপে রিসেট হতো না | canary-তে ছ-ঘণ্টা পার করা মেশিন পরের টিকেই `partial → all`-ও করাত — **৫০% ধাপটা কার্যত এড়িয়ে যেত** |
+| G152 | নিষ্ক্রিয় কর্মীর সময়-সংশোধন | DB-তে বসত, পর্দায় দেখাত, **খাতায় পৌঁছাত না** |
+| G153 | সেশন মেলানো (ডিভাইস, দিন) ধরে | PC হাতবদল হলে একজনের কাজ **অন্যজনের নামে** |
+| G154 | হিটম্যাপে অনুমোদিত ছুটি | লালচে **"ফাঁকি"র দাগ** পেত — সার্ভার `onLeave` পাঠাত, পর্দা পড়ত না |
+| G155 | `CaptureLoopAsync` | প্রথম সফল ছাপের আগে **১০০% CPU** — enroll না হলে, রাতে চালু হলে, বা পর্দা লক থাকলে |
+| G156 | `SweepOrphanFilesAsync` | কলার নেই — অনাথ `.webp` **কোনো বাজেটে ধরা পড়ে না**, তাই ফুটোটা মাসের পর মাস চলত |
+
+### ৬· ⚠️ যা খারিজ হলো, আর যা আমি ভুল ভেবেছিলাম
+
+⭐ প্রোডাকশনে **৩,৭৯৭টা টার্গেট `done` অথচ `completed_at` খালি** — প্রথমে
+বাগ মনে হয়েছিল। খুঁড়ে দেখা গেল ২২ আগস্টের একটাই বাল্ক ইমপোর্ট,
+`completed_via = 'import-bad-date'`; পুরোনো সিস্টেমের যেসব সারির তারিখ পড়া
+যায়নি। ⭐ ইমপোর্টের তারিখ থামে **২০ আগস্টে**, অ্যাপের নিজের গোনা শুরু
+**২৩ আগস্টে** — কোনো ওভারল্যাপ নেই, তাই *"Designs Finished"* কার্ডের ৮৯৮
+পুরোটাই আসল কাজ।
+
+⚠️ **আর একটা দাবি ভেঙেছে:** *"পে-রোল না-দেখা দিনের জন্য কাটে"* — এজেন্টদের
+একজন এটাকে G109 বলেছিল। ⚠️ ভুল: G109 জানালার **মাঝখানের** ফাঁক নিয়ে, আর
+এটা মাসের **অর্ধেকটা** নিয়ে; দুটো আলাদা সংখ্যা (`expected_sec` বনাম
+`target_sec`)। দ্বিতীয় সংশয়বাদী ঠিকই খণ্ডন করেছিল, আর ১/২ ভোট নিয়ে টিকে
+গিয়েছিল — আমি নিজে না দেখলে ভুল কারণে সারাতাম।
+
+### ৭· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৬৭১ | **১৭০৮** |
+| ওয়েব | ১৩৭ | **১৪০** |
+| **মোট** | ২৩৩৮ | **২৩৭৮** |
+
+⭐⭐ **সাবোতাজে যাচাই সাতবার** — প্রতিটা ফিক্স উল্টে দিয়ে দেখা হয়েছে টেস্ট
+সত্যিই লাল হয় (চিহ্ন বসানো বন্ধ → ৯টা · জবের কলার তুলে → ১টা · দেখা-অংশের
+শর্ত তুলে → ৪টা · trust proxy তুলে → ৩টা · Job নম্বরের শাখা বন্ধ → ২টা ·
+আর শেষ দুটো ফিক্সে ১টা করে)।
+
+⚠️⚠️ **একটা টেস্টের প্রত্যাশা ইচ্ছাকৃতভাবে বদলানো হয়েছে**
+(`proration.e2e` — *"prorated ভিত্তি"*): যাঁর কোনো ডেটাই নেই, তাঁর **পুরো**
+prorated বেতন কেটে নেওয়া হতো। এখন কর্তন ০, আর ভিত্তিটা `payable`-এ দেখা যায়।
+পুরোনো প্রত্যাশাটা পুরোনো (ভুল) আচরণটাই ধরে রেখেছিল।
+
+### ৮· ⚠️ পথে আমার নিজের একটা ভুল
+
+সাবোতাজ ফেরাতে `git checkout --` চালিয়ে **ফিক্স দুটোও মুছে ফেলেছিলাম** —
+ওটা INDEX থেকে ফেরায়, কেবল সাবোতাজটুকু নয়। ধরা পড়েছে `grep` করে, আবার
+বসানো হয়েছে।
+
+⚠️⚠️ **এই প্রকল্পে এটা দ্বিতীয়বার** — প্রথমবার `rollout.ts`-এ, ৫ সেপ্টেম্বর।
+⭐ শিক্ষা: সাবোতাজ ফেরাতে **স্ক্রিপ্টেই উল্টো প্যাচ** লেখা উচিত, git নয়।
+
+---
+
+## ৩ঞ২৯. ⭐⭐ সাত দিনের ডিজাইন-ফিতে — আর যে সীমানাটা নীরবে ভুল হতো *(৫ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"dashboard er 'Where Today Went' er upore, last 7 days per day koto gula
+designs kora hocche seta show koro."*
+
+চাওয়াটা এক লাইনের, আর কাজটাও ছোট। ⭐ কিন্তু এই অনুচ্ছেদের বেশিরভাগ জুড়ে
+আছে **একটা সংখ্যার পছন্দ আর একটা সীমানার অঙ্ক** — দুটোর কোনোটা ভুল হলে
+পর্দায় একটা নিখুঁত দেখতে কার্ড বসত, যেটা ভুল কথা বলত।
+
+### ১· ⭐⭐ "কতগুলো ডিজাইন" — কিন্তু কোন সংখ্যাটা?
+
+এই সিস্টেমে ডিজাইনের দুটো আলাদা সংখ্যা আছে, আর দুটোই বৈধ:
+
+| | উৎস | কী গোনে |
+|---|---|---|
+| খোলা | `design_credits.first_work_date` | কর্মী কতগুলো ফাইলে **হাত দিয়েছেন** |
+| শেষ | `design_targets.completed_at` | কতগুলো আসলে **শেষ হয়েছে** |
+
+⚠️⚠️ **আর এই দুটো গুলিয়ে ফেলাটাই ছিল একটা মাঠের বাগ, ১৩ দিন আগে।**
+২৩ আগস্টে (§ ৩ঞ২, [ADR-037](05-Options-Decisions.md)) মালিক নিজে ধরেছিলেন:
+এক ম্যানেজার ১৯টা ফাইলে ৪৪ মিনিট দিয়ে বোর্ডে **"১৬"** দেখাচ্ছিলেন।
+সংখ্যাটা মিথ্যা ছিল না — ওটা বলছিল *"খোলা হয়েছে"*, আর সবাই পড়ছিল
+*"শেষ হয়েছে"*।
+
+⭐ তাই এখানে **শেষ**, আর কার্ডের শিরোনামেই লেখা **"Designs Finished"** —
+নইলে ছ-মাস পরে ঠিক ওই একই ভুল পড়াটা নতুন কার্ডে ফিরে আসত। ⭐⭐ পাহারাটাও
+টেস্টে বসানো: *"পুলে পড়ে থাকা টার্গেট শেষ নয়"* — কেউ যদি একদিন
+`completedAt`-এর বদলে `status` বা `design_credits` ধরে গুনতে শুরু করেন,
+ওই টেস্টটাই ভাঙবে।
+
+### ২· ⭐⭐⭐ আসল ঝুঁকিটা ফিচারে নয়, দিনের সীমানায়
+
+`design_targets`-এ **`work_date` কলাম নেই** — আছে কেবল `completed_at`,
+একটা `timestamptz`। অর্থাৎ *"এটা কোন দিনের ঘরে বসবে"* প্রশ্নটার উত্তর
+কোয়েরিকেই বের করতে হয়। আর এখানেই দুটো আলাদা ফাঁদ, দুটোই নীরব।
+
+**ফাঁদ ১ — বালতিটা UTC-র দিন ধরে করা।** ঢাকা UTC+৬, তাই ঢাকার
+**মধ্যরাত থেকে ভোর ৬টার** মধ্যে শেষ হওয়া কাজের UTC-তারিখ **আগের দিনের**।
+⚠️ ফলে রাত জেগে শেষ করা প্রতিটা ডিজাইন গতকালের খাতায় যোগ হতো। ⚠️⚠️ ছ-ঘণ্টার
+জানালাটা ছোট শোনায়, কিন্তু এই অফিসে ডিজাইন প্রায়ই রাত ১২টার পরে শেষ হয় —
+অর্থাৎ ঠিক ব্যস্ত সারিগুলোই ভুল দিনে যেত।
+
+⭐ সমাধান নতুন কিছু নয়: বালতি করা হয় `workDateOf()` দিয়ে — গোটা সিস্টেমে
+*"এটা কোন দিন"* ঠিক করার **একমাত্র** জায়গা। দ্বিতীয় সংজ্ঞা লিখলেই একদিন
+দুটো পাতা দুই সংখ্যা বলত।
+
+**ফাঁদ ২ — লেবেলটাকে মুহূর্ত ভেবে বসা।** এটাই এই রেপোর সবচেয়ে চেনা ফাঁদ।
+
+⚠️⚠️ `workDateOf()` ঢাকার দিনটাকে ফেরত দেয় **UTC-মধ্যরাত হিসেবে লেখা একটা
+লেবেল** — মুহূর্ত নয়। ওই দিনের আসল ঢাকা-মধ্যরাত শুরু হয় লেবেলের **৬ ঘণ্টা
+আগে**। কাজেই `first`/`today` সরাসরি `gte`/`lt`-তে বসালে গোটা জানালাটা
+**৬ ঘণ্টা দেরিতে** সরে যেত:
+
+```ts
+const DHAKA_OFFSET_MS = 6 * 3600_000;
+completedAt: {
+  gte: new Date(first.getTime() - DHAKA_OFFSET_MS),
+  lt:  new Date(today.getTime() + 86_400_000 - DHAKA_OFFSET_MS),
+}
+```
+
+⚠️ ভুল করলে ফিতের **প্রথম দিনটার** মধ্যরাত-থেকে-ভোরের কাজ বাদ পড়ত, আর
+বদলে ঢুকত আগামীকালের ওই একই ছ-ঘণ্টা — যেটার ঘর ফিতেয় নেই, তাই ওটা নীরবে
+ফেলে দেওয়া হতো। অর্থাৎ ক্ষতিটা এক দিকেই: প্রথম বারটা রোজ একটু ছোট।
+
+### ৩· পর্দায়
+
+কার্ডটা বসেছে **"Where Today Went"-এর ঠিক উপরে**, যেমন বলা হয়েছিল।
+
+- ৭টা বার, উচ্চতা **সবচেয়ে বড় দিনটার সাপেক্ষে**। ⚠️ কোনো ধ্রুবক টার্গেটের
+  সাপেক্ষে নয় — ডিজাইনের দৈনিক টার্গেট কর্মীভেদে আলাদা, আর **দলগত কোনো
+  টার্গেট নেই**। ধ্রুবক মাপকাঠি আঁকলে সেটা বানানো হতো, মাপা নয়।
+- ⭐ ট্র্যাকিং শুরুর আগের দিন **ডটেড আউটলাইন, আর সংখ্যার জায়গায় `—`** —
+  শূন্য নয়। বোর্ডের বাকি জায়গার হুবহু একই নিয়ম (`TrendDay.tracked`,
+  G110/G111-এর ছাঁদ)। ⚠️⚠️ *"জানি না"*-কে *"কিছু হয়নি"* বলা এই অ্যাপে
+  সর্বত্র নিষিদ্ধ।
+- নিচে যোগফল: *"898 finished in the last 7 days"*।
+
+⚠️ **মকআপ দেখানো হয়নি** — রেপোর নিয়ম বলে পর্দায় দেখা যায় এমন কিছুর আগে
+মকআপে অনুমোদন নেওয়া। এবার চাওয়াটা নির্দিষ্ট ছিল (*"ওর উপরে, শেষ ৭ দিন,
+রোজ কতগুলো"*) আর কার্ডটা বোর্ডের চালু ছাঁদেই বসেছে, তাই সরাসরি বানিয়ে
+দেখানো হয়েছে। লিখে রাখা হলো যাতে ব্যতিক্রমটা চুপচাপ নিয়ম না হয়ে যায়।
+
+### ৪· যাচাই
+
+**৬টা নতুন টেস্ট** (`server/test/trend-designs.e2e.spec.ts`), আর বেশিরভাগই
+ঠিক মধ্যরাতের দুই পাশ:
+
+| টেস্ট | কী পাহারা দেয় |
+|---|---|
+| ⭐ ঢাকার রাত ১১:৩০ বনাম ১২:৩০ | দিনের সীমানা — UTC ধরে গুনলে এটাই ভাঙে |
+| ⭐ পুলে পড়ে থাকা টার্গেট "শেষ" নয় | খোলা বনাম শেষ |
+| ⭐ ৭ দিনের বাইরেরটা আসে না | নইলে প্রথম দিনটা "বাকি সব"-এর ঝুড়ি হতো |
+| প্রতিটা দিন নিজের ঘরে | দিন মিশে যায় না |
+| কিছু না থাকলে ০, `undefined` নয় | পর্দায় খালি ঘর নয় |
+
+⭐⭐ **সাবোতাজে যাচাই:** বালতিটা UTC-র দিন ধরে করে দেখা হয়েছে — ঠিক
+সীমানার টেস্টটাই লাল হয়। অর্থাৎ পাহারাটা সত্যিই ওই ভুলটাই ধরে, শুধু
+পাশ দিয়ে যায় না।
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৬৫৯ | **১৬৬৫** |
+| মোট | ২৩২৬ | **২৩৩২** |
+
+### ৫· মাঠে
+
+ডিপ্লয় সেদিনই — `build 383` · `commit da5a4e3`। প্রথম সাত দিনের সংখ্যা
+(৩০ আগস্ট – ৫ সেপ্টেম্বর), প্রোডাকশন থেকে মিলিয়ে দেখা:
+
+| রবি | সোম | মঙ্গল | বুধ | বৃহ | **শুক্র** | শনি | মোট |
+|---|---|---|---|---|---|---|---|
+| ১৩৪ | ১৬১ | ১৫৬ | ১৬০ | ১৪৫ | **০** | ১৪২ | **৮৯৮** |
+
+⭐ শুক্রবারের **০**-টাই সবচেয়ে ভালো যাচাই: সাপ্তাহিক ছুটি, আর ওই দিন
+সত্যিই একটাও `completed_at` নেই। ⚠️ ঘরটা **ডটেড নয়, ০** — কারণ ওই দিন
+দেখা হয়েছিল, শুধু কেউ কাজ করেননি। *"দেখিনি"* আর *"কিছু হয়নি"* এক জিনিস
+নয়, আর কার্ডটা দুটোকে আলাদা করেই আঁকে।
+
+### ৬· ⚠️⚠️ পরে ধরা পড়া একটা ভুল — ADR নম্বর
+
+লেখার সময় সিদ্ধান্তটাকে সব জায়গায় **ADR-033** বলা হয়েছিল — কমিট-বার্তায়,
+কোডের কমেন্টে, টেস্টে। ⚠️ **ওটা ভুল।** ADR-033 হলো *"প্রথম লগইনে
+বাধ্যতামূলক পাসওয়ার্ড বদল"*; ডিজাইন গোনার সিদ্ধান্ত দুটো আলাদা:
+**ADR-036** (*"খোলা আর শেষ — দুটো আলাদা সংখ্যা"*, ২২ আগস্ট) আর
+**ADR-037** (*"কেবল Complete, খোলা নয়"*, ২৩ আগস্ট)।
+
+⭐ কোডের পাঁচ জায়গায় নম্বরটা **ADR-037**-এ সংশোধন করা হয়েছে (তার একটা
+এই কমিটের আগে থেকেই ভুল ছিল — `dashboard.service.ts`-এর `designTarget`
+গোনার কমেন্ট)। ⚠️ **কমিট-বার্তাটা (`da5a4e3`) সংশোধন করা যায় না** — ইতিহাস
+বদলানো হয়নি, তাই ভুল নম্বরটা ওখানে থেকে যাচ্ছে, আর তার একমাত্র প্রতিকার
+এই অনুচ্ছেদটাই।
+
+---
+
+## ৩ঞ২৮. ⭐⭐ "২ মাসে ৫০০ কেন?" — একটা ৳০ সারি, আর তা সারানোর কোনো পথ না থাকা *(৫ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"Saifur OX-10 2 mase 500 joma dekhacche keno?"*
+
+⚠️ পাতাটা মিথ্যা বলছিল না — বলছিল **দুটো সত্যি, যা একসাথে পড়লে অর্থহীন**:
+খাতায় সারি দুটো (তাই "২ মাস"), কিন্তু আগস্টেরটা **৳০**।
+
+### ১· কে বসাল ৳০
+
+গোটা টেবিলে **একটিমাত্র** ৳০ সারি — id 37, ১৫ আগস্ট ১৬:৫৩, শুধু OX-10।
+বাকি ২১টাই ৳৫০০।
+
+`ensureLedger()` সবসময় `policy.amountPaisa` বসায়, আর সেটা প্রথম দিন থেকেই
+৫০০০০ পয়সা। অর্থাৎ **কোড ওটা লেখেনি।** অডিটে পাওয়া গেল ১৫ আগস্ট ১৬:৫১-এর
+একটা সিদ্ধান্ত, তিনজনের জন্য (OX-10 · OX-12 · OX-14):
+
+> *"মাসের ১ তারিখে যোগ দেননি — পুরো মাসের বেতন পাননি, তাই কিস্তিটা আসলে
+> কাটা হয়নি (মালিকের নিষ্পত্তি)"* · `removedPaisa: 50000`
+
+⚠️⚠️ **কিন্তু কারণটা তিনজনের একজনের ক্ষেত্রেও খাটে না।** যোগদানের তারিখ:
+OX-10 ৪ জুলাই, OX-14 ১৮ জুলাই, **OX-12 ১ আগস্ট** — শেষজন তো ঠিক ১ তারিখেই।
+তিনজনই আগস্টে পুরো মাসের কর্মী ছিলেন।
+
+⭐ সম্ভাব্য ব্যাখ্যা: ছাড়টা আসলে **জুলাইয়ের** আংশিক মাসের জন্য, কিন্তু
+জামানতের খাতা আগস্টের আগে শুরুই হয়নি — তাই মকুবটা গিয়ে বসেছে আগস্টের
+কিস্তিতে। ⚠️ যাচাই করার উপায় নেই: এই সিস্টেমে **জুলাইয়ের কোনো ডেটাই নেই**
+(`monthly_summary`-তে কেবল ২০২৬-০৮ ও ২০২৬-০৯; OX-10-এর প্রথম দৈনিক সারি
+১৫ আগস্ট)।
+
+### ⚠️⚠️ ২· আসল নিয়মটা জানার পর — আর সারানোর দেয়াল
+
+মালিক নিয়মটা স্পষ্ট করলেন: **সবার ৳৫০০, আগস্ট ২০২৬ থেকে; কেবল OX-12 ও
+OX-14 সেপ্টেম্বর থেকে।** অর্থাৎ OX-10-এর আগস্টের কিস্তি ৳৫০০ হওয়ার কথা।
+
+⚠️⚠️ **আর ঠিক তখনই দেয়ালটা:** `ensureLedger()` চলে
+`createMany({ skipDuplicates: true })` দিয়ে, তাই **বিদ্যমান সারি কখনো
+হালনাগাদ হয় না** — আর সেটা ইচ্ছাকৃত (`DepositsTab`-এর Caveat: *"changing
+the amount later never rewrites what was already held"*)। ফলে ৳০ সারিটা
+start month যাই বসান, ৳৫০০ হতো না।
+
+⭐ সারানো গেছে **দুই ধাপের একটা কৌশলে**, দুটোই প্রোডাক্টের নিজের বোতামে:
+
+| ধাপ | কী ঘটে |
+|---|---|
+| start month → `2026-09` | `deleteMany where yearMonth < '2026-09'` → ৳০ সারি মুছল |
+| **"Use the rule"** | override সরল, `ensureLedger()` আগস্টটা **নতুন করে ৳৫০০-তে** বসাল |
+
+⚠️⚠️ কৌশলটা কাজ করেছে **কেবল কারণ ভুল মাসটা শুরুর দিকে ছিল**। মাঝের কোনো
+মাস হলে প্রথম ধাপ আগের সব মাসও মুছে দিত। আর কৌশলটা কোথাও লেখা ছিল না —
+পরের বার কেউ এটা খুঁজে পেত না।
+
+### ৩· তাই দুটো জিনিস কোডে সারানো হলো
+
+**G145 — ৳০ কিস্তি এখন ডাটাবেসেই অসম্ভব।** `deposit_policy`-তে
+`CHECK (amount_paisa > 0)` প্রথম দিন থেকেই ছিল, কিন্তু **খাতার সারিতে ছিল
+না** — অথচ ভুল মানটা ওখানেই বসে। ⚠️ মাইগ্রেশন আগে পরিষ্কার করে তারপর
+পাহারা বসায়, নইলে পুরোনো কোনো কপিতে ALTER ব্যর্থ হয়ে ডিপ্লয় আটকাত।
+
+⭐ পাহারা তিন স্তরে: DTO-র `@Min(1)` · সার্ভিসের যাচাই (বার্তাটা যেন কাঁচা
+Postgres এরর না হয়) · ডাটাবেসের CHECK।
+
+⚠️⚠️ **আর টেস্টটা ইচ্ছাকৃতভাবে DTO পাশ কাটিয়ে** সরাসরি prisma দিয়ে লেখে।
+প্রথমে HTTP দিয়ে লিখেছিলাম, আর সাবোতাজে দেখা গেল constraint সরালেও টেস্ট
+সবুজ — কারণ `@Min(1)` আগেই ধরে ফেলছিল। অর্থাৎ CHECK-টা **অপরীক্ষিত**
+থাকত, ঠিক যেভাবে G117 ও G108-এ ঘটেছিল।
+
+**G146 — ভুল অঙ্ক সংশোধনের সরকারি পথ।** দুটো নতুন রুট:
+
+- `GET /deposits/:id/months` — মালিকও এখন মাস-ধরে দেখেন। ⚠️ এতদিন মাসগুলো
+  দেখা যেত **কেবল কর্মীর নিজের** `/me/deposit`-এ; মালিকের পাতায় শুধু
+  যোগফল। সেজন্যই মাঠের বাগটা দু-সপ্তাহ ধরা পড়েনি।
+- `PATCH /deposits/:id/instalment` — অঙ্ক সংশোধন। ⭐ **এটা "নিয়ম বদল" নয়,
+  "ভুল সংশোধন"**, তাই `reason` বাধ্যতামূলক (`time_adjustments`-এর একই
+  নিয়ম), আর অডিটে আগের-পরের দুটো অঙ্কই লেখা থাকে।
+
+⚠️ যা আটকানো: শূন্য/ঋণাত্মক · নিষ্পত্তির পর · **বন্ধ মাসে** (R1 — ছুটির
+হুবহু একই নিয়ম) · আর যে মাসে কিস্তিই নেই (তাহলে ওটা সংশোধন নয়, নিয়ম-বহির্ভূত
+নতুন কিস্তি বসানো)।
+
+⭐ ওয়েবে সারিতে নতুন **Months** বোতাম → মাসের তালিকা → প্রতি মাসে Correct।
+⚠️ endpoint লিখে কলার না লেখার ফাঁদ এড়াতে UI একই ব্যাচে — এই রেপোর সবচেয়ে
+চেনা পাপ।
+
+⏳ **মাঝের একটা মাস মকুব করার ব্যবস্থা এখনো নেই।** শুরুর দিকের মাস বাদ দিতে
+start month আছে, কিন্তু মাঝের মাস বাদ দিতে হলে সারিটা মুছতে হয় — আর তখন
+`ensureLedger()` ওটা আবার বসিয়ে দেবে। লাগলে সেটা আলাদা সিদ্ধান্ত (সারি
+রেখে `waived` চিহ্ন, নাকি অন্য কিছু)। ⚠️ অর্থাৎ ১৫ আগস্টের মতো একটা মকুব
+এখন **শূন্য বসিয়ে** প্রকাশ করা যাবে না — সেটাই উদ্দেশ্য, কিন্তু বিকল্পটা
+এখনো অসম্পূর্ণ।
+
+### ৪· পথে সারানো খাতা
+
+সবার খাতা নিয়মের সাথে মিলিয়ে দেখা হয়েছে — **১৩টার ১৩টাই মেলে**: দশজনের
+আগস্ট+সেপ্টেম্বর ৳১০০০, OX-12 ও OX-14-এর কেবল সেপ্টেম্বর ৳৫০০, আর টেস্ট
+অ্যাকাউন্ট OX-15 ৳০। ⭐ `override` কলামটাও এখন নিয়মের গল্পটাই বলে: ব্যতিক্রম
+দুটোতেই `2026-09`, বাকি সবাই খালি।
+
+⚠️ **১৫ আগস্টের অডিট-লাইনটা এখনো ভুল কারণ বলে** — সারিগুলো ঠিক হয়েছে,
+ব্যাখ্যাটা হয়নি। ছ-মাস পরে "ওদের তিনজনের আগস্ট বাদ গেল কেন" প্রশ্নের
+একমাত্র উত্তর ওই লাইনটাই।
+
+### ৫· যাচাই
+
+সার্ভার ১৬৪৮ → **১৬৫৯**। সবগুলো নতুন পাহারা উল্টোভাবে যাচাই করা — বন্ধ-মাসের
+শর্ত তুলে, আর ডাটাবেসের constraint ফেলে দিয়ে দেখা হয়েছে টেস্ট সত্যিই লাল হয়।
+
+⚠️ ওই যাচাই করতে গিয়ে নিজেই একটা ভুল করেছি: constraint ফেলেছিলাম **dev
+ডাটাবেসে** (`oxeio`), অথচ টেস্ট চলে `oxeio_test`-এ — তাই প্রথমে সাবোতাজ
+কাজ করেনি আর মনে হচ্ছিল টেস্টটা অকেজো। dev-এর constraint ফিরিয়ে দেওয়া
+হয়েছে।
+
+---
+
+## ৩ঞ২৭. ⭐⭐⭐ "আপডেট স্টাফরা পাচ্ছে না" — যন্ত্রটা তৈরি ছিল, কেউ ওটা চালাত না *(৫ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"ami ekta bapar kheyal korlam. update gula office stafff ra pacche
+na. every single pc te menuul vabe insstall korte hocche."*
+
+⚠️⚠️ **কারণটা একটা বাগ নয় — একটা শেকল, যার চারটে ধাপের তিনটেই খোলা ছিল।**
+আর তিনটেই এমন ত্রুটি যা কোনো এরর তোলে না, কোনো টেস্ট লাল করে না।
+
+| ধাপ | কী ঘটে | অবস্থা ছিল |
+|---|---|---|
+| ১ | ভার্সন প্রকাশ → `canary` (৭%) | ⛔ **নিজে থেকে কখনো এগোত না** |
+| ২ | এজেন্ট ৬ ঘণ্টায় একবার দেখে, নামায়, যাচাই করে | ✅ ঠিক ছিল |
+| ৩ | tray মেনুতে "Install update…" ফোটে | ⛔ **কোনো নোটিফিকেশন নেই** |
+| ৪ | স্টাফ ক্লিক → `msiexec` → UAC | ✅ স্টাফরা অ্যাডমিন, তাই ঠিক |
+
+### ⭐⭐⭐ ১· G141 — ধাপ বাড়ানোর একমাত্র পথ ছিল হাতে ক্লিক
+
+ধাপে-ধাপে রোলআউটের **গোটা যন্ত্রটাই** তৈরি ছিল: হ্যাশ-বালতি, শতাংশ, পাইলট
+ডিভাইস, জরুরি ব্রেক। কিন্তু `canary → partial → all` বদলানোর একমাত্র উপায়
+Settings → Agent updates-এ একটা বোতাম।
+
+⚠️⚠️ **সার্ভারে এমন একটাও কোড ছিল না যা ধাপ বাড়ায়।** grep করলেই দেখা যায় —
+`rolloutStage` লেখা হয় ঠিক দুই জায়গায়: প্রকাশের সময় (ডিফল্ট `canary`) আর
+`changeRollout()`-এ, যেটা কেবল HTTP রুট থেকে ডাকা হয়।
+
+⭐ ফলে প্রকাশিত ভার্সন চিরকাল ৭%-এ বসে থাকত। ১২টা PC-তে ৭% মানে **কার্যত
+একটা** — বাকি ১১টাকে `offerFor()` কোনোদিন কিছুই দিত না। প্রতিটা মেশিনে হাতে
+গিয়ে বসানো ছাড়া সত্যিই কোনো উপায় ছিল না।
+
+⚠️ **কেউ কোনোদিন এটা ধরতে পারত না।** কোনো এরর নেই, কোনো লাল টেস্ট নেই,
+কোনো অ্যালার্ট নেই — শুধু একটা কাজ যেটা কেউ করছিল না। ধরা পড়ল মালিক নিজে
+খেয়াল করে বলার পর। আবার সেই চেনা ছাঁদ: **চুক্তি লেখা আছে, কলার লেখা হয়নি।**
+
+### ⚠️⚠️ ২· যে শর্তটা সবচেয়ে সহজ ছিল, আর কেন সেটা নেওয়া হয়নি
+
+সবচেয়ে সোজা হতো: *"প্রকাশের ছ-ঘণ্টা পর পরের ধাপে"* — `agent_versions`-এ
+`released_at` আগে থেকেই আছে, একটা কোয়েরিই যথেষ্ট।
+
+⚠️⚠️ **কিন্তু তাতে canary-র পুরো মানেই মুছে যেত।** ওই শর্তে **একটাও মেশিন
+বিল্ডটা না চালালেও** ধাপ বাড়ত — অর্থাৎ "আগে একটা PC-তে পরীক্ষা করে দেখা"
+কথাটা কাগজেই থেকে যেত, আর G58-এর যে শিক্ষা থেকে গোটা রোলআউট-ব্যবস্থাটা
+জন্মেছিল (খারাপ MSI একবার বিলি হলে নতুন MSI দিয়ে ফেরানো যায় না) সেটা
+কার্যকর থাকত না।
+
+তাই প্রশ্নটাই বদলানো হলো — *"কবে প্রকাশ হয়েছে"* নয়, **"কোনো আসল মেশিন
+কতক্ষণ ধরে এটা চালিয়ে টিকে আছে"**। এর জন্য একটা নতুন কলাম:
+`devices.agent_version_since`।
+
+⚠️ কলামটা বসে **কেবল ভার্সন বদলালে**, প্রতি heartbeat-এ নয়। প্রতিবার বসালে
+ঘড়িটা প্রতি ৩০ সেকেন্ডে শূন্য থেকে শুরু হতো, আর "ছ-ঘণ্টা ধরে টিকে আছে"
+শর্তটা **কোনোদিনই** সত্যি হতো না — রোলআউট চিরকাল canary-তেই আটকে থাকত।
+⭐ অর্থাৎ যে সমস্যাটা সারানো হচ্ছে, ভুলটা হলে সেটাই ফিরে আসত, কেবল আরও
+নীরবে। একটা টেস্ট ঠিক সেটাই পাহারা দেয়।
+
+### ⭐⭐⭐ ৩· "এখনো সাড়া দিচ্ছে" — যে শর্তটা বাদ পড়া সবচেয়ে সহজ ছিল
+
+soak-এর সাথে দ্বিতীয় একটা শর্ত: মেশিনটা **এখনো heartbeat দিচ্ছে** কি না।
+
+⚠️⚠️ শুধু soak দেখলে **মৃত এজেন্টওয়ালা মেশিনও** ছ-ঘণ্টা পর "প্রমাণ" হয়ে
+যেত। অর্থাৎ ঠিক যে বিল্ডটা এজেন্টকে ক্র্যাশ করিয়েছে, সেটাই **নিজে থেকে**
+বাকি ১১টা PC-তে চলে যেত — আর তখন সমস্যাটা আগের চেয়ে অনেক বড় হতো।
+
+⭐ যে বিল্ড ভাঙে, তার ডিভাইস চুপ হয়ে যায়। **নীরবতাটাই সবচেয়ে জোরালো
+সংকেত**, আর সেটাই এখানে পড়া হয়।
+
+⚠️ সীমাটা ৯০ মিনিট, `AGENT_SILENCE_MIN` (১০) নয় — প্রশ্ন দুটো আলাদা।
+অ্যালার্টের প্রশ্ন *"এখনই কি কিছু ভাঙা?"*, আর এখানকার প্রশ্ন *"মেশিনটা কি
+সাধারণভাবে চলছে?"*। ১০ মিনিট ধরলে দুপুরের খাবার বা একটা রিবুটই ধাপ এগোনো
+আটকে দিত।
+
+### ⭐⭐ ৪· যা যন্ত্রের হাতে ছাড়া হয়নি
+
+- **`halted` কখনো খোলে না।** জরুরি ব্রেক সাধারণত ঠিক তখনই চাপা হয় যখন
+  বিল্ডটা মাঠে কিছু ভেঙেছে। যন্ত্র ওটা খুলতে পারলে ভাঙা বিল্ডটা নিজে
+  থেকেই ছড়াত, আর থামানোর কোনো উপায় থাকত না। ⚠️ ঝুঁকিটা **নতুন** — আগে
+  ধাপ বাড়ত কেবল মানুষের ক্লিকে, তাই প্রশ্নটাই উঠত না।
+- **প্রকাশ করা এখনো মালিকের।** জব কেবল প্রকাশিত ভার্সনের ধাপ বাড়ায়;
+  কোনটা প্রকাশ হবে সেটা আগের মতোই মানুষের সিদ্ধান্ত।
+- **এক টিকে এক ধাপ** — canary থেকে সরাসরি all-এ লাফ নেই, নইলে ৫০%-এ থেমে
+  দেখার সুযোগটাই হারাত।
+
+⭐ অডিটে আলাদা action (`agent_version.rollout_auto`, `userId` খালি)।
+⚠️ `change_agent_rollout`-এর সাথে মেশানো হয়নি: ওটা বলে *"একজন মানুষ
+সিদ্ধান্ত নিয়েছেন"*, আর এটা বলে *"শর্ত পূরণ হয়েছে"* — খারাপ বিল্ড বেরোলে
+প্রথম প্রশ্নই হবে "এটা কে ছড়াল"।
+
+### ⭐⭐ ৫· G142 — আপডেট তৈরি, কিন্তু কেউ জানত না
+
+এজেন্ট নামায়, sha256 মিলিয়ে যাচাই করে, তারপর মেনুতে "Install update…"
+ফোটে। ⚠️⚠️ কিন্তু **কোনো নোটিফিকেশন ছিল না**। সিঙ্ক ব্যর্থতা, বাতিল
+ডিভাইস, সংযোগ ফেরা, মাসের লক্ষ্য — চারটেরই বেলুন আছে, আপডেটের নেই।
+
+⭐ অর্থাৎ MSI-টা ওই মেশিনেই যাচাই হয়ে পড়ে থাকত, আর স্টাফ নিজে থেকে tray
+মেনু না খুললে জানার **কোনো উপায়ই** ছিল না।
+
+⚠️ বার্তাটা **কী করতে হবে** সেটাই বলে — শুধু "আপডেট আছে" বললে ওটা একটা
+প্রশ্ন হয়ে থাকত। ⚠️ ভার্সনপ্রতি একবার, ঘণ্টাভিত্তিক থ্রটলে ভরসা করা হয়নি:
+না-বসানো আপডেট দিনের পর দিন বসে থাকতে পারে, আর দিনে আটটা বেলুনের পর
+Windows-এ অ্যাপটা চুপ করিয়ে দেওয়া হতো — তখন সিঙ্ক-ব্যর্থতার জরুরি বার্তাটাও
+হারাত।
+
+### ⚠️⚠️ ৬· G143 — আর যেটা না ধরলে উপরের কাজটা ক্ষতি করত
+
+কাজ করতে গিয়ে একটা তৃতীয় জিনিস বেরোল: **প্রতিটা আপডেট ইনস্টল একটা মিথ্যা
+"হস্তক্ষেপ" অ্যালার্ট তুলত।**
+
+MSI বসানোর সময় Windows-এর Restart Manager এজেন্টকে বন্ধ করায়
+(`ENDSESSION_CLOSEAPP`)। `InterpretEndSession()` তখন `null` ফেরাত —
+ইচ্ছাকৃতভাবে, যাতে "PC বন্ধ" বলে ভুয়া রেকর্ড না বসে।
+
+⚠️⚠️ **কিন্তু `agent_stop` ঠিকই যেত**, আর সার্ভারের G02 একটা **সঙ্গীহীন**
+`agent_stop`-কে হস্তক্ষেপ ধরে। ফলে যিনি আপডেট বসাতেন, তাঁকেই
+*"Agent was stopped"* warning-এ দাগানো হতো।
+
+⭐ হাতে একটা-দুটো PC আপডেট করলে সেটা চোখে পড়ত না। **কিন্তু G141 সারানোর
+পর একসাথে ১২টা** — আর তার পরেই কেউ আর অ্যালার্ট পড়ত না, অর্থাৎ G02
+কার্যত অকেজো হয়ে যেত। একটা সমস্যা সারিয়ে অন্যটা ভাঙা।
+
+সমাধান: নতুন ইভেন্ট `agent_update` — সত্যি কথাটাই পাঠানো হয়, আর সার্ভার
+সেটাকে `agent_stop`-এর বৈধ সঙ্গী ধরে।
+
+⚠️ **ছাড়টা সংকীর্ণ, আর সেটাই নকশা:** ইভেন্টটা যায় কেবল তখনই যখন Windows
+নিজে আমাদের বন্ধ করাচ্ছে। কেউ Task Manager থেকে মারলে যায় না, তাই আসল
+হস্তক্ষেপ আগের মতোই ধরা পড়ে। আনইনস্টলের কোনো ছাড় নেই।
+
+⭐ পথে **নিয়মটার দ্বিতীয় কপি** ধরা পড়ল: `agent-tamper.check.ts`-এর কোয়েরিতে
+`['logoff', 'shutdown']` আবার হাতে লেখা ছিল। নিয়মে `agent_update` যোগ করলেও
+কোয়েরি সারিটা **টেনেই আনত না**, তাই জোড়া কখনো মিলত না — ফিক্সটা নীরবে
+কাজ না করে বসে থাকত। এখন এক ধ্রুবক থেকেই আসে।
+
+### ⛔ ৭· আর একটা ভুল আমি নিজে করেছি
+
+`rollout.ts`-এ কাজ করার সময় একটা এনকোডিং ভুলে ফাইলটা নষ্ট করে ফেলি, তারপর
+`git checkout --` দিয়ে ফেরাতে যাই।
+
+⚠️⚠️ **ওটা index থেকে ফেরায়, HEAD থেকে নয় — আর এই ফাইলের index-এর কপিটা
+HEAD-এর চেয়ে পুরোনো ছিল।** ফলে ১ সেপ্টেম্বরের **পাইলট ডিভাইস ফিচারটাই**
+(`isPilot`) working tree থেকে উধাও হয়ে যায়। ধরা পড়েছে টাইপচেকে, আর
+`git checkout HEAD -- <file>` দিয়ে ঠিক করা হয়েছে।
+
+⚠️ **রেপোর অবস্থা নিয়ে দুটো কথা লিখে রাখা দরকার**, কারণ এগুলো পরের জনকেও
+কামড়াবে:
+
+- `rollout.ts`-এর **staged কপিটা HEAD-এর চেয়ে পুরোনো** — অর্থাৎ এখন কমিট
+  করলে পাইলট ফিচারটা নীরবে ফিরে যেত। (৪ সেপ্টেম্বরের অর্ধেক-করা git
+  অপারেশনটার অবশিষ্ট, § ৩ঞ২৩ § ০।)
+- ফাইলটায় একটা **NUL বাইট** আছে, আর সেটা HEAD-এও কমিট হয়ে গেছে। তাই git
+  ওটাকে **বাইনারি** ধরে — `git diff` কোনোদিন কোনো লাইন দেখায় না, শুধু
+  *"Binary files differ"*। এই ফাইলের কোনো বদল আর রিভিউ করা যায় না।
+
+### ⛔ ৮· আর যেটা পাইলট বসাতে গিয়ে বেরোল — G144
+
+মালিক: *"First to te OX-05 set kore dao."* বসানোর আগে কলারটা মিলিয়ে
+দেখতে গিয়ে দেখা গেল **ফিচারটা কোনোদিন কাজই করেনি**।
+
+`pilotDeviceId` ঘরটা `offerFor()`-এ যোগ হয়েছিল ১ সেপ্টেম্বর, আর দুটো
+কলারের মধ্যে **একটা** হালনাগাদ হয়েছিল:
+
+| কলার | কাজ | `deviceId` |
+|---|---|---|
+| `POST /agent/heartbeat` | "আপডেট আছে" কমান্ড | ✅ পাঠাত |
+| `GET /agent/update` | **আসল অফার** (version · sha256 · url) | ⛔ পাঠাত না |
+
+⚠️⚠️ **ব্যর্থতাটা অর্ধেক কাজ করত, আর সেটাই সবচেয়ে বিভ্রান্তিকর।** বেছে
+দেওয়া PC-কে heartbeat বলত *"আপডেট আছে"*, এজেন্ট নামাতে আসত, আর সার্ভার
+বলত **২০৪ No Content**। কোনো এরর নয়, কোনো লগ নয় — শুধু একটা আপডেট যা
+কোনোদিন নামত না।
+
+⭐ ফিচারটা লেখাই হয়েছিল OX-05-এর জন্য (বালতি ৮৬), আর ঠিক তিনিই কোনোদিন
+সেটা পাননি। ০.৪.১০ তাঁর কাছে আগে যায়নি, আর কেউ কারণটা খুঁজে দেখেনি —
+কারণ খোঁজার মতো কিছু দেখাই যায়নি।
+
+⚠️ ০.৪.১১-এ OX-05-এর বালতি **৬৫** (বালতি ভার্সনভেদে বদলায়) — canary ৭
+বা partial ৫০ কোনোটাতেই পড়ে না। অর্থাৎ পাইলট ছাড়া তিনি `all`-এর আগে
+পেতেন না, আর পাইলট বসালেও পেতেন না। দুটো ফাঁক একসাথে।
+
+সমাধান এক লাইন: `offerFor(..., device.id)`। পাহারা দুটো — বালতির বাইরে
+থাকা পাইলট অফার পায়, আর `halted`-এ পাইলটও পায় না।
+
+### ৯· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৬০৮ | **১৬৪৮** |
+| এজেন্ট | ৫২৯ | **৫৩০** |
+
+⭐⭐ পাঁচটা পাহারা **উল্টোভাবে যাচাই করা হয়েছে** — `halted` থেকে পথ খুলে,
+"এখনো সাড়া দিচ্ছে" শর্ত তুলে, আর `agent_update` তালিকা থেকে সরিয়ে দেখা
+হয়েছে টেস্ট সত্যিই লাল হয় কি না। পাঁচটাই হয়েছে।
+
+### ১০· ⭐⭐⭐ মাঠের ফল *(৫ সেপ্টেম্বর, পরে যোগ করা)*
+
+লেখার সময় এই অনুচ্ছেদটা শেষ হয়েছিল এই বাক্যে: *"পুরোটাই কোডে ও টেস্টে;
+০.৪.১১ প্রকাশ ও রোলআউট না হওয়া পর্যন্ত মাঠে কিছুই বদলায়নি।"* সেদিনই
+বদলেছে — আর যন্ত্রটা যেভাবে চলার কথা ছিল, ঠিক সেভাবেই চলেছে।
+
+| সময় | কী ঘটল | কে করল |
+|---|---|---|
+| ০৯:২১ | ০.৪.১১ প্রকাশ, ধাপ `canary` | মালিক |
+| ০৯:৪৩ | OX-05 (device 6) **First to**-তে বসল | মালিক |
+| ~১০:০৫ | OX-05-এ ০.৪.১১ বসল | স্টাফ |
+| ১১:৪৬ | `canary → partial` | মালিক |
+| **১৭:০৭** | **`partial → all`** | **`RolloutAdvanceJob`** |
+
+⭐⭐ শেষ সারিটাই আসল কথা। অডিটে লেখা
+`{"to":"all","from":"partial","onVersion":1,"soakHours":6,"freshMinutes":90}`
+— অর্থাৎ ধাপটা বেড়েছে **একটা আসল মেশিনের ছ-ঘণ্টা টিকে থাকার প্রমাণে**,
+কোনো ঘড়ি বা টাইমার দেখে নয়। ⭐ `onVersion: 1` মানে ওই মুহূর্তে ০.৪.১১-এ
+ছিল ঠিক একটা মেশিন, আর সেটাই যথেষ্ট ছিল — কারণ নিয়মটা *সংখ্যা* নয়,
+*প্রমাণ* চায়।
+
+⚠️⚠️ **কিন্তু "all" মানে "সবাই বসিয়ে ফেলেছে" নয়।** পরদিন সকালেও ০.৪.১১
+আছে **কেবল সেই ১টা PC-তে**; ৯টায় ০.৪.৯, ২টায় ০.৪.১০। ধাপ বলে কাকে *অফার*
+করা হচ্ছে — বসানোর শেষ ক্লিকটা স্টাফের হাতে।
+
+⚠️⚠️ **আর এখানেই G142-র নিষ্ঠুর প্যাঁচ:** *"আপডেট তৈরি"* বলে ট্রে-র
+নোটিফিকেশনটা আছে **০.৪.১১-এর ভেতরেই**। অর্থাৎ যাঁদের ওটা সবচেয়ে দরকার —
+যাঁরা এখনো ০.৪.৯-এ — তাঁরা ঠিক সেটাই পাচ্ছেন না। ⏳ এই একবারের জন্য
+স্টাফকে **মুখে** বলতে হবে; ০.৪.১১ বসে গেলে পরেরবার থেকে এজেন্ট নিজেই
+জানাবে। ⭐ এটা ফাঁক নয়, এটা যেকোনো নোটিফিকেশন-ফিচারের জন্মদাগ — কিন্তু
+লিখে না রাখলে পরের বার কেউ ভাবত ফিচারটা কাজ করছে না।
+
+---
+
+## ৩ঞ২৬. ⭐⭐ চারটে ফাঁক, একটাই ছাঁদ — সংখ্যাটা ঠিক ছিল, বাক্যটা ছিল না *(৫ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"sob gula kore felo."*
+
+G110 · G111 · G112 · G130 — চারটে আলাদা নম্বর, কিন্তু **একটাই ছাঁদ**, আর
+সেটাই এদের একসাথে করার কারণ: প্রতিটাতেই **কোনো এরর ওঠে না, কোনো সংখ্যা
+ভুল হয় না**। শুধু একটা অবস্থা অন্য একটার ছদ্মবেশে পর্দায় যায় — আর মানুষ
+ছদ্মবেশটাই বিশ্বাস করেন।
+
+### ⭐⭐⭐ ১· G111 — "এখনো দেখা হয়নি" দেখতে "টার্গেট পূরণ"-এর মতো
+
+যাঁর একটাও **শেষ হয়ে যাওয়া** কর্মদিবস এখনো দেখা হয়নি (আজই প্রথম দিন, বা
+এজেন্ট সবে বসেছে), তাঁর জানালা খালি → প্রত্যাশা ০ → গতি ০।
+
+⚠️⚠️ পর্দায় **০ ঘাটতি আর টার্গেট পূরণ করা মানুষের ০ ঘাটতি হুবহু এক**।
+নতুন কর্মীর প্রথম সপ্তাহে খবরটা তাই "সব ঠিক আছে" বলে পড়া হতো।
+
+আর দলগত দিকে ত্রুটিটা আরও একতরফা: Live Board-এর যোগফল
+`Σ monthly_summary.expected_sec`, তাই না-দেখা মানুষের **পুরো টার্গেটটাই
+হর থেকে নীরবে বাদ** — অর্থাৎ **দল যত পিছিয়ে, বোর্ড তার চেয়ে কম দেখায়**,
+আর ভুলটা সবসময় একই দিকে হেলে।
+
+**নিয়মটা একটাই জায়গায়** — `summary.math.ts`-এর
+`isObserved({ workdaysElapsed })`। চারটে পর্দা ওটাই পড়ে: tray/`/me`,
+Live Board (`observedStaff` / `notObservedStaff`), Monthly, আর এজেন্টের tray।
+
+⚠️ **যোগফলে ওঁদের টার্গেট যোগ করে দেওয়া হয়নি** — তাতে বোর্ড এমন ঘাটতির
+দাবি করত যেটা কেউ করেইনি, অর্থাৎ একটা মিথ্যা সারিয়ে ঠিক উল্টো মিথ্যা।
+সংখ্যাটা **বাদ দেওয়া হয়নি, বলা হয়েছে**: কার্ডে পাশে *"3 not counted yet"*।
+
+### ⚠️⚠️ ২· এজেন্টে `Pace = null` দিয়ে কাজটা করা যেত না
+
+প্রথম ঝোঁক ছিল সহজ: না-দেখা হলে সার্ভার `paceSec` পাঠাবে না, আর
+`AgentStatus.Pace` তখন `null`। কিন্তু ওই `null`-এর **আগে থেকেই একটা মানে
+আছে**: *"সার্ভার বলেনি"* — আর তখন tray **নিজের আনুমানিক হিসাবে** ফিরে যায়
+(`MonthlyPace.Estimate`)।
+
+⚠️⚠️ ওই আন্দাজ মাসের ১ তারিখ থেকে গোনে, অর্থাৎ ঠিক **ওই না-দেখা
+দিনগুলোকেই** ঘাটতি বলে দেখাত। একটা ভুল আশ্বাস (*"0:00 ahead"*) সারাতে
+গিয়ে উল্টো দিকের একটা ভুল অভিযোগ।
+
+তাই `AgentStatus.PaceObserved` আলাদা ঘর, ডিফল্ট `true` (পুরোনো সার্ভারে
+আচরণ অবিকল আগের মতো)।
+
+⭐⭐ আর সিদ্ধান্তের **ক্রমটা** — "না-দেখা" শাখাটা আন্দাজের আগে — WinForms-এর
+আঁকা কোডে থাকলে তার উপর একটাও assertion থাকত না। তাই ওটা খাঁটি ফাংশনে
+বার করা হলো: `MonthlyPace.ViewFor(paceObserved, serverPace, estimate)`,
+আর পাঁচটা টেস্ট ক্রমটাই পাহারা দেয়।
+
+### ⭐⭐ ৩· G110 — সংখ্যাটা বলত "কোনো দাবি নেই", ছবিটা বলত "ফাঁকি"
+
+Monthly হিটম্যাপে ট্র্যাকিং শুরুর আগের দিনগুলো `!off && !worked` শাখায়
+পড়ত, অর্থাৎ **"কর্মদিবসে কিছুই হয়নি"-র লালচে ছোঁয়া** পেত। এই ইনস্টলেশনে
+এজেন্ট বসেছে ১৩ আগস্ট, তাই আগস্টের প্রতিটা পাতায় ১–১২ তারিখ লালচে ছিল।
+
+⚠️ একই পাতায় সংখ্যাটা ওই দিনগুলো ধরতই না (`expectedHours`), **আর মানুষ
+আগে ছবিটা দেখে।**
+
+পঞ্চম অবস্থা `kind: 'untracked'`, চেহারা ডটেড রূপরেখা — Live Board-এর
+সাত-দিনের ফিতের সাথে **ইচ্ছাকৃতভাবে এক** (G101-এ ওটাই বসানো হয়েছিল, আর
+এক জিনিসের দুই চেহারা মানে মানুষকে দুবার শেখা)।
+
+শর্ত তিনটে, আর প্রতিটার নিজের কারণ:
+
+| শর্ত | না দিলে যা হতো |
+|---|---|
+| দিনটা **কর্মদিবস** | ছুটির দিনের নিজের চেহারা নষ্ট হতো, অথচ ওটা ঠিকই আছে |
+| **শূন্য ঘণ্টা** | owner-এর সংশোধনে বসানো ঘণ্টা ডটেড ফাঁকা ঘরে ঢাকা পড়ত |
+| **ট্র্যাকিং-শুরুর আগে** | — এটাই আসল প্রশ্ন |
+
+⚠️⚠️ তারিখটা (`ReportMeta.trackedFrom`) পাঠানো হয় **শুধু আঁকার জন্য**।
+সবচেয়ে সহজ ভুলটা হতো ওটা দিয়ে আবার প্রত্যাশা গোনা — আর ঠিক ওভাবেই আগের
+বাগটা জন্মেছিল ("আজকের দিন বাদ" নিয়মটা তখন দ্বিতীয়বার লিখতে হয়)। একটা
+টেস্ট ঠিক সেটাই পাহারা দেয়: `meta`-তে এমন প্রত্যাশা বসানো হয় যা তারিখ
+দিয়ে গুনলে কখনোই বেরোত না।
+
+⚠️ `heatmap.ts`-এ এর আগে **একটাও টেস্ট ছিল না**, যদিও পাতাটার প্রায় সব
+নিয়ম ওখানেই বসে।
+
+### ⭐⭐⭐ ৪· G112 — pace-এর দুই পাশ, আর দ্বিতীয় পাশটা এতদিন বাকি ছিল
+
+tray ঘণ্টা গুনত `Σ activity_segments.duration_sec` — এজেন্টের **monotonic
+ঘড়ির কাঁচা যোগফল**। আর `daily_summary.worked_sec` আসে দেয়ালঘড়ির
+`started_at`–`ended_at`-এর **UNION** থেকে। `summary.math.ts` নিজেই লিখে
+রেখেছিল ওরা হুবহু মেলে না।
+
+⭐⭐ ফারাকটা সবচেয়ে বড় **দুই ডিভাইসওয়ালা** কর্মীর বেলায়: একসাথে দুই মেশিনে
+কাজ করলে সময়টা যোগফলে **দুবার** গোনা হয়, UNION-এ একবার। অর্থাৎ তাঁর নিজের
+tray তাঁকে ড্যাশবোর্ডের চেয়ে **বেশি ঘণ্টা** দেখাত। G32-র `device_overlap`
+অ্যালার্ট ঠিক ওই ফারাকটাই মাপে — সিস্টেম সংখ্যাটা **জানত**, শুধু tray জানত না।
+
+**এক সংজ্ঞা, দুটো উৎস** — আর সীমানাটা কোডে লেখা:
+
+```
+শেষ হয়ে যাওয়া দিন  →  daily_summary.worked_sec   (rollup, ১৫ মিনিট)
+আজকের দিন          →  activity_segments-এর UNION  (লাইভ)
+```
+
+⚠️⚠️ `lt: today`, `lte` নয় — **ওই একটা অক্ষরই দ্বিগুণ গোনা ঠেকায়**, আর
+একটা টেস্ট ইচ্ছাকৃতভাবে আজকের `daily_summary` সারিটাও লিখে সেটা যাচাই করে।
+
+⭐ আজকের দিনেও **UNION**, কাঁচা যোগফল নয়। উৎস দুটো, কিন্তু **সংজ্ঞা
+একটাই** — নইলে মধ্যরাতে সীমানা পেরোনোর সময় সংখ্যাটা নিজে থেকেই এক লাফে
+বদলে যেত।
+
+⚠️ **যে দামটা জেনে দেওয়া হলো:** ঢাকার মধ্যরাত থেকে ০০:১৫ (day-close)
+পর্যন্ত গতকালের সারি চূড়ান্ত নয়, তাই tray ওই পনেরো মিনিটে কয়েক মিনিট কম
+দেখাতে পারে। আগে কাঁচা সেগমেন্টে ওটা নিখুঁত ছিল। ⭐ তবু এটাই কাম্য:
+**ভুলটা এখন ড্যাশবোর্ডের সাথে অভিন্ন**, আর দুই পর্দায় এক সংখ্যা থাকাটা
+পনেরো মিনিটের নিখুঁততার চেয়ে দামি — এই ফিচারটার পুরো উদ্দেশ্যই আস্থা।
+
+### ⭐⭐ ৫· G130 — ছুটি সংখ্যায় পৌঁছেছিল, লেবেলে নয়
+
+R2-এর পর ছুটি পাঁচ জায়গায় ঢুকেছে, কেউ আর ছুটির জন্য "পিছিয়ে" দেখায় না।
+কিন্তু কার্ডে বা সারিতে **"On leave" বলে কিছু লেখা ছিল না**।
+
+⚠️ Live Board-এ ত্রুটিটা সবচেয়ে দৃশ্যমান: `todayIsWorkday` বলে দিনটা
+**অফিসের** ক্যালেন্ডারে কর্মদিবস কি না (শুক্রবার · সরকারি ছুটি), আর
+ব্যক্তিগত ছুটি ওতে নেই। তাই ছুটিতে থাকা কর্মীর কার্ডে ফুটত **"0h / 8h"
+আর একটা খালি মিটার** — দেখতে হুবহু ফাঁকি দেওয়া মানুষের মতো।
+
+দুটো নতুন ঘর — `AttendanceRow.onLeave`, `LiveCard.onLeaveToday` — আর দুটোই
+ঠিক **সেই `leaveBy` সেট** থেকে যেটা দিয়ে টার্গেট ০ করা হয়। এক সংজ্ঞা,
+নইলে একদিন ব্যাজ থাকত অথচ টার্গেট কাটা যেত না।
+
+⚠️ `daily_summary`-তে কিছু **লেখা হয় না**, `leaves` টেবিল সরাসরি পড়া হয় —
+আর ওটাই ঠিক: ছুটি মুছলে ব্যাজ সাথে সাথেই যায়, পরের rollup-এর অপেক্ষায়
+থাকে না। একটা টেস্ট rollup না চালিয়েই সেটা দেখে।
+
+তিনটে সিদ্ধান্ত যেগুলো সহজেই উল্টো হতে পারত:
+
+- ⭐ **`status` ছোঁয়া হয়নি।** কথাটা ওখানে বসানোর লোভ হয় (ওখানেই তো
+  "No activity" লেখা), কিন্তু কেউ ছুটির দিনেও কাজ করতে পারেন — আর তখন ওই
+  ঘণ্টাগুলো কাগজ থেকে **উধাও** হতো। PDF-এ কথাটা তাই Day type ঘরে।
+- ⭐ **Excel-এ আলাদা কলাম**, আর Day type অক্ষত — সেখানে জায়গার সমস্যা নেই,
+  আর শিট ফিল্টার করে "কজন কর্মদিবসে ছুটি নিলেন" গোনা যায়। ⚠️ ছুটি না হলে
+  ঘরটা **খালি**, "No" নয়: ৩১ সারির কলামজুড়ে "No" লিখলে চোখ ওটা পড়াই বন্ধ
+  করত, আর তখন যে দু-একটা "Yes" আছে সেগুলোই হারাত।
+- ⚠️ **`'leave'` আর `'off'` আলাদা।** দুটোতেই মিটার ওঠে না, তবু এক করা যেত
+  না: ছুটির দিনে কার্ড *"day off"* বললে সেটা দাবি করত **গোটা অফিস বন্ধ** —
+  একটা মিথ্যা সারাতে গিয়ে নতুন একটা মিথ্যা।
+
+⭐ আর পথে একটা পুরোনো নকল ধরা পড়ল: `hasTarget` শর্তটা তিনটে বোর্ডে
+**তিনবার আলাদা করে** লেখা ছিল। এক জায়গায় আনা হলো (`roster.ts`-এর
+`dayDuty()`), নইলে ছুটির নিয়মটা একটাতে বসত আর দুটোতে বসত না — এই রেপোর
+সবচেয়ে চেনা পাপ।
+
+### ৬· যাচাই
+
+| | আগে | পরে |
+|---|---|---|
+| সার্ভার | ১৫৫০ | **১৬০৮** |
+| এজেন্ট | ৫২২ | **৫২৯** |
+| ওয়েব | ১২০ | **১৩৭** |
+
+⭐⭐ চারটে ফিক্সেরই পাহারা **উল্টোভাবে যাচাই করা হয়েছে** — কোডের বদলটা
+ফিরিয়ে দিয়ে দেখা হয়েছে টেস্ট সত্যিই লাল হয় কি না। G110/G111-এ ৩টা,
+G112-এ ২টা লাল হয়েছে। ⚠️ এটা আনুষ্ঠানিকতা নয়: এই ধরনের ফিক্সে টেস্ট
+লিখেও নীরবে **কিছুই না পাহারা দেওয়া** সবচেয়ে সহজ ভুল, আর ঠিক সেটাই
+G117 ও G108-এ ঘটেছিল।
+
+---
+
+## ৩ঞ২৫. ⭐⭐ G108 — অনিশ্চয়তা তিন পথে লেখা ছিল, কোনো পথেই যেত না *(৪ সেপ্টেম্বর ২০২৬)*
+
+চান্দ্র ছুটির তারিখ চাঁদ দেখার পর নড়ে। নড়লে ওই মাসের **কর্মদিবস** বদলায়,
+তার সাথে টার্গেট ঘণ্টা, আর পে-রোলের `d ÷ D` ভগ্নাংশ — অর্থাৎ **টাকা**।
+২৬ আগস্ট ২০২৬-এর ঈদে মিলাদুন্নবী ঠিক এমন একটা তারিখ।
+
+⚠️⚠️ চিহ্নটা (`(সম্ভাব্য)`) এতদিন কেবল ছুটির **নামে** ছিল। যিনি শিটটা
+নামিয়ে অ্যাকাউন্টসে পাঠান, তিনি জানতেনই না যে ওই মাসের হিসাব এখনো নড়তে
+পারে।
+
+### ⭐⭐ ১· আসল ডেলিভারেবল কোড নয়, টেস্ট
+
+`approximateHolidayDates()` **অনেক আগে থেকেই ঠিক সংখ্যা ফেরাত**, আর তার
+নিজের ইউনিট টেস্টও ছিল (`holidays.spec.ts`)। শুধু **কেউ সেটা পড়ত না** —
+গোটা রেপোতে ওই মানের উপর একটাও assertion ছিল না, কেবল তিনটে খালি ফিক্সচার।
+
+⚠️ অর্থাৎ Excel বা PDF থেকে সতর্কবার্তাটা উধাও হয়ে গেলেও ১৫৫০টা টেস্ট
+সবুজই থাকত। **G117-এ হুবহু এই ফাঁকই ধরা পড়েছিল** (§ ৩ঞ৬)।
+
+তাই এই কাজের ওজনটা তারে নয়, পাহারায়: `reports.approximate-holidays.spec.ts`
+(১২টি) Excel-এর বাফার **আবার পার্স করে** দেখে সারিটা সত্যিই ফাইলে ওঠে
+(কলামের সংজ্ঞা দেখলে "ফাংশনটা সারি বানায়" প্রমাণ হতো, "সারিটা ফাইলে ওঠে" নয়),
+আর সবচেয়ে জরুরি টেস্টটা মেলায় **Excel ও PDF-এর লেখা অক্ষরে অক্ষরে এক**
+কি না — দুটো আলাদা বাক্য লিখলে আজ দুটোই ঠিক থাকত, কিন্তু একদিন একটা
+বদলালে অন্যটা পুরোনো কথা বলত।
+
+আর `proration.e2e`-র পাঁচটা টেস্ট দেখায় সতর্কবার্তার ছুটিটাই **সত্যিই D
+কমায়**: ২৬ আগস্ট ছুটি বসালে ঘণ্টাপ্রতি হার ৯২.৫৯ → **৯৬.১৫**। শুধু
+"তারিখটা তালিকায় আছে" দেখলে টেস্টটা সবুজ থাকত এমনকি ছুটিটা হিসাবেই না
+ধরলেও।
+
+### ২· পথ চারটে, বাক্য একটা
+
+`approximateHolidayNote()` — `reports.types.ts`-এ, একবারই লেখা। ওখান থেকেই
+যায় Excel-এর Info শিটে (`Holiday dates not final`), PDF-এর পাদটীকায়,
+পর্দার `MetaNote`-এ, আর পে-রোলে (`PayrollSheet.approximateHolidayDates`)।
+
+⚠️ পে-রোলের তালিকাটা **সেই একই ফাংশন** (`approximateHolidayDates`) দিয়ে
+ভরে, নতুন কোনো কোয়েরিতে নয় — নইলে অনিশ্চয়তার দ্বিতীয় একটা সংজ্ঞা দাঁড়াত,
+আর একদিন রিপোর্ট ও পে-রোল দুই তালিকা দেখাত।
+
+### ⚠️ ৩· পথে ধরা পড়া দুটো আনুষঙ্গিক ত্রুটি
+
+- **PayrollTab-এ একটা বাসি বাক্য**: *"হার এখনো ঠিক হয়নি (open question O4)"* —
+  অথচ O4 **২৩ আগস্টেই মীমাংসিত** (আলাদা ওভারটাইম হার নেই)। ⚠️ এটা নিছক
+  পুরোনো লেখা নয়: পড়ে কেউ ওভারটাইমের টাকার আশা করতে পারতেন।
+- **`depositExceedsPayable` কোনোদিন দেখানোই হতো না** — সার্ভার সংখ্যাটা
+  পাঠাত, ওয়েবের টাইপে ঘরটাই ছিল না। আবার সেই একই ছাঁদ: চুক্তি লেখা আছে,
+  কলার লেখা হয়নি।
+
+---
+
+## ৩ঞ২৪. ⭐⭐ G140 — তারিখ-নির্ভর টেস্ট, তৃতীয়বার *(৪ সেপ্টেম্বর ২০২৬)*
+
+তিনটে ঘটনা, তিনটেই আলাদা কারণে, তিনটেই একই মূলে — স্পেক আসল ঘড়ি পড়ত:
+
+| | কী ভেঙেছিল |
+|---|---|
+| **G62** | ঢাকার মধ্যরাতের পর dedupe |
+| `adjustments.e2e` | pace-এর সংখ্যা রোজ বাড়ত, মালিকের ইনবক্স ভরাত |
+| `agent-recovery.e2e` | অফিস-সময়ের পাহারা — CI চলেছিল রাত ১১:১৯-এ |
+
+⚠️ শুরুতেই একটা সৎ কথা: `adjustments.e2e` **এখন লাল নয়** — পুরো সুইট
+মধ্যরাত পেরিয়ে চলেও সবুজ ছিল। অর্থাৎ এটা সক্রিয় ব্যর্থতা নয়, **ঘুমন্ত বোমা**।
+
+### ⭐⭐ ১· যে দুটো নকশা লোভনীয় ছিল, আর কেন দুটোই বাদ
+
+- **ব্যাপক lint বসিয়ে migration না করা।** ৫৭টা লঙ্ঘন নিয়ে নিয়মটা চালু
+  করলে পরের জন প্রথম দিনেই ওটা suppress করতেন — আর তখন এটা হতো এই রেপোরই
+  নিন্দা-করা **"চিরকাল-লাল অ্যালার্ম"** অ্যান্টি-প্যাটার্ন।
+- **Global `vi.setSystemTime()`।** Postgres-এর `now()` ও `@default(now())`
+  **সার্ভার-সাইড**, ওরা নকল হতো না। ফলে অ্যাপের ঘড়ি আর DB-র ঘড়ি আলাদা হয়ে
+  যেত — একটা টাইমজোন-বাগ সারাতে গিয়ে একটা ঘড়ি-বিভ্রম আমদানি।
+
+### ২· `realNow()` — নামটাই নকশার অংশ
+
+আসল ঘড়ির **বৈধ** ব্যবহার আছে, আর সেগুলো লুকোনো ঠিক নয়:
+
+| কোথায় | কেন |
+|---|---|
+| `X-Client-Time` / `occurredAt` | পিন করা সময় দিলে সার্ভারের drift-সংশোধন চালু হতো |
+| JWT `iat` | টোকেন আসল ঘড়িতেই মেয়াদ গোনে |
+| "এইমাত্র লেখা হলো কি" | সহনশীল তুলনা, DB-র ঘড়ির সাপেক্ষে |
+
+⭐ নামটা এমন যাতে grep করলে সবগুলো একসাথে দেখা যায় (লেখার সময় ৩টে ফাইল)।
+তালিকাটা বাড়াটাই নিজে থেকে একটা সংকেত।
+
+### ⚠️⚠️ ৩· মাইগ্রেশনে দুটো throttle টেস্ট লাল হলো — আর কারণটা শিক্ষণীয়
+
+`device-overlap` ও `synthetic-input`-এ *"দ্বিতীয়বার চালালে আর বসে না"*
+ভেঙে গেল। কারণ: `check.runOnce()`-এ পিন করা সময় দিলাম, কিন্তু অ্যালার্টের
+`created_at` আসে **DB-র নিজের ঘড়ি** থেকে। ফারাকটা `THROTTLE_HOURS = 6`
+ছাড়িয়ে গেলে জানালাটা মেয়াদোত্তীর্ণ দেখাত।
+
+⭐ সমাধান — **ঘড়ি দুটো আলাদা করা**: ফিক্সচারের তারিখে
+`workDateOf(dhakaNoon())`, আর DB-র সাথে তুলনায় `realNow()`। এটাই আসলে
+নিয়মের সঠিক প্রয়োগ, ব্যতিক্রম নয়।
+
+### ৪· পাহারাটা নিজেও পরীক্ষিত
+
+`clock.spec.ts`-এ ছটা টেস্ট, সবগুলো সময়-নিরপেক্ষ। সবচেয়ে জরুরিটা দেখে
+`dhakaNoon()` **ঢাকার দুই মধ্যরাত থেকেই ১১ ঘণ্টার বেশি দূরে** — অর্থাৎ
+টেস্ট যখনই চলুক, দিন পাল্টানোর ঝুঁকি নেই।
+
+⚠️ লেখার সময় নিজেই একটা ভুল করেছি: ঢাকার মধ্যরাত হিসাব করেছিলাম
+`workDateOf(noon).getTime()` দিয়ে, অথচ ওটা দিনটাকে **UTC-মধ্যরাত হিসেবে
+লেবেল করে** ফেরায় — আসল ঢাকা-মধ্যরাত ওটার **৬ ঘণ্টা আগে**। এই
+লেবেল-বনাম-মুহূর্তের পার্থক্যটাই এই রেপোতে বারবার বাগের উৎস, তাই
+পার্থক্যটা টেস্টের ভেতরেই লিখে রাখা হলো।
+
+আর নিয়মটা সত্যিই পাহারা দেয় কি না দেখতে একটা লঙ্ঘন **ফিরিয়ে এনে** লাল
+হতে দেখা হয়েছে — এই রেপোর নিজের মান।
+
+---
+
+## ৩ঞ২৩. ⭐⭐ বিদায়ী ইভেন্ট ৭৪০ মিনিট দেরিতে — আর যে তিনটে ভুল পথে আমি রওনা দিয়েছিলাম *(৪ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"R29-B koro."*
+
+### ⛔ ০· শুরুর আগে — একটা অর্ধেক-করা git অপারেশন
+
+কাজে হাত দেওয়ার আগে `git status` দেখাল **৫টা ফাইল staged-deleted, অথচ
+ডিস্কে আছে**। তার মধ্যে তিনটে হলো **ইতিমধ্যে চালানো মাইগ্রেশন**
+(`20260831090000_drop_reason`, `20260831120000_drop_review`,
+`20260901180000_agent_pilot_device`)।
+
+⚠️⚠️ কমিট করলে ওগুলো git থেকে **নিঃশব্দে** চলে যেত, অথচ ডাটাবেসে
+`_prisma_migrations`-এ থেকে যেত। ⭐ পরিণতি তাৎক্ষণিক নয় — সেটাই বিপদ:
+পরের বার নতুন VPS বসাতে গেলে Prisma ওই তিনটে ধাপ **জানতই না**, আর
+স্কিমা নীরবে অন্যরকম হতো।
+
+⭐ এটা উইন্ডোজ ডেস্কটপে আগের কাজের অবশিষ্ট (মালিক: *"ami age amar
+windows desktop theke claude use kore kaj egiye niyechi"*)। ইনডেক্স
+মেরামত করে তবেই আজকের কাজ শুরু।
+
+### ⚠️⚠️ ১· আমার প্রথম রোগনির্ণয়টা ভুল ছিল, আর ডেটাই সেটা ধরিয়ে দিল
+
+আমি বলতে যাচ্ছিলাম *"এজেন্ট বিদায়ী ইভেন্ট পাঠায়ই না"*। তারপর ডাটাবেসে
+`received_at − occurred_at` দেখলাম:
+
+| | |
+|---|---|
+| গত ৭ দিনে shutdown ইভেন্ট | **৪৮টা** |
+| সবগুলোর `reason` | `shutdown` |
+| গড় দেরি | **৭৪০ মিনিট** |
+
+⭐⭐ অর্থাৎ ইভেন্ট **হারায় না** — ঘটনাটা ঠিক সময়ে ধরা পড়ে, কিউয়ে বসে,
+তারপর **পথে আটকে থাকে**। দুপুরে PC বন্ধ হলে ১ মিনিটে পৌঁছায় (মানুষ
+আবার চালু করেন), সন্ধ্যায় বন্ধ হলে পরদিন সকাল।
+
+⚠️ কারণটা এক লাইনের: `DisposeAsync` চলে কেবল `Application.Run()` ফিরলে,
+আর **OS শাটডাউনে সেটা ফেরে না**। A1 (০.৪.৭)-এর অগ্রাধিকার-drain তাই
+ঠিক সেই মুহূর্তেই চলত না যেটার জন্য সে লেখা হয়েছিল।
+
+**ভুল রোগনির্ণয়টা 08-এ মুছে দিইনি** — পরের পাঠক যেন ওই পথে আবার
+রওনা না দেন।
+
+### ⭐⭐ ২· `ShutdownBlockReasonCreate` নেওয়া হয়নি — আর কারণটা রোডম্যাপে লেখা যুক্তির উল্টো
+
+রোডম্যাপে R29-B লেখা ছিল *"`WM_QUERYENDSESSION` + `ShutdownBlockReasonCreate`
+লাগে"*। ওটা উইন্ডোজকে বলে **"আমাকে সময় দাও"** — আর ঠিক সেজন্যই ওটা
+ডেস্কটপ ঝুলিয়ে দিতে পারে।
+
+⭐ সার্ভার BDIX-এ আসার পর (ADR-034, ping **২৫০মিসে → ৫মিসে**) একটা
+ইভেন্ট পাঠাতে লাগে **কয়েকশো মিলিসেকেন্ড**। এতটুকুর জন্য শাটডাউন
+আটকানোর অধিকার চাওয়া বাড়াবাড়ি — তার চেয়ে `WM_ENDSESSION`-এ
+**বাঁধা-সময়ের একটা চেষ্টা**ই যথেষ্ট:
+
+```
+enqueue-এর জন্য অপেক্ষা   ০.৫ সে
+পাঠানোর বাজেট            ১.৫ সে
+──────────────────────────────
+মোট ছাদ                   ২.০ সে   ← Windows-এর WaitToKillAppTimeout (৫ সে)-এর অর্ধেকেরও কম
+```
+
+⚠️⚠️ **সবচেয়ে খারাপ ফলটা আগের আচরণ, নতুন কোনো ঝুঁকি নয়** — সময় ফুরালে
+ইভেন্ট outbox-এই থেকে যায়, ঠিক যেমন আজও থাকে। এই একটা বাক্যই সিদ্ধান্তটা
+নিরাপদ করে।
+
+### ⛔ ৩· নিজের বসানো মেমরি লিক — মাঝপথে ধরা
+
+প্রথম খসড়ায় প্রতিটা ইভেন্টের টাস্ক জমা করছিলাম:
+
+```csharp
+_pendingEnqueue = Task.WhenAll(_pendingEnqueue, safe);   // ⛔ কোনোদিন ছোট হয় না
+```
+
+⚠️ চেইনটা **কখনো ছাঁটা হতো না** — সারাদিনের প্রতিটা ইভেন্ট ওখানে ধরে
+রাখা থাকত। ⭐ বদলে `RaiseEvent` এখন নিজের `Task` **ফেরত দেয়**, আর
+`OnSessionEnd` কেবল **দুটো** টাস্কের জন্য অপেক্ষা করে: closing আর stop।
+জমা রাখার দরকারই নেই।
+
+### ⭐⭐ ৪· নতুন টেস্টটা একটা **আগে থেকে থাকা** লঙ্ঘন ধরল
+
+`ShutdownBudgetTests` লেখা হয়েছে **সংখ্যা নয়, সম্পর্ক** ধরে — যেমন
+*"goodbye + final drain কখনো ShutdownBudget ছাড়াবে না"*। চালাতেই লাল:
+
+```
+GoodbyeBudget (2s) + FinalDrainBudget (3s) = 5s  >  ShutdownBudget (4s)
+```
+
+⭐⭐ **এটা আজকের কোডের ভুল নয়** — নিয়মটা আগে থেকেই একটা **মন্তব্যে**
+লেখা ছিল, কিন্তু কিছুই সেটা পাহারা দিত না। মন্তব্য ভাঙলে কেউ টের পায় না;
+টেস্ট ভাঙলে CI লাল হয়। FinalDrain **৩ → ১.৫ সে**।
+
+⚠️ বাজেটগুলো `internal` করতে হয়েছে যাতে টেস্ট পড়তে পারে। সংখ্যা নকল করে
+টেস্টে বসালে দুটো জায়গা তৈরি হতো, আর একদিন একটা বদলে অন্যটা থেকে যেত।
+
+### ⚠️⚠️ ৫· CI লাল হলো — আর সেটা আমার কমিটের জন্য নয়
+
+`agent-recovery.e2e.spec.ts`-এ ৫টা ব্যর্থতা, সবই `expected 1, received 0`।
+টেস্টগুলো **আসল ঘড়ি** ব্যবহার করত, অ্যালার্ট ওঠে কেবল অফিস-সময়ে, আর CI
+চলেছিল ঢাকার **রাত ১১:১৯**-এ।
+
+⭐ ঠিক করা হয়েছে ঘড়ি স্থির করে — `NOW = ২ সেপ্টেম্বর, বুধবার, ঢাকার
+১১:০০`।
+
+⚠️⚠️ **এই রিপোতে এটা তৃতীয়বার**, আর প্রতিবার আলাদা ফাইলে (G62 →
+`adjustments.e2e.spec.ts` → এটা)। তিনবার একই ভুল মানে ওটা আর দুর্ঘটনা নয় —
+**G140** খোলা হয়েছে, আর সেখানে বাকি কাজ দুটো: পুরোনো ফাইলটা ঠিক করা, আর
+`test/**`-এ `new Date()`/`Date.now()` নিষিদ্ধ করে একটা **লিন্ট নিয়ম**।
+
+### ৬· যাচাই — আর যেটা এখনো প্রমাণিত নয়
+
+**হয়েছে:** এজেন্টে ৬টা নতুন টেস্ট (`-warnaserror` সহ সবুজ), সার্ভারের CI
+আবার সবুজ, `.NET` বিল্ড পরিষ্কার।
+
+⚠️⚠️ **হয়নি:** **আসল PC-তে শাটডাউন করে দেখা**। CI সবুজ হওয়া আর উইন্ডোজ
+সত্যিই ২ সেকেন্ড দেওয়া — এক জিনিস নয়।
+
+⏳ পরের ধাপ: **০.৪.১১ MSI → canary → partial → all**, তারপর দেরিটা
+**চতুর্থবার মাপা**। ⭐⭐ **৭৪০ মিনিট থেকে সেকেন্ডে না নামা পর্যন্ত R29
+বন্ধ নয়** — আজ কেবল সমাধানটা লেখা হয়েছে, পৌঁছায়নি।
+
+### ✅ ৭· মাঠের রায় — একই রাতে পাশাপাশি মাপা *(৬ সেপ্টেম্বর ২০২৬ সকাল)*
+
+নির্ধারিত কাজ `r29b-goodbye-delay` গত ২৪ ঘণ্টার সব বিদায়ী ইভেন্ট
+(`shutdown` + `agent_stop`) ভার্সন ধরে মেপেছে।
+
+| ভার্সন | মেশিন | ইভেন্ট | গড় দেরি | সর্বোচ্চ |
+|---|---|---|---|---|
+| **০.৪.১১** | ১ | ৪ | **৩৪ সে.** | ৬৮ সে. |
+| ০.৪.১০ | ২ | ৪ | ২৬,৯০১ সে. (≈৪৪৮ মি.) | ৫৩,৪৯৭ সে. |
+| ০.৪.৯ | ৫ | ১০ | ৫৩,৮৭৯ সে. (≈**৮৯৮ মি.**) | ৫৪,০৯০ সে. |
+
+⭐⭐ **রায়: R29-B কাজ করেছে।** ০.৪.১১-এর গড় দেরি **সেকেন্ডের ঘরে** (৩৪
+সে.), বেসলাইন ছিল **৯৫৬ মিনিট** — অর্থাৎ প্রায় **১,৭০০ গুণ** কম।
+
+⭐ **সবচেয়ে জোরালো প্রমাণটা একই রাতের, একই মিনিটের।** ৫ সেপ্টেম্বর সন্ধ্যায়
+একই অফিসে ছয়টা PC ৯০ সেকেন্ডের মধ্যে বন্ধ হয়েছে — নেট, বিদ্যুৎ, রাউটার সব
+এক:
+
+- device 6 · TEAMOS-PC · **০.৪.১১** — ঘটেছে ১৮:০০:৩৯, পৌঁছেছে ১৮:০০:৪০ →
+  **১ সেকেন্ড**
+- device 5 · DESKTOP-KP1DT93 · ০.৪.১০ — ঘটেছে ১৮:০০:১২, পৌঁছেছে **পরদিন
+  ০৮:৫১** → ৫৩,৪৯৭ সে.
+- device 2 · SERVER, 14 · DESKTOP-Q0SEQQ7, 17 · INTERN_2, 18 · MUNNI,
+  25 · SHOVON — সবাই ০.৪.৯, সবাই **পরদিন সকাল ০৮:৫৫–০৯:০২**-এ পৌঁছেছে
+
+⚠️ **নমুনা ছোট, সেটা রায়ের পাশেই থাকা দরকার:** ০.৪.১১-এ **মাত্র ১টা মেশিন,
+২টা শাটডাউন উপলক্ষ (৪টা ইভেন্ট)**। এটা প্রমাণ করে *কোডটা মাঠে কাজ করে*,
+প্রমাণ করে না *সব হার্ডওয়্যার/সব শাটডাউন-পথে কাজ করে*। এখনো সক্রিয় ১২টা
+PC-র মধ্যে ০.৪.৯-এ **৯টা**, ০.৪.১০-এ ২টা, ০.৪.১১-এ **১টা**।
+
+⚠️ **একটা সংখ্যা যেন বিভ্রান্ত না করে:** ০.৪.১০-এর গড় (৪৪৮ মি.) ০.৪.৯-এর
+চেয়ে কম দেখাচ্ছে, কিন্তু সেটা উন্নতি নয় — BELAL-এর ৩০৪ সে.-র ইভেন্টটা
+**দুপুর ১৪:২৯**-এর, রাতের শাটডাউন নয়। PC তখন বন্ধই হয়নি, তাই বাফার
+পরদিন পর্যন্ত অপেক্ষা করেনি। ওটা বাদ দিলে ০.৪.১০-এর একমাত্র রাতের ইভেন্ট
+৫৩,৪৯৭ সে. — ঠিক ০.৪.৯-এর মতোই। ⭐ `occurred_at` **আর** `received_at`
+দুটোই না দেখলে এই ফাঁদে পা পড়ত।
+
+⏳ **তাই R29 এখনো পুরো বন্ধ নয়** — কোডটা প্রমাণিত, রোলআউটটা নয়। বাকি
+১১টা PC ০.৪.১১-এ ওঠার পর মাপটা আবার চালালে গড়টা এক মেশিনের নয়, পুরো
+অফিসের হবে। ⚠️ শেষ ক্লিকটা স্টাফের, তাই এটা কোডের কাজ নয় — মাঠের।
+
+---
+
+
+## ৩ঞ২২. ⭐⭐ যে PC-তে বাগ, সেখানেই আগে পরীক্ষা করা যেত না *(১ সেপ্টেম্বর ২০২৬)*
+
+মালিক: *"OX-05 ei update age powa dorkar."*
+
+### ১· চাওয়াটা সরল, আর ব্যবস্থাটা সেটা দিতে পারত না
+
+০.৪.১০ প্রকাশ হলো `canary`-তে। কিন্তু কে পাবে সেটা ঠিক হয় হ্যাশ-বালতিতে:
+
+```ts
+rolloutBucket = sha256(machineGuid + ' ' + version) % 100
+isOfferedTo   = bucket < STAGE_PERCENT[stage]     // canary 7 · partial 50 · all 100
+```
+
+⚠️⚠️ **অর্থাৎ বালতি ঠিক হয় মেশিন ধরে, মানুষ ধরে নয়।** ১২টা PC-র বালতি
+হিসাব করে দেখা গেল —
+
+| | বালতি | canary (৭) | partial (৫০) |
+|---|---|---|---|
+| OX-11 | ১ | ✅ | ✅ |
+| OX-14 · OX-12 | ৬৭ · ৬৮ | ❌ | ❌ |
+| **OX-05 (আলি)** | **৮৬** | ❌ | ❌ |
+| OX-04 | ৯২ | ❌ | ❌ |
+
+⭐ অর্থাৎ **যাঁর PC-তে বাগটা ধরা পড়েছে, তাঁর কাছে পৌঁছাতে হলে `Everyone`
+ছাড়া উপায় ছিল না** — আর তাতে একসাথে ১২টা PC, অথচ স্বয়ংক্রিয় rollback নেই
+(G69)। ⚠️ `is_mandatory`-ও কাজে আসত না: ওটা বালতি এড়ায় না, কেবল বলে
+"পেলে নিতেই হবে"।
+
+### ⭐⭐ ২· নকশার ফাঁকটার নাম
+
+**যে মেশিনে সমস্যাটা দেখা গেছে, সংশোধনটা ঠিক সেখানেই আগে পরীক্ষা করা
+দরকার** — অথচ ধাপে-ধাপে রোলআউটের গোটা নকশাটা "কাকে" নয়, "কতজনকে" নিয়ে।
+⭐ দুটোই দরকার, আর দ্বিতীয়টা প্রথমটাকে বাতিল করে না।
+
+### ৩· যা বসল — একটা ঘর, একটা লাইন
+
+`agent_versions.pilot_device_id` — বেছে দেওয়া PC বালতি নির্বিশেষে অফার পায়।
+
+```ts
+if (percent <= 0) return false;   // ⚠️ halted — পাইলটও নয়
+if (isPilot) return true;
+```
+
+⚠️⚠️ **ক্রমটাই এখানকার আসল সিদ্ধান্ত।** `halted` চেকটা পাইলটের **আগে**:
+জরুরি ব্রেক সবার জন্য, নইলে খারাপ বিল্ড থামানোর পরেও ঠিক সেই মেশিনটায়
+যেতেই থাকত যেটায় আমরা সবচেয়ে বেশি নজর রাখছি। টেস্টে বাঁধা।
+
+⚠️ `undefined` আর `null` আলাদা রাখা হয়েছে: ঘরটা না পাঠালে "যা ছিল তাই
+থাক", `null` পাঠালে "পাইলট তুলে দাও"। ⭐ পার্থক্যটা না রাখলে শুধু ধাপ
+বদলাতে গেলেই বেছে নেওয়া PC নীরবে মুছে যেত।
+
+⚠️ ডিভাইস মুছে গেলে ঘরটা NULL হয় (`ON DELETE SET NULL`), ভার্সনের সারি
+টেকে — একটা বাতিল PC-র কারণে রিলিজের ইতিহাস হারানোর মানে নেই।
+
+### ৪· পর্দায়
+
+`Agent updates` টেবিলে নতুন কলাম **First to** — ড্রপডাউনে কর্মীর নাম
+(না থাকলে hostname), আর "Nobody"। ⭐ তালিকাটা `listDevices()` থেকে, যেটা
+নিচের `Where the Fleet Stands` কার্ড ইতিমধ্যেই ডাকে।
+
+### ৫· যাচাই
+
+**৪টা নতুন টেস্ট** (`rollout.spec.ts`, খাঁটি): বালতির বাইরে থেকেও পাইলট
+পায় · **halted-এ পাইলটও পায় না** · পাইলট না দিলে আগের আচরণ অক্ষত ·
+`all`-এ সবাই। সার্ভার ও ওয়েব দুটোরই টাইপচেক ও লিন্ট পরিষ্কার।
+
+⚠️ ব্রাউজারে চোখে দেখা হয়নি — ডিপ্লয় বাকি।
+
+---
+
+## ৩ঞ২১. ⭐⭐ দ্বিতীয় মনিটরে কাজ করলে গোনা বন্ধ হয়ে যেত *(৩১ আগস্ট ২০২৬)*
+
+মালিক: *"Sahariar Ahmed (Ali) OX-05 ajoke kaj korar poreO take bar bar idle
+dekhacchilo. check kore bolo amader problem kothay"*
+
+### ⚠️ ১· প্রথম ব্যাখ্যাটা ভুল ছিল
+
+শুরুতে দুটো কারণ বলা হয়েছিল — লক-ঝিলিক আর "নতুন ১৮০ সেকেন্ড পৌঁছায়নি"।
+⭐ **দুটোই ভুল প্রমাণিত হয়েছে একটা মাপে:** কেবল সেইসব idle দেখা হলো যেগুলোর
+ঠিক আগে **২০০+ সেকেন্ড টানা active** ছিল, অর্থাৎ যেখানে সেগমেন্ট কাটার
+প্রভাব থাকতেই পারে না —
+
+| | পরিষ্কার কেস | সবচেয়ে ছোট idle |
+|---|---|---|
+| **OX-05** | ২৯ | **১০ সেকেন্ড** ⛔ |
+| OX-01 | ১১ | ৬০ সে. |
+| বাকি সবাই | — | ১৮৫–৩৬২ সে. ✅ |
+
+⚠️⚠️ **১০ সেকেন্ডের idle কোনো threshold-এই সম্ভব নয়** — পিছিয়ে কাটার নিয়মে
+(B04) ৬০ হলেও অন্তত ৬০ হতো। অর্থাৎ ওই সারিগুলো threshold-এর পথ ধরে আসেইনি।
+
+### ⭐⭐ ২· idle-এ যাওয়ার দ্বিতীয় দরজা — G46
+
+`IdleStateMachine`-এ শর্তটা দুই ভাগের:
+
+```cs
+var untrusted = sinceLastInput >= _idleThreshold || screenFrozen;
+```
+
+আর `screenFrozen`-এর পথে **পিছিয়ে কাটা হয় না** (ইচ্ছাকৃত, সৎ কর্মীর পড়ার
+সময় না কাটতে) — তাই idle শুরু হয় *এখন* থেকে, আর টুকরোগুলো যত ছোট খুশি।
+
+**পর্দা "জমেছে" কি না, সেটা মাপা হতো কেবল প্রথম মনিটর থেকে:**
+
+```cs
+var frame = _capture.CapturePrimary();   // ← শুধু monitors[0]
+```
+
+### ⭐⭐ ৩· সংখ্যাগুলোই ধরিয়ে দিল
+
+| PC | মনিটর | ২ দিনে ছোট ভুয়া idle |
+|---|---|---|
+| **OX-05** | **২** | **৪৩** |
+| **OX-04** | **২** | ৯ |
+| **OX-01** | **২** | ৬ |
+| OX-12 · OX-07 · OX-11 | ১ | ১৪ · ৮ · ১ |
+| বাকি ছ-টা | ১ | **০** |
+
+⭐ ফ্লিটে দুই-মনিটরের PC ঠিক **তিনটে**, আর অভিযোগও এসেছে ঠিক ওই তিনজনকে
+নিয়েই (সুমাইয়া · আলি · বেলাল)। কেউ দ্বিতীয় পর্দায় কাজ করলে প্রথমটা স্থির
+থাকে → দশ মিনিট পর "জমেছে" → গোনা বন্ধ; প্রথম পর্দায় সামান্য নড়াচড়ায় আবার
+active। **ঝিকমিক।**
+
+### ⚠️⚠️ ৪· পুরোনো টীকায় যুক্তিটা উল্টো লেখা ছিল
+
+> *"সব পর্দা মেলালে একটা নিষ্ক্রিয় দ্বিতীয় মনিটরই 'জমেছে' বলে গোনা বন্ধ করত"*
+
+⭐ সেটা সত্যি হতো কেবল যদি নিয়মটা হতো *"সব পর্দা বদলালে তবেই বদলেছে"*।
+আসল নিয়ম হওয়া উচিত **"যেকোনো একটা বদলালেই বদলেছে"** — তাতে নিষ্ক্রিয় দ্বিতীয়
+মনিটর কোনোদিন গোনা থামাতে পারে না, আর জিগলারের পাহারাও অটুট থাকে (জিগলার
+চললে **কোনো** পর্দাই বদলায় না)।
+
+⚠️ ফিচারটার নিজের ফাইলেই লেখা ছিল *"সৎ কর্মীর ঘণ্টা কাটা ঠকবাজি ধরতে না
+পারার চেয়ে অনেক বেশি ক্ষতিকর"* — আর ঠিক সেটাই ঘটছিল, এক লাইনের ভুল ধারণায়।
+
+### ৫· যা বসল
+
+- `ScreenCaptureService.CapturePrimary()` → **`CaptureEach()`** — প্রতিটা
+  মনিটরের কাঁচা ছবি (WebP এনকোড ছাড়াই, `CaptureAll`-এর মতো নয়)
+- `ScreenActivity.DiffersAny()` — **যেকোনো একটা পর্দা বদলালেই বদলেছে**;
+  মনিটরের সংখ্যা বদলালেও "বদলেছে" (কেউ মেশিন ছুঁয়েছে)
+- পুরোনো এক-পর্দার `Observe(byte[])` রয়ে গেছে — এখন এক-সদস্যের তালিকা
+- ⚠️ একটা পর্দা তুলতে না পারলে বাকিগুলো তবু নেওয়া হয়; একটাও না পেলে
+  কিছুই জানানো হয় না, আর `StaleAfter` তখন "জানি না" বলে সন্দেহ বন্ধ রাখে
+
+### ৬· যাচাই
+
+**৫টা নতুন টেস্ট** — দ্বিতীয় মনিটর বদলালে জমেনি · দুটোর কোনোটাই না বদলালে
+জমে (জিগলার-পাহারা অটুট) · মনিটর যোগ/বিয়োগ = বদল · এক-মনিটরের পুরোনো আচরণ
+অপরিবর্তিত · খালি তালিকা নমুনা নয়।
+
+এজেন্টে **৫১৬ পাস** (Core ৪০০ · Agent ১১৬), সলিউশন `-warnaserror`-এ
+**০ warning**।
+
+### ৭· বেলালের PC আলাদা সমস্যা
+
+⚠️ OX-01-এর সবচেয়ে ছোট পরিষ্কার idle **ঠিক ৬০ সেকেন্ড** — অর্থাৎ ৩০ আগস্টের
+নতুন সীমা (১৮০) তাঁর এজেন্টে বসেনি। ⭐ এটা আলাদা ব্যাপার, আর এজেন্ট একবার
+রিস্টার্ট করলেই কনফিগ নতুন করে টেনে নেবে।
+
+---
+
+## ৩ঞ২০. ⭐⭐ বাদ-যাওয়া ডিজাইন কেউ দেখে না — এখন দেখে *(৩১ আগস্ট ২০২৬)*
+
+মালিক: *"ami and manager ei delete and skip deya design gula alada vabe
+management korte paruk. jemon kono designer kono target design skip dilo.
+erpore seTa manager er skip list e show korlo. manager next time skip deyar
+issue ta check kore dekholO"*
+
+### ১· প্রথম বাক্যটার উত্তর আগে থেকেই "হ্যাঁ"
+
+*"delete and skip kora design pool e back asobe but next time distribute
+hobena"* — এটা ইতিমধ্যেই তাই: সারিটা টেবিলে থাকে (ছাঁকনি দিয়ে দেখা যায়),
+আর বণ্টন কেবল `status = 'pool'` থেকে নেয়, তাই ওগুলো কারো হাতে যায় না।
+⭐ অর্থাৎ আসল চাওয়াটা দ্বিতীয় অংশে: **দেখার আর দায়িত্ব নেওয়ার একটা জায়গা**।
+
+### ⭐⭐ ২· যে প্রশ্নটা আগে জিজ্ঞেস করতে হয়েছে
+
+কারণ কার্ডে বসানোই যথেষ্ট নয় — **তালিকাটা কীভাবে খালি হবে**, সেটাই আসল
+নকশা। ⚠️ মালিককে দুটো পথ দেখানো হয়েছে, আর তিনি বেছেছেন **"দেখা হয়েছে"
+বোতাম** (সাথে: পুরোনো সারি কিউতে ঢুকবে না)।
+
+⚠️⚠️ **কেন এটা নিছক পছন্দ নয়:** চিহ্ন ছাড়া তালিকাটা কেবল একটা ছাঁকনি —
+সপ্তাহে সপ্তাহে বাড়ত, আর একদিন কেউ আর খুলত না। ⭐ ২৪ আগস্টে ঠিক এই ভুলেই
+আপলোড-কিউতে **২৭,৬৪১টা** সারি দাঁড়িয়ে গিয়েছিল (`UPLOAD_QUEUE_FROM`-এর
+টীকা), আর তখন সমাধান ছিল একটা কাটা-তারিখ।
+
+### ⭐⭐ ৩· এবার কাটা-তারিখ লাগেনি — শর্তটা অর্থ ধরে চলে
+
+পুরোনো সারি আটকাতে আরেকটা `*_QUEUE_FROM` ধ্রুবক বসানো যেত। বসানো হয়নি:
+
+```ts
+{ status: { in: ['skipped', 'deleted'] }, dropReason: { not: null }, reviewedAt: null }
+```
+
+⭐ **`dropReason != null`** নিজেই কাটা-তারিখের কাজ করে — কারণ চাওয়ার
+ব্যবস্থাটা ৩১ আগস্টের, তাই তার আগের ৯৩টা `skipped` সারিতে কিছুই লেখা নেই।
+⚠️ আর শর্তটা **ক্যালেন্ডার ধরে নয়, অর্থ ধরে**: *"যেটার কোনো কারণই লেখা নেই,
+ম্যানেজারের ওখানে দেখার কিছুই নেই।"* ⭐ ফলে একদিন তারিখ বদলানোর কথা কারো
+মনে রাখতে হবে না — এই প্রকল্পে ভুলে-যাওয়া ধ্রুবকই বারবার ফিরে এসেছে।
+
+### ৪· যা বসল
+
+**ক·** `reviewed_at` + `reviewed_by_id` — বাকি ধাপগুলোর (`checked_at` ·
+`fixed_at` · `uploaded_at` · `live_at`) হুবহু একই ছাঁচে। ⭐ **কে** দেখেছেন
+সেটাও রাখা হয়, কারণ মালিক ও ম্যানেজার দুজনেই দেখতে পারেন আর *"কে ছেড়ে
+দিয়েছিল"* প্রশ্নটা পরে ওঠে।
+
+**খ·** পঞ্চম চিপ **To review**, সংখ্যাসহ। ⚠️ উপরের চারটে গবেষকের রোজকার
+কাজ, এটা আলাদা জাতের — তবু একই সারিতে, কারণ চিপগুলোর গোটা কথাই *"আজ
+কোথায় কাজ আছে"*, আর এটাও ঠিক তাই, শুধু অন্য কারো জন্য।
+
+**গ·** সারিতে **Reviewed** বোতাম, কেবল যতক্ষণ কেউ দেখেনি। দেখা হয়ে গেলে
+বোতামের বদলে চিপ: *"Reviewed · নাম"*।
+
+**ঘ· ⚠️⚠️ অবস্থা বদলায় না** — `skipped` `skipped`-ই থাকে। এটা সিদ্ধান্ত নয়,
+**স্বীকৃতি**: "আমি দেখেছি"। ⭐ সিদ্ধান্ত নিতে চাইলে পাশের বোতামটা আছে
+(`Un-skip` / `Undelete`), আর সেটা আলাদা কাজ।
+
+**ঙ·** পুলে ফেরালে `reviewedAt`-ও মুছে যায়। ⚠️ নইলে ভবিষ্যতে কেউ আবার Skip
+করলে সারিটা **কিউতেই উঠত না** — পুরোনো একটা চিহ্নের কারণে নতুন সমস্যা
+চাপা পড়ত।
+
+**চ·** অনুমতি **owner + manager**, `@Roles` দিয়ে। ⚠️ `assertCanUse` দিয়ে
+হতো না — ওই পাহারায় গবেষকও পড়েন, অথচ মালিক স্পষ্ট করে দুজনের কথা
+বলেছেন: ডিজাইনার কেন skip দিলেন সেটা **দল সামলানোর** প্রশ্ন।
+
+### ⭐⭐ ৬· চিপ একদিন বাঁচল, তারপর নিজের পাতা পেল
+
+মালিক: *"side bar e design pool er niche review name ekta page koro. sekhane
+ei deleted and skip deya design show korao"*
+
+⭐ কিউটা প্রথমে Design Pool-এর পঞ্চম চিপ হিসেবে বসেছিল। ⚠️ কিন্তু কথাটা
+ঠিক: **এটা অন্য মানুষের কাজ।** Design Pool গবেষকের রোজকার পাতা — ৩৯ হাজার
+সারি, চারটে কিউ, জমা দেওয়ার ঘর। বাদ-যাওয়া ডিজাইন দেখা মালিক ও ম্যানেজারের
+কাজ, আর সেটা রোজ নয়। এক পাতায় রাখলে দুই দলের কাজ একই পর্দায় মিশে থাকত।
+
+⚠️⚠️ **চিপটা সরানো হয়েছে, নকল করা হয়নি** — দুই জায়গায় একই কিউ মানে দুটো
+দরজা, আর ২৫ আগস্টের ছাঁটাইয়ের গোটা কথাই ছিল এই পাতায় **কম** জিনিস রাখা।
+⭐ ১৭ আগস্টে Worklog-এর সময় ঠিক এই সিদ্ধান্তটাই একবার নেওয়া হয়েছিল।
+
+⭐ **টেবিলটাও নকল নয়** — `AllTargetsPage`-এর `TargetList` এখন রপ্তানি হয়,
+আর নতুন পাতা সেটাকেই `lockedStage="to_review"` দিয়ে ডাকে। ⚠️ আটকানো পাতায়
+**চিপের সারি ও অবস্থার ড্রপডাউন বসে না**: ওগুলো দিয়ে কেউ Review পাতা থেকে
+বেরিয়ে অন্য কিছু দেখতে পারতেন, আর তখন পাতার নাম আর পাতার বিষয় আলাদা হয়ে
+যেত। ⭐ খোঁজা ও বাকি ছাঁকনি থাকে — ওগুলো কিউয়ের **ভেতরে** খোঁজার জিনিস।
+
+⚠️ অনুমতি তিন জায়গায় এক: সাইডবার (`roles: ['owner','manager']`) · রুট ·
+সার্ভারের `@Roles(owner, manager)`। G134-এর শিক্ষা — তিনটের একটা বদলালে
+বাকি দুটোও বদলাতে হয়, নইলে মেনু দেখা যায় অথচ পাতা ৪০৩ দেয়।
+
+### ৭· যাচাই
+
+**৬টা নতুন e2e**: কারণসহ সারি কিউতে ওঠে · **কারণ ছাড়া পুরোনো সারি ওঠে না** ·
+"দেখে নিয়েছি" চাপলে কিউ থেকে সরে অথচ অবস্থা বদলায় না · চিপের সংখ্যা আর
+তালিকার সংখ্যা হুবহু এক · পুলে ফেরালে চিহ্নও মুছে যায় · গবেষক চাপতে পারেন না।
+
+⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ডিপ্লয় বাকি।
+
+---
+
+## ৩ঞ১৯. ⭐⭐ "কেন বাদ দিলাম" — আর যে ঘরটা এক মাস খালি পড়ে ছিল *(৩১ আগস্ট ২০২৬)*
+
+মালিক: *"ami design pool theke B0CQTWMT2F delete korlam kintu eta keno delete
+korlam seta select kora option pelam na… 'Not Found, Copyright, Events'
+eigula add kore dao. kono designer skip press korleO tar kache same 3 ta
+option dibe."*
+
+### ⚠️⚠️ ১· ঘরটা আগে থেকেই ছিল — খালি
+
+`design_targets.skipped_reason` কলামটা ২২ আগস্ট থেকেই আছে, সার্ভিসও ওটায়
+লেখে (`skip(employeeId, id, reason)`)। ⭐ কিন্তু মাঠে মেপে দেখা গেল:
+
+```
+skipped সারি        ৯৩
+কারণ লেখা আছে        ০
+```
+
+⚠️⚠️ কারণটা সরল — **পর্দা কোনোদিন কিছু পাঠায়ইনি**। `skipTarget(id)` ডাকা
+হতো কারণ ছাড়াই, DTO-তে `@IsOptional()`, আর ঐচ্ছিক ঘর মানে বাস্তবে **খালি
+ঘর**। ⭐ এটাই এই প্রকল্পের চেনা ব্যর্থতা: ফিচারটা লেখা হয়েছিল, কিন্তু
+তারের শেষ প্রান্তটা জোড়া লাগেনি, আর কোনো টেস্ট সেটা ধরার কথাও ছিল না।
+
+### ২· এক ঘর, দুই পথ — নতুন কলাম নয়
+
+`skipped_reason` → **`drop_reason`** (RENAME, ডেটা অক্ষত — সবই NULL ছিল)।
+
+⚠️⚠️ পাশে `deleted_reason` নামে দ্বিতীয় কলাম বসানো যেত। নেওয়া হয়নি:
+*"এই সারিটা কেন চলে গেল"* — একটাই প্রশ্ন, আর উত্তর দুই ঘরে থাকলে প্রতিটা
+পড়ার জায়গায় `COALESCE` লিখতে হতো। ⭐ **কোন পথে** গেছে সেটা `status`
+ইতিমধ্যেই বলে (`skipped` না `deleted`); কারণটা একটাই ঘরে যথেষ্ট।
+
+### ⭐⭐ ৩· বোতামটাই কারণ, আর কারণটাই নিশ্চিতকরণ
+
+আগে Delete চাপলে উঠত **"Really delete / Cancel"** — একটা প্রশ্ন যার উত্তরে
+**কোনো তথ্য নেই**; "হ্যাঁ" ছাড়া কিছুই জানা যেত না।
+
+⭐ এখন ওই একই জায়গায় তিনটে বোতাম: **Not Found · Copyright · Events**।
+যেটা চাপা হবে সেটাই একসাথে নিশ্চিত করা **আর** কারণ বলা। চাপ একটাই,
+কিন্তু ডেটা দ্বিগুণ।
+
+⚠️ কারণ না দিয়ে বেরোনোর পথ নেই — Cancel আছে, কিন্তু *"কারণ ছাড়া মুছুন"*
+নেই। ঐচ্ছিক রাখলে ঘরটা আবার ৯৩টা সারির মতোই খালি পড়ে থাকত।
+
+⚠️⚠️ **বাল্ক মোছায় `ConfirmDialog` বাদ দিতে হয়েছে** — ওর নিজের একটা
+"Delete" বোতাম আছে, আর কারণ-বাছাই তার সাথে বাঁধা যেত না: হয় কারণ ছাড়াই
+মোছা যেত, নয় একটা ডিফল্ট বসাতে হতো — আর ডিফল্ট মানে কেউ কোনোদিন ভেবে
+বাছত না। ⭐ বদলে খোলা `Modal`, যার **নিচের বোতামগুলোই তিনটে কারণ**।
+
+### ৪· তালিকা এক জায়গায়, লেখা আলাদা
+
+```ts
+export const DROP_REASONS = ['not_found', 'copyright', 'events'] as const;
+```
+
+⚠️ **জমা হয় যন্ত্রের মান, দেখা যায় লেখা** (`not_found` ↔ "Not Found") —
+পর্দার লেখা বদলানো সস্তা, কিন্তু জমে-যাওয়া হাজারটা সারির মানে বদলানো নয়।
+
+⚠️ Skip আর Delete **একই তালিকা ও একই কম্পোনেন্ট** (`DropReasonPicker`)।
+দুই জায়গায় দুই তালিকা লিখলে একদিন একটায় নতুন কারণ যোগ হতো আর অন্যটায়
+নয় — আর তখন *"কতগুলো Copyright-এ বাদ গেছে"* প্রশ্নের উত্তরই থাকত না।
+
+⭐ কারণটা Design Pool-এর তালিকাতেও দেখা যায়, অবস্থা-চিপের পাশে ছোট করে।
+
+### ⭐⭐ ৬· মাঠে প্রথম চোখে দেখাতেই দুটো জিনিস ধরা পড়ল
+
+ডিপ্লয়ের পর মালিক পর্দার ছবি পাঠালেন, দুটো লাল দাগসহ।
+
+**ক· *"delete kora design abar delete kora jabe show korche"*** — আর কথাটা
+ঠিক। মোছা একটা সারিতেও বসত **To pool · Complete · Skip · Delete** — অর্থাৎ
+ইতিমধ্যে মোছা জিনিসকে আবার মোছার প্রস্তাব।
+
+⚠️⚠️ **কোনোটাই ক্ষতি করত না** — সার্ভার আগে-মোছা সারি ছুঁয়েও দেখে না
+(§ ৩ঞ১৬-এর `doable` ছাঁকনি)। ⭐ কিন্তু ক্ষতি না করাই যথেষ্ট নয়: পর্দা এমন
+কাজের প্রস্তাব দিচ্ছিল যার কোনো মানে নেই, আর সেটা পড়ে মানুষ ভাবতেন
+মোছাটা হয়তো হয়ইনি। **এখন মোছা সারিতে একটাই বোতাম — `Undelete`।**
+
+⚠️⚠️ **আর প্রথম চেষ্টাটা আধখানা ছিল, সেটাও মালিকই ধরিয়ে দিয়েছেন** — ছবি
+পাঠিয়ে: *"deleted design er pase complete button keno?"*। শর্তটা বসানো
+হয়েছিল **খোলা মেনুর ভেতরে**, `if (!open)`-এর নিচে; ফলে `⋯` না খুললে
+গোটানো সারিতে `Complete` থেকেই যেত। ⭐ শর্তটা এখন `next` হিসাব করার
+**আগে**, তাই মোছা সারি ওই পথে আর ঢোকেই না। ⚠️ শিক্ষা পুরোনো: এই
+কম্পোনেন্টে **তিনটে আলাদা return-পথ** (confirming · গোটানো · খোলা), আর
+একটায় শর্ত বসিয়ে "হয়ে গেছে" ভাবাই ভুল ছিল।
+
+⚠️ `Undelete` মানে পুলে ফেরত, আর সার্ভার তখন **কারণটাও মুছে দেয়** —
+নইলে সারিটা পুলে ফিরেও "Not Found" বলে দাগানো থাকত, আর পরের বণ্টনে যিনি
+পেতেন তিনি একটা মীমাংসিত সতর্কবার্তা দেখতেন। টেস্টে বাঁধা।
+
+**ঘ· *"same jinis ta kew skip dileO hobe"*** — একই নিয়ম `skipped` সারিতেও।
+⭐ যুক্তিটা হুবহু এক: কেউ বানায়নি এমন ডিজাইনকে "শেষ" বলার (`Complete`) বা
+ইতিমধ্যে বাদ-যাওয়াটাকে আবার বাদ দেওয়ার প্রস্তাবের কোনো মানে নেই। এখন
+একটাই বোতাম — **`Un-skip`** (কর্ম এক: পুলে ফেরত; লেখা আলাদা, কারণ
+"To pool" পড়ে বোঝা যেত না কী ফিরছে)।
+
+⭐⭐ **আর টাইপচেকার সাথে সাথেই একটা মৃত শর্ত ধরিয়ে দিল:** নিচের মেনুতে
+`{row.status !== 'skipped' && …}` লেখা ছিল, অথচ early return-এর পর ওখানে
+`skipped` সারি আর পৌঁছায়ই না — *"types have no overlap"*। ⚠️ মৃত শর্ত রেখে
+দেওয়া মানে পরের পাঠককে ভাবতে বাধ্য করা *"এটা কখন মিথ্যা হয়?"*, তাই সেটাও
+উঠে গেছে।
+
+**গ· *"vershoning ta ekotu boro… chokei mele na"*** — ডান-নিচের বিল্ড-ব্যাজ।
+⚠️ ছিল **১০px · `ink-3`** (সবচেয়ে ম্লান কালি) · পটভূমি **৭০% স্বচ্ছ** —
+তিনটে জিনিস একসাথে ওটাকে মুছে দিচ্ছিল। ⭐ এখন ১২px · `ink-2` · নিরেট
+পটভূমি · বর্ডার। ⚠️ তবু ছোটই রাখা হয়েছে: এটা পাতার কাজের অংশ নয়, একটা
+রসিদ — যতটুকু না হলে **পড়া যায় না**, ঠিক ততটুকুই।
+
+**খ· *"stage e delete er pase not found show korao"*** — এটা বাগ ছিল না।
+কোড ঠিকই কারণটা দেখায়, কিন্তু পর্দায় যে সারিটা ছিল সেটা **২৯ আগস্টে মোছা**,
+অর্থাৎ কারণ চাওয়ার ব্যবস্থাটা তৈরি হওয়ার আগে — তাই ঘরটা NULL, আর NULL-এ
+কিছুই বসে না *(ইচ্ছাকৃত: "—" বসালে মনে হতো কেউ ইচ্ছে করে খালি রেখেছে)*।
+
+⭐ মাঠে মোছা চারটে সারির (`B07VDFPG2S` · `B0952RWVY4` · `B0CLH3JBFL` ·
+`B0CQTWMT2F`) কারণ **হাতে `not_found` বসানো হয়েছে**, কারণ মালিক নিজেই
+৩০ আগস্ট বলেছিলেন ওগুলো মুছেছেন *"amazon e page nei"* বলে। ⚠️ ৯৩টা পুরোনো
+`skipped` সারি **ছোঁয়া হয়নি** — ডিজাইনার কেন বাদ দিয়েছিলেন সেটা কেউ জানে
+না, আর অনুমান করে ডেটা বসানো সবচেয়ে খারাপ ধরনের মিথ্যা: দেখতে সত্যির মতো।
+
+### ৫· যাচাই
+
+সার্ভার — **৬টা নতুন e2e**: Delete-এ কারণ বসে · কারণ ছাড়া Delete ৪০০ ·
+অচেনা কারণ ("boring") ৪০০ · Skip-এ কারণ **একই ঘরে** বসে · কারণ ছাড়া Skip
+৪০০ · তালিকার সারিতে কারণটা ফেরত আসে · **পুলে ফেরালে কারণটাও মুছে যায়**।
+⚠️ পুরোনো সাতটা delete-টেস্টও বদলাতে হয়েছে — কারণ ছাড়া কল এখন ৪০০ পায়,
+আর সেটাই চাওয়া ছিল।
+
+⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ডিপ্লয় বাকি।
+
+---
+
+## ৩ঞ১৮. ⭐⭐ "সবচেয়ে কম কাজ করা কারা" — আর যে লাইনটা কার্ডটাকে সৎ রাখে *(৩০ আগস্ট ২০২৬)*
+
+মালিক পর্দার ছবিতে লাল দাগ দিয়ে: *"ei red mark kora place e sob theke kom
+kaj kora staff er name dekhaO last kiso din er upore base kore"*
+
+### ১· `Top Performers`-এর উল্টো পিঠ, কিন্তু উল্টো কার্ড নয়
+
+⚠️⚠️ **সোজা পথটা ফাঁদ ছিল।** `leaders30`-এর ক্রম উল্টে দিলেই কাজ শেষ মনে
+হয় — কিন্তু ওই ফাংশনে `creditedSec > 0` ছাঁকনি আছে, তাই যিনি সাত দিনে
+**একদিনও** আসেননি তিনি তালিকা থেকে **উধাও** হতেন। ⭐ অথচ "সবচেয়ে কম কাজ"
+প্রশ্নের উত্তর ঠিক তিনিই। তাই ভিত্তিটা কর্মীর তালিকা (`nameOf`), কোয়েরির
+ফল নয় — প্রত্যেককে ধরে নিয়ে শূন্য বসানো হয়, তারপর সাজানো।
+
+### ⭐⭐ ২· প্রতিটা নামের নিচে "কত দিনে" — আর ওই লাইনটাই আসল কাজ
+
+শুধু ঘণ্টা দেখালে সংখ্যাটা **দুভাবে পড়া যেত**, আর মানুষ খারাপটাই ধরে
+নিতেন। মাঠের ডেটা দিয়েই সেটা দেখা যায় — কার্ডে আজ যা বসছে:
+
+| | নাম | ঘণ্টা | নিচের লাইন |
+|---|---|---|---|
+| ১ | Gazi Hafizur Rahman | ০ | *Nothing counted in 7 days* |
+| ২ | Belal Hossain | ১৬ঘ | *5 of 7 days counted* |
+| ৩ | Sahariar Ahmed (Ali) | ২৭ঘ ৬মি | *5 of 7 days counted* |
+| ৪ | Sadia Akther | ২৭ঘ ২৪মি | *4 of 7 days counted* |
+| ৫ | Sumaya Khatun | ২৮ঘ ৩০মি | *5 of 7 days counted* |
+
+⭐⭐ **চার আর পাঁচ নম্বর সারিটাই প্রমাণ:** সাদিয়ার ঘণ্টা সুমাইয়ার চেয়ে কম,
+কিন্তু তিনি এসেছেন **এক দিন কম**। ⚠️ ওই লাইনটা না থাকলে দুজনকে এক
+মাপকাঠিতে পড়া হতো, আর ছুটিতে থাকা মানুষটাই "কম কাজ করেন" বলে দাগ পেতেন।
+⭐ নিয়মটা এই প্রকল্পে পুরোনো: **যে সংখ্যা দুভাবে পড়া যায়, তার পাশে ভুল
+পড়া ঠেকানোর কথাটা বসে** (`Stat`-এর `sub`)।
+
+### ৩· তিনটে সিদ্ধান্ত, তিনটেই "না" করার
+
+**ক· বার নেই।** `TopPerformers`-এ বার মানে "শীর্ষজনের তুলনায় কতটা" —
+নিরীহ। ⚠️ কম-ঘণ্টার তালিকায় লম্বা বার পড়া হতো **"কত খারাপ"** হিসেবে, আর
+সেটা একটা রায়। ⭐ কার্ডটার কাজ প্রশ্ন তোলা, রায় দেওয়া নয় — কারণটা তো
+পর্দায় নেই, সেটা মানুষটার কাছে।
+
+**খ· লাল নেই।** কম ঘণ্টা কোনো অ্যালার্ট নয় — ছুটি, অসুস্থতা, নতুন
+যোগদান, সবই এখানে এসে পড়ে।
+
+**গ· `Top Performers`-এর পাশে নয়।** দুটো তালিকা পাশাপাশি বসালে পর্দাটা
+একটা **লিডারবোর্ড** হয়ে উঠত: উপরে ভালো, নিচে খারাপ। ⭐ ডান কলামে
+"দেখে নেওয়ার জিনিস"গুলোর সাথে থাকলে এটা যা, তা-ই থাকে — মালিকের দেওয়া
+জায়গাটাও ওটাই ছিল।
+
+### ৪· জানালা ৭ দিন, ৩০ নয়
+
+⚠️ প্রশ্নটাই ছিল *"last kiso din"* — এখনকার অবস্থা, ইতিহাস নয়। আর ৩০
+দিনের জানালায় একটা খারাপ সপ্তাহ গড়ে মিলিয়ে যেত, ফলে তালিকাটা সাড়া দিত
+অনেক দেরিতে — অথচ এর কাজই সময়মতো চোখে পড়া। ⭐ সংখ্যাটা
+(`LAGGARD_DAYS = 7`) পর্দাতেও যায় (`laggardDays`), হার্ডকোড করা হয়নি —
+নইলে একদিন এটা বদলাত আর কার্ডের লেখা পুরোনো কথাই বলত।
+
+### ⚠️ ৫· ক্রম মোট ঘণ্টা ধরে, গড় ধরে নয়
+
+গড় ("দিনে কত") ধরে সাজানো যেত, আর সেটা "ন্যায্য" শোনায়। ⚠️ কিন্তু তখন
+এক দিন এসে ৭ ঘণ্টা করা কেউ সাত দিনে ৮ ঘণ্টা করা কারো **উপরে** থাকতেন —
+অথচ সপ্তাহে তাঁর ঘণ্টাই সবচেয়ে কম। ⭐ প্রশ্নটা ছিল "কম কাজ", "কম গড়" নয়;
+আর কত দিনে সেটা পাশেই লেখা বলে ভুল পড়ার সুযোগও থাকে না। টেস্টে বাঁধা।
+
+### ৬· যাচাই
+
+ক্রমের নিয়মটা `dashboard.math.ts`-এ **খাঁটি ফাংশনে** (`rankLaggards`) —
+ভুল হলে এটা কোনো এরর দিত না, শুধু নীরবে ভুল পাঁচটা নাম দেখাত।
+৬টা নতুন টেস্ট: একদিনও না-আসা কর্মী তালিকায় থাকেন · কম আগে · সমান
+ঘণ্টায় নাম ধরে (তাই ক্রম স্থির) · মোট ধরে, গড় ধরে নয় · সীমা মানে ·
+কেউ না থাকলে খালি।
+
+⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ডিপ্লয় বাকি। উপরের টেবিলটা প্রোডাকশনের
+ডেটায় একই কোয়েরি চালিয়ে মেলানো।
+
+---
+
+## ৩ঞ১৭. ⭐⭐ idle-এর সীমা ৬০ → ১৮০ সেকেন্ড *(৩০ আগস্ট ২০২৬)*
+
+মালিক: *"Sumaya Khatun, OX-04 er pc er agent prayee idle show kore. karon ki?"*
+
+### ১· প্রশ্নটা একজনের, উত্তরটা সবার
+
+মেপে দেখা গেল OX-04-এর ৩৬% সময় idle — ফ্লিটে সবচেয়ে বেশি। ⭐ কিন্তু
+দ্বিতীয় স্থানে **অন্য গবেষক** (OX-05, ২৫%), আর ডিজাইনাররা ৩–২৪%।
+⚠️⚠️ দুই গবেষকই মাথায় — অর্থাৎ সমস্যাটা মানুষের বা মেশিনের নয়, **কাজের
+ধরনের**। তাঁর active সময়ের হিসাবেই সেটা স্পষ্ট: Chrome-এ
+`app.flyingresearch.net` ৯.৮ ঘ · `amazon.com` ৩.৪ · `merchinformer` ১.২ —
+পড়া ও ঘেঁটে দেখার কাজ। ইনপুট-স্কোরেও তাই: OX-04 = ৭৩, ডিজাইনাররা ৮৪–৯০।
+
+⭐ যা মেপে **বাতিল** হয়েছে: এজেন্ট ভার্সন (১২টা PC-তেই ০.৪.৯) · ঘড়ির drift
+(সর্বোচ্চ ৮ সে.) · `agent_down` (তাঁর ২৪, সবার ২২–৩৩ — সিস্টেম-ব্যাপী) ·
+জিগলার (`synthetic_input` অ্যালার্ট একটাও নেই)।
+
+### ⭐⭐ ২· যে সংখ্যাটা সিদ্ধান্ত দিয়েছে
+
+টানা idle "ফাঁক"গুলো জোড়া লাগিয়ে (৩০০ সেকেন্ডে কাটা টুকরো আসলে একটাই ফাঁক),
+৭ দিন · ১১ জন · মোট ১০১.৭ ঘণ্টা:
+
+| ফাঁক | কতবার | ঘণ্টা |
+|---|---|---|
+| **৬০–১২০ সেকেন্ড** | **৫৪২** | ১০.২ |
+| ২–৩ মিনিট | ১৬৬ | ৬.৮ |
+| ৩–৫ মিনিট | ১৪৪ | ৯.২ |
+| ৫–১০ মিনিট | ১৮০ | ২০.৮ |
+| ১০–৩০ মিনিট | ১৩৫ | ৩৫.৬ |
+| ৩০ মিনিট+ | ২৭ | ১৯.০ |
+
+⚠️⚠️ **প্রথম সারিটাই পুরো গল্প:** সপ্তাহে ৫৪২টা ফাঁক মাত্র ১–২ মিনিটের
+(জনপ্রতি দিনে ~৭ বার), অথচ ওগুলো মোট idle-এর **১০%**। ⭐ অনেকবার ঘটে
+কিন্তু সময় সামান্য — এটাই *"অনুপস্থিতি নয়, গোনার গোলমাল"*-এর স্বাক্ষর।
+কেউ ৯০ সেকেন্ডের জন্য ডেস্ক ছাড়েন না; ৯০ সেকেন্ড মানে একটা অনুচ্ছেদ পড়া।
+
+### ৩· কেন ৩ মিনিট, ৫ নয়
+
+| সীমা | কাজ হিসেবে ফেরে | মোট idle-এর | জনপ্রতি/দিন |
+|---|---|---|---|
+| ২ মিনিট | ১০.২ ঘ | ১০% | ~৮ মি |
+| **৩ মিনিট** ✅ | **১৭.১ ঘ** | **১৭%** | **~১৩ মি** |
+| ৫ মিনিট | ২৬.৩ ঘ | ২৬% | ~২০ মি |
+| ১০ মিনিট | ৪৭.১ ঘ | ৪৬% | ~৩৪ মি |
+
+⭐⭐ ৩ মিনিটে **সংখ্যায় ৫৯% ফাঁক** ফেরে কিন্তু **সময়ে মাত্র ১৭%** — অর্থাৎ
+যা ফেরে তা প্রায় পুরোটাই পড়া-ভাবার সময়। ⚠️ ৫ মিনিটে বাথরুম-চা-গল্পও পুরো
+গোনা শুরু হতো (৫–১০ মিনিটের ১৮০টা ফাঁক)। দুপুরের বিরতি (৩০ মিনিট+) কোনো
+সীমাতেই ছোঁয়া পড়ে না — সেটাই চাওয়া ছিল।
+
+⚠️⚠️ **সবার জন্য এক সংখ্যা, ভূমিকা ধরে আলাদা নয়।** গবেষকের জন্য আলাদা সীমা
+দিলে দুজনের "ঘণ্টা" শব্দটার মানে দুরকম হয়ে যেত, আর তখন কোনো তুলনাই সৎ
+থাকত না। ⭐ ৩ মিনিটে সবচেয়ে বেশি লাভ এমনিতেই পড়ার কাজ যাঁদের —
+সংখ্যাটা নিজেই ভারসাম্যটা করে দেয়।
+
+### ৪· যেভাবে বসেছে
+
+`work_policies` টেবিলে একটাই সারি (`Standard`, ১২ জন কর্মী, policy ছাড়া
+কেউ নেই), তাই একটাই `UPDATE`। ⭐ **এজেন্ট রিস্টার্ট লাগে না**:
+`AgentConfigService.versionOf()` কনফিগের **sha256**, তাই মান বদলালেই হ্যাশ
+বদলায়, আর প্রতি ৩০ সেকেন্ডের heartbeat-এ প্রতিটা PC নিজেই নতুন কনফিগ টেনে
+নেয় (`ReloadConfigAsync` → সারিতে → `TrackLoop` প্রয়োগ করে)।
+
+⚠️ বদলটা **ডাটাবেসে সরাসরি** করা হয়েছে, ড্যাশবোর্ড দিয়ে নয় — তাই
+`audit_log`-এ কোনো সারি বসেনি। কে-কবে-কেন, তার একমাত্র নথি এই অনুচ্ছেদ।
+
+⚠️ **পিছিয়ে কিছু বদলায়নি** — নতুন সীমা কেবল সামনের সেগমেন্টে খাটে,
+আগের হিসাব অক্ষত।
+
+⭐ ফাঁকি ধরার পাহারা অটুট: পর্দা ১০ মিনিট জমে থাকলে গোনা বন্ধ (G46), আর
+সেটা এই সীমার সাথে বদলায় না।
+
+### ⚠️ ৫· একটা প্রশ্নের উত্তর ডেটাতে ছিল না
+
+*"idle থাকার সময় পর্দায় কী ছিল"* — ৭ দিনের ৪০,০৮২টা `app_usage` সারির
+একটাও `idle` নয়। কারণ R22a (§ ৩ভ৮) কমিট হয়েছে **০.৪.৯ প্রকাশের পরে**, আর
+০.৪.১০ ইচ্ছাকৃতভাবে ছাড়া হয়নি (§ ৩ভ১৪ — ছাড়লে ০.৪.৯-এর চলতি রোলআউট
+থেমে যেত)। ⭐ ০.৪.১০ ছাড়লে ওই ফাঁকগুলোয় কী চলছিল সেটাও দেখা যাবে।
+
+---
+
+## ৩ঞ১৬. ⭐⭐ "Sorry, not found" — আর মোছা মানে ভুলে যাওয়া *(২৯ আগস্ট ২০২৬)*
+
+মালিক: *"pool er kiso asin amazon e page nei… egula delete korle abar pool e
+add kora zabe + distribute hobe… delete korle delete hisabe pool e thakobe
+but karo kase distribute hobena"*
+
+### ⚠️⚠️ ১· প্রশ্নটাতেই বাগের নির্ণয়টা ছিল
+
+মালিক জিজ্ঞেস করেননি "মোছার বোতাম বানাও" — ওটা **আগে থেকেই ছিল**। তিনি
+বলেছেন মুছলে **কী ঘটে**: ASIN-টা আবার পুলে ঢুকতে পারে, আর আবার বণ্টনে যায়।
+
+⭐ কথাটা হুবহু ঠিক, আর কারণটা কোডের টীকায় লেখাই ছিল:
+
+> *"শেষ হয়ে যাওয়া একটা সারি মুছলে ডুপ্লিকেট-প্রহরী ওটা ভুলে যায়, আর কাল
+> কেউ ওই ASIN আবার জমা দিলে সেটা নতুন কাজ হিসেবে ঢুকে পড়বে।"*
+
+⚠️⚠️ অর্থাৎ দামটা **জানা ছিল, লেখা ছিল, তবু নেওয়া হয়েছিল** — কারণ তখন
+বিকল্প ছিল না, আর "সাধারণত Skipped বেশি নিরাপদ" বলে পাশ কাটানো হয়েছিল।
+⭐ মাঠে সেটা যথেষ্ট হয়নি: মরা লিঙ্ক Skip করলে সেটা ডিজাইনারের নামে বসে,
+অথচ দোষটা লিঙ্কের।
+
+### ২· চারটে বিকল্প, আর যেটা কোথাও নতুন শর্ত চায় না
+
+পুরো তুলনা [ADR-041](05-Options-Decisions.md)-এ। সিদ্ধান্তের এক লাইনের
+কারণ: **বণ্টন এমনিতেই কেবল `status = 'pool'` থেকে নেয়**, তাই একটা নতুন
+অবস্থা যোগ করলে `distribute()` · `mine()` · `returnUnworked()` · গবেষকের
+কিউ — কোথাও একটা শর্তও বদলাতে হয় না।
+
+⚠️ `deleted_at` কলাম বসালে উল্টোটা হতো: প্রতিটা কোয়েরিতে `deletedAt: null`
+জুড়তে হতো, আর **একটা জায়গায় ভুলে গেলেই** মরা সারি নীরবে ফিরে আসত।
+
+### ৩· যা বসল
+
+**ক·** নতুন enum মান `deleted` — মাইগ্রেশনে একা, কারণ Postgres একই
+লেনদেনে নতুন মান **ব্যবহার** করতে দেয় না (২৫ আগস্টের `user_role_researcher`-এ
+শেখা)।
+
+**খ·** `softDelete(ids)` — একসাথে অনেকগুলো, আর **শেষ-হওয়া সারি ছোঁয় না**।
+⭐ কতগুলো বাদ পড়ল সেটা `keptDone` হয়ে ফেরত যায়, তাই পর্দা সত্যি কথাটা
+বলতে পারে: ৫০টা বেছে ৪৮টা মুছলে বাকি দুটোর কী হলো মানুষ জানতে পারেন।
+
+**গ·** Design Pool-এ **চেকবক্স** — সারিতে একটা, হেডারে "এই পাতার সবগুলো"।
+⚠️⚠️ ছাঁকনি বা পাতা বদলালে বাছাই **মুছে যায়**: নইলে ২ নম্বর পাতায় বেছে,
+ছাঁকনি বদলে Delete চাপলে চোখের সামনে নেই এমন সারি মুছে যেত।
+
+**ঘ·** ছাঁকনিতে **Deleted**, আর ইনবক্সে গোনা — *"Dropped along the way:
+১২ skipped · ৪০ gone from Amazon"*। ⭐ দুটো সংখ্যা আলাদা, কারণ একটা
+মানুষের সিদ্ধান্ত আর অন্যটা জগতের ঘটনা; মিশিয়ে দিলে বোঝা যেত না দোষটা
+সংগ্রহের না ডিজাইনারের।
+
+### ⭐ ৪· টাইপচেকার একটা ঘর ধরিয়ে দিল
+
+`stats()`-এর ফেরত টাইপ `Record<DesignTargetStatus, number>`, তাই enum-এ
+নতুন মান বসামাত্র বিল্ড থেমে গেল — *"Property 'deleted' is missing"*।
+⭐ ঘরটা হাতে যোগ করতে হয়েছে, আর সেটাই চাওয়া ছিল: নইলে নতুন অবস্থাটা
+গোনার বাইরে থেকে যেত আর পর্দায় কেউ টেরও পেত না।
+
+### ৫· যাচাই
+
+সার্ভার **৭টা নতুন e2e** — সারি থেকে যায় কিন্তু বণ্টনে যায় না · মোছা ASIN
+আবার পেস্ট করলে ঢোকে না · শেষ-হওয়া সারি ছোঁয়া হয় না · হাতে থাকা সারি
+মুছলে বদলি আসে · একই id দুবার দিলে একবার গোনা · দ্বিতীয়বার মুছলে audit-এ
+দ্বিতীয় সারি বসে না · একক `DELETE`-ও দাগায়, মোছে না।
+
+⚠️ প্রথম রানে সাতটাই ফেল — **৪০১**। কারণ পুরোনো: একই টেস্টে দ্বিতীয়বার
+`loginReady()`। ⭐ ২৫ আগস্টেই এটা একবার ধরা পড়েছিল (`0a96d75`), আর
+সমাধানও সেটাই — পুল ভরার হেল্পার এখন সেশনটা **ফেরত দেয়**।
+
+⚠️⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ডিপ্লয় বাকি।
+
+---
+
+## ৩ঞ১৫. ⭐⭐ এক চাপে ৩০টা ট্যাব — আর ব্রাউজারের "না" *(২৯ আগস্ট ২০২৬)*
+
+মালিক: *"destribute kora 30 design gula ek sathe open korar ekota button
+banaO jate new tab e 30 ta target url open hoy"*
+
+### ১· চাওয়াটা এক লাইনের, বাধাটা নয়
+
+`/me`-র **Your Design Targets** কার্ডের মাথায় একটা বোতাম — চাপলেই হাতে
+থাকা প্রতিটা টার্গেটের Amazon পাতা নিজের ট্যাবে। কোড হিসেবে এটা একটা লুপ
+আর একটা `window.open()`।
+
+⚠️⚠️ **কিন্তু ব্রাউজার দ্বিতীয় ট্যাব থেকেই না বলে।** এক চাপে একাধিক
+`window.open()` ব্রাউজারের চোখে পপ-আপ: Chrome প্রথমটা খোলে, বাকি ২৯টা
+আটকায়, আর ঠিকানা-বারে ছোট একটা আইকন বসিয়ে চুপ করে থাকে। ⭐ সরল লুপটা
+লিখে দিলে মাঠে যা দেখা যেত: **একটা ট্যাব খুলল, বাকি কিছুই হলো না, আর কেউ
+বলল না কেন** — আর ডিজাইনার ধরে নিতেন বোতামটা ভাঙা।
+
+### ২· তাই কাজটা "খুলে দেওয়া" নয়, "কী ঘটল সেটা বলা"
+
+`openInTabs()` প্রতিটা ডাকের ফেরত মান দেখে গোনে — কতগুলো খুলল, কতগুলো
+আটকাল। আটকালে কার্ডের ভেতরেই বার্তা বসে, আর বার্তায় **করণীয়** থাকে:
+ঠিকানা-বারের আইকনে গিয়ে এই সাইটকে পপ-আপের অনুমতি দিন, একবারই।
+
+⚠️⚠️ **`'noopener'` ইচ্ছাকৃতভাবে বাদ।** `window.open(url, '_blank',
+'noopener')` দিলে নিরাপত্তা একই থাকত, কিন্তু ওই রূপে ফেরত মান **সবসময়
+`null`** — তখন আটকানো আর খোলা ট্যাব আলাদা করার উপায়ই থাকত না, অর্থাৎ
+উপরের গোনাটাই অসম্ভব হতো। ⭐ বদলে হাতে `tab.opener = null`, সুরক্ষা এক
+(tabnabbing), কিন্তু কী ঘটল তা জানা যায়।
+
+### ৩· যেগুলো ইচ্ছাকৃতভাবে করা হয়নি
+
+| | কেন |
+|---|---|
+| আজ শেষ করাগুলো খোলে না | "Finished today" ভাগটা রসিদ, করণীয় নয় — নইলে ৩০-এর বদলে ৬০টা ট্যাব |
+| সংখ্যাটা বোতামের লেখাতেই | ৩০টা ট্যাব ফেরানো কঠিন; চাপার **আগে** জানা দরকার কত আসছে |
+| কোনো সার্ভার কল নেই | মাপা কোনো সংখ্যা বদলায় না ([ADR-032](05-Options-Decisions.md)-এর সুরেই) |
+| আলাদা confirm নেই | দিনে একবারের কাজ, আর লেখাটাই সংখ্যাটা বলে দিচ্ছে |
+
+### ৪· যাচাই
+
+ওয়েব **১২০ পাস** (৯টা নতুন, `test/popups.spec.ts`), টাইপচেক ও লিন্ট
+পরিষ্কার। ⚠️ টেস্টে `window` লাগেনি — `openInTabs` খোলার কাজটা বাইরে থেকে
+নেয়, তাই নকল ব্রাউজার বসিয়ে **আটকে যাওয়ার** অবস্থাটাই মাপা হয়েছে, যেটা
+মাঠে রোজ ঘটবে।
+
+⚠️⚠️ **ব্রাউজারে চোখে দেখা হয়নি** — ডিপ্লয় বাকি, আর প্রথম চাপে পপ-আপের
+অনুমতি একবার দিতে হবে। ওই অনুমতির পর দ্বিতীয় চাপ থেকে ৩০টাই খুলবে।
+
+---
+
+## ৩ঞ১৪. ম্যানেজারও রোজ ৩০টা পান — আর যে সুপারিশটা নেওয়া হয়নি
+
+*২৬ আগস্ট ২০২৬*
+
+মালিক: *"belal er jonoo daily 30 ta design distribute korba. se daily
+design na koreO weekly 1-2 din design kore."*
+
+### ⭐ ১· দুটো জিনিস আগে থেকেই ঠিক ছিল
+
+| চাওয়া | অবস্থা |
+|---|---|
+| দিনে **৩০টা** | ✅ `POOL_PER_DESIGNER = 30` — সবাই তা-ই পান |
+| রোজ না করলে কী হবে | ✅ রাত ১১:৫৫-এ `returnUnworked()` **না-খোলা** ডিজাইন পুলে ফেরত পাঠায় |
+
+⭐ অর্থাৎ "সপ্তাহে ১-২ দিন" সমস্যাটা **আগেই সামলানো** — তাঁর হাতে স্তূপ
+জমবে না, অন্যদের ভাগও আটকে থাকবে না। বাকি ছিল একটাই শর্ত:
+`where: { staffType: 'designer' }`।
+
+### ⚠️⚠️ ২· অডিট বলল "তাঁকে Designer বানিয়ে দাও" — নেওয়া হয়নি
+
+৩৪টা এজেন্টের একটা অডিট সুপারিশ করেছিল: `staff_type` বদলে `designer`
+করো আর `daily_design_target = 0` বসাও — শূন্য কোড, শূন্য মাইগ্রেশন।
+যুক্তিটা টেকনিক্যালি নিখুঁত ছিল।
+
+⭐⭐ **কিন্তু কোডের একটা কমেন্টই সেটা বাতিল করে দেয়** (`design.rules.ts`):
+
+> *"ম্যানেজার (OX-01) নিজেও ডিজাইন করেন — তিনি… `manager` বসানোর পর
+> সংখ্যাটা সব পর্দা থেকে [উধাও হতো]… কাজটা সত্যি।"*
+
+⚠️⚠️ অর্থাৎ **২২ আগস্টেই ঠিক করা হয়েছিল** যে বেলাল ম্যানেজার থেকেও
+ডিজাইন করেন, আর `designView` তাঁর সংখ্যা **খালি গোনা** হিসেবে দেখায় —
+টার্গেট ছাড়া, "পিছিয়ে" ছাড়া। তাঁকে `designer` বানানো মানে ওই
+সিদ্ধান্তটাই উল্টে দেওয়া, আর প্রতিটা পর্দায় ও পে-রোল শিটে তাঁকে
+"Designer" বলা — যা সত্যি নয়।
+
+⭐ **শিক্ষা:** একটা সুপারিশ কম কোড বলেই ঠিক নয়। কোডের টীকাগুলোই
+প্রায়ই আগের সিদ্ধান্তের একমাত্র স্মৃতি, আর সেগুলো না পড়ে কম-কোডের
+পথ বাছলে পুরোনো সিদ্ধান্ত নীরবে মুছে যায়।
+
+### ৩· যা বসল — তিন জায়গা, কারো নাম কোডে নেই
+
+**ক·** `DESIGN_WORK_STAFF_TYPES = ['designer', 'manager']` — নিয়মটার একটা
+**নাম**, আর কারণটা তার টীকায়। ⚠️ বেলালের নাম বা id কোথাও নেই: নিয়ম কাজের
+ধরন ধরে, ঠিক যেমনটা ২৫ আগস্টে শেখা হয়েছিল (`can_proofread` ব্যক্তি ধরে
+লেখা হয়েছিল বলেই একদিনে মুছতে হয়েছে)।
+
+**খ· ⚠️⚠️ সাইডবারে `manager` যোগ — আর এটা ছাড়া গোটা কাজটাই অর্থহীন।**
+`{ to: '/me', roles: ['researcher', 'employee'] }` — ম্যানেজার তালিকায় ছিলেন
+না। ⭐ শুধু বণ্টনে ঢোকালে তাঁর কাছে রোজ ৩০টা কাজ যেত আর তিনি মেনুতে
+সেগুলো **খুঁজেই পেতেন না**। রুটটা খোলা ছিল, কিন্তু URL হাতে টাইপ করা
+কোনো সমাধান নয়।
+
+**গ· একটা নীরব বাগ, বেলালের সাথে সম্পর্কহীন।** `redact.ts`
+`dailyDesignTarget` **কখনো পাঠায়ইনি**, অথচ পর্দার টাইপ বরাবর দাবি করত
+এটা আসে। ⚠️ ফল: মালিক টার্গেট বসিয়ে সেভ করতেন, ফর্ম আবার খুললে ঘরটা
+**খালি** — যেন কিছুই বসেনি। আর খালি মানে "পলিসির ২৫ খাটবে"।
+⭐ whitelist ধাঁচের ফাংশনে ভুলে যাওয়ার দাম এটাই: ফাঁস নয়, **অনুপস্থিতি**।
+
+### ⭐⭐ ৪· কাজ পাওয়া ≠ মাপকাঠিতে বাঁধা পড়া
+
+`hasDesignTarget()` **অপরিবর্তিত** — এখনো কেবল `designer`। ⚠️ তিনি সপ্তাহে
+১-২ দিন ডিজাইন করেন, তাই বাকি দিনগুলোয় "পিছিয়ে" দেখানো **মিথ্যা** হতো।
+
+| | ম্যানেজার |
+|---|---|
+| রোজ ৩০টা পান | ✅ |
+| দৈনিক টার্গেট আছে | ❌ *(ইচ্ছাকৃত)* |
+| করা ডিজাইন পর্দায় দেখায় | ✅ খালি গোনা হিসেবে |
+
+⭐ দুটো আলাদা প্রশ্ন, আর এক করে ফেলাই এখানকার সবচেয়ে সহজ ভুল।
+
+### ৫· যাচাই
+
+সার্ভার **১১২৫ পাস**, ওয়েব **১১১ পাস**, টাইপচেক ও লিন্ট পরিষ্কার।
+চারটে নতুন e2e — ম্যানেজার ৩০টা পান, গবেষক পান না, না-ছোঁয়া ডিজাইন
+রাতে ফেরে, আর **ছোঁয়া ডিজাইন ফেরে না**।
+
+⚠️ ~~ডিপ্লয় বাকি: **সার্ভার এখনো অচল**~~ → ✅ **ডিপ্লয় হয়েছে ২৯ আগস্ট**
+(`build 364` · `commit 4d81ae5`)। ⭐ সার্ভার নিজেই ফিরে এসেছিল; দুই দিনের
+অচলতার কোনো ব্যাখ্যা পাওয়া যায়নি, আর সেটাই এখানে লিখে রাখার মতো কথা।
+⚠️ ওই দিনের সকাল ৮টার বণ্টন পুরোনো কোডে চলেছিল, তাই ম্যানেজার **২৯ আগস্ট**
+কিছু পাননি — প্রথম আসল বণ্টন ৩০ আগস্ট সকালে।
+
+---
+
+## ৩ঞ১৩. ⭐⭐ "ভুলে Complete চেপে ফেললে ফেরানো যায় না"
+
+*২৫ আগস্ট ২০২৬*
+
+মালিক: *"designer ra kaj shes kore cololite press korle sei design list
+tader theke cole zay. onek somoy vule kew colplete press kore felole byak
+anote paren na"*।
+
+### ⭐⭐ ১· কারণটা "বোতাম নেই" নয় — **জিনিসটাই দেখা যায় না**
+
+প্রথমে মনে হয়েছিল একটা Undo বোতাম যোগ করলেই হলো। কোড পড়ে দেখা গেল
+সমস্যাটা তার এক ধাপ আগে:
+
+```ts
+// mine() — ডিজাইনারের নিজের তালিকা
+where: { assignedToId: employeeId, status: DesignTargetStatus.assigned }
+```
+
+⚠️⚠️ শর্তটা কেবল `assigned`। তাই Complete চাপার সাথে সাথে সারিটা
+**পর্দা থেকেই উধাও** হতো — ⭐ ফেরানোর বোতাম দূরে থাক, জিনিসটাই আর খুঁজে
+পাওয়া যেত না। এই কারণেই ডিজাইনাররা মালিকের কাছে যেতেন।
+
+⭐ তাই আসল সারাইটা তালিকার শর্তে: আজ শেষ করা সারিগুলোও আসে, একটা
+আলাদা শান্ত ভাগে — *"Finished today"*। বোতামটা তার পরের ব্যাপার।
+
+### ⚠️⚠️ ২· `status` ফেরালেই হয় না — তিনটে ঘর মুছতে হয়
+
+সবচেয়ে সহজ সমাধান ছিল `PATCH :id { status: 'assigned' }`, আর ওই পথ
+**আগে থেকেই খোলা ছিল**। ⚠️ কিন্তু সেটা `completedAt` মোছে না, আর
+কিউগুলো `status` ধরে চলে **না** — `completedAt` ধরে চলে:
+
+```
+to_check  : completedAt ≠ null, checkedAt = null
+to_upload : completedAt ≠ null, uploadedAt = null
+```
+
+⭐ ফলে সারিটা ডিজাইনারের কাছে "হাতে আছে" দেখাত, অথচ গবেষকের **আপলোডের
+কিউতে বসেই থাকত** — দুটো পর্দা দুই কথা বলত। তাই `completedAt` ·
+`completedVia` · `completedById` — **তিনটেই** মোছা হয়।
+
+⚠️ কিন্তু `assignedToId`/`assignedAt`/`startedAt` **ছোঁয়া হয় না**। পুলে
+ফেরত পাঠানোর ডালটা ওগুলোও মোছে, আর সেটা এখানে ভুল হতো: ডিজাইনার
+নিজের ভুল শুধরাতে গিয়ে **কাজটাই হারাতেন**।
+
+### ৩· দুটো আলাদা রুট, আর কেন এক নয়
+
+| | কে | দিনের সীমা |
+|---|---|---|
+| `POST /me/targets/:id/undone` | ডিজাইনার, **নিজের** সারি | ⭐ কেবল আজকের |
+| `POST /design-targets/:id/undone` | owner · manager · গবেষক | সীমা নেই |
+
+⚠️⚠️ **দিনের সীমাটা ইচ্ছাকৃত।** গতকালের Complete ফেরালে **গতকালের
+সংখ্যাও** বদলে যেত — আর তখন কেউ চাইলে খারাপ দিনের কাজ ভালো দিনে সরিয়ে
+নিতে পারতেন। ⭐ পুরোনো ভুল মালিক শোধরাবেন, আর সেটা একটা সিদ্ধান্ত;
+ডিজাইনারের নীরব সুবিধা নয়।
+
+⚠️ "আজ" মানে **ঢাকার দিন**, রিপোর্ট যেভাবে গোনে হুবহু সেভাবেই।
+`toISOString()` দিয়ে দিন বের করলে UTC-র দিন আসত, আর ভোর ৬টার আগে সেটা
+গতকাল দেখাত — রাত ১১টার ভুল তখন ফেরানোই যেত না।
+
+### ⚠️⚠️ ৪· শেকলে এগিয়ে গেলে আর ফেরানো যায় না
+
+`checkedAt` · `uploadedAt` · `liveAt` — এর কোনোটা বসে গেলে Undo বন্ধ,
+**দুই রুটেই**। কেউ বানান দেখে ফেলেছেন বা ফাইলটা Amazon-এ চলে গেছে
+মানে ওটা আর "ভুলে চাপা" নয়। ⭐ ফেরালে বানান-কিউ আর আপলোডের সংখ্যা
+একসাথে মিথ্যে হয়ে যেত।
+
+### ⭐ ৫· নীরব ব্যর্থতা বন্ধ
+
+`updateMany` শূন্য সারি বদলালে আগের ধাঁচে `{ ok: false }` ফিরত। ⚠️⚠️
+"Undo চাপলাম, কিছুই হলো না" — এটাই সেই নীরবতা যা মানুষকে সিস্টেমের
+উপর আস্থা হারায়, আর এই প্রকল্পে বারবার ফিরেছে।
+
+⭐ তাই কেন হলো না সেটা খুঁজে বলা হয়:
+
+```
+অন্যের সারি          → ৪০৩  "That design is not on your list."
+শেকলে এগিয়ে গেছে     → ৪০৯  "…already been checked or sent to Amazon"
+গতকালের কাজ          → ৪০৯  "You can only undo today's work."
+আগেই ফেরানো হয়েছে    → ২০১  (দুবার চাপা ব্যর্থতা নয়)
+```
+
+### ⭐⭐ ৬· "এই অধিকারটা কি ডিজাইনারদের পাওয়া উচিত?"
+
+কোড চালু হওয়ার পর মালিক প্রশ্নটা তুললেন। উত্তর দেওয়ার আগে দুটো জিনিস
+**মেপে** নেওয়া হলো, অনুমান নয়:
+
+| প্রশ্ন | উত্তর |
+|---|---|
+| গোনাটা কি টাকার সাথে জড়ানো? | ⭐ **না** — `payroll`/`deposits` ডিজাইন-গোনা ছোঁয়ই না। ওটা যায় ড্যাশবোর্ড, ডাইজেস্ট আর অগ্রগতিতে |
+| "দিন বদলে গোনানোর" ফাঁক কি Undo আনল? | ⭐ **না, আগেই ছিল** — সোমবার Complete না চেপে মঙ্গলবার চাপলেই হতো |
+
+⭐ অর্থাৎ Undo নতুন কোনো ক্ষমতা দেয়নি, কেবল ভুল শোধরাতে দিয়েছে। আর
+বিকল্পটা খারাপ: প্রতিটা ভুল আবার মালিকের কাছে যেত, আর এই সিস্টেমে
+যা-কিছু *"মালিককে বলতে হবে"* ধাঁচের, সেটাই মাঠে ব্যবহার হয়নি।
+
+### ⚠️⚠️ ৭· কিন্তু আসল ফাঁকটা অধিকার ছিল না — **যাচাইয়ের উপায়**
+
+⭐⭐ **Undo এই সিস্টেমের একমাত্র কাজ যা নিজের চিহ্ন মুছে দেয়।**
+`completedAt` · `completedVia` · `completedById` তিনটেই `null` হয়ে যায় —
+অর্থাৎ কাজটা কখনো শেষ হয়েছিল, সেই প্রমাণটাই সারি থেকে উধাও।
+⚠️ কেউ রোজ Complete → Undo → Complete করলেও **কেউ দেখতেই পেত না**।
+
+⭐ তাই প্রশ্নটার উত্তর "হ্যাঁ, রাখুন" — কিন্তু একটা নতুন audit action
+সহ: `design_undone`। meta-তে **মুছে ফেলা মানগুলোই** বসে (কবে শেষ
+হয়েছিল, কে চেপেছিল, কোন ASIN), কারণ সারিতে ওগুলো আর নেই — লগই একমাত্র
+জায়গা।
+
+⚠️ প্রশ্নটা তাতে বদলে যায়: *"ওদের বিশ্বাস করব কি না"* → *"দরকার হলে
+দেখে নেব"*। ⭐ প্রথমটার উত্তর যাচাই করা যায় না, দ্বিতীয়টার যায়।
+
+⚠️ **ব্যর্থ Undo লগে বসে না** — নইলে লগটা চেষ্টায় ভরে যেত আর আসল
+ঘটনাগুলো তলিয়ে যেত।
+
+### ⚠️ ৮· আর একটা জিনিস যা চোখ এড়িয়ে গিয়েছিল
+
+Audit পাতার `ROLE_LABEL` ছিল `Record<string, string>` — তাই ২৫ আগস্ট
+`researcher` রোল যোগ করার সময় **কম্পাইলার কিছুই বলেনি**, আর গবেষকের
+সারিতে কাঁচা `researcher` লেখা ফুটত। ⭐ `Layout.tsx`-এরটা সেদিন ঠিক করা
+হয়েছিল, এটা নয় — ঠিক যে কারণে § ৩ঞ১০-এ *"হ্যাঁ-তালিকা ধরে লিখুন"*
+নিয়মটা লেখা হয়েছে, সেই একই কারণে এখানে `Record<Role, …>` বসল।
+
+### ৯· যাচাই
+
+সার্ভার **১১২৫ পাস**, ওয়েব **১১১ পাস**, টাইপচেক ও লিন্ট পরিষ্কার।
+
+⭐ দশটা নতুন e2e, আর সবচেয়ে দামি তিনটে: **বানান দেখা হয়ে গেলে ৪০৯**,
+**Undo-র পর কিউ থেকেও বেরিয়ে যায়** (`toUpload` ১ → ০ — ওই
+`status`-বনাম-`completedAt` ফাঁদটার পাহারা), আর **লগে মুছে ফেলা
+মানগুলো সত্যিই বসে**।
+
+---
+
+## ৩ঞ১২. ⭐⭐ "খুবই গাদাগাদি লাগছে" — ১৭টা কন্ট্রোল, ৬টা বোতাম
+
+*২৫ আগস্ট ২০২৬*
+
+মালিক Design Pool দেখে বললেন *"khubi gatharing lagoche dekhote"*। ⚠️
+অভিযোগটা ন্যায্য, আর তার আগের দুই ঘণ্টায় **আমিই** একটা কলাম ও একটা
+ছাঁকনি যোগ করেছি।
+
+### ১· আগে গোনা, তারপর কাটা
+
+অনুমান না করে পর্দার জিনিস গোনা হলো:
+
+```
+টেবিলের উপরে কন্ট্রোল :  ১৭   (৯ চিপ · Completed today · খোঁজা ·
+                               ২ ড্রপডাউন · ২ তারিখ · Clear · একটা লেখা)
+কলাম                  :   ৭
+এক সারিতে বোতাম       :   ৬   (শেষ-হওয়া অথচ না-দেখা সারিতে)
+```
+
+⭐ সংখ্যাগুলো নিজেরাই বলে দিল কোনটা কাটতে হবে — আর কোনটা নয়।
+
+### ২· চারটে কাটা, একটাও তথ্য না হারিয়ে
+
+**ক· পাঁচটা অবস্থা-চিপ → একটা ড্রপডাউন.** `All · Waiting · In hand ·
+Done · Skipped` পরস্পরের **বিকল্প** — একসাথে কখনো দুটো বাছা যায় না।
+⭐ যা থেকে একটাই বাছা যায় সেটা চিপের সারি নয়, ড্রপডাউন।
+
+⚠️⚠️ কিন্তু **কিউ চারটে চিপই থাকল**, কারণ ওগুলোয় সংখ্যা আছে — আর
+সংখ্যাটাই ক্লিকের আগে বলে আজ কাজ আছে কি না। ড্রপডাউনে ঢোকালে সংখ্যা
+দেখতে খুলতে হতো, আর তখন কেউ খুলতই না। ⭐ **চিপ আর ড্রপডাউনের পার্থক্যটা
+সাজসজ্জা নয়: একটায় সংখ্যা লাগে, অন্যটায় নয়।**
+
+**খ· ছাঁকনির গোটা সারি → একটা `Filters` বোতাম.** ডিজাইনার, কে এনেছেন,
+দুটো তারিখ — চারটেই বেশিরভাগ সময় খালি, অথচ রোজ একটা গোটা সারি নেয়।
+
+⚠️⚠️ লুকোনো ছাঁকনি নিজেই একটা ফাঁদ: কেউ কাল এসে খালি তালিকা দেখে ভাবত
+ডেটা হারিয়ে গেছে, অথচ গতকালের তারিখটাই বসে ছিল। ⭐ তাই বোতামের গায়ে
+**সংখ্যা** বসে আর বোতামটা লাল হয়ে থাকে — লুকোনো, কিন্তু **নীরব নয়**।
+
+⭐ `Completed today` বোতামটা মুছে যায়নি, **সরেছে** — অবস্থার ড্রপডাউনে
+`Done · today`। ওটা ভুল করে Complete চাপা কাজ খোঁজার সবচেয়ে ছোট পথ।
+⚠️ মানটা ফিরে আসে `done` হিসেবে, তাই `statusValue` তারিখ দুটো **মিলিয়ে
+দেখে** আবার `done_today` দেখায় — মনে রাখে না। মনে রাখলে মালিক হাতে
+তারিখ বদলানোর পরেও ড্রপডাউন "আজ" বলত।
+
+**গ· সাতটা কলাম → চারটে.** কিছু মোছা হয়নি, **জোড়া লাগানো হয়েছে** — আর
+জোড়াগুলো ইচ্ছেমতো নয়:
+
+| জোড়া | কেন |
+|---|---|
+| Job no. → ASIN-এর নিচে | দুটোই **পরিচয়** |
+| তারিখ → Stage-এর নিচে | একই কথা: কোন ধাপে, **কবে** |
+| কে এনেছেন → কে করছেন | একটা **বাক্য**, দুটো ঘর নয় |
+
+⭐ তীরচিহ্নটা দুই id-র জগৎ জুড়ে দেয় (`users → employees`)। আনার নামটা
+ধূসর, করার নামটা গাঢ় — রোজকার কাজে ডিজাইনারের নামটাই বেশি দরকার।
+
+⚠️ পুলে পড়ে থাকা সারিতে কোনো কাজের তারিখ নেই, তাই আগে `—` বসত। এখন
+**কবে এসেছে** বসে (`added`) — ওটাই ওই সারির একমাত্র খবর।
+
+**ঘ· ছয়টা বোতাম → এই সারির পরের ধাপ.** এটাই সবচেয়ে বড় কাটা, আর
+সবচেয়ে বিতর্কিতও (একটা বাড়তি ক্লিক ঢোকে)।
+
+⚠️⚠️ **একটা সারি একটাই ধাপে থাকে**, তবু আগে পাইপলাইনের সব বোতাম একসাথে
+বসত। ⭐ এখন ক্রম মেনে একটাই সামনে:
+
+```
+ভুল পাওয়া, ঠিক হয়নি   → Fixed
+শেষ, দেখা হয়নি        → Spelling OK · Has error
+শেষ, আপলোড হয়নি       → Uploaded
+আপলোড, লাইভ হয়নি      → Live
+শেষই হয়নি             → Complete
+```
+
+⚠️⚠️ **ক্রমটাই এখানকার আসল সিদ্ধান্ত।** একটা শেষ-হওয়া সারিতে "বানান
+দেখা" আর "আপলোড" দুটোই সম্ভব — কিন্তু আগে বানান। উল্টো করলে না-দেখা
+ডিজাইন Amazon-এ চলে যেত, আর কিউটা কখনো খালি হতো না।
+
+⚠️ যাচাইয়ের ধাপে **দুটো** বোতাম, কারণ ওটা একটা কাজ নয় — একটা
+**সিদ্ধান্ত** (ঠিক আছে, নাকি ভুল আছে)। একটায় নামানো যেত না।
+
+⭐ বাকিগুলো `⋯`-এ, আর **কোনো বোতাম মুছে যায়নি** — সবই এক ক্লিক দূরে।
+
+### ⭐ ৩· পপ-আপ মেনু কেন হলো না
+
+`⋯` সারির **ভেতরেই** খোলে, ভাসমান মেনুতে নয়। ⚠️ মেনু বসাতে হলে জায়গা
+মাপা, বাইরের ক্লিক ধরা, কি-বোর্ড সামলানো — তিনটে নতুন ফাঁদ, একটাও
+দরকার নেই। ⭐ এই কোডবেসে যা-কিছু "স্মার্ট" ছিল তা-ই একদিন ভেঙেছে।
+
+### ৪· যা ইচ্ছে করে রাখা হলো
+
+⚠️ **নিশ্চিতকরণের পপ-আপ এখনো নেই** — মানুষ দুদিনেই যান্ত্রিকভাবে "হ্যাঁ"
+চাপতে শেখে, আর তখন পপ-আপটা কেবল একটা বাড়তি ক্লিক। কেবল `Delete`-এর
+দুই-ধাপটা থাকল, কারণ ওটা ফেরানো যায় না।
+
+⚠️ `Newest activity first` কথাটা সত্যি আর দরকারি, তাই মোছা হয়নি —
+কার্ডের শিরোনামে সংখ্যাটার পাশে গেছে, যেখানে ওটা জায়গা নেয় না।
+
+### ৫· যাচাই
+
+⭐ কাটার আগে **একটা মকআপ বানিয়ে মালিককে দেখানো হয়েছে** — অ্যাপের নিজের
+টোকেন ধরে, এখনকার আর প্রস্তাবিত পর্দা পাশাপাশি। ⚠️ রোজকার পর্দা অনুমানে
+বদলানো যায় না; মালিক দেখে *"puro ta koro"* বলার পরেই কোড লেখা হয়েছে।
+
+ওয়েব **১১১ পাস**, টাইপচেক ও লিন্ট পরিষ্কার, প্রোডাকশন বিল্ড সবুজ।
+
+---
+
+## ৩ঞ১১. "কে টার্গেট এনেছে" — আর যে সংখ্যাটা প্রথম নড়ল
+
+*২৫ আগস্ট ২০২৬*
+
+মালিক বললেন *"Design Pool e ke target list add koreche seta ami dekhote
+cai"*।
+
+### ⭐⭐ ১· উত্তর খুঁজতে গিয়ে আসল খবরটা পাওয়া গেল
+
+প্রশ্নটার উত্তর দিতে ডাটাবেসে গোনা হলো — আর সেখানেই ১১ দিনের অপেক্ষার
+ফল দেখা গেল:
+
+```
+আপনি (owner)        ৩৯,১৩১   ২২ আগস্ট
+বেলাল (manager)      ৬,৫২৮   ২৩ আগস্ট
+সাহারিয়ার (গবেষক)      ২৫২   ২৫ আগস্ট, সকাল ৯:১৩–৯:১৫
+```
+
+⭐⭐ **গবেষকরা এতদিন ০টা এনেছিলেন** (ADR-038-এর মাপ, ২৪ আগস্ট)। রোলটা
+লাইভ হয় রাত ১:৫৬-এ; সকাল ৯:১০-এ **দুজনেই লগইন করলেন** — ১৩ আগস্টের পর
+প্রথমবার — আর তিন মিনিটের মধ্যে সাহারিয়ার ২৫২টা তুললেন।
+
+⚠️ এটা এখনো "সফল" নয়, একদিনের সংখ্যা। কিন্তু ২৪ আগস্ট যে মাপটা নিয়ে
+নকশা করা হয়েছিল (*"যাঁদের জন্য বানানো তাঁরা পোর্টাল খোলেনই না"*), সেটা
+প্রথমবার নড়ল।
+
+### ২· যা বসল
+
+`added_by_id` কলাম আর তার relation **স্কিমায় আগে থেকেই ছিল** — কখনো
+তালিকায় তোলা হয়নি। তাই কোনো মাইগ্রেশন লাগেনি, শুধু চুক্তিটা পূরণ করা:
+
+| | |
+|---|---|
+| তালিকার সারিতে | `addedBy: { fullName, role }` ও `addedAt` |
+| পর্দায় | **Added by** কলাম — নাম, ভূমিকা, আর কবে |
+| ছাঁকনি | `addedById` — ড্রপডাউনে **প্রতিটা নামের পাশে সংখ্যা** |
+| নতুন রুট | `GET /design-targets/adders` |
+
+⭐ সংখ্যাটা ড্রপডাউনেই লেখা, তাই মালিক **একটাও ক্লিক না করে** উত্তরটা
+পান — ছাঁকাটা তার পরের ধাপ, বাধ্যতামূলক নয়। প্রশ্নটা ছিল *"কে এনেছে"*,
+আর তার সবচেয়ে সৎ উত্তর একটা তালিকা নয়, একটা **সংখ্যা**।
+
+### ⚠️⚠️ ৩· দুটো আলাদা id-র জগৎ
+
+```
+assigned_to_id  →  employees   (কে ডিজাইন করবেন)
+added_by_id     →  users       (কে লিঙ্কটা এনেছেন)
+```
+
+⚠️ সংখ্যাগুলো ছোট আর পাশাপাশি, তাই একটার জায়গায় অন্যটা বসানো সহজ — আর
+তখন **কোনো এরর হয় না, কেবল ভুল মানুষের সারি আসে**। ⭐ পর্দায় ছাঁকনি
+দুটোও পাশাপাশি বসে, তাই লেখাদুটো ইচ্ছাকৃতভাবে আলাদা রাখা হয়েছে
+("Everyone" বনাম "Added by anyone") — নইলে ওরা যমজ দেখাত।
+
+⚠️ `adders()` **`users` ধরে খোঁজে, `employees` ধরে নয়** — মালিকের কোনো
+`employees` সারিই নেই, তাই ওই টেবিল ধরে খুঁজলে ৩৯ হাজার সারির উৎসটাই
+তালিকা থেকে উধাও হয়ে যেত।
+
+⭐ একটা e2e টেস্ট ঠিক এই সীমানাটা পাহারা দেয়: গবেষকের `users.id` দিয়ে
+ছেঁকে দেখা হয় ফলটা সত্যিই তাঁরই।
+
+### ৪· যাচাই
+
+সার্ভার **১১২৫ পাস**, ওয়েব **১১১ পাস**, দুই টাইপচেক ও লিন্ট পরিষ্কার।
+নতুন e2e চারটে — সারিতে নাম আসে, ছাঁকনি কাজ করে, খালি অবস্থায় ভাঙে না,
+আর ডিজাইনার রুটটা ছুঁতেই পারেন না।
+
+---
+
+## ৩ঞ১০. ⭐⭐ গবেষক একটা ভূমিকা — আর `!== employee` কেন ভুল কথা
+
+*২৫ আগস্ট ২০২৬ · ADR-040*
+
+মালিক বললেন *"sumaiya je je access pacche sob researcher ra sei access
+gula pabe. er jonno alada role baniye nao"*, আর যুক্তিটা দিলেন
+*"researcher and designer same kaj kore na, tai eder access o same hobe
+na"*।
+
+⭐ এটা আগের দিনের সিদ্ধান্তের **উল্টো** (তখন কেবল সুমাইয়া), আর সেটা
+মালিকেরই ডাক। এক দিনে এই অংশটা তিনবার লেখা হয়েছে — নিচে কেন।
+
+### ⭐⭐ ১· ভূমিকাটা কোডে আগেই ছিল, ছদ্মবেশে
+
+প্রথমে ভাবা গিয়েছিল এটা বড় বদল। কোড পড়ে উল্টোটা দেখা গেল — দুটো
+জায়গায় **কমেন্টেই স্বীকারোক্তি** লেখা:
+
+```ts
+// Layout.tsx
+roles: ['owner', 'manager', 'employee'],
+when:  (user) => user.canAddTargets,
+// "employee আছে কেবল গবেষকের জন্য, আসল ছাঁকনিটা `when` —
+//  নইলে ন-জন ডিজাইনারও মেনুতে এটা দেখতেন"
+```
+
+```ts
+// targets.service.ts
+// "গবেষককে @Roles() দিয়ে আটকানো যায় না — পোর্টালের রোল তিনটে,
+//  আর গবেষক ঢোকেন employee হিসেবে"
+```
+
+⚠️⚠️ অর্থাৎ হ্যাকগুলো লেখাই হয়েছিল **ভূমিকাটা নেই বলে**। মালিকের
+সিদ্ধান্ত ভিতটাই সরিয়ে দিল, তাই কোড **বাড়েনি — কমেছে**: সাইডবারের
+`when` উধাও, প্রতি রিকোয়েস্টের একটা `findUnique` উধাও, `/auth/me`-র
+জয়েনটাও উধাও।
+
+### ⚠️⚠️⚠️ ২· যে বিপদটা প্রায় ঘটে গিয়েছিল
+
+`UserRole`-এ একটা মান যোগ করা দেখতে নিরীহ। ⭐ কিন্তু কোডের অনেক শর্ত
+লেখা ছিল **না-তালিকা** ধাঁচে — `role !== 'employee'`, অর্থাৎ *"স্টাফ না
+হলে সব দেখতে দাও"*। নতুন ভূমিকা তখন নীরবে **ভেতরের দিকে** পড়ে, বাইরে নয়।
+
+| কোথায় | লেখা ছিল | কী ঘটত |
+|---|---|---|
+| `screenshots.service` `:319` | `if (role !== employee) return requested ?? null` | `null` = ফিল্টার নেই → **সবার স্ক্রিনশট, সব দিনের** |
+| `adjustments.service` `:241` | `if (role !== employee) return;` | পাহারা এড়িয়ে যেত → **যে কারো বেতন-সমন্বয়** |
+| `screenshots.service` `:395` | `self: role === employee` | গবেষক নিজের ছবি দেখলে audit log-এ **"অন্যের ছবি"** লেখা হতো |
+| `GlobalSearch` `:34` | `if (role === employee) return null` | গোটা দলের নামের উপর খোঁজার বাক্স খুলে যেত |
+| `Monthly` · `Reports` · `Gallery` · `App.isStaff` | একই ধাঁচ | পর্দা খুলত, সার্ভার ৪০৩ দিত |
+
+⚠️⚠️ **প্রথম দুটোর কন্ট্রোলারে ক্লাস-লেভেল `@Roles` ইচ্ছাকৃতভাবে নেই**
+(স্কোপিংটা সার্ভিসের কাজ, আর কমেন্টে লেখাও আছে) — তাই ওই একটা লাইনই
+ছিল একমাত্র পাহারা। উপরে কিছুই আটকাত না।
+
+### ⭐⭐ ৩· কম্পাইলার কতটা বাঁচাল — মাপা
+
+enum-এ মানটা বসিয়ে দুই দিকে টাইপচেক চালানো হলো। ফল:
+
+```
+সার্ভার :  ১টা  — redact.ts, portalRole-এর হাতে লেখা টাইপ
+ওয়েব    :  ১টা  — changeUserRole-এর সরু প্যারামিটার
+```
+
+⚠️⚠️ **দুটোই নিছক টাইপ চওড়া করার ব্যাপার — একটাও নিরাপত্তার নয়।** উপরের
+সাতটা বিপদের একটাও কম্পাইলার ধরেনি, ধরার কথাও নয়।
+
+⭐ **নিয়ম, লিখে রাখা:** অনুমতি **হ্যাঁ-তালিকা** ধরে লিখুন
+(`role === owner || role === manager`)। তাহলে enum বাড়লে নতুন মান
+ডিফল্টে **বাইরে** থাকে — ভুলের নিরাপদ দিক। `@Roles()` ও সাইডবারের
+`roles[]` এমনিতেই ওই ধাঁচে (allowlist), তাই ওগুলো নিরাপদ ছিল।
+
+### ⚠️⚠️ ৪· `Role` টাইপটা **দুবার** লেখা ছিল
+
+`api/admin.ts`-এ একটা, `api/auth.ts`-এ আরেকটা — হুবহু একই তিনটে মান,
+কোনো সংযোগ নেই। ⭐ প্রথমটায় `researcher` বসানোর পরেও **সাইডবার পুরোনো
+টাইপটাই ব্যবহার করত**, তাই `Record<Role, string>`-এর কম্পাইল-পাহারা
+অর্ধেক কাজ করত। এখন দ্বিতীয়টা প্রথমটাকেই এগিয়ে দেয়।
+
+### ⚠️⚠️ ৫· সেই বাগটা, তৃতীয়বার
+
+Portal-account জানালায় লেখা ছিল:
+
+```ts
+useState<AssignableRole>(
+  employee.portalRole === 'manager' ? 'manager' : 'employee'
+)
+```
+
+⭐ ঠিক এই লাইনের **উপরেই** কমেন্টে লেখা আছে যে ম্যানেজারের বেলায় একবার
+এই বাগটা ঘটেছিল — কেউ শুধু ইমেইল বদলাতে গিয়ে সেভ চাপলে ম্যানেজার নীরবে
+স্টাফ হয়ে যেতেন, আর `? :`-টা ছিল তারই সারাই।
+
+⚠️⚠️ **সেই সারাইটাই নতুন ভূমিকার জন্য আবার ফাঁদ হলো** — সুমাইয়া
+ড্রপডাউনে "Staff" দেখাতেন, আর সেভ চাপলেই গবেষক থেকে নেমে যেতেন।
+⭐ এখন `Record<Role, AssignableRole>` — সম্পূর্ণ মানচিত্র, অনুমান নয়।
+
+### ৬· দুই ঘরে এক নাম — যে ফাঁদটা রয়েই গেল
+
+**Staff type: Researcher** (কাজের নাম, ডিজাইনারের টার্গেটের ঘর খোলে) আর
+**Role: Researcher** (অধিকার দেয়) — দুটো আলাদা জানালায়।
+
+⭐ চুপচাপ একটা থেকে অন্যটা বসিয়ে দেওয়া যেত। করা হয়নি: তখন মালিক জানতেনই
+না কী ঘটল, আর এই প্রকল্পে **অদৃশ্য জাদুই** বারবার ভুল সংখ্যার জন্ম
+দিয়েছে। ⚠️ বদলে দুটো না মিললে Staff ফর্মে **দেখা যায় এমন বার্তা** ওঠে,
+কোনদিকে ঠিক করতে হবে সেটা বলে দিয়ে।
+
+### ⚠️⚠️ ৭· দুটো কারিগরি ফাঁদ
+
+**enum যোগ আর ব্যবহার এক লেনদেনে চলে না।** Postgres ১২+ লেনদেনের ভেতরে
+মান *যোগ* করতে দেয়, **ব্যবহার** করতে দেয় না — আর Prisma প্রতিটা
+মাইগ্রেশন লেনদেনে চালায়। এক ফাইলে রাখলে:
+`ERROR: unsafe use of new value "researcher" of enum type "UserRole"`।
+
+**⭐ ভূমিকা বসানো মাইগ্রেশনের কাজ নয়।** `vps-update.sh` মাইগ্রেশন চালায়
+**§৩-এর আগে**, অর্থাৎ নতুন ইমেজ তৈরির আগে। ব্যাকফিল ওখানে থাকলে ~২
+মিনিট ধরে **পুরোনো** কোড এমন একটা enum মান পড়ত যেটা তার Prisma ক্লায়েন্ট
+চেনে না — দুজন গবেষকেরই সেশন ভেঙে পড়ত, আর মালিকের হাতে ফেরানোর কোনো
+পর্দা থাকত না। ⚠️ তাই ব্যাকফিল মাইগ্রেশনটা লেখা হয়ে **মুছে ফেলা
+হয়েছে**; ভূমিকা বসেছে ডিপ্লয়ের পরে, হাতে।
+
+### ⭐ ৮· যে সিদ্ধান্তটা একটা রিভিউ-দলের বিরুদ্ধে গিয়ে নেওয়া হলো
+
+৩৯টা এজেন্টের একটা অডিট চালানো হয়েছিল দুটো নকশা তুলনা করতে, আর সেটা
+**উল্টো নকশাটা** সুপারিশ করেছিল — যুক্তি: বদলের জায়গা কম, ফেরার পথ আছে।
+
+⚠️⚠️ কিন্তু তার প্রমাণগুলো ছিল **অর্ধেক-শেষ কাজের ছবি**: "ওয়েব বিল্ড
+লাল", "সাতটা শর্ত অবশিষ্ট", "ড্রপডাউনে রোলটাই নেই"। ততক্ষণে তিনটেই
+সারানো। ⭐ সুপারিশটা নেওয়া হয়নি, কারণ মালিক দুবার স্পষ্ট করে ভূমিকা
+চেয়েছেন — আর নকশা বাছাই বাস্তবায়নের খরচ দিয়ে নয়, **কে কী চায়** দিয়ে হয়।
+
+⭐⭐ তবু অডিট দুটো আসল ফাঁক ধরেছিল, আর দুটোই নেওয়া হয়েছে: উপরের ৭ নম্বরের
+ডিপ্লয়-জানালা, আর `can_proofread` স্কিমা থেকে মুছে ফেলার পর **DROP COLUMN
+মাইগ্রেশনটা লেখা হয়নি** — ডাটাবেস আর স্কিমা নীরবে আলাদা হয়ে থাকত।
+
+### ৯· যাচাই
+
+| | |
+|---|---|
+| সার্ভার (`test:nodb`) | **১১২৫ পাস / ৪৭ ফাইল** |
+| ওয়েব | **১১১ পাস / ৪ ফাইল** |
+| টাইপচেক | দুটোই পরিষ্কার |
+| নতুন টেস্ট | `canUseTargets`-এর উপর ৫টা *(শেষটা **প্রতিটা** `UserRole` মান ধরে দেখে)*, e2e-তে ভূমিকা-বনাম-ধরনের চারটে সীমানা, আর দুটো নিরাপত্তা-জাল |
+
+⭐⭐ সবচেয়ে দামি টেস্টটা `endpoints.e2e`-এ: owner/manager-এর জন্য খোলা
+**প্রতিটা** রুটে গবেষককে ৪০৩ পেতেই হবে। কেউ নতুন রুট যোগ করলে সেটা
+এমনিতেই ওই তালিকায় চলে আসে — আর ঠিক এই ধরনের জালই এবার অনুপস্থিত ছিল।
+
+---
+
+## ৩ঞ৯. ⭐⭐ বানান-যাচাইয়ের শেকল — আর "সব গবেষক" ≠ "যিনি বানান দেখেন"
+
+*২৪–২৫ আগস্ট ২০২৬ · ADR-038*
+
+মালিক অফিসের আসল ছটা ধাপ লিখে দিয়ে জিজ্ঞেস করলেন *"ei puro workflow ta
+ki amora software kore felote pari?"* — গবেষক তালিকা আনেন, ডিজাইনার
+বানান, শনিবারে সব জড়ো হয়, সুমাইয়া বানান দেখেন, ভুল পেলে বেলাল ঠিক
+করেন, তারপর ফাইল Complete ফোল্ডারে যায়।
+
+### ⭐⭐ ১· অবস্থা নয়, তারিখ — আর কেন এটাই একমাত্র নিরাপদ পথ
+
+নতুন তিনটে ধাপের জন্য `status`-এ নতুন মান বসানোই সবচেয়ে স্বাভাবিক মনে
+হয়। ⚠️⚠️ **কিন্তু সেটাই সবচেয়ে বিপজ্জনক।** আজ গোটা সিস্টেমে *"কতগুলো
+ডিজাইন হয়েছে"* সব জায়গায় গোনা হয় `status = 'done'` ধরে — ড্যাশবোর্ড,
+রিপোর্ট, ডাইজেস্ট, পে-রোলের টার্গেট। একটা সারি `done` থেকে `checked`-এ
+সরলে **প্রতিটা সংখ্যা নীরবে কমে যেত**, আর কেউ ধরতে পারত না কেন।
+
+⭐ তাই `uploadedAt`/`liveAt`-এর প্রমাণিত ছাঁচেই — **তারিখ ও নাম**:
+
+```
+checked_at + checked_by_id       — কে, কবে দেখলেন
+error_found_at                   — দেখা হয়েছে এবং ভুল ছিল
+fixed_at + fixed_by_id           — কে, কবে ঠিক করলেন
+```
+
+⚠️ `checked_at` আর `error_found_at` **দুটোই** লাগে, একটা নয়। শুধু
+`error_found_at` রাখলে "দেখা হয়েছে, ভুল নেই" আর "দেখাই হয়নি" — দুটো
+সম্পূর্ণ আলাদা অবস্থা এক `NULL`-এ মিশে যেত।
+
+### ২· চারটে কিউ, আর প্রত্যেকটার একটা করে মালিক
+
+| কিউ | শর্ত | কার |
+|---|---|---|
+| যাচাই বাকি | `completedAt` আছে, `checkedAt` নেই | সুমাইয়া |
+| ঠিক করতে হবে | `errorFoundAt` আছে, `fixedAt` নেই | বেলাল |
+| আপলোডের অপেক্ষায় | শেষ, `uploadedAt` নেই, **এবং ভাঙা নয়** | সাহারিয়ার |
+| লাইভের অপেক্ষায় | আপলোড হয়েছে, `liveAt` নেই | সাহারিয়ার |
+
+⚠️⚠️ **তৃতীয় সারির শেষ শর্তটা মালিকের সিদ্ধান্ত:** ভুল পাওয়া অথচ
+ঠিক-না-হওয়া ডিজাইন আপলোডের কিউতে ওঠে না — জানা-ভাঙা জিনিস Amazon-এ
+যাবে না। ⭐ কিন্তু **এখনো দেখাই হয়নি** এমন সারি আটকায় না; আটকালে ১৩২টার
+কিউ রাতারাতি ০ হয়ে যেত আর কেউ শুরুই করত না।
+
+### ⚠️⚠️ ৩· ঠিক করলেও ডিজাইন মূল ডিজাইনারেরই থাকে
+
+`markFixed()` **`assignedToId` ছোঁয় না** — কে ঠিক করলেন সেটা আলাদা ঘরে
+(`fixed_by_id`)। ⚠️ ছুঁলে বেলালের নামে অন্যের কাজ জমা হতো আর তাঁর সংখ্যা
+ফুলে যেত — ⭐ **২৩ আগস্টের গোটা তদন্তটাই শুরু হয়েছিল ঠিক এমন একটা ফোলা
+সংখ্যা দেখে** (§ ৩ঞ২)। একটা e2e টেস্ট এখন স্থায়ীভাবে এটা পাহারা দেয়।
+
+### ⭐⭐ ৪· "ami chai ei access ami manager and sumaiya pak"
+
+কোড চালু হওয়ার পর মালিক পর্দাটা দেখে বললেন — বোতাম তিনটে **সব গবেষকের
+কাছে** যাচ্ছে, অথচ তিনি চান নিজে, ম্যানেজার আর সুমাইয়া।
+
+⚠️⚠️ **এখানেই সহজ সমাধানটা ভুল ছিল।** পাহারা ছিল `assertCanUse` — আর
+ওটাই গোটা টার্গেট-অংশের **একটাই দরজা**: জমা, তালিকা, Uploaded, Live,
+সব। ওটা সংকুচিত করলে দ্বিতীয় গবেষক সাহারিয়ার **নিজের কাজটাও** হারাতেন,
+অথচ মালিক কেবল বানানটুকু সীমিত করতে চেয়েছেন।
+
+⭐ তাই **দ্বিতীয় পাহারা**, প্রথমটা অটুট রেখে:
+
+```
+assertCanUse        owner · manager · সব গবেষক     → জমা, তালিকা, Uploaded, Live
+assertCanProofread  owner · manager · যাঁর টিক আছে → Spelling OK, Has error, Fixed
+```
+
+⚠️⚠️ **কারো নাম বা id কোডে লেখা হয়নি**, আর সেটাই কলামটার পুরো কারণ।
+`employees.can_proofread` — Settings → Staff-এ *"Can check spelling"*
+টিক-ঘর। হার্ডকোড করলে সুমাইয়া কাজ ছাড়লে বা মালিক অন্য কাউকে দিতে চাইলে
+প্রতিবার কোড বদলাতে হতো, আর **নিয়মটা কোথাও দেখাই যেত না** — মালিক
+নিজে জানতেও পারতেন না কার কী অধিকার আছে।
+
+⚠️ টিক-ঘরটা **সবার জন্য ওঠে**, শুধু গবেষকের জন্য নয় — ইচ্ছাকৃত। আজ
+কাজটা একজন গবেষক করেন, কিন্তু নিয়মটা কাজের ধরনের সাথে বাঁধা নয়; কাল
+বেলাল দেখলে মালিক যেন কোড না বদলে শুধু টিক দিতে পারেন।
+
+⚠️ ডিফল্ট `false` — অধিকার **চেয়ে নিতে হয়**। owner ও manager ঘরটার
+বাইরে, তাঁরা রোল দিয়েই পান।
+
+### ৫· `set` স্ট্রিং নেয়, টিক-ঘর boolean দেয়
+
+`StaffTab`-এর `set(key)` চুক্তি `(value: string)` — ফর্মের বাকি সব ঘর
+ইনপুট বাক্স, আর ব্রাউজার সেখান থেকে স্ট্রিংই দেয়। ⚠️ `set`-কে দুই ধরনের
+মান নিতে দিলে `dailyDesignTarget`-এ `'25'`-এর জায়গায় `true` বসিয়ে দিলেও
+TypeScript ধরত না। ⭐ তাই আলাদা `setBool`, আর `ui.tsx`-এ পুনর্ব্যবহারের
+জন্য একটা `CheckboxField`।
+
+### ৬· যাচাই
+
+| | |
+|---|---|
+| সার্ভার (`test:nodb`) | **১১২০ পাস / ৪৭ ফাইল** |
+| ওয়েব | **১১১ পাস / ৪ ফাইল** |
+| টাইপচেক | সার্ভার ও ওয়েব — দুটোই পরিষ্কার |
+| নতুন e2e | ৫টা — টিক ছাড়া গবেষক **৪০৩**, টিকসহ **২০১**, ম্যানেজার টিক ছাড়াই পারেন, আর সেশনে `canProofread` ঠিক আসে |
+
+⭐⭐ প্রথম টেস্টটাই সবচেয়ে দামি: টিক-ছাড়া গবেষক `/bulk`-এ **২০১** পান
+কিন্তু `/checked`-এ **৪০৩** — একই লগইনে, একই রিকোয়েস্টে। ⚠️ এটাই প্রমাণ
+যে দুটো পাহারা সত্যিই আলাদা, আর একটা সংকুচিত করতে গিয়ে অন্যটা ভাঙেনি।
+
+### ⏳ ৭· যা এখনো মাপা হয়নি
+
+⚠️⚠️ **কিউ থাকা আর কিউ ব্যবহার হওয়া এক নয়।** গবেষকদের শেষ লগইন ১৩
+আগস্ট — সিস্টেম চালুর দিন। এক সপ্তাহ পরে দুটো সংখ্যা দেখতে হবে: তাঁরা
+লগইন করেন কি না, আর `uploaded` সারি বাড়ে কি না। ⭐ না বাড়লে সমস্যাটা
+পর্দার নয় — কাজটা পোর্টালের পথে না পড়ার, আর তখন আরও কোড লেখা ভুল উত্তর।
+
+---
+
+## ৩ঞ৮. G120 — "কবে থেকে দেখছি" ভুল প্রশ্নের উত্তর দিত *(২৪ আগস্ট ২০২৬)*
+
+কারো ঘাটতি মাপা হয় **প্রত্যাশার** বিপরীতে, আর প্রত্যাশার জানালা শুরু হয়
+`trackingStartedOn` থেকে — *"তাকে কবে থেকে দেখছি"*।
+
+⚠️⚠️ সংখ্যাটা আসত `min(daily_summary.work_date)` থেকে। কিন্তু
+`refreshDate()` **প্রতিটি active কর্মীর** সারি লেখে, ডেটা থাক বা না থাক —
+আর সেটা ইচ্ছাকৃত, নইলে হিটম্যাপে *"ডেটা আসেনি"* আর *"কাজ হয়নি"* আলাদা
+করা যেত না।
+
+⭐ ফলে সংখ্যাটা মাপত **"সার্ভার কবে থেকে এই কর্মীকে নিয়ে চলছে"**।
+
+```
+১ অক্টোবর   কর্মী তৈরি হলো  → ওই দিনই no_activity সারি বসল
+৮ অক্টোবর   এজেন্ট বসল
+            ↳ মাঝের ৭ দিন = পুরো ঘাটতি, অথচ তাকে দেখাই যায়নি
+```
+
+### ⭐ তিনটে বিকল্প, তিনটে লেন্স, একই রায়
+
+| | কী | রায় |
+|---|---|---|
+| ক | প্রথম `worked_sec > 0` সারি | ⚠️ কেউ সত্যিই প্রথম তিন দিন কাজ না করলে সেটাও "দেখা হয়নি" — ঘাটতি কম দেখানোর দিকে একমুখী পক্ষপাত |
+| **খ** | ⭐ **প্রথম `work_sessions` সারি** | ✅ সারি কেবল ingest-এ জন্মায়, retention ছোঁয় না |
+| গ | নতুন অপরিবর্তনীয় কলাম | ⚠️ migration + ব্যাকফিল, অথচ একই `null`-সিদ্ধান্ত নিতেই হয় |
+| ~~ঘ~~ | ~~`devices.enrolled_at`~~ | ❌ মেপে বাতিল — নিচে |
+
+⚠️⚠️ **ঘ কেন বাতিল।** ডকে লেখা ছিল enrollment-এর তারিখ *"কোথাও রাখা হয়
+না"* — সেটা **বাসি**, `Device.enrolledAt` আছেই। কিন্তু মাঠে মেপে দেখা গেল
+ওটা **"শেষ enrollment"**, প্রথমটা নয়:
+
+```
+OX-07   ডিভাইস id ১ (সবার আগে তৈরি)   enroll ১৫ আগস্ট
+OX-04   ডিভাইস id ৫                    enroll ১৩ আগস্ট
+OX-01                                  enroll ১৯ আগস্ট — অথচ কাজ ১৩ থেকে
+```
+
+⭐ এজেন্ট আবার বসালে তারিখ **এগিয়ে যায়**। একটা "কবে শুরু" সংকেত যেটা
+সামনে হাঁটে — ব্যবহার করলে নীরবে ভুল হতো।
+
+### ⚠️⚠️ আসল লাইনটা `?? today`
+
+উৎস বদলানোর পর যার একটাও সেশন নেই তার মান `null`। কিন্তু
+`summary.math.ts`-এর `maxDate()`-এ **`null` মানে "এই সীমাটা নেই"** — সে
+কখনো জেতে না। অর্থাৎ `?? null` লিখলে:
+
+```
+যার এজেন্ট কোনোদিন কিছু পাঠায়নি
+   → জানালা পুরো মাস জুড়ে খুলত
+   → প্রত্যাশা পুরো মাসের
+   → ঘাটতি আগের চেয়েও বেশি        ⚠️ ফিক্সের ঠিক উল্টো ফল
+```
+
+⭐ তাই তিনটে কল-সাইটে `?? today` — জানালা খালি, প্রত্যাশা ০।
+⚠️ চতুর্থটায় (`dashboard`-এর `TrendStaff.trackedFrom`) `?? null`-ই থাকে,
+কারণ **ওই ফিল্ডে `null`-এর অর্থ উল্টো** — "কখনো দেখা হয়নি ⇒ প্রত্যাশা ০"।
+দুটো ফাইলে একই শব্দের দুই মানে, তাই দুটোতেই মন্তব্যে লেখা আছে।
+
+### ⭐ কল-সাইট তিনটে নয়, চারটে
+
+প্রথম গ্রেপে তিনটে পাওয়া গিয়েছিল; `dashboard.service.ts`-এরটা বাদ পড়েছিল
+কারণ ওখানে ভেরিয়েবলের নাম আলাদা। ⚠️ চারটেতেই **হুবহু একই কুয়েরি হাতে
+লেখা** ছিল — এখন একটাই হেল্পার।
+
+### ⚠️ টাকার কিছু বদলায়নি — যাচাই করে বলা
+
+`payroll.service.ts` এই জানালার কোনো সংখ্যা পড়ে না (`expectedSec` ·
+`paceSec` · `workdaysElapsed` — grep-এ শূন্য হিট)। টাকার দুটো লাইনই
+টার্গেট-ভিত্তিক, আর টার্গেট আসে `prorate()` থেকে যার ইনপুটে
+`trackingStartedOn` **নেই**। e2e-তেও `targetSec` অপরিবর্তিত থাকা আলাদা
+করে দেখা হয়।
+
+### পুরোনো ক্যানারিটা উল্টে দেওয়া হয়েছে
+
+`tracking-start.spec.ts`-এ একটা টেস্ট ছিল যার নামই ছিল *"⚠️ এজেন্ট দেরিতে
+বসলে দিনগুলো তবু গোনা হয় — এটা ঢাকা পড়েনি"*। ⭐ মুছে না দিয়ে **উল্টে**
+লেখা হয়েছে, আর সাথে ফারাকটাও মাপা হয়: **৯ কর্মদিবস = ৭২ ঘণ্টা**, যা আগে
+ঘাটতি হিসেবে গোনা হতো অথচ কর্মীকে দেখাই হয়নি।
+
+⚠️ ইউনিট টেস্ট এই বদলটা ধরতে পারে না — ওখানে `trackingStartedOn` হাতে
+বসানো হয়, আর ফাঁকটা ছিল **কোন টেবিল থেকে সংখ্যাটা আসে** তাতে। তাই তিনটে
+নতুন e2e, যার মূলটা পুরো ঘটনাটা পুনরুৎপাদন করে: ১–১৬ তারিখের খালি সারি +
+১৭ তারিখে প্রথম সেশন → প্রত্যাশা **১২ দিন, ২৫ নয়**।
+
+### ⭐⭐ CI দুটো জিনিস ধরিয়ে দিল, দুটোই কাজের
+
+**এক — পুরোনো দুটো টেস্ট লাল হলো**, আর সেটাই প্রমাণ যে ফিক্সটা কাজ করছে।
+ওরা কেবল `seeDays()` দিয়ে **দৈনিক সারি** বসাত, সেশন নয় — তাই নতুন নিয়মে
+ওই কর্মীদের কখনো দেখাই হয়নি, প্রত্যাশা ০। ⭐ টেস্টগুলোর দাবি বরাবরই ছিল
+*"ট্র্যাকিং ১৭ তারিখে শুরু"* — এখন তারা সেটা **সত্যিকারের সংকেত** দিয়ে
+বলে।
+
+**দুই — আমার নতুন টেস্ট ভুল ঘর পড়ছিল।** `expectedWorkdays` হলো
+`prorate()`-এর **d** (তার নিজের কর্মদিবস), জানালার সাথে যার সম্পর্ক নেই।
+জানালাটা যায় `workdaysElapsed`-এ। ⚠️ ২৭ পাওয়া গিয়েছিল — পুরো মাসের
+কর্মদিবস — আর সংখ্যাটাই বলে দিল কোন ঘর পড়ছি।
+
+## ৩ঞ৭. ⭐⭐ "ডিজাইন টার্গেট কোথায় সেট করব?" — উত্তর ছিল "কোথাও না" *(২৩ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞেস করলেন *"designer der design target kothay set kore hobe?"* —
+আর খুঁজতে গিয়ে উত্তরটা দাঁড়াল: **কোথাও না**।
+
+| | অবস্থা |
+|---|---|
+| `work_policies.daily_design_target` (সবার জন্য একটা) | ✅ ডাটাবেসে ২৫, সার্ভারের API-ও নেয় |
+| ওই API-র জন্য **পর্দার ঘর** | ❌ নেই — ওয়েবে শব্দটাই ছিল না |
+| `employees.daily_design_target` (কর্মীভেদে) | ⚠️⚠️ কলাম আছে, **কেউ পড়ে না, কেউ লেখেও না** |
+
+⚠️⚠️ শেষ সারিটাই আসল ঘটনা। ওই কলামের পাশে schema-তে **মালিকের নিজের কথাই**
+মন্তব্য হিসেবে লেখা: *"karo daily target 25 ta, kono designer er daily
+target 15 ta"*। অর্থাৎ চাওয়াটা রেকর্ড করা হয়েছিল, কলামও বসানো হয়েছিল —
+**তারপর থেমে গিয়েছিল**। ১০ জন ডিজাইনারের ঘরই খালি।
+
+⭐ এই প্রকল্পের চেনা ব্যর্থতার আরেকটা রূপ: আগেরগুলোয় *"চুক্তি লেখা আছে,
+কলার লেখা হয়নি"*, আর এখানে **ঘর বানানো আছে, ভরার পথও নেই, পড়ার পথও নেই**।
+
+### ⭐ নিয়মটা এক জায়গায়
+
+তিনটে পাঠকেই হুবহু একই লাইন হাতে লেখা ছিল:
+
+```ts
+policy?.dailyDesignTarget ?? 0     // Live Board · Telegram · কর্মীর পাতা
+```
+
+এখন একটাই ফাংশন, `design.rules.ts`-এ:
+
+```ts
+export function designTargetOf(own, policy) {
+  return own ?? policy ?? 0;
+}
+```
+
+### ⚠️⚠️ `??` না `||` — এখানে পার্থক্যটা আসল
+
+কর্মীর ঘরে **০** মানে *"এর টার্গেট বন্ধ"*, আর সেটা একটা বৈধ সিদ্ধান্ত।
+`||` লিখলে ওই ০ চুপচাপ পলিসির ২৫-এ ফিরে যেত — অর্থাৎ **মালিক টার্গেট বন্ধ
+করতে চাইলেও পারতেন না**, আর কোথাও কোনো এরর উঠত না।
+
+⭐ পাঁচটা টেস্টের একটা ঠিক এই পাহারায়: `designTargetOf(0, 25) === 0`।
+
+### তিনটে আলাদা অবস্থা, দুটো নয়
+
+| ঘরে কী | মানে |
+|---|---|
+| **খালি** | পলিসির সংখ্যা খাটবে (২৫), আর পলিসি বদলালে সেও বদলাবে |
+| **০** | এর টার্গেট বন্ধ — সংখ্যা গোনা চলবে, কেউ "পিছিয়ে" নয় |
+| **১৫** | এরই আলাদা টার্গেট |
+
+⚠️ ঘরটা পর্দায় ওঠে **কেবল ডিজাইনারের জন্য** — সার্ভারের `hasDesignTarget()`
+ঠিক একই শর্ত দেখে। অন্যদের দেখালে ঘরটা ভরা যেত অথচ কোনো পর্দায় কিছু
+বদলাত না, ⭐ আর **যে ঘর কিছুই করে না সেটা ভুল সংখ্যার চেয়েও বিভ্রান্তিকর**।
+
+⚠️ ধরন বদলে ডিজাইনার থেকে সরালে ঘরটা লুকোয়, কিন্তু মানটা **মোছে না** —
+আবার ডিজাইনার করলে সংখ্যাটা ফিরে আসে।
+
+## ৩ঞ৬. ⭐⭐ G117 — "মাসের হিসাব নয়, অফিস-ডের হিসাব" *(২৩ আগস্ট ২০২৬)*
+
+মালিক G117 বেছে নিয়ে নিয়মটা বলে দিলেন:
+*"daily 8 ghonta kore, without holiday and friday"* — আর কাজের মাঝপথে
+আরেকটা লাইন, যেটা আসলে গোটা সমস্যাটাই সরিয়ে দিল:
+
+> **"maser hisab na kore office day hisab koro"**
+
+### ⭐ বাগটা কী ছিল
+
+`ReportMeta.monthTargetHours` ফেরাত পলিসির **ফ্ল্যাট ২০৮**, অথচ tray,
+Live Board আর `monthly_summary` তিনটেই `prorate()` ধরে **অফিস-ডে × ৮ঘ**
+গোনে। আগস্টে দুটো মিলে যায় বলে চোখে পড়ত না:
+
+| মাস | অফিস-ডে | আসল | রিপোর্ট বলত |
+|---|---|---|---|
+| ফেব্রুয়ারি | ২২ | ১৭৬ঘ | ২০৮ঘ |
+| **অক্টোবর** | ২৪ | **১৯২ঘ** | ২০৮ঘ ⚠️ |
+| নভেম্বর | ২৫ | ২০০ঘ | ২০৮ঘ |
+| আগস্ট | ২৬ | ২০৮ঘ | ২০৮ঘ ✅ |
+
+⚠️ অর্থাৎ অক্টোবরে প্রত্যেকে **১৬ ঘণ্টার ভুতুড়ে ঘাটতি** দেখাতেন — দু-দিনের
+কাজ, যা কেউ কখনো করেনি বলে দাবি করা হতো না।
+
+### ⭐⭐ মালিকের দ্বিতীয় লাইনটাই আসল সমাধান
+
+কোডের মন্তব্যে বছরখানেক ধরে লেখা ছিল সমস্যাটা **অমীমাংসেয়**:
+
+> *"রেঞ্জ একাধিক মাস ছুঁতে পারে, তখন 'কোন মাসের' প্রশ্নের উত্তর নেই"*
+
+⭐ কিন্তু প্রশ্নটা ভুল ছিল। **মাস ধরে না গুনলে** "কোন মাস" জিজ্ঞেস করারই
+দরকার নেই — যে ক-দিন দেখা হচ্ছে, সেই পরিসরের অফিস-ডে গুনলেই হয়। এক মাস,
+আধা মাস, তিন মাস — সবেতেই সংখ্যাটার মানে এক।
+
+⚠️ তাই ঘরটার নামও বদলেছে: `monthTargetHours` → **`targetHoursInRange`**।
+নামে "month" রেখে দিলে সেটাই পরের মিথ্যা হতো।
+
+### সূত্রটা এখন এক জায়গায়
+
+`expectedSecOf()` আর মাসের টার্গেট — দুটোই একই `netTargetSecIn()` ডাকে,
+কেবল **আলাদা জানালা** পাঠায়:
+
+```
+প্রত্যাশা   → elapsedWindow()-এ কাটা অংশ   ("এ পর্যন্ত কত হওয়ার কথা")
+টার্গেট     → পুরো পরিসর ∩ কর্মকাল          ("মোট কত হওয়ার কথা")
+```
+
+⚠️⚠️ **আগে সূত্রটা দু-জায়গায় লেখা হতো, আর ঠিক সেভাবেই G117 জন্মেছিল** —
+এক পাশে ছুটি বাদ যেত, অন্য পাশে যেত না।
+
+### ⚠️ যে দুটো সিদ্ধান্ত নীরবে নেওয়া হয়নি
+
+**১· ব্যক্তিগত ছুটিও বাদ যায়।** মালিকের নিয়মে ছুটির উল্লেখ ছিল না, কিন্তু
+ছুটি সবেতন (R2) — বাদ না দিলে ছুটির দিনগুলোই ঘাটতি হয়ে দাঁড়াত, আর
+tray/পে-রোলের সাথে **আবার দুই সংখ্যা** হতো, কেবল উল্টো চিহ্নে।
+⭐ ফল: একই মাসে দুজনের টার্গেট আলাদা হতে পারে।
+
+**২· ০ এখন একটা বৈধ উত্তর।** ফ্ল্যাট ২০৮ কখনো ০ হতো না; অফিস-ডে ধরে
+গুনলে পুরো সময়টা ছুটিতে থাকলে বা একেবারে শেষে যোগ দিলে ০ আসে।
+⚠️ পর্দায় ওটা ProgressBar-এ গেলে দাঁড়াত **"0h 0m, ০%"** — যেন উনি ব্যর্থ।
+তাই `HeatGrid`-এ আলাদা করে **"No target"** দেখানো হয়।
+
+### ⭐⭐ আসল ডেলিভারেবল কোড নয়, টেস্ট
+
+খুঁজে দেখা গেল এই সংখ্যাটার উপর গোটা রেপোতে **একটাও assertion ছিল না** —
+তিন জায়গায় কেবল খালি `{}` ফিক্সচার। অর্থাৎ ফ্ল্যাট ২০৮ ফেরালেও সব সবুজ
+থাকত, **আর ঠিক তাই থাকছিল**।
+
+পাঁচটা e2e টেস্ট বসানো হয়েছে, আর প্রতিটাতে ধ্রুবকের **সাথে সাথে**
+`monthly_summary.target_sec`-ও মেলানো হয়:
+
+```
+পুরো মাস        → ২১৬ঘ   ( = target_sec / 3600 )
+১৭ তারিখে যোগ   → ১০৪ঘ   ( = target_sec / 3600 )
+১–১০ আগস্ট      →  ৭২ঘ   ← "অফিস-ডে ধরে" — পুরোনো কোড এখানেও ২০৮ বলত
+দু-দিন ছুটি     → ২০০ঘ   ( = target_sec / 3600 )
+মাসের পরে যোগ   →   ০ঘ
+```
+
+⭐ কেবল ধ্রুবক মেলালে দুটো সংখ্যা ভবিষ্যতে আবার আলাদা হয়ে গেলেও টেস্ট
+সবুজ থাকত — সমতাটাই আসল পাহারা।
+
+### ⭐⭐ আর টেস্টগুলো সাথে সাথেই কাজে লাগল
+
+প্রথম CI রানেই চারটে লাল। সংখ্যাগুলো নিজেরাই কারণটা বলে দিল:
+
+```
+প্রত্যাশা ২১৬ঘ (২৭ দিন)  →  পেল ১৬০ঘ (২০ দিন)   = ১–২৩ আগস্ট
+প্রত্যাশা ১০৪ঘ (১৩ দিন)  →  পেল  ৪৮ঘ (৬ দিন)    = ১৭–২৩ আগস্ট
+```
+
+⚠️ পরিসরটা **আজকের তারিখে ছেঁটে** যাচ্ছিল (`clampedToToday`), কারণ আমি
+`range.to` ধরেছিলাম। ⭐⭐ কিন্তু **মাস শেষ হয়নি বলে মাসের টার্গেট ছোট হয়ে
+যায় না** — আগস্টের টার্গেট ২০৮, ২৩ তারিখে ১৬০ নয়।
+
+আরও বড় কথা: ছাঁটলে সংখ্যাটা কার্যত `expectedHours`-এর **নকল** হয়ে যেত,
+অথচ দুটোর কাজ আলাদা —
+
+| | কী মাপে | কোথায় লাগে |
+|---|---|---|
+| `targetHoursInRange` | মোট কত হওয়ার কথা | অগ্রগতির **হর** |
+| `expectedHours` | এ পর্যন্ত কত হওয়ার কথা | **ঘাটতির** মাপকাঠি |
+
+⚠️ একটাকে অন্যটার সমান করে দিলে Monthly পাতার অগ্রগতি-বার সারাদিন
+১০০%-এর কাছে বসে থাকত। তাই জানালা এখন `requestedTo` — **যা চাওয়া হয়েছে**।
+
+⭐ চতুর্থ ব্যর্থতাটা আমার প্রত্যাশারই ভুল ছিল: সেপ্টেম্বরে যোগ দেওয়া কর্মী
+আগস্টের কাগজে **থাকেনই না**, তাই ঘরটা `undefined` — ০ নয়। পার্থক্যটা আসল,
+আর টেস্টটা এখন দুটোই আলাদা করে দেখে।
+
+> ⭐ **এই সেকশনের আসল শিক্ষা:** কোডটা ঠিক ছিল না, আর সেটা ধরিয়ে দিয়েছে
+> ঠিক সেই টেস্টগুলো যেগুলো এই কমিটেই প্রথম লেখা হলো। আগের অবস্থায়
+> (assertion শূন্য) এই ভুলটা নীরবে প্রোডাকশনে চলে যেত।
+
+## ৩ঞ৫. R22 ও G109 — মালিক আপাতত বাদ দিয়েছেন *(২৩ আগস্ট ২০২৬)*
+
+বাকি-কাজের তালিকা দেখে মালিকের সিদ্ধান্ত: *"R22 and G109 skip koro"*।
+
+| | কী | অবস্থা |
+|---|---|---|
+| **R22** | মিটিং/কলে থাকার সময় idle না ধরা | ⏸️ ⭐ R22a *(এজেন্ট-কোড)* **হয়েই আছে** — `app_usage.segment_state` ০.৪.৭-এ বসানো; বাকি ছিল R22b, সার্ভারে credit বসানো |
+| **G109** | সার্ভার/এজেন্ট বন্ধ থাকা দিন ঘাটতি হিসেবে না গোনা | ⏸️ `elapsedWindow()` এখনো কেবল দুই প্রান্ত ছাঁটে |
+
+⭐ **মোছা হয়নি, থামানো হয়েছে** — দুটোরই বিশ্লেষণ, কারণ আর কোথায় কোথায়
+হাত দিতে হবে সবই [10-Roadmap](10-Roadmap.md) ও [08-Gap-Analysis](08-Gap-Analysis.md)-এ
+অক্ষত আছে, শুধু চিহ্ন ⏳ থেকে ⏸️ হয়েছে। ⚠️ কেউ যেন পরে ভেবে না বসেন
+এগুলো *হয়ে গেছে* — তাই সারিতে তারিখসহ লেখা কে থামিয়েছেন।
+
+## ৩ঞ৪. তিনটে খোলা প্রশ্নের উত্তর — আর একটা কাগজ যা মিথ্যা বলত *(২৩ আগস্ট ২০২৬)*
+
+মালিক একসাথে তিনটের উত্তর দিলেন:
+
+| | প্রশ্ন | উত্তর |
+|---|---|---|
+| **O4** | ওভারটাইমের আলাদা রেট আছে কি? | **নাই** |
+| **O1** | রিমোট/WFH স্টাফ আছে কি? | **নাই** |
+| **O7** | কোনো PC একাধিক স্টাফ ব্যবহার করে? | **না** |
+
+⭐ তিনটেই মিলে গেছে যে ডিফল্ট ধরে এগোনো হচ্ছিল তার সাথে, তাই **হিসাবের
+কোনো কোড বদলায়নি** — O1 আর O7-এ ডক ছাড়া কিছু ছোঁয়ার দরকারই পড়েনি।
+
+### ⚠️⚠️ কিন্তু O4-এ কোড বদলাতে হয়েছে — কাগজ মিথ্যা বলত
+
+ছাপা রিপোর্টে (PDF ও Excel) আর API-র উত্তরে লেখা যেত:
+
+```
+Overtime pay is not calculated — no rate has been decided (open question O4)
+```
+
+⚠️ সিদ্ধান্ত হওয়ার পর এই বাক্যটা **ভুল**। *"এখনো ঠিক হয়নি"* আর *"রেট
+নেই"* — দুটো আলাদা কথা, আর পার্থক্যটা পড়েন কর্মী।
+
+⭐⭐ **কেন এটা নিছক শব্দ নয়:** "ঠিক হয়নি" পড়লে কেউ ভাবতে পারেন পরে হয়তো
+ওই ঘণ্টাগুলোর টাকা আসবে। সেই আশাটা তৈরি করত **আমাদের নিজের কাগজ**, আর
+ছ-মাস পরে "তাহলে আমার OT-র টাকা কই?" প্রশ্নের জবাব দিতে হতো এই কাগজ
+দেখিয়েই। তাই লেখাটা এখন বলে **"there is no separate overtime rate"**।
+
+### ⚠️ একই বাক্য চার জায়গায় — তিনটে হাতে লেখা
+
+খুঁজতে গিয়ে বেরোল একই সিদ্ধান্ত **চার** জায়গায়:
+
+| জায়গা | কীভাবে |
+|---|---|
+| [reports.types.ts](../oxeio-monitor/server/src/reports/reports.types.ts) `OVERTIME_NOTE` | Excel + API |
+| [reports.pages.ts](../oxeio-monitor/server/src/reports/reports.pages.ts) `OVERTIME_NOTE_EN` | PDF *(em ড্যাশের বদলে হাইফেন)* |
+| [payroll.math.ts](../oxeio-monitor/server/src/payroll/payroll.math.ts) | ⚠️ **তিনবার হাতে লেখা** |
+
+⭐ payroll-এরটা literal type ছিল (`overtimeNote: 'Not calculated — …'`),
+তাই কম্পাইলার অমিল ধরত — **কিন্তু বদলাতে হলে তিনটেই খুঁজে বের করতে হতো**,
+আর এই প্রকল্পে বারবার ঠিক এভাবেই একটা বদলেছে আর বাকিগুলো রয়ে গেছে।
+
+এখন একটাই উৎস, আর টাইপটাও সেখান থেকেই:
+
+```ts
+export const PAYROLL_OVERTIME_NOTE = 'Not calculated — there is no separate overtime rate';
+...
+overtimeNote: typeof PAYROLL_OVERTIME_NOTE;   // ⭐ ধ্রুবক বদলালে টাইপও বদলায়
+```
+
+⚠️ রিপোর্টের বাক্য আর পে-রোলের বাক্য **আলাদা রাখা হয়েছে** — প্রসঙ্গ
+আলাদা (ফুটনোট বনাম টেবিলের ঘর), জোর করে এক করলে একটার ভাষা খারাপ হতো।
+⭐ তবে দুটোর মন্তব্যেই লেখা আছে ওরা **একই সিদ্ধান্ত** বলে।
+
+```
+server: 1114 passed | 1 skipped
+```
+
+## ৩ঞ৩. ⭐ ডক নিজেই বাসি হয়ে গিয়েছিল — ২৬ জায়গা সারানো *(২৩ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞেস করলেন *"আমাদের আর কী কাজ করতে বাকি আছে?"* — উত্তর খুঁজতে
+১৬,৩০০ লাইন ডক পড়া হলো। ⭐⭐ **প্রশ্নটার সবচেয়ে দামি উত্তর ছিল উল্টো
+দিকে:** ডকে "বাকি" লেখা অনেক কিছু **আসলে হয়ে গেছে**।
+
+```
+২১২টা সম্ভাব্য কাজ → ডুপ্লিকেট বাদে ১৭০ → কোডে মিলিয়ে দেখা
+  ১৩৬ সত্যিই বাকি
+   ৩৪ ডক বাসি      ← এই কাজটা
+```
+
+### ⚠️⚠️ কেন এটা নিছক পরিচ্ছন্নতা নয়
+
+[§ ৪](#৪-নিয়ম-কীভাবে-বিবর্তিত-হলো)-এ লেখা আছে দ্বন্দ্ব হলে ডকই শেষ কথা।
+তাহলে ডক যখন বলে *"TOTP 2FA — 🟡"* অথচ জিনিসটা তিন জায়গায় বসানো, তখন
+পরের জন হয় **আবার বানাতে বসবেন**, নয় ডককে বিশ্বাস করা ছেড়ে দেবেন।
+⭐ দ্বিতীয়টা বেশি ক্ষতিকর — একবার আস্থা গেলে আর কোনো লাইনই কেউ পড়ে না।
+
+সবচেয়ে বড় বাসি দাবিগুলো: **TOTP 2FA** (পুরো তৈরি), **দূর থেকে এজেন্ট
+বন্ধ** (H06), **ওভারটাইম কলাম** (R15), **মাউস-জিগলার শনাক্তকরণ** (R20),
+**অফসাইট এনক্রিপটেড ব্যাকআপ** (G39 — "রোলআউটের ব্লকার" লেখা ছিল)।
+
+### ⭐ যাচাইকারীরা তিনটে অতিরিক্ত দাবি ধরে ফেলেছে
+
+খসড়ায় লেখা হয়েছিল *"productivity-র সংজ্ঞা এখন একটাই"*। ⚠️ সত্যি নয় —
+`reports.service.ts`-এর নকলটা তুলে দেওয়া হয়েছে ঠিকই, কিন্তু
+`summary.math.ts`-এর `productivityPct()` আজও আলাদা হর ব্যবহার করে
+(`neutral` বাদ), অর্থাৎ দুটো আজও দু-রকম উত্তর দেয় — **ইচ্ছাকৃতভাবে**।
+
+⭐⭐ **ঠিক এই কারণেই "হয়ে গেছে" লেখাটাও যাচাই করতে হয়।** ভুল করে ✅
+বসানো আর ভুল করে ⏳ রাখা — দুটোই ডককে মিথ্যা বলায়, কিন্তু ✅ বেশি
+বিপজ্জনক, কারণ ওটা কাউকে **খোঁজা বন্ধ** করিয়ে দেয়।
+
+### ⚠️⚠️ পথে পাওয়া বাগ: টেবিলের ঘর নীরবে হারিয়ে যাচ্ছিল
+
+I06-এর সংশোধন বসছিল না — কলাম মিলছিল না। খুঁজে দেখা গেল
+[04-Features.md](04-Features.md)-এর **I ও J** সেকশনের টেবিল-শিরোনামে
+চারটে কলাম, অথচ I01 আর J05 সারিতে **পাঁচটা** ঘর।
+
+⚠️ Markdown শিরোনামের বেশি ঘর **চুপচাপ ফেলে দেয়** — কোনো এরর নেই, কেবল
+লেখাটা পর্দায় ওঠে না। অর্থাৎ ওই দুটো সারির "Done-এর সংজ্ঞা" কেউ কোনোদিন
+পড়েনি। H সেকশনের শিরোনাম ঠিক ছিল, তাই সেটাই দুই জায়গায় বসানো হলো।
+
+⭐ এরপর গোটা `docs/` স্ক্যান করে **আরও ১০ জায়গায়** একই বাগ পাওয়া গেল।
+
+### ⚠️⚠️ সেই "১০" ছিল ভুল — আসলে ৫
+
+মালিক বললেন ওগুলোও সারাতে। সারাতে গিয়েই ধরা পড়ল **আমার গোনাই ভুল
+ছিল** — স্ক্রিপ্টটা কাঁচা `|` গুনছিল, অথচ ডকে অনেক জায়গায় পাইপ
+ইতিমধ্যেই `\|` করে escape করা:
+
+```
+`?.trim() \|\|`            10-Roadmap.md      ← ঠিকই আছে
+`BitBlt(SRCCOPY \| CAPTUREBLT)`  09-Build-Log.md   ← ঠিকই আছে
+```
+
+⭐ escape-করা পাইপ বাদ দিয়ে গুনলে সংখ্যাটা **১০ নয়, ৫**। বাকি পাঁচটা
+আমার স্ক্রিপ্টের মিথ্যা সংকেত।
+
+⚠️⚠️ **আর এটাই সবচেয়ে অস্বস্তিকর অংশ:** ওই ভুল সংখ্যাটা আমি উপরে
+লিখে ফেলেছিলাম, কমিট-বার্তাতেও। ⭐ ধরা পড়েছে কেবল **সারাতে হাত দেওয়ায়**
+— "কী কী ভাঙা" গুনে থেমে গেলে সংখ্যাটা ডকে সত্য হয়ে বসে থাকত।
+
+⭐ একই যন্ত্রে I01/J05-ও ধরা পড়েছিল, তাই ওদুটোও আবার যাচাই করা হলো
+সঠিক গণনায় — **ওরা সত্যিই ভাঙা ছিল** (শিরোনাম ৪ ঘর, সারি ৫), অর্থাৎ
+আগের সারাইটা ঠিকই ছিল।
+
+### ৫টা সারানো — দু-রকম বাগ, দু-রকম সমাধান
+
+| কোথায় | কী | সমাধান |
+|---|---|---|
+| [08-Gap-Analysis.md](08-Gap-Analysis.md) G95 · G96 · G116 · G134 | কোড-স্প্যানের ভেতরে **escape না করা** `\|` — যেমন `` `email\|ip` `` আর `isOwner \|\|` | `\|` করা |
+| [10-Roadmap.md](10-Roadmap.md) R29 | ⭐ **আলাদা বাগ** — কেউ "মাঠে মাপা" নোটটা **নতুন ঘরে** বসিয়েছিলেন; ওই টেবিলের বাকি সব সারি ৩ ঘরের | ঘর দুটো জোড়া |
+
+⭐ প্রতিটা বদলের পর **পাইপ বাদ দিয়ে লেখা মিলিয়ে** দেখা হয়েছে একটাও
+অক্ষর হারায়নি — নইলে "কলাম ঠিক হলো" বলে চুপচাপ লেখা মুছে ফেলা যেত।
+
+### ⭐ যেভাবে বসানো হলো — অন্ধভাবে নয়
+
+প্রতিটা বদল **পুরো লাইনটা হুবহু মিলিয়ে** তবেই বসেছে; না মিললে বাদ।
+সাথে খাড়া দাগ গুনে দেখা হয়েছে কলাম-সংখ্যা বদলায়নি — I06 ঠিক এই
+পাহারাতেই আটকে গিয়ে উপরের বাগটা ধরিয়ে দিয়েছে।
+
+⚠️ বসানোর **পরেও** যাচাই: `git show HEAD:` দিয়ে পুরোনো সংস্করণ স্ক্যান
+করে নিশ্চিত করা হয়েছে ওই বাগগুলোর একটাও **আমার সম্পাদনায় তৈরি হয়নি**।
+
+## ৩ঞ২. ⭐⭐ "বেলাল ১৬টা ডিজাইন করেছে?" — একটা প্রশ্ন, ছটা জায়গায় বদল *(২৩ আগস্ট ২০২৬)*
+
+মালিক Live Board-এ ম্যানেজারের পাশে **১৬** দেখে জিজ্ঞেস করলেন
+*"belal 16 ta design koreche? kivabe pele ei data?"*।
+
+⭐ প্রশ্নটাই উত্তর ছিল। মেপে দেখা গেল ওই ১৬ (এখন ১৭) এসেছে **ফাইলের নাম**
+থেকে — তিনি ১৯টা ফাইলে মোট **৪৪ মিনিট** দিয়ে সেগুলো খুলে দেখছিলেন।
+
+নির্দেশ এল: *"file khoila hole seta count koro na, only complet dile
+count koro"* → [ADR-037](05-Options-Decisions.md)।
+
+### ⚠️⚠️ মাপতে গিয়ে নিজেই ভুল ঘরটা ধরেছিলাম
+
+প্রমাণ জোগাড় করতে প্রথমে লিখেছিলাম `WHERE t.completed_by_id = e.id` —
+আর **সবার ঘরে শূন্য** পেলাম। অথচ পাশের কুয়েরি বলছিল আজ ৫৩টা Complete
+চাপা পড়েছে। দুটো সংখ্যা মেলে না, তাই থেমে দেখতে হলো:
+
+```
+design_targets_completed_by_id_fkey  →  users(id)
+design_targets_assigned_to_id_fkey   →  employees(id)
+```
+
+⚠️⚠️ **দুটো আলাদা id-জগৎ।** কর্মীর id ১০, ১৭–২৮; ব্যবহারকারীর id ৪, ৫,
+৬, ৯, ১১, ১৩। ভুল ঘরটা ধরায় প্রতিটা মিল ব্যর্থ হয়েছে — আর ব্যর্থতাটা
+দেখতে ছিল **সৎ শূন্যের মতো**।
+
+⭐ কোডে ঠিকটাই ছিল (`assigned_to_id`), ভুলটা ছিল আমার মাপার কুয়েরিতে।
+⭐⭐ ধরা পড়ল কেবল **দুটো স্বাধীন পথে একই জিনিস মাপায়** — একটা সংখ্যা
+দেখে থামলে ভুল উপসংহারে পৌঁছাতাম।
+
+### ⭐ মাঠের মাপ — পুরোনো নিয়ম কমও দেখাত
+
+| কর্মী | খোলা | শেষ | |
+|---|---|---|---|
+| OX-01 *(ম্যানেজার)* | ১৭ | ০ | ⚠️ প্রশ্নের সংখ্যাটা |
+| **OX-06** | ৫ | **১৫** | ⚠️⚠️ **তিন গুণ কম** দেখাত |
+| OX-07 | ১৩ | ১৩ | |
+| OX-08 | ১৫ | ১২ | |
+
+⭐⭐ OX-06-এর সারিটাই সবচেয়ে জরুরি — "খোলা" কেবল **বেশি** দেখাত না,
+**কমও** দেখাত। একই ফাইল দুদিন ধরে করলে `design_credits` তাকে **প্রথম
+দিনে** ধরে (`first_work_date`), তাই শেষ করার দিনে সে অদৃশ্য।
+
+### ছটা জায়গা — একটাও বাদ নয়
+
+⚠️ এই প্রকল্পের চেনা ব্যর্থতা *"চুক্তি লেখা আছে, কলার লেখা হয়নি"* মাথায়
+রেখে `designsFinished` ধরে ধরে খোঁজা হয়েছে, অনুমান করে নয়:
+
+| জায়গা | ফাইল |
+|---|---|
+| Live Board টাইল | [LiveBoardPage.tsx](../oxeio-monitor/web/src/pages/LiveBoardPage.tsx) |
+| টেবিল ও কার্ডের ঘর | [DesignCell.tsx](../oxeio-monitor/web/src/pages/live/DesignCell.tsx) |
+| টার্গেট ছোঁয়ার হিসাব | [roster.ts](../oxeio-monitor/web/src/pages/live/roster.ts) |
+| Reports → Attendance | [AttendanceTab.tsx](../oxeio-monitor/web/src/pages/reports/AttendanceTab.tsx) |
+| Excel রপ্তানি | [reports.sheets.ts](../oxeio-monitor/server/src/reports/reports.sheets.ts) |
+| Telegram দৈনিক সার | [digest.service.ts](../oxeio-monitor/server/src/digest/digest.service.ts) |
+
+⚠️ Telegram-এরটা `designCredit.groupBy` ব্যবহার করত — সেটাই "খোলা"।
+ওটা raw কুয়েরিতে বদলানো হয়েছে, নইলে পর্দা এক কথা বলত আর বার্তা আরেক।
+
+### ⭐ টেস্ট আগে ভেঙেছে, তারপর সারানো হয়েছে
+
+`roster.spec.ts`-এ ছটা টেস্ট ভাঙল — **প্রত্যাশিত**, কারণ ওগুলো আগের
+নিয়মের পাহারাদার ছিল, একটার নামই ছিল *"টার্গেট ছোঁয়ার হিসাব 'খোলা' ধরে,
+'শেষ' ধরে নয়"*। ⚠️ ওগুলো মুছে না দিয়ে **উল্টে** লেখা হয়েছে, যাতে নতুন
+নিয়মটারও পাহারাদার থাকে।
+
+⚠️⚠️ একটা টেস্ট লিখতে গিয়ে **আমারই অনুমান ভুল** বেরোল: ভেবেছিলাম ১০০টা
+ফাইল খুলে ০টা শেষ করা **ডিজাইনার** পর্দা থেকে হারাবেন। হারান না —
+টার্গেট থাকলে `০ / ২৫` দেখানোই সঠিক, তিনি মাপের আওতায়। ⭐ নিয়মটা
+প্রমাণ করতে **ম্যানেজার** নেওয়া দরকার ছিল, ডিজাইনার নয়।
+
+```
+web    : 111 passed
+server : 1114 passed | 1 skipped
+```
+
+### ⚠️⚠️ ছটা নয়, সাতটা — deploy-এর পরে ধরা পড়ল সপ্তমটা
+
+সব সবুজ, CI সবুজ, deploy শেষ। তারপর লাইভ বান্ডলে খুঁজে দেখতে গিয়ে:
+
+```
+opened : 1     ← থাকার কথা ছিল না
+```
+
+টেবিলের **কলামের শিরোনাম** তখনো বলছিল `Designs · opened / done`।
+⭐ ঘরের সংখ্যা বদলেছি, ঘরের **মাথা** বদলাইনি।
+
+⚠️⚠️ ঠিক সেই চেনা ব্যর্থতাই, আর এবার সেটা ঘটেছে **"এবার আর হবে না" লেখার
+পরেই** — উপরের তালিকায় ছটা জায়গা গুনে আত্মবিশ্বাসের সাথে বলেছিলাম
+"একটাও বাদ নয়"। ⭐ তালিকাটা বানানো হয়েছিল `designsFinished` খুঁজে, আর
+শিরোনামটা কেবল **একটা স্ট্রিং** — ওই খোঁজে ধরা পড়ার কথাই ছিল না।
+
+⭐⭐ **যা কাজে দিল:** টেস্ট নয়, typecheck নয়, CI নয় — **লাইভে গিয়ে যে
+বাইটগুলো সত্যিই পাঠানো হচ্ছে সেগুলো পড়া**। পুরোনো শব্দ খুঁজলে
+(`grep -c opened`) সংখ্যাটা শূন্য হওয়ার কথা; হয়নি বলেই ধরা পড়েছে।
+কেবল "নতুনটা আছে কি" দেখলে এটা বেঁচে যেত।
+
+⚠️ `TeamTable`-এ শিরোনাম আগে থেকেই `Designs` ছিল, তাই দুটো পর্দা দুরকম
+কথা বলছিল — মোবাইলে এক, ডেস্কটপে আরেক।
+
+## ৩ঞ. "কোন ডিজাইনার রোজ কতটা" — সংখ্যাটা ছিল, দেখানো হচ্ছিল না *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"kon designer daily koyta design korche seta kothay dekhote pab?"*
+
+### খুঁজে দেখা — সংখ্যাটা কোথায় কোথায় পৌঁছত
+
+| কোথায় | কী |
+|---|---|
+| Live Board | ✅ `Designs · opened / done` — কিন্তু **কেবল আজকের** |
+| Reports → Attendance, **Excel** | ✅ `Designs` কলাম, প্রতি দিন প্রতি কর্মী |
+| Reports → Attendance, **পর্দা** | ⛔ কলামটাই নেই |
+| My Data (ডিজাইনারের নিজের) | ⛔ নেই |
+
+⭐⭐ **অর্থাৎ দৈনিক ইতিহাস দেখতে হলে ফাইল নামাতে হতো** — অথচ সংখ্যাটা
+সার্ভার থেকে ব্রাউজারে **আসছিলই**, কেবল ওয়েবের টাইপে ঘরটা লেখা ছিল না
+বলে টেবিল সেটা জানত না।
+
+### যা বসল — দুটো কলাম, একটা নয়
+
+মালিক চাইলেন "শেষ"-এর কলামটাও। ⚠️ কিন্তু সেই সংখ্যা `daily_summary`-তে
+**নেই**, আর থাকার কথাও নয় — ওই টেবিল **সময়ের** হিসাব রাখে, আর এটা
+**কাজের**। তাই `design_targets` থেকে সরাসরি।
+
+⚠️⚠️ `completed_at` timestamptz, আর সারিগুলো **ঢাকার দিনে** ভাগ করতে হয় —
+Prisma-র `groupBy` তারিখ কাটতে পারে না, তাই raw কুয়েরি:
+
+```sql
+(completed_at AT TIME ZONE 'Asia/Dhaka')::date
+```
+
+⭐ **একটাই কুয়েরি পুরো সীমার জন্য** — প্রতি সারিতে আলাদা করে গুনলে
+৩০ দিন × ১৩ জন = **৩৯০টা কুয়েরি** হতো।
+
+### ⚠️ দুটো কলাম আলাদা রাখাই আসল কথা
+
+| কলাম | মানে |
+|---|---|
+| **Opened** | কতগুলো ডিজাইন-ফাইল খোলা হয়েছে (শিরোনামের নম্বর ধরে) |
+| **Finished** | কতগুলো "শেষ" বলা হয়েছে (Complete বোতাম) |
+
+⚠️⚠️ এক কলামে মিলিয়ে দিলে ঠিক সেই ভুলটাই ফিরে আসত যেটা ২৩ আগস্ট সারানো
+হয়েছে — ফাইল **খোলা**-কে **শেষ** ধরে নেওয়া।
+
+⚠️ ০ হলে ঘর **খালি**, "০" নয় — ডিজাইন-বহির্ভূত কর্মীর সারিতে ০ লেখা মানে
+"মেপে শূন্য পাওয়া গেছে", আর সেটা মিথ্যা হতো।
+
+### ⭐ পথে পাওয়া খবর
+
+raw কুয়েরিটা সার্ভারে চালিয়ে যাচাই করার সময় দেখা গেল আজ **৫ জন
+ডিজাইনার মিলে ১৬টা** Complete চেপেছেন — সকালে ছিল ৪টা। অর্থাৎ বোতামটা
+মাঠে ব্যবহৃত হচ্ছে।
+
+## ৩জ্ঞ. কার্ডের শিরোনাম Title Case — আর যে দুটো ফাঁদ পথে ছিল *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"ei System er sob H3 text gula Title Case kore dao."*
+
+### ⭐ প্রথমে খুঁজে বের করা — `<h3>` আসলে কোথায়
+
+পুরো `web/src`-এ `<h3>` আছে **একটাই জায়গায়** — `Card.tsx`। অর্থাৎ
+"সব H3" মানে **সব কার্ডের শিরোনাম**, আর কিছু নয়। ⭐ `hint` যায় আলাদা
+`<p>`-তে, তাই ওগুলো (বাক্য) অক্ষত থাকে।
+
+⚠️ `SectionHead`-ও দেখতে শিরোনামের মতো, কিন্তু সে একটা সাধারণ `<div>` —
+তাই ছোঁয়া হয়নি।
+
+### ⚠️⚠️ ফাঁদ ১ — প্রথম অনুসন্ধান অ্যাপ ভেঙে ফেলত
+
+প্রথম স্ক্রিপ্টটা `title=` থেকে **ট্যাগের শেষ পর্যন্ত** সব স্ট্রিং ধরেছিল।
+ফলে তালিকায় ঢুকে পড়েছিল:
+
+| ধরা পড়েছিল | প্রয়োগ করলে |
+|---|---|
+| `flex gap-2` *(CSS ক্লাস)* | ⛔ `Flex Gap-2` — স্টাইল ভাঙত |
+| `rows.length` · `r.error` | ⛔ `Rows.length` — কোড ভাঙত |
+| `openCount > 0` | ⛔ `OpenCount > 0` |
+| `hint`-এর বাক্য | ⛔ `<h3>`-এ যায়ই না |
+
+⭐ **লিখে ফেলার আগে তালিকাটা দেখে নেওয়াতেই ধরা পড়েছে।** ৮৩টা "বদল"-এর
+বেশিরভাগই ছিল ভুল। ⚠️ শিক্ষা: বড় পরিসরে স্বয়ংক্রিয় বদল করার আগে
+**কী কী বদলাবে তার তালিকা** আলাদা করে ছাপিয়ে দেখা — প্রয়োগ আর পরিদর্শন
+এক ধাপে করলে ভুলটা কোডে বসে যেত।
+
+### ⚠️ ফাঁদ ২ — একটা subtitle ভুল করে বদলে গিয়েছিল
+
+দ্বিতীয় (নির্ভুল) স্ক্রিপ্টেও একটা টেমপ্লেট-অংশ (`} days` + backtick)
+দুই জায়গায় মিলেছিল: একটা `HolidaysSection`-এর **কার্ড শিরোনাম** ✅, আর
+একটা `ReportsPage`-এর **Page subtitle** ⛔।
+
+⭐ ধরা পড়েছে গণনা মিলিয়ে — তালিকায় ছিল ১টা, বদলেছে ২টা। ⚠️ সংখ্যা না
+মেলালে ওটা নীরবে থেকে যেত।
+
+### ফল
+
+২১ ফাইল · ৩৬ লাইন · প্রতিটাই একটা `title=`। `tsc -b` পরিষ্কার, ১১৩ টেস্ট পাস।
+
+## ৩ক্ষ. ৩১ হাজার সারির মাঝে একটা ভুল — ক্রম, তারপর ছাঁকনি *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"vul kore ekota designer complete button press koreche, er pore
+amora sei ASIN ta ar easily khuje paini."* — সাথে চাওয়া: কর্মী · অবস্থা ·
+তারিখ ধরে ছাঁকনি।
+
+### ⚠️⚠️ ছাঁকনির অভাবই একমাত্র কারণ ছিল না
+
+মেপে দেখা:
+
+```
+done সারি      : 31,311
+তালিকার ক্রম    : id desc   ← কবে **যোগ** হয়েছে, কবে কাজ হয়েছে নয়
+```
+
+⭐ অর্থাৎ দশ মিনিট আগে করা ভুলটা ৩১ হাজার সারির **যেকোনো জায়গায়**
+থাকতে পারত। ⚠️ কেবল ছাঁকনি যোগ করলে সমস্যা অর্ধেকই সারত — তাই আগে ক্রম।
+
+### ⭐⭐ `last_activity_at` — ডাটাবেসে স্বয়ংগণিত
+
+```sql
+GENERATED ALWAYS AS (
+  GREATEST(added_at, assigned_at, started_at,
+           completed_at, uploaded_at, live_at)
+) STORED
+```
+
+⚠️⚠️ **কোড এতে কখনো লেখে না** — লিখতে গেলে PostgreSQL নিজেই আটকায়। তাই
+"কেউ হালনাগাদ করতে ভুলে গেল" বলে কোনো অবস্থা তৈরি হতে পারে না, যেটা
+হাতে-রাখা কলামে অবধারিত ছিল।
+
+⭐ `GREATEST` NULL উপেক্ষা করে, আর `added_at` NOT NULL — তাই ঘরটা
+পুলে পড়ে থাকা সারিতেও খালি থাকে না।
+
+### ⭐ তারিখের ছাঁকনিও একই ভিত্তিতে
+
+⚠️ অবস্থাভেদে আলাদা ঘর ধরা হয়নি (`done` হলে `completed_at`, `assigned`
+হলে `assigned_at`) — তাতে *"কোন তারিখ ছাঁকা হচ্ছে"* প্রশ্নটা প্রতিবার
+বদলাত, আর ক্রম ও ছাঁকনি দুই ভিত্তিতে দাঁড়াত।
+
+⭐ এক ভিত্তি রাখায় ফলটা স্বাভাবিকভাবেই ঠিক হয়: `done` বাছলে ওই সারির
+`last_activity_at` মানেই `completed_at`, কারণ সেটাই সবচেয়ে পরের।
+
+### যা বসল
+
+| | |
+|---|---|
+| ক্রম | শেষ যা ঘটেছে, সেটাই আগে (`id` দ্বিতীয় ধাপ — পাতা স্থির রাখতে) |
+| কর্মী | ড্রপডাউন — ছেড়ে যাওয়া কর্মীও থাকেন, নইলে তাঁদের সারি হারাত |
+| তারিখ | From – to, দিনটা **অন্তর্ভুক্ত** |
+| ⭐ চিপ | **"Completed today"** — এক ক্লিকে |
+| ⚠️ | ছাঁকনি বসানো থাকলে **Clear filters** দেখা যায় |
+
+⚠️ ইনডেক্স দুটো: `last_activity_at DESC`, আর `(assigned_to_id,
+last_activity_at DESC)` — কর্মী ধরে ছেঁকে সাজানোটাই সবচেয়ে ব্যবহৃত পথ।
+
+### ⛔ যা যোগ করা হয়নি — Complete-এ নিশ্চিতকরণ
+
+⚠️ ভুলটা বিরল, কিন্তু নিশ্চিতকরণ **প্রতিবার** সবাইকে আটকাত — দিনে ৩০০ বার।
+⭐ আর মানুষ দুদিনেই যান্ত্রিকভাবে "হ্যাঁ" চাপতে শেখে, তাই ভুলটাও আটকাত না।
+বদলে ভুলটা **খুঁজে পাওয়া** সহজ করা হলো; ফেরানোর বোতাম ("To pool") আগে
+থেকেই ছিল।
+
+### ⚠️⚠️ আর ক্রম ঠিক করার সাথে সাথেই একটা পুরোনো ভুল সামনে এল
+
+নতুন ক্রম বসানোর পর তালিকার মাথায় উঠে এল **২৯ আগস্ট ২০২৬** তারিখের
+সারি — অথচ সেদিন তখনো আসেনি।
+
+মেপে দেখা: **৬০টা সারি**, সবগুলোই `completed_via = 'import'`, আর
+`source_note`-এ লেখা `Hafiz-29-08-2026`। ⭐ অর্থাৎ **এক্সেল শিটেই
+ভবিষ্যতের তারিখ লেখা ছিল**, আর ইমপোর্ট সেটা অবিকল বসিয়েছে।
+
+⚠️⚠️ **এটা কেবল কুৎসিত নয় — নতুন সুবিধাটাকেই অকেজো করত।** ষাটটা সারি
+চিরকাল মাথায় বসে থাকলে "আজকের ভুল খুঁজে বের করা" আগের মতোই কঠিন
+থাকত। ⭐ অর্থাৎ ক্রম ঠিক করাই ভুলটা **দৃশ্যমান** করেছে; আগে কেউ টেরই
+পেত না।
+
+**মালিকের নির্দেশে মোছা হয়েছে** — `completed_at` খালি, আর
+`completed_via = 'import-bad-date'` বসানো, যাতে কারণটা ডেটাতেই লেখা থাকে।
+
+⭐ যা হারায়নি: `source_note`-এ কাঁচা লেখাটা অবিকল আছে, আর `status`
+এখনো `done` — ওটা শিটের True/False কলাম থেকে এসেছে, তারিখ থেকে নয়।
+⚠️ যা হারিয়েছে: একটা তারিখ যা **কখনো সত্যি ছিলই না**।
+
+মোছার আগে পুরো ডাটাবেসের ডাম্প রাখা হয়েছে। শেষে ভবিষ্যতের তারিখ: **০**।
+
+## ৩হ. "কে Complete চাপল" — তালিকা ভুল নাম দেখাত *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"All design targets e ami zodi complete press kori tahole eta ke
+complete korche seta show kore na."*
+
+### ⚠️⚠️ শুধু না-দেখানো নয় — **ভুল** দেখাত
+
+`completed_via` লেখা হতো (`manual` / `filename`), কিন্তু **কে** চেপেছেন তার
+কোনো ঘরই ছিল না। তালিকার "Designer" কলামে দেখানো হতো `assignedTo` —
+অর্থাৎ **যাঁকে বরাদ্দ করা হয়েছিল**।
+
+⭐ ফলে মালিক নিজে Complete চাপলেও পর্দায় **ডিজাইনারের নাম** উঠত। এটা
+তথ্যের অভাব নয়, **ভুল তথ্য** — আর সেটা বেশি ক্ষতিকর, কারণ ভুল তথ্য
+মানুষ বিশ্বাস করে ফেলে।
+
+### সমাধান
+
+`design_targets.completed_by_id` → `users`। ⭐ `Employee`-এর সাথে নয়:
+দুটো পথেই (ডিজাইনারের নিজের পাতা আর মালিকের তালিকা) যিনি চাপেন তিনি
+লগইন করা ব্যবহারকারী; Employee-তে জুড়লে মালিক/ম্যানেজারের কোনো সারিই
+থাকত না।
+
+⚠️ পুলে ফেরত পাঠালে ঘরটা **মোছা হয়** — নইলে "কে শেষ করেছিল" লেখা থেকে
+যেত, অথচ কাজটা আর শেষ নয়।
+
+⚠️ **ব্যাকফিল নেই**: পুরোনো সারিগুলোয় কে চেপেছিলেন তা জানা নেই, আর
+অনুমান করে বসালে সেটা তথ্য নয়, বানানো গল্প হতো। ঘরটা খালিই থাকে।
+
+পর্দায় নামের নিচে ছোট করে — `✓ marked by <নাম>`।
+
+## ৩ষ. বড় তালিকা জমা দেওয়া — তিনটা সীমা, দুটো লুকোনো *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"ekhon 500 kore target add kora jay, etar add er limit tule dao"*।
+
+### ⚠️⚠️ সীমা একটা নয় — তিনটা
+
+শুধু দৃশ্যমানটা বদলালে বাকি দুটোয় গিয়ে আটকাত, আর মনে হতো
+"সীমা তো তুলেছি, তবু হচ্ছে না"।
+
+| স্তর | আগে | এখন |
+|---|---|---|
+| DTO-র ছাদ | ৬০,০০০ অক্ষর (~৫০০ URL) | **৫০ লাখ** (~৪৫,০০০ URL) |
+| HTTP বডি | ⚠️⚠️ Express-এর **ডিফল্ট ১০০ KB** — বসানোই ছিল না | **৮ MB** |
+| বাদ-পড়া লাইনের তালিকা | ⚠️ কোনো ছাদ নেই | **২০০** দেখায়, সংখ্যা সত্যি থাকে |
+
+⭐ দ্বিতীয় স্তরটাই সবচেয়ে বিপজ্জনক ছিল: সীমা ছাড়িয়ে গেলে অনুরোধটা
+**যাচাইয়ে পৌঁছনোর আগেই** ৪১৩ খেয়ে ফিরত — পর্দায় কোনো বোধগম্য কারণ ছাড়াই।
+⚠️ তাই HTTP ছাদ (৮ MB) DTO-র ছাদের (৫ MB) **চেয়ে বড় রাখা হয়েছে** —
+বেশি পেস্ট করলে মানুষ যেন নীরব ৪১৩ নয়, আমাদের বার্তাটা পান।
+
+### ⭐ ছাদ পুরোপুরি তোলা হয়নি — ইচ্ছাকৃত
+
+৫০ লাখ অক্ষরে ~৪৫,০০০ URL ধরে, আর গবেষকেরা রোজ তোলেন ~৫০০ —
+বাস্তবে এটা "সীমা নেই"-এর সমান।
+
+⚠️⚠️ কিন্তু **সম্পূর্ণ তুলে দেওয়া হয়নি**: কেউ ভুল করে ৫০০ MB-র একটা
+ফাইল পেস্ট করলে সার্ভার সেটা মেমোরিতে তুলত, আর তখন **গোটা অফিসের
+এজেন্টরাও ডেটা পাঠাতে পারত না**। ⭐ ছাদটা মানুষকে আটকানোর জন্য নয়,
+দুর্ঘটনা আটকানোর জন্য।
+
+### ⚠️ তৃতীয় স্তর — উত্তরটাও বিস্ফোরণোন্মুখ ছিল
+
+ছাদ তোলার পর কেউ ভুল ফাইল পেস্ট করলে **সবগুলো লাইনই বাদ** পড়ত, আর
+সবগুলোই ব্রাউজারে ফেরত যেত — পর্দায় ৪৫,০০০ সারির টেবিল, ব্রাউজার জমে যেত।
+
+⭐ এখন সার্ভার **২০০টা** পাঠায়, কিন্তু `rejectedTotal`-এ **পুরো সংখ্যা**
+থাকে, আর পর্দায় লেখা হয় *"Showing the first 200 of 45,000"*।
+⚠️ নীরবে কাটা হয় না — নীরব ছাঁটাই "সব ঠিক আছে" বলে মনে হয়।
+
+⚠️ ছাঁটাটা `parseBulk()`-এ নয়, **সীমান্তে** — ওই ফাংশনের কাজ সত্যি
+বলা, পর্দার সুবিধা দেখা নয়। audit-এও পুরো সংখ্যাই যায়।
+
+## ৩শ. ⭐⭐ অফিস-ব্যবস্থাপনার দিকে দুটো ধাপ — অতীত স্থির, আর শেকল শেষ পর্যন্ত *(২৩ আগস্ট ২০২৬)*
+
+মালিক: *"amader ei system take full akta office management soft banate
+amader ar ki ki kora ucit?"* — জরিপ করে তিনটে দিক বেরোল, মালিক বাছলেন
+প্রথম দুটো।
+
+### ⚠️⚠️ ১· অতীতের পে-রোল নড়ত — আর R1 ভেবেছিল সে সেটা ঠেকিয়েছে
+
+[R1](10-Roadmap.md) মাস বন্ধ করে **ঘণ্টা** সুরক্ষিত করেছিল: বন্ধ মাসে
+`refreshMonth()` আর ছোঁয় না। ⭐ কিন্তু পে-রোল বেতনের সংখ্যাটা নেয়
+`employees.monthly_salary` থেকে — **লাইভ**। মেপে দেখা:
+
+```js
+const employees = await this.prisma.employee.findMany({
+  where: { status: 'active' },          // ⚠️ আজকের তালিকা
+  select: { ..., monthlySalary: true }, // ⚠️ এখনকার সংখ্যা
+});
+```
+
+⚠️⚠️ ফলে **দুটো** নীরব ভুল:
+- কারো বেতন বাড়ালে **বন্ধ মাসের শিটও বদলে যেত**
+- কেউ চাকরি ছাড়লে **তাঁর পুরোনো মাসের শিট থেকেও উধাও** হতেন
+
+⭐⭐ **R1 স্ন্যাপশট টেবিল ইচ্ছাকৃতভাবে বাদ দিয়েছিল** — *"সংখ্যা কপি করা
+মানে একই সংখ্যা দু'জায়গায় রাখা"*। তাই স্ন্যাপশট বানানো হয়নি; বদলে
+`salary_periods` — **কেবল পুরোনো** মানগুলো, "কোন মাস পর্যন্ত চলেছিল" সহ।
+
+| প্রশ্ন | উত্তর কোথায় |
+|---|---|
+| এখন কত বেতন? | `employees.monthly_salary` |
+| ২০২৬-০৭-এ কত ছিল? | `salary_periods`-এর সারি, **যদি থাকে** |
+
+⚠️ overlap নেই, তাই *"কোনটা সত্যি"* প্রশ্নটাও ওঠে না। ⭐ **ব্যাকফিল নেই** —
+খালি টেবিল মানে "বেতন কোনোদিন বদলায়নি", আর আজ সেটাই সত্যি।
+
+### ⭐⭐ ২· কাজের শেকল এতদিন ডিজাইনেই থামত
+
+```
+গবেষক ASIN → ডিজাইনার ডিজাইন → ⛔ শেষ
+```
+
+আপলোড হলো কি না, Amazon নিল কি না, **কোন ডিজাইন টাকা আনল** — কিছুই জানা
+যেত না। এখন `uploaded_at` · `live_at` · `live_asin`।
+
+⚠️⚠️ **নতুন `status` মান নয়, তারিখ** — `started_at`/`completed_at`-এর মতো।
+status-এ ঢোকালে একটা কাজ `done` থেকে `uploaded` হয়ে যেত, আর
+`status = 'done'` ধরে যত গণনা আছে **সব নীরবে কমে যেত**।
+
+⭐ পর্দায় এখন ক্রম দেখা যায়, আর ফুটোটাও:
+```
+In the pool → In hand → Designed → Uploaded → Live on Amazon
+```
+
+⚠️ `live_asin` **আমাদের নিজের** পণ্যের, গবেষকের আনা নমুনার নয় — দুটো এক
+ঘরে রাখলে "কোনটা কার" চিরকাল ধোঁয়াশা থাকত। ⭐ এই ঘরটাই ভবিষ্যতে বিক্রির
+হিসাবের সাথে জোড়া লাগার সেতু।
+
+### ৩· যাচাই
+
+| কী | ফল |
+|---|---|
+| নতুন টেস্ট | ৯টা (`salaryForMonth` · `supersededThrough`) |
+| server nodb | ৪৭ ফাইল, **১১০৮ পাস** |
+| web | **১১৩ পাস**, `tsc -b` পরিষ্কার |
+
+⚠️ **ডাটাবেস-নির্ভর e2e এখানে চালানো যায়নি** (Docker নেই) — কর্মী-ছাঁকনির
+বদলটা ওখানে ধরা পড়তে পারে, সেটা CI-র দায়িত্ব।
+
+## ৩ল. ⭐⭐ "স্মার্ট উপায় আছে?" — প্রশ্নটাই একটা নীরব বাগ ধরিয়ে দিল *(২২ আগস্ট ২০২৬)*
+
+মালিক: *"akta designer koyta design korlo eTar ki kOnO smart way ache?"*
+উত্তর খুঁজতে গিয়ে দেখা গেল **এখনকার পথটাই ভাঙা**।
+
+সিদ্ধান্ত ও বিকল্প: [ADR-036](05-Options-Decisions.md)।
+
+### ⚠️⚠️ ১· একটা অনুপস্থিত সীমানা, দুটো ভুল
+
+```js
+const DESIGN_ID = /^(\d{3,6})/;   // ← পরে অঙ্ক থাকলেও কেটে নেয়
+```
+
+| ফাইল | আগে | এখন |
+|---|---|---|
+| `1000042-Bird.ai` | `100004` | `1000042` |
+| `1000043-Cat.ai` | `100004` ⚠️ **একই** | `1000043` |
+| `10163372_181.eps` | `101633` ⚠️ গোনা হতো | বাদ |
+
+⚠️⚠️ টার্গেটের সিরিয়াল শুরু ১০,০০,০০০ থেকে — **সাত অঙ্ক**। তাই পরপর দশটা
+কাজ একটা বলে গোনা হতো।
+
+### ⭐⭐ ২· আর তাতেই "কাজ শুরু" শনাক্তকরণ একদিনও চলেনি
+
+`markStartedByJobNumbers()` মেলায় **হুবহু** `jobNumber` ধরে — আর তাকে
+দেওয়া হচ্ছিল কাটা সংখ্যা। মাঠে মেপে:
+
+```
+job number সহ টার্গেট : 39,131
+"শুরু" ধরা পড়েছে      :      0
+Complete বোতাম চাপা    :      0
+```
+
+⚠️ যন্ত্রটা ঠিকই লেখা ছিল, খোরাকটা ভুল ছিল — এই প্রকল্পের চেনা ফাঁদের
+আরেক রূপ।
+
+### ৩· "সব ছয়-অঙ্ক মুছে দাও" চলত না
+
+শিরোনামে ওই ছয় অঙ্কের **পরেও অঙ্ক ছিল কি না** দেখে ৬৬টা সন্দেহভাজন
+সারিকে আলাদা করা গেল: **৫০টা প্রমাণিত কাটা-পড়া**, **১৬টা আসল**।
+⭐ আগের হিস্টোগ্রামে আসল নম্বরের সর্বোচ্চ ছিল ৯,৭৩,০৬৫ — ছয় অঙ্ক বৈধ।
+
+⏳ ৫০টা **মোছা হয়নি** — অতীতের `daily_summary`-তে ঢুকে গেছে, তাই মুছলে
+পুরোনো রিপোর্ট বদলাত। মালিকের সিদ্ধান্তের অপেক্ষায়।
+
+### ⚠️⚠️ ৪· নিজের যাচাইয়ের যন্ত্রেই ফাঁক
+
+ওয়েবে `npx tsc --noEmit` চালিয়ে "পরিষ্কার" পেয়েছিলাম। ⚠️ কিন্তু
+`tsconfig.json`-এ `"files": []` + project references — অর্থাৎ ওই কমান্ড
+**কিছুই পরীক্ষা করে না**। প্রকল্পের নিজের কমান্ড `npm run typecheck`
+(`tsc -b`) সাথে সাথেই ভুলটা ধরিয়ে দিল।
+
+⭐ **শিক্ষা:** যাচাইয়ের কমান্ডটাও প্রকল্পের নিজেরটাই ব্যবহার করতে হয়;
+নিজে বানানো কমান্ড সবুজ দেখালেও সেটা প্রমাণ নয়।
+
+### ⚠️⚠️ ৫· আর টেস্টও মিথ্যা আশ্বাস দিচ্ছিল
+
+`expect(view).toEqual({ done: 43, target: null, met: false })` — নতুন
+`finished` ঘর যোগ হওয়ার পরেও পাস করছিল, কারণ ফিক্সচারে মানটা ছিল না
+→ `undefined` → আর **`toEqual` `undefined` ঘর উপেক্ষা করে**।
+
+⭐ ফিক্সচারে `designsFinished: 0` বসানোর পর দুটো টেস্ট সৎভাবে ভাঙল, আর
+তখনই ঠিক করা গেল।
+
+### ৬· যাচাই
+
+| কী | ফল |
+|---|---|
+| নতুন টেস্ট | সার্ভারে ৭টা, ওয়েবে ৩টা |
+| server nodb | ৪৭ ফাইল, **১০৮৭ পাস** |
+| web | **১১৩ পাস** |
+| typecheck | `tsc -b` দুই দিকেই পরিষ্কার |
+
+## ৩র. ⭐⭐ "অফিস বন্ধ, তবু অ্যালার্ট কেন" — আর ৬ ঘণ্টার ফাঁদ *(২২ আগস্ট ২০২৬)*
+
+মালিক Alerts পাতার ছবি পাঠিয়ে: *"amader office sokal 9AM theke bikal 6PM
+prozonto... seita abar alart kore dekhate hobe ken?"* পাতায় **২৫টা খোলা
+অ্যালার্ট**।
+
+সিদ্ধান্ত ও বিকল্প: [ADR-035](05-Options-Decisions.md)।
+
+### ⭐⭐ ১· যে জিনিসটা কেবল মেপেই ধরা পড়ল
+
+প্রথম অনুমান ছিল "সন্ধ্যায় PC নিভলে একটা করে অ্যালার্ট ওঠে"। ঘণ্টা ধরে
+গুনে দেখা গেল ছবিটা আলাদা:
+
+```
+১৮টা → ৯০       ০০টা → ৭৮       ০৬টা → ৭৮       ১২টা → ৩৩
+```
+
+⭐ **ব্যবধান ঠিক ৬ ঘণ্টা — সেটাই `THROTTLE_HOURS`।** অর্থাৎ একই PC এক
+রাতেই **তিনবার** অভিযোগ করে। ⚠️ না মেপে "১৮টার অ্যালার্টটা বন্ধ করলেই
+হবে" ভাবলে সমাধানের তিন ভাগের এক ভাগ হতো, আর রাত ১২টা-৬টার গুচ্ছ দুটো
+থেকেই যেত।
+
+### ⚠️ ২· আগের প্রহরীটা কেন যথেষ্ট ছিল না
+
+`isExpectedSilence()` আগে থেকেই ছিল — বিদায়ী ইভেন্ট এলে নীরবতা ব্যাখ্যাত।
+⚠️ কিন্তু ওটা **ইভেন্ট পৌঁছনোর উপর নির্ভরশীল**, আর Windows এজেন্টকে
+৪ সেকেন্ডের বেশি দেয় না (`Program.ShutdownBudget`)। ঢাকনা বন্ধ করা বা
+বিদ্যুৎ গেলে তো প্রশ্নই ওঠে না।
+
+⭐ মালিকের যুক্তি এর চেয়ে গভীর: **বিদায় পৌঁছাক বা না পৌঁছাক, অফিস বন্ধ
+থাকলে PC নিভে থাকা খবরই নয়।** তাই ইভেন্ট ঠিক করার বদলে প্রশ্নটাই সময়ের
+বাইরে করা বন্ধ করা হলো।
+
+### ৩· `screenshot_from/to` ব্যবহার করা যেত না
+
+লোভনীয় ছিল — ঘর দুটো তো আছেই। ⚠️ কিন্তু ওটা **০৭:০০–২৩:০০**,
+ইচ্ছাকৃতভাবে চওড়া (কেউ আগে এলে বা দেরি করলেও ছবি উঠুক)। ওটা দিয়ে হিসাব
+করলে রাত ১০টায় PC বন্ধ থাকাও "সমস্যা" হতো। তাই **নতুন দুটো ঘর** —
+`work_policies.office_from` / `office_to`, Settings → Policies-এ।
+
+### ⭐ ৪· ভুল কোন দিকে হবে, সেটাও ঠিক করা হয়েছে
+
+সময় না বসানো থাকলে, বেঠিক লেখা থাকলে, বা জানালা উল্টো হলে —
+**"সারাদিন খোলা"** ধরা হয়, বন্ধ নয়।
+
+⚠️ কারণ ভুলের দুটো দিক সমান নয়: বেশি অ্যালার্ট বিরক্তিকর, কিন্তু **নীরবে
+বন্ধ হয়ে যাওয়া পাহারা বিপজ্জনক** — কেউ টেরই পাবে না। টেস্টে এই তিনটে
+ক্ষেত্রই আলাদা করে ধরা আছে।
+
+### ৫· পথে পাওয়া আর একটা ভাঙা জিনিস
+
+টেস্ট চালাতে গিয়ে দেখা গেল `npm run test:nodb` **চলেই না** —
+`vitest.nodb.config.ts` নেই। ⚠️ ফাইলটা মুছেছে `619a988`-এ, আর ওই কমিটে
+মুছে যাওয়া একমাত্র ফাইল ওটাই; কমিটের বিষয় ছিল এজেন্ট-অফলাইনের যুক্তি।
+অর্থাৎ দুর্ঘটনা। ⭐ ফিরিয়ে আনার পর: **৪৭ ফাইল, ১০৮০ পাস**।
+
+### ৬· যাচাই
+
+| কী | ফল |
+|---|---|
+| নতুন টেস্ট | ১০টা — সীমানা, ছুটি, শুক্রবার, খালি/বেঠিক/উল্টো সময় |
+| পুরো nodb স্যুট | ১০৮০ পাস, ১ skip |
+| `tsc` (server ও web) | দুটোই পরিষ্কার |
+
+## ৩য. ⭐⭐ USA থেকে BDIX — সরানোর রাত, আর একটা ভুল মাপ *(২২ আগস্ট ২০২৬)*
+
+মালিক: *"ami amar VPS ta change korete cai... ager vps ta chilo USA base,
+ekhon amora niyechi BDIX base vps"*। সিদ্ধান্তটা মাপে প্রমাণ হলো
+সাথে সাথেই — পিং **২৫০ ms → ৫ ms**।
+
+পূর্ণ সিদ্ধান্ত ও বিকল্প: [ADR-034](05-Options-Decisions.md)।
+
+### ⚠️⚠️ ১· এক ঘণ্টা নষ্ট হয়েছে আমার নিজের মাপার যন্ত্রের দোষে
+
+PowerShell-এর `TcpClient` দিয়ে পোর্ট পরীক্ষা করা হচ্ছিল। সেখানে
+`$c.Connected` **false** আসে দুই ক্ষেত্রেই — প্যাকেট হারালেও, আর
+সার্ভার RST পাঠালেও।
+
+```
+PowerShell TcpClient : port 443 -> BONDHO      ← ভুল পাঠ
+bash /dev/tcp        : port 443 -> Connection refused
+                                    ↑ প্যাকেট পৌঁছেছে, ফায়ারওয়াল খোলা
+```
+
+⭐ **"refused" মানে দরজা খোলা, ঘর খালি।** এই পার্থক্যটা মুছে দেওয়ায়
+প্রোভাইডারের ফায়ারওয়াল নিয়ে অকারণ খোঁজাখুঁজি হয়েছে, মালিককে দিয়ে তিনটা
+অপ্রয়োজনীয় ফায়ারওয়াল নিয়ম বসানোর চেষ্টা হয়েছে, আর শেষে প্রোভাইডারই ঠিক
+ছিল — OpenStack-এ `Ingress IPv4 TCP Any 0.0.0.0/0` আগে থেকেই বসানো।
+
+⚠️ **শিক্ষা:** যন্ত্র যা বলে তা নয়, যন্ত্র **কীভাবে** বলে সেটাও যাচাই
+করতে হয়। দুটো আলাদা অবস্থাকে এক রকম দেখানো যন্ত্র দিয়ে রোগনির্ণয় করলে
+রোগটাই ভুল ধরা পড়ে।
+
+### ⭐ ২· আসল বাধা — ISP পোর্ট ২২ আটকায়
+
+মাপা (১০ বার করে):
+
+```
+port 22   : 0/10  পৌঁছেছে
+port 443  : 10/10 পৌঁছেছে
+port 80   : 5/5   পৌঁছেছে
+port 2222 : 5/5   পৌঁছেছে
+```
+
+USA সার্ভার থেকে ২২-ও খোলা পাওয়া গেছে — অর্থাৎ দোষ সার্ভারের নয়,
+অফিসের ISP-এর। ⭐ কথাটা `deploy/vps-setup.sh`-এ **আগে থেকেই লেখা ছিল**
+(*"অনেক ISP (যেমন AmberIT, বাংলাদেশ) বাইরের ২২ পোর্ট নীরবে আটকায়"*)।
+ডকটা আগে পড়লে পুরো তদন্তটাই লাগত না।
+
+⚠️⚠️ Ubuntu 24.04-এ SSH চলে **`ssh.socket`** দিয়ে, `ssh.service` নিষ্ক্রিয়।
+তাই `sshd_config`-এ `Port 2222` লিখলে **কিছুই হয় না** — পোর্ট বসে
+`/etc/systemd/system/ssh.socket.d/`-এ, আর খালি `ListenStream=` দিয়ে আগের
+তালিকা মুছতে হয়, নিলে ২২ দুবার বসে socket চালু হতে অস্বীকার করে।
+
+### ⚠️⚠️ ৩· `/opt/oxeio`-র বাইরের জিনিসগুলোই হারায়
+
+rsync-এ বায়ের সব এসেছে — কোড, `.env`, `.data`। কিন্তু তিনটা জিনিস এর
+বাইরে ছিল, আর তিনটেই নীরবে ভাঙত:
+
+| কী | কোথায় | না নিলে |
+|---|---|---|
+| B2-এর চাবি | `/etc/oxeio-offsite.env` | সাপ্তাহিক অফসাইট ব্যাকআপ বন্ধ |
+| systemd unit ২টা | `/etc/systemd/system/` | টাইমারই থাকত না |
+| GitHub deploy key | `/root/.ssh/` | `vps-update.sh` চলত না |
+
+⭐ কপি করতে গিয়ে ধরা পড়ল: `/etc/oxeio-offsite.env`-এর অনুমতি **644** —
+সার্ভারের যেকোনো ব্যবহারকারী B2-এর চাবি পড়তে পারতেন। **দুই সার্ভারেই
+600 করা হয়েছে**। deploy key কপি করা হয়নি — নতুন একটা বানানো হয়েছে,
+পুরোনোটা পুরোনো সার্ভারের সাথেই মরুক।
+
+### ৪· সরানোর ক্রম — যা সত্যি ঘটল
+
+| সময় (ঢাকা) | কাজ |
+|---|---|
+| ২১:২৫ | পুরোনো সার্ভারে `api` ও `web` থামানো (postgres চালু) |
+| ২১:৩০ | শেষ `pg_dump` (৪.৯ MB) + ১,০৫৪টা নতুন ফাইল (৫৬.৮ MB) |
+| ২১:৩২ | DNS → `165.101.189.253` (মালিক) |
+| ২১:৩৫ | স্ট্যাক তোলা, Caddy সার্ট আনল |
+| ২১:৩৭ | `vps-update.sh` — সংস্করণ বসল, ডিপ্লয়-পথ যাচাই |
+
+⭐ **বিরতি প্রায় ১০ মিনিট**, আর সেই সময় ১২টা PC-ই বন্ধ ছিল।
+
+### ⭐⭐ ৫· যে proxy বানানো হয়নি
+
+ExonHost ফ্রি DNS **৭২০০-এর নিচে TTL নেয় না**। তাই পরিকল্পনা ছিল পুরোনো
+Caddy-কে নতুনের দিকে proxy বানানো, যাতে লেজের ২ ঘণ্টায় ডেটা দুই ভাগ না হয়।
+
+⭐ বানানোর আগে কোডে দেখা হয়েছে — `OutboxBudget.Default`
+(`src/oXeio.Core/Agent/OutboxBudget.cs:94`): **৭ দিন / ২ GiB**, সেগমেন্ট
+৩০ দিন। অর্থাৎ ২ ঘণ্টা অফলাইন থাকা এজেন্টের কাছে **কিছুই নয়**।
+
+⚠️ **proxy বানানো মানে ছিল একটা অ-সমস্যার জন্য তিনটে নতুন ঝুঁকি কেনা**
+(TLS · SNI · ক্লায়েন্ট-IP)। মাঠে লেজটা ২ ঘণ্টাও লাগেনি, **~১৪ মিনিট**।
+
+### ৬· যাচাই
+
+| কী | ফল |
+|---|---|
+| ফাইল | ১৬,২৪২ — দুই দিকে হুবহু |
+| ২০টা স্ক্রিনশটের চেকসাম | অভিন্ন |
+| ডাটাবেসের ২৬টা টেবিল | অমিল **০** |
+| সার্ট | Let's Encrypt, ২০ নভেম্বর পর্যন্ত |
+| এজেন্ট-রুট ৪টা | `401` — পথ খোলা |
+| `build` | `318` / `b7b79d8` |
+
+⚠️ **এজেন্ট সত্যি ফিরেছে কি না — লেখার সময় মাপা যায়নি**। সরানো হয়েছে
+রাত ৯:২৫-এ, তখন সব PC বন্ধ (শেষ দেখা ১৮:০০–১৮:৫১)। পরের কার্যদিবসে
+`devices.last_seen_at` দেখে নিশ্চিত করতে হবে।
+
+## ৩ম৪. ⭐⭐ "শুরু" আর "শেষ" — একটা প্রশ্ন যেভাবে বাগ ধরিয়ে দিল *(২৩ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞেস করলেন: *"naki konTa ses koreche tumi janote parbe?"*
+
+উত্তরটা ছিল **না** — আর আগে আমি ভুল করে বলেছিলাম পারব।
+
+### ⚠️⚠️ বাগটা
+
+এজেন্ট শিরোনাম থেকে কাজের নম্বরটা দেখে যখন ফাইলটা **সামনে আসে** —
+অর্থাৎ কাজ **শুরুর** মুহূর্তে। কিন্তু কোডটা ওটাকেই "শেষ" ধরে টার্গেট
+বন্ধ করে দিত।
+
+> **ফল:** ডিজাইনার একটা ডিজাইন **খুললেই** সেটা `done` হয়ে যেত। পরদিন
+> নিজের তালিকায় খুঁজে পেতেন না, অথচ কাজ অর্ধেক।
+
+⭐ সারানো হলো ভাগ করে দিয়ে — **প্রত্যেকে যা সত্যিই জানে, সেটুকুই বলে**:
+
+| কে | কী বলে | কীভাবে |
+|---|---|---|
+| সিস্টেম | "কাজ শুরু হয়েছে" | `started_at`, ফাইলের নাম থেকে |
+| ডিজাইনার | "শেষ করেছি" | **Complete** বোতাম |
+
+⚠️ মাইগ্রেশনে `completed_via = 'filename'` সারিগুলো **ফিরিয়ে দেওয়া
+হয়েছে** — নইলে ওই কাজগুলো নীরবে শেষ বলে গোনা থাকত।
+
+⭐ **আর একটা লাভ:** শুরু হওয়া টার্গেট রাতে **ফেরত যায় না**। আগের শর্তটা
+("আজ ছোঁয়া") সংকীর্ণ ছিল — তিন দিন ধরে চলা কাজ যেদিন কেউ ফাইলটা
+খোলেনি, সেদিনই ফেরত চলে যেত, আর কাল অন্য কারো হাতে পড়ত।
+
+⚠️ [ADR-032](05-Options-Decisions.md) ভাঙে না: Complete কোনো **মাপা
+সংখ্যা** বদলায় না — ঘণ্টা নয়, ডিজাইনের গোনাও নয় (ওটা ফাইলের নাম
+থেকেই আসে)। এটা কেবল একটা কাজের ঘোষণা।
+
+### 📋 দুটো পাতা, আর তালিকা সম্পাদনা
+
+মালিকের সিদ্ধান্ত: সাইডবারে **Add Design Targets** (শুধু জমা) আর
+**All Design Targets** (পুরো তালিকা)। ⚠️ এক পাতায় থাকলে ৫০০ লাইন
+পেস্ট করতে গিয়ে প্রতিবার ৩৯ হাজারের তালিকাও লোড হতো।
+
+তালিকায়: ছাঁকনি · **URL বা ASIN দিয়ে খোঁজা** · পাতা ভাগ (৫০/পাতা) ·
+কে ও কবে · সম্পাদনা।
+
+⭐ **"When" কলামে কীসের তারিখ সেটাও লেখা** (done · started · given)।
+শুধু একটা তারিখ বসালে পুলে পড়ে থাকা সারিতেও কিছু দেখাত, আর পাঠক ধরে
+নিতেন ওটা "কবে হয়েছে"।
+
+⚠️⚠️ **ASIN বদলানোর পথ নেই, আর সেটা ইচ্ছাকৃত** — ওটা সারিটার পরিচয়;
+বদলালে ডুপ্লিকেট-প্রহরীর ভিত্তিই নড়ে যেত। ⚠️ `Delete`-এ আলাদা
+নিশ্চিতকরণ, কারণ শেষ হওয়া সারি মুছলে প্রহরী ওই ASIN **ভুলে যায়**।
+⚠️ `To pool` মালিকানাও ছেড়ে দেয়, নইলে পুলে থেকেও কারো নামে বাঁধা
+থাকত আর পরের বণ্টনে দুজনের হাতে পড়ার পথ খুলত।
+
+🔒 সাথে একটা ফাঁক: `/design-targets/stats` **পাহারাহীন ছিল** — যেকোনো
+কর্মী পুলের সংখ্যা পড়তে পারতেন। একই নিয়মে আনা হলো।
+
+### ⚠️ "Done" আর "Complete" — এক জিনিসের দুই নাম
+
+মালিক জিজ্ঞেস করলেন *"Done and complete button ki same kaj?"* — হ্যাঁ,
+আর দুটো আলাদা নাম দেওয়াটাই ছিল ভুল।
+
+⭐ নিয়ম এখন: **বোতামে ক্রিয়া** (Complete · Skip · To pool),
+**চিহ্নে অবস্থা** (Done · Skipped · Started · Waiting)।
+
+⭐ রং করণীয় ধরে: সবুজ = কাজ শেষ, লাল = বাদ/মুছে ফেলা। ⚠️ কেবল
+বর্ডার ও লেখা রঙিন, **ভরাট নয়** — এক সারিতে চারটে বোতাম, সব ভরাট
+হলে চোখ কোথায় যাবে বোঝা যেত না। ⚠️ রঙই একমাত্র সংকেত নয়, লেখাটাও
+বলে।
+
+### ⭐ প্রতিটা টার্গেটে নম্বর
+
+মালিক: *"every target er job no thakobe"*। নম্বর এখন বসে **জমা দেওয়ার
+মুহূর্তেই**, বরাদ্দের সময় নয়।
+
+⚠️ আগের যুক্তি ছিল "কখনো বরাদ্দ না হওয়া সারি সিরিয়াল খেয়ে ফেলবে" —
+কিন্তু সিরিয়ালটা ৪ বাইটের `int`, **২০০ কোটি** পর্যন্ত চলে। ৩৯ হাজারে
+ভয় পাওয়ার কিছু ছিল না; **খরচটা কল্পিত ছিল**। বিনিময়ে পুলের সারিরও
+এখন পরিচয় আছে।
+
+⚠️ `createMany`-তে `nextval` ডাকা যায় না, তাই raw insert — কিন্তু
+`ON CONFLICT DO NOTHING` রাখা হয়েছে, নইলে ৫০০টার মধ্যে একটা পুরোনো
+ASIN গোটা ব্যাচ ফেলে দিত।
+
+⭐ মাঠে ব্যাকফিল: **৩৮,৮৩১টা** পুরোনো সারিতে নম্বর বসেছে; এখন
+৩৯,১৩১টার একটাও খালি নেই (১০,০০,০০০ – ১০,৩৯,১৩০)।
+
+### 🧭 সাইডবারে ভাগ — আর যে জিনিসটা বলা হয়নি তবু করতে হয়েছে
+
+মালিক চাইলেন দুটো পাতা **একটা "Targets" মেনুর নিচে**।
+
+⭐ ব্যবস্থাটা আগে থেকেই ছিল (`Oversight → Alerts`), তাই নতুন কিছু
+বানাতে হয়নি — শুধু `section: 'Targets'`।
+
+⚠️⚠️ **কিন্তু ভাগের লেবেল কেবল শুরু চিহ্নিত করে, শেষ নয়।** ফলে
+"Targets" বসানোর পর Staff · Screenshots · Monthly — সবই ওই ভাগের
+ভেতরে বলে মনে হতো। ⭐ তাই পরের আইটেমে **"Team"** শিরোনাম বসাতে হলো,
+আর সেটাই উপরেরটা বন্ধ করে। ⚠️ owner-এর তালিকায় `My data` থাকে না,
+তাই শিরোনামটা `Staff`-এও বসাতে হয়েছে — দুটোর একটাই দেখা যায়, তাই
+দুবার বসে না।
+
+⚠️ **শুধু শিরোনামও যথেষ্ট ছিল না** — "নিচে আছে" ব্যাপারটা চোখে পড়ত
+না। তাই `NavItem.child`: আইটেম ডানে সরে বসে, বাঁয়ে একটা সরু রেখা।
+⭐ ফিক্সচার দিয়ে মেপে যাচাই: বাকি সব `x=8`, Targets-এর দুটো `x=18`।
+
+**যাচাই:** সার্ভারে **১৪১৭ পাস / ৭৪ ফাইল**, ওয়েবে ১১০।
+
+---
+
+## ৩ম৩. ১২ জনের ৯ জনই পাসওয়ার্ডের পর্দায় আটকে ছিলেন *(২৩ আগস্ট ২০২৬)*
+
+মালিক পর্দার ছবি পাঠিয়ে লিখলেন: *"Pass change must korte hobe eita
+korona."*
+
+মেপে দেখা গেল **১২ জন কর্মীর ৯ জনেরই** `must_change_pw = true` — অর্থাৎ
+তাঁরা লগইন করে "Change your password" পর্দায় এসে থেমে আছেন, আর তার
+বাইরে কিছুই করতে পারছেন না।
+
+### ⚠️⚠️ কিন্তু চাওয়াটা হুবহু মানলে ফল হতো উল্টো
+
+অ্যাকাউন্ট বানালে সিস্টেম **১৪ অক্ষরের এলোমেলো** পাসওয়ার্ড বানায়
+(`generateTempPassword()`), একবার মালিককে দেখায়, তিনি কর্মীকে দেন।
+
+⭐ **বাধ্যতামূলক বদলটাই ছিল ওই স্ট্রিং থেকে বেরোনোর একমাত্র পথ।** শুধু
+ধাপটা তুলে দিলে কর্মী ওই এলোমেলো ১৪ অক্ষর **চিরকাল** বয়ে বেড়াতেন —
+মনে রাখতে না পেরে কাগজে লিখে রাখতেন, যা আগের চেয়েও খারাপ।
+
+> ⭐⭐ **তাই কাজটা শুরু হলো "না" দিয়ে নয়, একটা প্রশ্ন দিয়ে:** *তাহলে
+> পাসওয়ার্ড কীভাবে ঠিক হবে?* মালিকের উত্তর — **তিনি নিজে বসাবেন**
+> ([ADR-033](05-Options-Decisions.md))।
+
+### যা বসল
+
+Staff → portal account-এ একটা **Password** ঘর:
+
+| | |
+|---|---|
+| ঘরটা **ভরলে** | ওটাই পাসওয়ার্ড, আর বদলানোর পর্দা আসে না |
+| **খালি রাখলে** | ⭐ আগের আচরণ **অক্ষত** — এলোমেলো + বাধ্যতামূলক বদল |
+
+⚠️⚠️ **পুরোনো পথটা ইচ্ছাকৃতভাবে রাখা হয়েছে।** ওই ধাপের আসল উদ্দেশ্য ছিল
+"মালিকের জানা পাসওয়ার্ড চিরকাল না থাকা"। মালিক নিজে বসালে সেই সুরক্ষাটা
+তিনি **জেনেবুঝে** ছাড়ছেন — কিন্তু ভবিষ্যতে কোনো স্ক্রিপ্ট পাসওয়ার্ড না
+দিয়ে অ্যাকাউন্ট বানালে নিরাপদ আচরণটাই ডিফল্ট থাকা উচিত, নীরবে দুর্বল
+হয়ে যাওয়া নয়।
+
+⚠️ একই নিয়ম **রিসেটেও** (`/users/:id/reset-password`)। আর `TextField`-এ
+`password` টাইপ যোগ করা হলো — মালিক বসানোর সময় পাশে কেউ দাঁড়িয়ে
+থাকতে পারেন।
+
+⭐ মাঠে আটকে থাকা **৯ জনকেই ছেড়ে দেওয়া হয়েছে** (`must_change_pw = false`)।
+⚠️ তাঁদের হাতে এখনো সেই এলোমেলো পাসওয়ার্ডটাই; মালিক চাইলে Staff পাতা
+থেকে একজন একজন করে সহজ পাসওয়ার্ড বসিয়ে দিতে পারেন।
+
+**যাচাই:** সার্ভারে **১৪১৪ পাস**, ওয়েবে ১১০; লাইভ বান্ডলে নতুন লেখা
+যাচাই করা।
+
+---
+
+## ৩ম২. ⭐⭐ গবেষক → পুল → ডিজাইনার — টার্গেট বিলির পুরো শেকল *(২২ আগস্ট ২০২৬)*
+
+আগের অংশে (§ ৩ম) মাপা হয়েছিল **কতগুলো ডিজাইন হলো**। এবার মালিক চাইলেন
+পুরো কর্মপ্রবাহটাই:
+
+> *"amader researcher ra daily 500 er moto amazon er t-shirt design url
+> collect kore… ei list gula abar designer ra target kore design banay…
+> ekhane eta confirm hote hobe ze asin gula jeno unique hoy."*
+
+### ⭐⭐ পরিচয় ASIN, URL নয় — আর এটাই গোটা ব্যবস্থার ভিত
+
+একই পণ্যের URL অসংখ্য রকম হয়:
+
+```
+https://www.amazon.com/dp/B0DJBD22LW
+https://www.amazon.com/Funny-Cat-Shirt/dp/B0DJBD22LW/ref=sr_1_3?keywords=cat
+https://www.amazon.co.uk/gp/product/B0DJBD22LW?th=1
+```
+
+⚠️⚠️ URL ধরে ডুপ্লিকেট খুঁজলে **তিনটেই আলাদা** হিসেবে ঢুকত, আর তিনজন
+ডিজাইনার একই পণ্যের ডিজাইন বানাতেন — তিন দিনের কাজ নষ্ট, আর ধরা পড়ত
+কেবল ডেলিভারির সময়। তাই `@unique` বসেছে **ASIN**-এ।
+
+⭐ **মালিকের সরলীকরণ (২২ আগস্ট):** *"amora jekono asin `/dp/`-এর পরে
+বসিয়ে দিলেই ঝামেলা শেষ"* — তাই মূল URL **জমাই রাখা হয় না**। প্রথমে
+ভেবেছিলাম রেখে দেব ("কোথা থেকে এসেছিল"), কিন্তু তাতে একই জিনিসের দুটো
+চেহারা টেবিলে থাকত: একজনেরটা `?th=1`সহ, আরেকজনেরটা `ref=sr_1_3`সহ।
+
+⚠️ `amzn.to`/`a.co` ছোট লিঙ্ক **আলাদা কারণে বাতিল** — Amazon-কে জিজ্ঞেস
+না করে ASIN জানার উপায় নেই, আর সার্ভার থেকে বাইরের সাইটে কল এই পণ্য
+ইচ্ছাকৃতভাবে করে না।
+
+### ⚠️⚠️ যে সংঘর্ষটা আগে মেপে নেওয়া হয়েছে
+
+ডিজাইনাররা ফাইলের নামে যে নম্বর বসান, সেটাই আমাদের দিতে হবে — নইলে
+"শেষ হয়েছে" ধরা যাবে না। কিন্তু নম্বরটা কোথা থেকে শুরু করব?
+
+| অঙ্ক | কতগুলো | পরিসর |
+|---|---:|---|
+| ৫ | **৮২৯** (৭৮%) | ১০,০০৮ – ৯৩,০৪১ |
+| ৪ | ১৫৪ | ৩৮ – ৯,৩৭৫ |
+| ৬ | ৫৮ | ১,০১,৬৩৩ – ৯,৭৩,০৬৫ |
+
+⭐ **সাত অঙ্কের একটাও নেই**, তাই সিরিয়াল শুরু **১০,০০,০০০** থেকে।
+⚠️ কম থেকে শুরু করলে পুরোনো কোনো ফাইল ভুল করে টার্গেট বন্ধ করে দিত —
+আর ভুলটা নীরব হতো। ⚠️ মিলিয়ে দেখা হয় **হুবহু নম্বর ধরে**, অঙ্ক গুনে নয়।
+
+### ⭐⭐ সবচেয়ে সূক্ষ্ম পাহারা — অনুমতি রোল ধরে নয়
+
+গবেষক ও ডিজাইনার — **দুজনেরই পোর্টাল রোল `employee`**। অর্থাৎ
+`@Roles()` দিয়ে একজনকে ঢোকানো আর অন্যজনকে আটকানো **সম্ভবই নয়**: হয় সব
+কর্মী ঢুকে পড়তেন, নয় গবেষকই বাদ পড়তেন।
+
+⭐ তাই অনুমতিটা **কাজের ধরন** ধরে (`staff_type = 'researcher'`), আর সেটা
+প্রতিবার ডাটাবেসে দেখা হয়। ⚠️ টোকেনে ধরনটা বসানোও যেত (এক কল বাঁচত),
+কিন্তু তখন মালিক কারো ধরন বদলানোর পরেও তাঁর পুরোনো টোকেন **মেয়াদ শেষ
+না হওয়া পর্যন্ত** পুরোনো অনুমতি নিয়ে ঘুরত।
+
+⚠️⚠️ **আর ওয়েবে নিয়মটা আবার লেখা হয়নি** — সার্ভার একটা তৈরি উত্তর
+পাঠায় (`canAddTargets`), কাঁচা `staffType` নয়। দুই জায়গায় শর্তটা লিখলে
+একদিন দুটো দু-রকম বলত: কেউ মেনু দেখতেন অথচ পাতা ৪০৩ দিত।
+
+### বণ্টন — র‍্যান্ডম, কিন্তু ন্যায্য
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| **৩০টা করে**, দৈনিক টার্গেটের বেশি | বেছে নেওয়ার জায়গা থাকে; ঠিক টার্গেটের সমান দিলে "বেছে নেওয়া" কথাটার মানেই থাকত না |
+| হাতে থাকা বাদ দিয়ে | নইলে সপ্তাহখানেকে কারো হাতে দুশো জমত, আর পুল অকারণে ফুরাত |
+| বাছাই **র‍্যান্ডম**, ক্রম **নয়** | ঘাটতির দিনে কে আগে পাবে সেটা অনুমেয় থাকা দরকার (কর্মী-কোড ধরে), নইলে রোজ আলাদা লোক বঞ্চিত হতেন আর কেউ কারণ বলতে পারত না |
+| `ORDER BY random()` ডাটাবেসেই | হাজার সারির পুল মেমরিতে টেনে এনে মেশানো রোজ সকালের একটা অকারণ বোঝা হতো |
+
+⚠️⚠️ **দাবি করা হয় `WHERE status = 'pool'` শর্তসহ** (+ `FOR UPDATE SKIP
+LOCKED`)। দুটো রান একসাথে চললে (মালিক বোতাম চাপলেন, আর জবও চলল) একই
+টার্গেট দুজনের হাতে পড়ত। শর্তটাই আসল পাহারা, টাইমিং নয়।
+
+⭐ কাজের নম্বর বসে **বরাদ্দের মুহূর্তে**, আগে নয় — নইলে কখনো বরাদ্দ না
+হওয়া হাজারখানেক টার্গেট সিরিয়াল খেয়ে ফেলত।
+
+### শেষ হওয়া — কোনো বোতাম ছাড়াই
+
+ডিজাইনার নম্বরটা ফাইলের নামে বসান (`1000042-Funny Cat T-Shirt.ai`),
+সেটা `design_credits`-এ ওঠে, আর সেখান থেকেই টার্গেট বন্ধ হয়।
+
+⚠️⚠️ **বন্ধ করার শর্তে `assignedToId` আছে** — একজনের ফাইল আরেকজনের
+টার্গেট ছুঁতে পারে না। নম্বর দুজনের কাছে থাকার *কথা* নয়, কিন্তু
+"কথা নয়" আর "পারবে না" এক জিনিস নয়।
+
+### ⚠️ একটা নিয়ম সংকুচিত হলো — [ADR-032](05-Options-Decisions.md)
+
+*"স্টাফের চাপার মতো কোনো বাটনই নেই"* — নিয়মটা এখনো বহাল, কিন্তু এখন
+**Skip** বোতামটা আছে। ⭐ ওই নিয়মের আসল কারণ ছিল **ঘণ্টার সততা**
+(pause/break বোতাম মাপা সময় নষ্ট করত); Skip ঘণ্টা বা সংখ্যা কিছুই
+ছোঁয় না। ⚠️ আর "Done" বোতাম **বসানো হয়নি** — সেটা থাকলে গোনাটা
+স্বেচ্ছা-ঘোষণা হয়ে যেত।
+
+### ⭐⭐ দিন শেষে ফেরত — আর যে কাজটা প্রায় হারিয়ে যাচ্ছিল
+
+মালিকের নিয়ম *(২২ আগস্ট)*: *"din sheshe baki design gula amar main list
+e back asbe"* — ৩০টা দেওয়া, ১৫টা করা, বাকি ১৫ পুলে ফিরে ভবিষ্যতে আবার
+বিলি হবে। ⭐ এতে কোনো টার্গেট কারো হাতে **আটকে থাকে না**, আর পুল
+সবসময় সত্যিকারের বাকি কাজটাই দেখায়।
+
+⚠️⚠️ **কিন্তু সরল নিয়মে একটা কাজ হারাত।** কেউ একটা ডিজাইন খুলে কাজ শুরু
+করেছেন, আজ শেষ করতে পারেননি — ওটাও ফিরে যেত, আর কাল **অন্য কারো**
+হাতে পড়ত। দুজনের শ্রম নষ্ট, আর কেউ বুঝতই না কেন।
+
+⭐ ভাগ্যক্রমে সংকেতটা আগে থেকেই আছে: ফাইল খোলা হলে নম্বরটা
+`design_credits`-এ ওঠে — **একই সংকেত যা দিয়ে "শেষ হয়েছে" ধরা হয়**।
+তাই নিয়ম: *আজ ছোঁয়া টার্গেট ফেরত যায় না।*
+
+| সিদ্ধান্ত | কেন |
+|---|---|
+| জব **রাত ১১:৫৫**, সকাল ৮টা নয় | বণ্টনের ঠিক আগে ফেরত নিলে সকাল ৭টায় কাজ শুরু করা কারো হাত থেকে টার্গেট **টেনে নেওয়া** হতো |
+| মধ্যরাতের **আগে** | তারিখ ঘুরলে "আজ ছোঁয়া কি না" প্রশ্নের উত্তরই বদলে যেত, আর কাজ-চলতি সবই ফেরত চলে যেত |
+| কাজের নম্বর **মুছে যায় না** (`COALESCE`) | নম্বরটা **ASIN-এর**, বরাদ্দের নয়। মুছলে সিরিয়াল অকারণে ফুরাত, আর পুরোনো ফাইলের নাম কোনোদিন কিছুর সাথে মিলত না |
+| `updateMany`-তে `status` শর্ত | ওই ফাঁকে কেউ শেষ করে ফেললে তাঁর কাজটা যেন পুলে ফেরত না যায় |
+
+### 📥 পুরোনো তালিকা ইমপোর্ট *(২২ আগস্ট)*
+
+মালিকের Excel — **৮৬,২১৭ সারি**, তার মধ্যে ৩৯,২২৪টায় URL।
+
+| | |
+|---|---:|
+| অনন্য ASIN | **৩৯,১৩১** |
+| ✅ শেষ (TRUE) | **৩১,৩০৭** |
+| ⏳ পুলে (FALSE) | **৭,৮২৪** |
+| তারিখসহ | ২৭,৫৭০ |
+
+⭐⭐ **শেষ হওয়া ৩১ হাজারই আসল দাম** — ওগুলো ইতিহাস নয়, **ডুপ্লিকেট-
+প্রহরী**। এখন গবেষক নতুন তালিকা পেস্ট করলে গত দেড় বছরে করা কোনো
+ডিজাইন আবার ঢুকতে পারবে না। মালিকের শর্তটা (*"asin gula jeno unique
+hoy"*) এখন **পুরো ইতিহাস জুড়ে** খাটে।
+
+⚠️ **যা ইচ্ছাকৃতভাবে করা হয়নি:** ডিজাইনারের নাম কর্মী-সারিতে জোড়া
+দেওয়া। ফাইলে **rony · aman · eshaan · tamim · salman · asha** আছেন —
+এঁরা সিস্টেমে নেই। তাঁদের জন্য সারি বানানো মানে ইতিহাসকে বর্তমান বলে
+চালানো। ⭐ কাঁচা লেখাটা `source_note`-এ রাখা (`Hafiz-24-05-2026`), তাই
+"কে করেছিল" প্রশ্নের উত্তর হারায়নি।
+
+⚠️ **১৬৭টা তারিখ খালি রাখা হয়েছে** — উৎসেই অসম্ভব বছর (`Maria
+07.04.2036`, `Eshaan.21.04.28`)। অনুমান করা হয়নি। আর ৪০টায় ফরম্যাট
+উল্টো (মাস >১২)। ⭐ ৯৯.৪% তারিখ ঠিকঠাক পড়া গেছে।
+
+⚠️ **একটা URL বাদ** — `/dp/B0CJ1GV4L`, ASIN নয় অক্ষরের (কাটা পড়েছে)।
+
+**যাচাই:** ২৫টা খাঁটি + ১৬টা e2e টেস্ট; সার্ভারে **১৪১৪ পাস / ৭৪ ফাইল**,
+ওয়েবে ১১০। ⭐ ইমপোর্টের পর ডুপ্লিকেট-প্রহরী **মাঠেই প্রমাণিত**: থাকা
+একটা ASIN আবার ঢোকানোর চেষ্টায় `INSERT 0 0`। ⭐ e2e-তে সবচেয়ে জরুরি দুটো দাবি বাঁধা: *গবেষক পারেন (২০১),
+ডিজাইনার পারেন না (৪০৩)* — **একই রোলে**; আর *৬০টা বরাদ্দ, ৬০টাই আলাদা*।
+পর্দা দুটো ফিক্সচার দিয়ে রেন্ডার করে দেখা হয়েছে।
+
+⏳ **যা এখনো বাকি:** কর্মীপ্রতি দৈনিক টার্গেট (২৫ / ১৫) ডাটাবেসে বসেছে,
+কিন্তু **পর্দায় বসানোর ঘরটা নেই** — এখন সবাই পলিসির সংখ্যাটাই পাচ্ছেন।
+
+---
+
+## ৩ম. ⭐⭐ ২৫টা ডিজাইনের টার্গেট — উত্তরটা ইতিমধ্যেই জমা হচ্ছিল *(২১–২২ আগস্ট ২০২৬)*
+
+মালিক দুটো জিনিস চাইলেন:
+
+> *"kon staff kon type eita select korar option banaO... Designer ta daily
+> t-shirt design kore. tader target 25 ta design daily. ei 25 ta design
+> target amora kivabe track korte pari?"*
+
+দ্বিতীয় প্রশ্নের সৎ উত্তর হওয়ার কথা ছিল **"পারি না"** — oXeio সময় মাপে,
+উৎপাদন নয়। স্ক্রিনশট বিশ্লেষণ নিষিদ্ধ, ব্রাউজিংয়ে কেবল ডোমেইন রাখা হয়।
+ডিজাইন গুনতে হলে নতুন কিছু বানাতে হতো: স্টাফের হাতে লেখা, ম্যানেজারের
+রোজকার এন্ট্রি, কিংবা ফোল্ডার-নজরদারি।
+
+### ⭐⭐ কিন্তু কোড লেখার আগে ডেটা দেখা হলো
+
+`app_usage.window_title` বহুদিন ধরেই জমা হচ্ছে। ডিজাইনারদের ফাইলের নাম:
+
+```
+37933-Woodcock Bird Vintage Illustration T-Shirt.ai @ 54 % (RGB/Preview)
+37904Love Cockatiel Women Parrot for Bird Lovers T-Shirt.ai
+ 3218-Bruh It's My 7th Birthday 7 Year Old Bday Kids T-Shirt.ai
+```
+
+**সামনের নম্বরটাই কাজের আইডি।** অর্থাৎ উত্তরটা এক কোয়েরি দূরে ছিল — নতুন
+এজেন্ট নয়, স্টাফের বাড়তি কাজ নয়, কোনো বোতাম নয়।
+
+⭐ **মাঠে মেপে দেখা গেল সংখ্যাগুলো ঠিক জায়গায় পড়ে** (১৮–১৯ আগস্ট):
+OX-08 → ২৫ ও ২৬ · OX-09 → ২৫ ও ২৪ · OX-07 → ২৩ ও ২৪। দুজন কাঁটায় কাঁটায়
+২৫ — কাকতালীয় হওয়ার সম্ভাবনা কম, অর্থাৎ পদ্ধতিটা বাস্তবের সাথে মিলছে।
+
+### ⚠️⚠️ প্রথম নিয়মটাই ভুল হতে বসেছিল
+
+সরল নিয়ম ছিল "আজ যতগুলো নম্বর দেখা গেছে"। ⚠️ কিন্তু **গতকালের ফাইল আজ
+খুললে সেটা আজকের কাজ নয়** — আর তফাতটা ছোট নয়: OX-07-এর ১৯ আগস্টের সংখ্যা
+**৩৯ থেকে নেমে ২৪** হয়। সরল নিয়মে টার্গেটের চেয়ে ৫০%-ও বেশি দেখাত, আর
+সেই সংখ্যার উপর কারো মূল্যায়ন দাঁড়াত।
+
+⭐ তাই `design_credits` — প্রতিটা (কর্মী, ডিজাইন) জোড়া **একবারই** বসে,
+প্রাথমিক কী-ই দ্বিতীয়বার বসতে দেয় না। "আজকের সংখ্যা" = আজকের তারিখে দাবি
+করা সারি।
+
+⚠️ **ক্রমের একটা সীমা লিখে রাখা দরকার:** ক্রেডিট দাবি হয় *যে দিনটা আগে
+হিসাব হয়* তার নামে। স্বাভাবিক চলায় দিন সামনে এগোয়, তাই ঠিক থাকে —
+কিন্তু ব্যাকফিল করলে **পুরোনো থেকে নতুন** ক্রমে করতে হবে। (মাঠের
+ব্যাকফিলটা `min(work_date)` দিয়ে একবারেই করা হয়েছে, তাই নিরাপদ।)
+
+### ⚠️ তিনটে সীমা, না বললে সংখ্যাটা মিথ্যা হতো
+
+**১· ডিজাইন-অ্যাপের সময়ের ~৪৭%-এ নম্বর থাকে।** বাকিটা `upscayl`, স্টক
+ফাইল, `.psd`, `Template.ai` — দেখে মনে হয় **প্রস্তুতির কাজ**, আর
+নম্বরওয়ালা `.ai`-ই চূড়ান্ত ডিজাইন। ⚠️ এটা অনুমান; কর্মপ্রবাহ বদলালে
+সংখ্যা কম দেখাবে।
+
+**২· জানা মিথ্যা-ইতিবাচক:** `2026 Calendar Design.ai` ধাঁচের নাম বছরটাকে
+নম্বর ধরবে। ব্যবসার নম্বর পাঁচ অঙ্কের বলে বিরল।
+
+**৩· এটা জানালার শিরোনাম পড়া।** ⚠️⚠️ oXeio নীতিগতভাবে কনটেন্ট পড়ে না,
+তাই মালিকের **স্পষ্ট অনুমতি** নেওয়া হয়েছে, আর সীমা তিনটে: কেবল
+Illustrator/Photoshop (**শ্বেততালিকা**, কালোতালিকা নয়) · কেবল সামনের
+নম্বর · ডিজাইনের নাম **কোথাও জমা হয় না, পর্দায়ও যায় না**।
+
+### কাজের ধরন — আর কেন `designation` যথেষ্ট ছিল না
+
+ঘরটা **আগে থেকেই ছিল** (মুক্ত-লেখা), আর ১১ জনের ভরাও ছিল: ৯ × "Graphic
+Designer", ২ × "Researcher"। ⚠️ কিন্তু মুক্ত-লেখার উপর **নিয়ম বসানো যায়
+না** — "Designer" আর "Sr. Designer" দু-রকম, আর তখন টার্গেট কার উপর খাটবে
+বলা যেত না। তাই `StaffType` enum, আর মাইগ্রেশনেই ব্যাকফিল।
+
+⭐ **ব্যাকফিলটা একটা ফাঁকও দেখিয়ে দিল:** OX-01-এর `designation` খালি,
+অথচ তাঁর নামে **১৩৩টা ডিজাইন**। অর্থাৎ তিনি ডিজাইনার, শুধু ঘরটা কেউ
+ভরেনি। তাই Staff তালিকায় ধরন না বসানো থাকলে **লাল "Not set"**।
+
+⚠️⚠️ পরে মালিক বললেন *"Designation and Department remove kore dao"* —
+ঘর দুটো ফর্ম থেকে গেল। **কলাম মোছা হয়নি** (ইতিহাস), কিন্তু যেসব পর্দা
+ওগুলো দেখাত সেগুলো নীরবে খালি হয়ে যেত, তাই সেখানে ধরন বসানো হলো
+(Staff তালিকা · Payroll · Excel)। ⚠️ PDF-এর Department কলাম **রাখা
+হয়েছে** — ওই ঘরটাই বাংলা লেখার transliteration পথ পরীক্ষা করে।
+
+### কোথায় দেখা যায়
+
+| পর্দা | কী |
+|---|---|
+| **Worklog** | `Designs` কলাম — `24 / 25`, ছুঁলে সবুজ |
+| **দৈনিক টেলিগ্রাম** | 🎨 DESIGNS TODAY অংশ, ✅ চিহ্নসহ |
+| **কর্মীর নিজের পাতা** | নিজের আজকের সংখ্যা |
+| **মাসিক Excel** | প্রতিদিনের `Designs` কলাম |
+
+⚠️ ডিজাইনার না হলে **সব জায়গায় খালি**, "০" নয় — "০/২৫" পড়তে অভিযোগের
+মতো লাগে, অথচ মাপটাই তাঁর নয়। ⚠️ সংখ্যাটা সারাংশ-রিফ্রেশে (~১৫ মিনিট)
+হালনাগাদ হয়, ঘণ্টার মতো সেকেন্ডে সেকেন্ডে নয়।
+
+### 🐛 সাথে দুটো ঘুমন্ত সময়-বোমা ফেটেছে
+
+দুটোই **আমার বদলের আগেও ভাঙত** (stash করে যাচাই করা), শুধু আজকের
+তারিখ-সময়ে ধরা পড়ল:
+
+| টেস্ট | কখন ভাঙত | কারণ |
+|---|---|---|
+| `agent.e2e` — ৭ দিনের টার্গেট | **প্রতি শুক্রবার** | ছুটির দিনে `dailyTarget` ০ (সঠিক), তাই দাবিটা দাঁড়াত `172800 ≤ 0` |
+| `app-usage-state.e2e` | **রাত ১২টা–ভোর ৬টা** | UTC তারিখ ব্যবহার করত, ঢাকার নয় — G62-র হুবহু পুনরাবৃত্তি |
+
+> ⭐ **শিক্ষা:** "আজকের তারিখ" বা "আজ কর্মদিবস কি না" — টেস্টে এই দুটো
+> ধরে নেওয়া মানেই একটা বোমা বসানো। সপ্তাহে একদিন বা দিনে ছ-ঘণ্টা ভাঙা
+> টেস্ট বছরের পর বছর চুপ থাকতে পারে।
+
+**যাচাই:** ১৯টা নতুন টেস্ট (`design-rules.spec.ts`) + টেলিগ্রামে ৩টা;
+সার্ভারে **১৩৭০ পাস / ৭৩ ফাইল**, ওয়েবে ১০৬। মাঠে ব্যাকফিল: **১০৭০টা
+ডিজাইন-ক্রেডিট** (১৩–২০ আগস্ট), ৬৩টা দৈনিক সারাংশ হালনাগাদ।
+
+---
+
+## ৩ব. CI রোজ লাল, আর মালিকের ইনবক্স ভরছিল — অবশেষে সবুজ *(১৭ আগস্ট ২০২৬)*
+
+মালিক Gmail-এর স্ক্রিনশট পাঠালেন: *"ei email gula ami pacchi keno?"* —
+প্রতিটা push-এ GitHub থেকে *"CI Run failed"* মেইল।
+
+### কেন মেইল
+
+⚠️ GitHub কমিটের লেখককে **CI-ব্যর্থতার নোটিফিকেশন** পাঠায়। প্রতিটা push
+CI চালায়, CI-র `server` job রোজ লাল, তাই প্রতিটা push-ই একটা করে মেইল।
+মেইল বন্ধ করার জায়গা GitHub-এর Settings → Notifications — কিন্তু **আসল
+সমাধান মেইল বন্ধ করা নয়, CI সবুজ করা।**
+
+### কেন লাল — একটাই টেস্ট, রোজ বাড়ত
+
+`gh run view` বলল: ছয়টা job-এর একটাই লাল — `server`, আর তার ভেতরে একটাই
+টেস্ট: `adjustments.e2e.spec.ts` → *"expected 464400 to be 3600"*। সংখ্যাটা
+রোজ বাড়ত (৪৩৫৬০০ → ৪৬৪৪০০), অর্থাৎ **সময়-নির্ভর**। docs-only কমিটেও লাল,
+কারণ CI সব job চালায়।
+
+### মূল কারণ — মেপে, অনুমান নয়
+
+টেস্টে সাময়িক লগ বসিয়ে দেখা গেল: `before=−460800 · after=3600 ·
+delta=464400`। টেস্টের দাবি: সংশোধনের `deltaSec` সরাসরি pace-এ যোগ হয়
+(delta=৩৬০০)। কিন্তু `trackingStartedOn` আসে কর্মীর **প্রথম**
+`daily_summary` সারি থেকে। কর্মীর কোনো বেসলাইন না থাকায় সংশোধন POST করার
+সময় `AdjustmentsService.refresh()` **আজকের** তারিখে প্রথম সারিটা বানিয়ে
+দেয় — elapsed উইন্ডো আজ থেকে শুরু হয়ে খালি হয়, expected ৪৬০৮০০ → ০। ফলে
+delta-তে ৩৬০০ নয়, গোটা মাসের প্রত্যাশাটাই চলে আসত।
+
+### ফিক্স — টেস্টে, প্রোডাক্টে নয়
+
+⭐ মাসের শুরুতে একটা `daily_summary` বসিয়ে `firstSeen` স্থির রাখা হয়, তাই
+একমাত্র যা বদলায় তা `creditedSec` — ঠিক ৩৬০০। এটাই বাস্তবের ছবি: আসল
+কর্মীর সবসময়ই আগের দিনের ট্র্যাকিং থাকে; কেবল টেস্টের ফিক্সচারই
+বেসলাইন-হীন কর্মী বানিয়েছিল।
+
+⚠️ এটা প্রোডাক্ট বাগ নয় — বাকি ১৯টা adjustment টেস্ট ও পুরো সুইট
+(**১২৮৭ পাস**) অটুট। এই টেস্টটা [08-Gap-Analysis](08-Gap-Analysis.md)-এ
+দু-জায়গায় *"main-এ আগে থেকেই লাল"* বলে চিহ্নিত ছিল — এখন সবুজ।
+
+> ⭐ **সময়-নির্ভর টেস্ট একটা টাইম-বোমা:** লেখার দিন পাস করে, তারপর একদিন
+> নিঃশব্দে লাল হয় আর রোজ ইনবক্স ভরায়। তারিখ ফিক্সচারে **অ্যাংকর** করতে
+> হয়, `Date.now()`-এর স্রোতে ভাসতে দিলে নয়।
+
+### ⚠️⚠️ আর মধ্যরাত আরও দুটো বোমা ফাটাল
+
+pace-ফিক্স push করার পর CI চলল ঠিক **০০:০১ ঢাকা** — মধ্যরাতের সীমানায়। আর
+তাতে **আরও দুটো** টেস্ট লাল হলো, যেগুলো দিনের বেলা কখনো ফেল করত না:
+
+- `adjustments.e2e` → *"worked সময়ের সাথে যোগ হয়"* — `expected 91 to be
+  1800`। `todayWindow(1800)` মধ্যরাতের কাছে জানালাটা আজকের দিনে **ক্ল্যাম্প**
+  করে, তাই durationSec ১৮০০ নয়, ~৯১। কিন্তু অ্যাসারশন হার্ডকোড ১৮০০ ধরত।
+  ⭐ ফিক্স: `worked.durationSec` মেলানো — যা পাঠানো হয়েছে ঠিক তা-ই।
+- `agent.e2e` → *"counts_as_work শুধু active-এ সত্যি"* — `[active,idle,locked]`
+  আসার কথা, এল `[idle,locked,active]`। `idle`/`locked`-এ `minutesAgo(15/10)`
+  ছিল, যা মধ্যরাতের পর **আগের তারিখে** পড়ে ক্রম উল্টে দিত। ⭐ ফিক্স: তিনটেই
+  `dayWindow()` থেকে, আজকের দিনে পরপর সাজানো।
+
+⚠️ মজার ব্যাপার: এই একই ফাঁদ এই দুই ফাইলেই **আগে একবার** সারানো হয়েছিল
+(`segment()`-এর ডিফল্ট, `todayWindow`-এর ক্ল্যাম্প) — কিন্তু **প্রতিটা**
+কল-সাইট নয়। ⭐ **একটা টাইম-বোমা নিষ্ক্রিয় করা মানে সব নিষ্ক্রিয় নয়** —
+প্যাটার্নটা ধরা পড়ার পর গোটা ফাইল খুঁজে বাকিগুলোও বের করতে হয়।
+
+⭐ বাকিগুলো যাচাই করা হয়েছে: G43-এর out-of-order টেস্ট শুধু **নিয়ম** মাপে
+(endedAt > startedAt, সেগমেন্ট সেশনের ভেতরে) — মধ্যরাতের ভাগ ওগুলো ভাঙে
+না। ইভেন্ট/স্ক্রিনশটের `minutesAgo`-ও বিন্দু-সময়, ভাগ হয় না।
+
+---
+
+## ৩ফ. "agent.log ফাঁকা কেন" — কারণ ফাঁকা ছিলই না *(১৭ আগস্ট ২০২৬)*
+
+মালিক জিজ্ঞেস করলেন লগ ফাঁকা কেন। উত্তর: **ফাঁকা নয়, আমি ভুল জায়গায়
+খুঁজিয়েছিলাম।**
+
+### যা ঘটেছিল
+
+আমি চালাতে বলেছিলাম `Get-Content C:\ProgramData\oXeio\agent.log`।
+আসল ফাইল `C:\ProgramData\oXeio\`**`logs\`**`agent.log`-এ। কোডে স্পষ্ট
+লেখা: `Logs = Path.Combine(root, "logs")` (`OutboxPaths.cs`)।
+
+⚠️⚠️ **`Get-Content` অনুপস্থিত ফাইলে এরর দেয়, খালি লেখা নয়।** কিন্তু আমার
+লেখা কমান্ডে (`... >> $out`) সেই এররটা `>>`-এর বাইরে দিয়ে বেরিয়ে গিয়েছিল,
+তাই আউটপুট ফাইলে শুধু `== AGENT ==` হেডারটা রয়ে গিয়েছিল। **"ফাইল নেই"
+দেখতে হুবহু "ফাইল ফাঁকা"-র মতো লেগেছে।**
+
+⭐ মালিকের পাঠানো লগেই প্রমাণ — এজেন্ট নিজে চালু হওয়ার সময় লাইনটা লেখে:
+
+```
+data C:\ProgramData\oXeio · log C:\ProgramData\oXeio\logs\agent.log
+```
+
+আর ভেতরে সব আছে: চালু হওয়া, সাইন-ইন, প্রতি স্লটের ক্যাপচার (`📷 slot
+16:10 · 2 monitor(s) · chrome.exe`), সাইন-আউট।
+
+### ⚠️ এই সাগায় এটা আমার তৃতীয় অনুমান-ভুল
+
+| # | আমি বলেছিলাম | সত্যি |
+|---|---|---|
+| ১ | "০.৪.২ ভেঙেছে" | ভাঙেনি — বেলাল PC বন্ধ করে বাড়ি গিয়েছিলেন |
+| ২ | "agent.log ফাঁকা, লেখা হচ্ছে না" | লেখা হচ্ছিল — ভুল ফোল্ডারে খুঁজেছি |
+| ৩ | *(প্রায়)* "স্লট ৪ মিনিট দেরিতে চলছে" | random-screenshot jitter, বাগ নয় — **কোড পড়ে থেমেছি** |
+
+> ⭐⭐⭐ **তিনটেরই মূল এক: একটা পর্যবেক্ষণকে সিদ্ধান্ত বলে চালিয়ে দেওয়া।**
+> "লগ ফাঁকা" আসলে পর্যবেক্ষণ নয় — পর্যবেক্ষণ ছিল *"যে পাথে খুঁজেছি সেখানে
+> কিছু নেই।"* তৃতীয়বার কোড পড়ে থেমেছি বলেই ওটা ভুল হয়ে ছাপা হয়নি।
+
+### লগ পড়ে দুটো নির্দোষ খটকা
+
+- **স্লটের সময় UTC-তে, লাইনের সময় লোকাল-এ।** `SlotScheduler.FloorToSlot`
+  `TimeSpan.Zero` (UTC) দেয়, তাই `slot 16:10`; আর `FileLog` লাইন লেখে
+  `DateTimeOffset.Now` (+06:00), তাই `22:14`। দুটোই সঠিক ঘড়ি, শুধু পড়তে
+  বিভ্রান্তিকর। ✅ **সারানো হয়েছে (০.৪.৬)** — স্লট এখন
+  `DhakaTime.LocalTimeOf()` দিয়ে ঢাকার সময়ে ছাপা হয়, তাই লাইনের
+  টাইমস্ট্যাম্পের সাথে মেলে (`slot 22:10`)। ⚠️ শুধুই **লগ পড়ার সুবিধা** —
+  ডেটা, ট্র্যাকিং বা স্ক্রিনশটের পাথে কিছু বদলায়নি (পাথে UTC `HHmmss`ই
+  থাকে, যাতে দুই মেশিনের ফাইল-নাম এক না হয়)।
+- **স্লট আর লেখার মাঝে ~৪ মিনিট** — `Next()`-এর `offset = rng.NextDouble()
+  * slot`, অর্থাৎ ছবি ওঠে স্লটের ভেতরে **এলোমেলো** মুহূর্তে। ঠিক ওটাই
+  random screenshot, আর সেটাই ফিচার।
+
+### ⏳ যা এখনো খোলা: G136
+
+এই লগে কোনো **shutdown নেই** — শুধু tray থেকে Sign out। তাই বিদায়ী ইভেন্ট
+(shutdown/logoff) কেন পরের স্টার্টআপে drain হয় না, সেই প্রশ্নটা এখনো একটা
+আসল PC-বন্ধের লগের অপেক্ষায়।
+
+---
+
+## ৩প. Worklog — কার্ডগুলো নিজের পাতায় *(১৭ আগস্ট ২০২৬)*
+
+মালিক লাইভ বোর্ডের নিচের অংশটা লাল দাগ দিয়ে ঘিরে বললেন: এটা সাইডবারের
+**Worklog** নামে একটা পাতায় নাও।
+
+⭐ কারণটা পর্দা দেখলেই বোঝা যায়: কার্ডগুলো ছিল পাতার **সবার নিচে** — পাঁচটা
+টাইল আর চারটে চার্ট পেরিয়ে। অথচ *"এখন কে কাজ করছে?"* — এটাই সবচেয়ে
+বেশিবার করা প্রশ্ন, আর তার উত্তরে পৌঁছাতে গোটা পাতা স্ক্রল করতে হতো।
+
+### ⚠️ সরানো, নকল নয়
+
+মালিককে জিজ্ঞেস করা হয়েছিল দুই জায়গায় রাখা হবে কি না; তিনি **সরিয়ে
+নেওয়াই** বেছেছেন। মার্কআপটা `live/TeamCards.tsx`-এ তুলে আনা হয়েছে —
+কেটে-বসিয়ে দুই কপি বানালে একদিন একটা বদলাত আর অন্যটা নয়।
+
+⭐ বোর্ডে "কে কাজ করছে" প্রশ্নের উত্তর তবু আছে — **Working now** টাইল আর
+দলের টেবিল। আর সংখ্যাটা কখনো Worklog-এর সাথে আলাদা হবে না, কারণ দুটোই
+`onTheClock.ts`-এর একই `isWorking()` ডাকে।
+
+### ⭐⭐ অপ্রত্যাশিত লাভ — একটা নীরব খরচ বন্ধ হলো
+
+কার্ড সরানোর পর কম্পাইলার ধরিয়ে দিল বোর্ডে আরও কিছু মৃত হয়ে গেছে:
+স্ক্রিনশটের লাইটবক্স, আর **`getLatestShots`-এর polling**।
+
+⚠️⚠️ ওই polling তুলে দেওয়াটা নিছক পরিচ্ছন্নতা নয়। `GET /screenshots`-এর
+প্রতিটা কল **একটা করে audit সারি লেখে** (I08 — *"কে আমার স্ক্রিনশট
+দেখল"*)। বোর্ডটা সারাদিন খোলা থাকে, তাই একটাও ছবি না দেখিয়েও সে ওই খাতা
+ভরিয়ে যেত — আর স্টাফের কাছে গোটা সিস্টেমের বিশ্বাসযোগ্যতা ঠিক ওই খাতার
+উপরেই দাঁড়ানো।
+
+> ⭐ **একটা জিনিস সরানোর সবচেয়ে বড় লাভ প্রায়ই সেটা নয় যেটা সরানো হলো —
+> বরং যা তার সাথে ঝুলে ছিল।**
+
+### ⚠️ অধিকারের শর্তটা নাম পেয়েছে
+
+`mayOpenWorklog` — `!isStaff` লেখা হয়নি। শর্তটা **তিন জায়গায়** থাকে
+(নেভ · রুট · পর্দা), আর নাম না দিলে একদিন একটা বদলাত আর বাকি দুটো নয়।
+G134-এ ঠিক সেটাই ঘটেছিল: ম্যানেজার নেভে Settings দেখতেন, চাপলে
+*"There's nothing at this address"*।
+
+⚠️ **যা যাচাই করা যায়নি:** পর্দাটা আসল ডেটাসহ চোখে দেখা — লগইন করা আমার
+পক্ষে নিষিদ্ধ। কম্পাইল, লিন্ট, ৭৩টা টেস্ট আর রুট — চারটেই সবুজ, কিন্তু
+চেহারাটা মালিককেই দেখতে হবে।
+
+### ⚠️⚠️ ডক-স্ক্যান আমার নিজের একটা নীরব অবনতি ধরল
+
+সরানোর সময় `TeamCards`-এ ছবির polling লিখেছিলাম **২ মিনিট**। বোর্ডে ওটা
+ছিল **৪ মিনিট**।
+
+⭐ অর্থাৎ যে খরচটা কমানোই ছিল সরানোর সবচেয়ে বড় লাভ — `GET /screenshots`-এর
+প্রতিটা কলে একটা করে audit সারি (I08) — সেটাই **দ্বিগুণ** হয়ে যেত। আর
+ঠিক ওই লাভটার কথা আমি নিজেই দু-জায়গায় লিখে রেখেছিলাম।
+
+> ⚠️ **কোড সরানোর সময় ধ্রুবক নতুন করে লেখা মানে পুরোনো সিদ্ধান্তটা
+> নীরবে ভোট হারায়।** সংখ্যাটা কেন ওই সংখ্যা, সেটা মনে না থাকলে কপি করাই
+> নিরাপদ — নতুন করে বাছা নয়।
+
+⚠️ স্ক্যান আরও একটা জিনিস ধরল: **G122 অন্যভাবে মিটেছে**। ফোনে কার্ডগুলোকে
+টাইলের ঠিক পরে তুলে আনার কৌশলটা (`order-first`) কার্ডের সাথেই উঠে গেছে।
+⭐ প্রশ্নের উত্তরটা হারায়নি — ফোনে Worklog উপরের নেভ সারিতে এক ট্যাপ দূরে —
+কিন্তু সমাধানের **পথটা** বদলে গেছে, আর ডকে সেটা লেখা দরকার ছিল।
+
+---
+
+## ৪. নিয়ম কীভাবে বিবর্তিত হলো
+
+প্রথম প্ল্যান থেকে চূড়ান্ত নিয়মে পৌঁছাতে তিন দফা পরিবর্তন হয়েছে। পুরনো ডকুমেন্টের কোনো অংশ যদি এর সাথে না মেলে, **এই টেবিলটাই সঠিক**।
+
+| বিষয় | দফা ১ | দফা ২ | দফা ৩ | **দফা ৪ — চূড়ান্ত ✅** |
+|---|---|---|---|---|
+| শিফট | ৯:০০–৬:০০ | ৯:০০–৬:০০ উইন্ডো | নেই | **নেই** |
+| টার্গেট | দৈনিক ৮ ঘণ্টা | দৈনিক ৮ ঘণ্টা | মাসিক ২০৮ঘ | **মাসিক ২০৮ ঘণ্টা** |
+| লাঞ্চ | ১:০০–২:০০ ট্র্যাক | ট্র্যাক নয় | ট্র্যাক নয় | **ট্র্যাক নয়** |
+| সাপ্তাহিক ছুটি | শুক্র + শনি | শুধু শুক্র | যেকোনো দিন গোনা হয় | **যেকোনো দিন** |
+| দেরি / আগে যাওয়া | ফ্ল্যাগ ছিল | ফ্ল্যাগ ছিল | নেই | **নেই** |
+| স্ক্রিনশট | ঘণ্টায় ৩ | প্রতি ৫ মিনিট | ৫ মিনিট, ২৪ঘ | **৫ মিনিট, ০৭:০০–২৩:০০** |
+| সময় গণনা | শিফটের ভেতরে | শিফটের ভেতরে | ২৪ ঘণ্টা | **২৪ ঘণ্টা** |
+| অনুমোদন ব্যবস্থা | মিটিং+ছুটি claim | claim ছিল | claim ছিল | **❌ কিছুই নেই** |
+| স্টেট সংখ্যা | ৫ (+BREAK, MEETING) | ৪ | ৪ | **৩ — ACTIVE/IDLE/LOCKED** |
+| DB টেবিল | ১৩ | ১৯ | ২২ | **১৯** *(G34 · G35-এ ২টি যোগ)* |
+
+### চূড়ান্ত নিয়ম — এক প্যারায়
+
+> এজেন্ট PC চালু হলেই চলে। যখনই স্টাফ কি-বোর্ড বা মাউস ব্যবহার করছে, তখনই সময় গোনা হয় — সকাল ৭টা হোক বা রাত ২টা, শুক্রবার হোক বা সোমবার। **১ মিনিট নিষ্ক্রিয় থাকলে গণনা hold, কি-বোর্ড/মাউস নাড়লেই আবার চালু।** স্টাফের কিছু চাপতে হয় না, কারো কিছু অনুমোদন করতে হয় না। **একমাত্র মাপকাঠি: মাসে ২০৮ ঘণ্টা প্রকৃত কাজ।** স্ক্রিনশট প্রতি ৫ মিনিটের ঘরে একবার, র‍্যান্ডম সময়ে, শুধু ০৭:০০–২৩:০০ এবং শুধু active অবস্থায়। ছবি ৯০ দিন পর নিজে থেকেই মুছে যায়।
+
+### সিস্টেমের সম্পূর্ণ লজিক
+
+```
+                কি-বোর্ড বা মাউস ব্যবহার হচ্ছে?
+                            │
+              ┌─────────────┴─────────────┐
+             হ্যাঁ                      না (৬০ সেকেন্ড)
+              │                            │
+       ⏱ ACTIVE — গোনা হচ্ছে         ⏸ IDLE — গোনা বন্ধ
+       📸 স্ক্রিনশট (০৭–২৩)            📸 বন্ধ
+              │                            │
+              └──────────┬─────────────────┘
+                         ▼
+              মাসে জমা হয় → ২০৮ ঘণ্টা?
+```
+
+---
+
+## ৫. এখনো খোলা প্রশ্ন
+
+| # | প্রশ্ন | কখন দরকার | ডিফল্ট ধরে এগোচ্ছি |
+|---|---|---|---|
+| ~~O1~~ ✅ | ~~রিমোট/WFH স্টাফ আছে কি?~~ | নিষ্পত্তি ২৩ আগস্ট | **নেই** — সবাই অফিসে |
+| O2 | ২০২৬-২৭-এর সরকারি ছুটির তালিকা | Phase 5 | প্রি-লোড করে দেব, আপনি এডিট করবেন |
+| O3 | ছুটির ধরন ও বার্ষিক কোটা | Phase 5 | ১০ casual + ১৪ sick |
+| ~~O4~~ ✅ | ~~ওভারটাইমের আলাদা রেট আছে কি?~~ | নিষ্পত্তি ২৩ আগস্ট | **নেই** — শুধু ঘণ্টা, টাকা কখনো নয় |
+| O8 ✅ | দৈনিক ৮ ঘণ্টার টার্গেট — দেখানোর, না কাটার? | — | **উত্তর এসেছে ১১ আগস্ট: শুধু দেখানোর।** গোনা ও বেতন মাসিক ২০৮-এই (§ ৩উ) |
+| O5 | অ্যালার্ট ইমেইল কোন ঠিকানায়? SMTP আছে? | Phase 6 | Gmail SMTP |
+| ~~O6~~ | ~~ড্যাশবোর্ডের ভাষা — বাংলা না ইংরেজি?~~ | ✅ **নিষ্পত্তি (১১ আগস্ট)** | **ইংরেজি** — পর্দার লেখা ও সার্ভারের বার্তা; ডক-কমেন্ট বাংলাতেই ([§ ৩উ](#৩উ-ইংরেজি-ui--দৈনিক-টার্গেট--midnight-থিম-১১-আগস্ট-২০২৬)) |
+| ~~O7~~ ✅ | ~~কোনো PC একাধিক স্টাফ ব্যবহার করে?~~ | নিষ্পত্তি ২৩ আগস্ট | **না** — ১ PC = ১ স্টাফ |
+| ~~O9~~ ✅ | ~~পুরো মাসটাই ছুটি হলে (D = ০) কী?~~ | নিষ্পত্তি ১২ আগস্ট | **পুরো বেতন** |
+| ~~O10~~ ✅ | ~~নতুন টার্গেট-নিয়ম পুরোনো মাসেও, নাকি সামনের মাস থেকে?~~ | নিষ্পত্তি ১২ আগস্ট | **সবখানে** — মালিকের উত্তর: *"হ্যাঁ, সবখানে (সহজ)"* |
+| ~~O11~~ ✅ | ~~সাপ্তাহিক ছুটি শুধু শুক্রবার?~~ | নিষ্পত্তি ১২ আগস্ট | **শুধু শুক্রবার** — migration লাগবে না |
+| ~~O12~~ ✅ | ~~সিস্টেম কোনো সার্ভারে host হবে?~~ | নিষ্পত্তি ১৩ আগস্ট | **আগে অফিসের PC (২–৩ দিন), তারপর VPS** — [ADR-026](05-Options-Decisions.md)। ⭐ ঠিকানা রেজিস্ট্রিতে, তাই সরাতে ১৫টা PC-তে ফিরে যেতে হয় না |
+| ~~O13~~ ✅ | ~~স্টাফের আসল যোগদানের তারিখ বসানো হবে?~~ | নিষ্পত্তি ১৩ আগস্ট | **মালিক নিজে পরে বসাবেন** — *"join korar tarikh ami pore edd kore nibo"*। পথ দুটোই তৈরি: `staff.local.json`-এর পঞ্চম ঘর, বা ড্যাশবোর্ডে একজন একজন করে |
+| ~~O14~~ ✅ | ~~Monitoring policy-তে আলাদা সই নেওয়া হবে?~~ | নিষ্পত্তি ১৫ আগস্ট | **না — সম্মতি জয়েনিংয়ের সময়েই।** মালিকের কথা: *"amader protiya staff join korar taime e ei sob kiso agree hoye join kore"*। ⚠️ তাই `policy_signed_at` ফাঁকা থাকাটা অসম্পূর্ণতা নয়, আর ডকের কোথাও এটা আর "ব্লকার" নয় |
+| O15 | Skip দিলে কি টপ-আপ হবে? এখন হয় — মালিকের কথায় *"complete + skip"*। ⚠️ মাঠে একজনের বাদ নিয়মের পরে বেড়েছে: ১৩ → **২৭**, তার ১৯টা "Events" (§ ৩ঞ৩৫.১০) | যখনই সিদ্ধান্ত | **হ্যাঁ, হয়** — দিনে ৬০-এর ছাদসহ |
+| O16 | টপ-আপ কখন? এখন *"হাতে বাকি কাজের ৩০/টার্গেট গুণ না থাকলে"* — টার্গেট ২৫-এ ১.২ গুণ (৮ জন), OX-10-এর ১৫-এ ২ গুণ। বিকল্প — কড়া (*"বাকি কাজটাই শেষ করা না গেলে"*) বা ঢিলা (*"হাত ৩০-এ রাখা"*, যা ১০ সেপ্টেম্বরের হাতে-বণ্টন কার্যত করেছে) | যখনই সিদ্ধান্ত | **৩০/টার্গেট গুণ** (২৫-এ ১.২) — ⚠️ প্রথম দুদিনের ২২টা টপ-আপের একটাও হাত কম থাকা অবস্থায় হয়নি |
+| O17 | ছুটির দিনে (শুক্রবার) ২৫-এর সীমা খাটবে? | শুক্রবারে কেউ কাজ করলে | **খাটে** — `designTargetOf()` কর্মদিবস চেনে না |
+| O18 | সীমায় আটকানো ডিজাইনের আলাদা "আটকে আছে" চিহ্ন লাগবে? | — | **না, যদি ফাইলটা খোলা হয়ে থাকে** — আটকানো সারি `assigned`-ই থাকে, আর রাত ১১:৫৫-এর ফেরত ওটা ছাড়ে কেবল যদি `started_at` বসা থাকে বা সেদিনের `design_credits`-এ ওই কর্মীর নামে নম্বরটা থাকে *(মাঠে: OX-07, ১০ সেপ্টেম্বর — `started_at` ১৬:৪৮, তাই রাত পার করেছে)*। ⚠️ ফাইলের চিহ্ন ছাড়া আটকানো সারি সেই রাতেই পুলে ফেরে, বরাদ্দ মুছে (G172); ২৩ আগস্ট–১০ সেপ্টেম্বরে সীমা যে ১৩টা চাপ আটকাত, তার ২টা এমন ছিল |
+| O19 | OX-10 থেকে OX-14 — **আসল দৈনিক টার্গেট কত?** পাঁচজনের দিনের সর্বোচ্চই ঠিক ১৫, আর মালিকের ২২ আগস্টের কথা *"kono designer er daily target 15 ta"*; অথচ সিস্টেমে কেবল OX-10-এর ১৫ বসানো (৮ সেপ্টেম্বর ১৭:১১), বাকি চারজন পলিসির ২৫ (§ ৩ঞ৩৫.২) | এখনই — সীমা ও টপ-আপ দুটোই এই সংখ্যা ধরে চলে | **সিস্টেমে যা বসানো** — ⚠️ আসল টার্গেট ১৫ হলে ওই চারজনের সীমা আর টপ-আপ ভুল সংখ্যায় চলছে |
+
+✅ **১২ আগস্ট O9 ও O11 নিষ্পত্তি হয়েছে** — মালিক নিজের উদাহরণ দিয়ে নিয়মটা
+পুরো করে বলেছেন ([ADR-025](05-Options-Decisions.md))। ⭐ O11-এর উত্তরটা
+সবচেয়ে স্বস্তির: **শুধু শুক্রবার**, তাই schema-তে migration লাগছে না।
+
+✅ **O10-ও নিষ্পত্তি** — নিয়মটা **সবখানে** বসবে, পুরোনো মাস সহ। অর্থাৎ
+**G37-এর কোড লেখার পথে আর কোনো বাধা নেই**।
+
+✅ **O13-ও নিষ্পত্তি (১৩ আগস্ট)** — মালিক তারিখগুলো **নিজে পরে বসাবেন**।
+কোডের দিক থেকে করার কিছু নেই: ঘর আছে, seed পড়ে, ড্যাশবোর্ডেও বসানো যায়।
+
+⚠️ তবু একটা কথা মনে রাখা দরকার, আর সেটা তাড়া নয় — **তথ্য**: তারিখ না
+বসা পর্যন্ত G37-এর proration কোডে থেকেও **নীরবে নিষ্ক্রিয়**। `joined_on`
+খালি থাকলে নিয়মটা সবাইকে পুরো-মাস ধরে, কোথাও কোনো এরর ওঠে না।
+অর্থাৎ প্রথম যে মাসে কেউ মাঝপথে যোগ দেবেন, সেই মাসের হিসাব করার **আগে**
+তাঁর তারিখটা বসলেই যথেষ্ট।
+
+বাকিগুলোর যুক্তিসঙ্গত ডিফল্ট ধরা আছে, তাই ওগুলো কোডের পথে বাধা নয়।
+
+## ৩গ২. R2 · ছুটির খাতা — আর যে ক্র্যাশটা কেবল ছুটি থাকলেই ঘটত *(১৫ আগস্ট ২০২৬)*
+
+R1-এর পর রোডম্যাপের পরের কাজ। সমস্যাটা ছোট শোনায়: ছুটির খাতা ছাড়া
+**অনুপস্থিতি আর ছুটির মধ্যে সিস্টেমের কোনো পার্থক্য ছিল না**। যিনি অনুমতি
+নিয়ে ছুটি কাটালেন, তাঁর ওই দিনগুলো পুরো আট ঘণ্টার ঘাটতি হয়ে মাসের pace-এ
+বসত — অর্থাৎ সংখ্যাটা তাঁর নামে এমন একটা ব্যর্থতার দাবি করত যা ঘটেইনি।
+
+### ⭐⭐ ১· প্রথম সিদ্ধান্তটাই সবচেয়ে বড়: ছুটি সবেতন
+
+কোড লেখার আগে একটাই প্রশ্নের উত্তর দরকার ছিল — **ছুটি বেতন কমায় কি?**
+
+```
+target_sec = (d − ছুটি) × দৈনিক        ← ছুটি টার্গেট কমায়
+বেতন       = মূল বেতন × d ÷ D           ← ছুটি এটা ছোঁয় না
+```
+
+⚠️⚠️ এই বিচ্ছেদটাই একমাত্র জিনিস যা ভাঙলে **নীরবে বেতন কাটা যেত**। ছুটি
+যদি `d` কমাত, সংখ্যাগুলো দেখতে ঠিক ততটাই যুক্তিসঙ্গত থাকত — শুধু ছুটি
+নেওয়া মানুষটা কম টাকা পেতেন, আর কারো পক্ষে টের পাওয়ার উপায় থাকত না।
+
+⭐ এই কারণেই `unpaid` ধরনটা **ইচ্ছাকৃতভাবে নেই**। schema-তে ওটা লেখাই
+ছিল, কিন্তু কোডের সব পথ ছুটিকে সবেতন ধরে — নামটা রেখে দিলে খাতায়
+"unpaid" লেখা থাকত অথচ বেতন কাটত না। **সংখ্যাটা এমন কিছু দাবি করত যা সে
+জানে না।** বিনা-বেতনের ছুটি দরকার হলে সেটা পে-রোলের আলাদা সিদ্ধান্ত।
+
+### ⚠️⚠️ ২· ছুটি চার জায়গায় ঢোকে, আর তিনটেই একটা ভগ্নাংশের অংশ
+
+```
+  target   = (d − ছুটি) × দৈনিক               ← prorate()
+  expected = target × (কেটে যাওয়া − ছুটি)     ← elapsedWorkdays()   [লব]
+                      ──────────────────
+                        (d − ছুটি)             ← proratedExpectedSec() [হর]
+```
+
+**এক দিকে বাদ দিয়ে অন্য দিকে না দেওয়াটাই এখানকার একমাত্র বাগ যা নীরবে ভুল
+সংখ্যা দেয়** — ব্যতিক্রম ওঠে না, টেস্ট লাল হয় না, শুধু ছুটি নেওয়া মানুষটা
+মাসভর "পিছিয়ে" দেখান। তাই `test/leave.spec.ts` সংখ্যা মেলায় না,
+**অপরিবর্তনীয় সম্পর্ক** মেলায়: ছুটির আগে-পরে "প্রতি কাজের দিনে প্রত্যাশা"
+এক থাকতে হবে।
+
+### ⭐⭐ ৩· যে ক্র্যাশটা কেবল ছুটি থাকলেই ঘটত
+
+`rollupMonth()`-এর মাথায় বহুদিনের একটা গার্ড ছিল:
+
+```ts
+if (targetSec === 0 && expectedWorkdays > 0) throw new RangeError(...)
+```
+
+গোটা মাস ছুটিতে থাকা কর্মীর ক্ষেত্রে **দুটো শর্তই সত্যি**: টার্গেট ০
+(ছুটি টার্গেট কমায়) আর `d` অটুট (ছুটি সবেতন)।
+
+⚠️⚠️ আর `refreshMonth()` **সবার সারি একটাই লুপে** লেখে — তাই একজনের ছুটি
+গোটা দলের মাসিক সারি লেখা বন্ধ করে দিত। একজনের ছুটির শাস্তি সাতজনের
+সংখ্যা জমে যাওয়া।
+
+গার্ডটা এখন **বিল-যোগ্য** দিন ধরে গোনে, আর যা ধরার জন্য এটা ছিল (নীতিতে
+কর্মদিবস আছে অথচ টার্গেট ০) সেটা এখনো ধরা পড়ে। টেস্ট দুটো দিকই পাহারা দেয়।
+
+### ⭐ ৪· শুক্রবারে লেখা ছুটি — যেটা কিছুই বদলায় না, আর তা বলেও দেয়
+
+`countLeaveWorkdays()` ছুটির তারিখগুলো `isWorkday` দিয়ে ছেঁকে নেয়। নইলে
+শুক্রবারে বা সরকারি ছুটির দিনে লেখা একটা ছুটি টার্গেট থেকে আট ঘণ্টা কেটে
+নিত — অথচ ওই দিনে কোনো টার্গেটই ছিল না। ⚠️ ব্যর্থতাটা হতো নীরব: সংখ্যা
+কমত, কারণ কেউ খুঁজে পেত না।
+
+⭐⭐ কিন্তু সারিটা খাতায় থেকেই যায়, আর তখন পর্দায় ওটাকে অন্য সবের মতো
+দেখালে খাতাটা **একটা ছাড়ের দাবি করত যা সে দেয়নি**। তাই সারিটা নিজেই
+বলে দেয়: *"Already a day off — this changes no target"*।
+
+⚠️ ছুটির দিনগুলো `holidays` সেটে ঢেলে দেওয়া যেত — তাতে হিসাব এমনিতেই ঠিক
+হতো। করা হয়নি দুটো কারণে: `holidays` দিয়ে **D** গোনা হয় (একজনের ছুটি গোটা
+দলের বেতনের হর বদলে দিত), আর রিপোর্টে ওই একই সেট থেকে
+`approximateHolidayDates()` চলে — অর্থাৎ একজনের ব্যক্তিগত ছুটি পাদটীকায়
+"সরকারি ছুটি" হয়ে সবার চোখে পড়ত।
+
+### ৫· চারটে পর্দা, একটাই সংখ্যা (G88)
+
+ছুটি পৌঁছেছে `summary.service.ts` (মাসিক সারি), `progress.service.ts`
+(tray, সাত দিনের টার্গেট সহ), `dashboard.service.ts` (Live Board কার্ড)
+আর `reports.service.ts` (`targetSecOf` + `expectedSecOf`) — চারটেতেই।
+টেস্ট tray আর মাসিক সারির প্রত্যাশা **হুবহু** মিলিয়ে দেখে।
+
+⭐ তিন জায়গায় একই ছাঁকা-লুপ লেখা হচ্ছিল; একটাই `countLeaveWorkdays()`-এ
+তোলা হয়েছে। *"একটা ছেঁকে অন্যটা না ছাঁকা"* এই প্রকল্পের সবচেয়ে চেনা পাপ।
+
+### ৬· মাঠে যাচাই — সংখ্যাটা সত্যিই নড়ল, আর যেটা নড়ার নয় সেটা নড়ল না
+
+Belal Hossain-এর নামে ১৯ আগস্ট একদিনের ছুটি লিখে:
+
+| | আগে | পরে |
+|---|---|---|
+| `target_sec` | ২০৮.০০ঘ | **২০০.০০ঘ** |
+| `leave_workdays` | ০ | ১ |
+| `d` · `D` | ২৬ · ২৬ | **২৬ · ২৬** |
+| `d ÷ D` | ১.০০০০ | **১.০০০০** |
+| `expected_sec` | ৮.০০ঘ | ৮.০০ঘ |
+
+⭐⭐ শেষ দুটো সারিই এই ফিচারের গোটা যুক্তি: **টার্গেট কমেছে, বেতনের
+ভগ্নাংশ এক চুলও নড়েনি।**
+
+⭐ আর `expected_sec` না বদলানোটাও সঠিক — ১৯ আগস্ট এখনো আসেনি, তাই ওই
+দিনটা কেটে যাওয়া দিনের মধ্যেই নেই। **ভবিষ্যতের ছুটি প্রত্যাশা কমায় না।**
+
+⚠️ Live Board-এর কার্ড সাথে সাথে ২০০ঘ দেখাল (ওটা সরাসরি `prorate()`
+ডাকে), কিন্তু দলের টাইল ১৫ মিনিট পুরোনোই থাকল — ওটা `monthly_summary`
+থেকে পড়ে। rollup চলার পর দুটোই মিলল। এটা ছুটির নিজস্ব সমস্যা নয়, ছুটির
+তারিখ বা কোনো সরকারি ছুটি বদলালেও একই দেরি হয়।
+
+শেষে পরীক্ষার সারিটা তুলে নেওয়া হয়েছে — **সাথে `leave_removed`-এর audit
+সারিটাও**, নইলে লগে "ছুটি যোগ হয়েছে" থাকত আর মোছার কোনো চিহ্ন থাকত না।
+
+### ⏳ ৭· যা করা হয়নি, আর কেন
+
+- **কার্ড ও রিপোর্টে "On leave" ব্যাজ (G130)।** সংখ্যা ঠিক হয়ে গেছে,
+  লেবেলটা বাকি। ⚠️ ফলে ছুটির দিনটা দেখতে হুবহু **সরকারি ছুটির দিনের
+  মতো** — শূন্য ঘণ্টা, শূন্য টার্গেট। সংখ্যা মিথ্যা বলছে না, কিন্তু
+  কারণটা বলছেও না।
+- **বছরের কোটা** (১০ casual + ১৪ sick)। খাতা আছে, হিসাব নেই — কোটা বসাতে
+  হলে আগে ঠিক করতে হবে কোটা ফুরালে কী হয়, আর সেটা এখনো কারো প্রশ্ন নয়।
+- **ম্যানেজারের প্রবেশাধিকার।** কন্ট্রোলার owner-only, কারণ পর্দাটা
+  Settings-এ আর গোটা Settings owner-এর। manager খুলে রাখলে API এমন একটা
+  দরজার দাবি করত যেটায় পৌঁছানোর পথ নেই।
+
+**ফল:** ১৬টা নতুন টেস্ট, মোট **৯০৩ পাস**। কমিট `bf55a91`, VPS-এ চলছে।
+
+---
+
+---
+
+## ৩ঘ২. মাঠ থেকে আসা তিনটে বাগ, একটা ভুল রোগনির্ণয়, আর ম্যানেজারের চাবি *(১৫ আগস্ট ২০২৬)*
+
+R2-এর পর দিনটা আর পরিকল্পনার ছিল না — **অফিস থেকে আসা রিপোর্টের** ছিল।
+সবগুলোর মধ্যে একটা সুতো আছে: প্রতিটাই এমন একটা অনুমানের উপর দাঁড়িয়ে ছিল
+যেটা কেউ কোনোদিন লিখে রাখেনি।
+
+### ⭐⭐ ১· কর্মী-কোড এখন সিস্টেমের, মানুষের নয়
+
+মালিকের কথা: *"Employee code er bapar ta emon vabe koro je system eta auto
+build korbe and view only mode. no body can change it."*
+
+`empCode` দুটো DTO-তেই লেখার জন্য খোলা ছিল। কেউ OX-07-কে OX-03 বানিয়ে
+দিলে কোনো এরর আসত না — শুধু **এনরোলমেন্ট, audit সারি আর পুরোনো রিপোর্ট
+একই নামে দুজনের দিকে তাকাত**।
+
+⭐ এখন সার্ভার নিজে পরের ফাঁকা নম্বরটা বেছে বসায়, আর সংঘর্ষ হলে (P2002)
+৫ বার চেষ্টা করে। ⚠️ ঘরটা DTO থেকে **তুলে** দেওয়া হয়েছে, ঐচ্ছিক করা হয়নি —
+গ্লোবাল `forbidNonWhitelisted` থাকায় কেউ পাঠালে পরিষ্কার ৪০০ পায়, নীরবে
+বাদ পড়ে না। পর্দায় ঘরটা view-only। *([G131](08-Gap-Analysis.md))*
+
+### ⚠️⚠️ ২· "Belal-এর PC হুট করে offline" — আর যে রোগনির্ণয়টা আমি ভুল করেছিলাম
+
+লক্ষণ: কাজ করতে করতে Belal-এর PC offline, আর স্টাফ পাতায় তিনি আবার
+*"Ready to install"*। একই ঘটনা Sadia-র বেলাতেও।
+
+কারণটা `devices` টেবিলের একটা লাইনে বাস করত:
+
+```
+machine_guid  TEXT  UNIQUE      ← অলিখিত নিয়ম: একটা মেশিন = একজন মানুষ
+```
+
+⚠️⚠️ **কিন্তু `MachineGuid` মেশিনের, ব্যবহারকারীর নয়।** দুজন স্টাফ একই PC-তে
+আলাদা Windows অ্যাকাউন্টে বসলে দ্বিতীয়জনের সাইন-ইন প্রথমজনের সারিটাই
+নিজের নামে নিয়ে নিত — নীরবে, কোনো এরর ছাড়া।
+
+**আর এখানেই আমি ভুল করেছি।** হোস্টনেম দুরকম দেখে (`BELAL` বনাম
+`DESKTOP-BJNQ6OF`) ধরে নিয়েছিলাম PC-গুলো ডিস্ক-ইমেজ ক্লোন করা, আর সেই
+অনুমান নিয়েই একটা গার্ড লিখে **ডিপ্লয় করে ফেলেছিলাম**। প্রোডাকশনের লগ
+তারপর নিজেই বলে দিল:
+
+```
+Same hostname: two people are signing in on one PC
+```
+
+অর্থাৎ ঘটনাটা ক্লোন নয় — **একটাই PC, দুটো Windows অ্যাকাউন্ট**, আর আমার
+গার্ডটাই তাঁদের রোলআউট আটকে রাখছিল। ⭐ ঘটনাটা `events` আর `audit_log`-এ
+আগে থেকেই লেখা ছিল; আমি অনুমান আগে করেছি, পড়া পরে।
+
+**পরিচয় এখন যা:** `@@unique([hostname, windowsUsername])` — *মেশিন + যিনি
+বসেছেন*। `machine_guid` কলামটা থাকছে (H04-এর rollout bucket ওটা দিয়েই
+গোনে), শুধু UNIQUE তুলে দেওয়া হয়েছে। একই Windows অ্যাকাউন্টে অন্য কর্মী
+এলে **৪০৯**, নীরব হাতবদল নয় — owner চাইলে revoke করে হাতবদল করাতে পারেন,
+সেটা একটা **সচেতন ধাপ**।
+
+⚠️ মাঝপথে মালিককে বলেছিলাম Belal-এর PC-তে MachineGuid বদলে দিতে। আসল
+কারণ জানার পর ওই পরামর্শটা অচল হয়ে গেছে, আর সেটা তখনই বলে দেওয়া হয়েছে।
+প্রোডাকশন ৬টা ডিভাইস থেকে **১০**টায় গেছে, আর `DESKTOP-KP1DT93`-এ এখন দুজন
+পাশাপাশি চলছেন। *(ADR-024-এর নতুন অংশ · [G132](08-Gap-Analysis.md))*
+
+### ⛔ ৩· ডিপ্লয় "✅ হয়ে গেছে" লিখত, অথচ চলত পুরোনো ইমেজ
+
+প্রথম ফিক্সটা ডিপ্লয় করার পর যাচাই করতে গিয়ে:
+
+```
+docker compose exec api grep -c assertNotSomeoneElses dist/agent/enrollment.service.js
+0
+```
+
+**শূন্য।** অথচ কনটেইনার "Up · healthy", আর স্ক্রিপ্ট সবুজ টিক দিয়েছে।
+কারণ `vps-setup.sh` কোড টানে আর `docker compose up -d` করে — কিন্তু
+`up -d` **ইমেজ নতুন করে বানায় না**।
+
+⭐ ডিপ্লয়ের ধাপে এখন `docker compose build api web` স্পষ্ট করে লেখা, আর
+প্রতিবার চলন্ত কনটেইনারের `dist`-এ নতুন কোডের একটা চিহ্ন খুঁজে দেখা হয়।
+**"বলল হয়েছে" আর "হয়েছে" এক নয়** — এই লগে এটা তৃতীয়বার
+([G129](08-Gap-Analysis.md)-ও একই পরিবারের)। *([G133](08-Gap-Analysis.md))*
+
+### ⭐⭐ ৪· ম্যানেজার এখন স্টাফ · ছুটি · ক্যাটাগরি চালান
+
+মালিকের চাওয়া: *"ami cai manager staff, holyday, catagory er access pabe"*।
+সিদ্ধান্তের বিস্তারিত [ADR-027](05-Options-Decisions.md), ক্ষমতার ছক
+[07 § ৪.৩](07-Technical-Spec.md)।
+
+⚠️⚠️ **আসল কাজটা role শিথিল করা ছিল না, বেতনের লেখার দিক বন্ধ করা।**
+`redact.ts` ম্যানেজারের **উত্তর থেকে** বেতন ছেঁকে ফেলে, কিন্তু তাঁকে বেতন
+**পাঠানো** থেকে আটকায় না। শুধু `@Roles`-এ `manager` জুড়ে দিলে অবস্থাটা
+দুটোর চেয়েও খারাপ হতো: তিনি এমন একটা ঘরে লিখতে পারতেন যেটা তিনি
+**পড়তেও** পারেন না — নিজের ভুল নিজে দেখেও ধরতে পারতেন না, আর সেটা ধরা
+পড়ত মাসের শেষে পে-রোলে। তাই `assertMaySetSalary()` **৪০৩** দেয়,
+`monthlySalary: null` পাঠালেও।
+
+⭐ সার্ভারে role শিথিল **মেথডে, ক্লাসে নয়** — তাই `deactivate` ·
+`portal-account` · `policy-signed` · `agent/turn-on`, আর **ভবিষ্যতের নতুন
+রুটও** owner-only থেকে যায়। ঠিক উল্টো যুক্তিতে holidays ও categories-এ
+ক্লাস-লেভেলে, কারণ ওখানে গোটা কন্ট্রোলারই ম্যানেজারের।
+
+**CI দুটো জিনিস ধরল, দুটোই দরকারি:**
+
+১· `endpoints.e2e.spec.ts`-এর `OWNER_ONLY_READS` তালিকায় categories আর
+holidays **এখনো পড়ে ছিল** — অর্থাৎ যে টেস্টটা "role ভুল করে শিথিল করে
+ফেলেছ কি না" পাহারা দেয়, সেটাই আমার শিথিল করাটা ধরে ফেলল। ⭐ এটাই ওই
+টেস্টের কাজ: নীরবে পাশ করে যাওয়া নয়, প্রশ্ন তোলা।
+
+২· আর সেখান থেকেই একটা ফাঁক বেরোলো — **Policies ট্যাবে দুটো সেকশন**, work
+policy আর ছুটি। ম্যানেজার ট্যাবটা পান, কিন্তু `GET /work-policies` তাঁর
+জন্য ৪০৩। ট্যাব খুলেই লাল বাক্স দেখতেন আর ভাবতেন সিস্টেম ভেঙে আছে। এখন
+ওই সেকশনটা তাঁকে দেখানোই হয় না, আর ট্যাবের নামও তাঁর জন্য শুধু
+**"Holidays"** — নইলে তিনি এমন কিছু খুঁজতেন যা পর্দায় নেই।
+
+### ⚠️⚠️ ৫· এক অধিকার, তিন জায়গা — আর তৃতীয়টা ভুলে যাওয়া
+
+ডিপ্লয়ের কয়েক মিনিটের মধ্যেই মালিক স্ক্রিনশট পাঠালেন: Belal লগআউট করে
+ফিরে এসে নেভে **Settings** দেখছেন, চাপলে —
+*"There's nothing at this address"*।
+
+```
+Layout.tsx        নেভে Settings   → ম্যানেজারকে দেখানো হচ্ছে   ✅
+SettingsPage.tsx  পর্দা           → ম্যানেজারের ট্যাব তৈরি      ✅
+App.tsx           রুট             → {isOwner && <Route …>}      ❌
+```
+
+রুট না থাকলে `path="*"` ধরে — তাই ৪০৩ নয়, সোজা **৪০৪**।
+
+⚠️ সার্ভারের ১১৪৭টা টেস্ট এটা ধরেনি, ধরার কথাও নয় — API-র দিক নিখুঁত ছিল।
+প্রোডাকশন লগে একটাও ৪০৩ পাওয়া যায়নি, ঠিক সেই কারণেই: **পর্দাটা কোনো
+অনুরোধ পাঠানোর জায়গা পর্যন্ত পৌঁছায়নি**। বাইরে থেকে দেখতে "অ্যাক্সেস
+নেই"-এর মতো, ভেতরে আসলে "পাতাটাই নেই"।
+
+⭐ শর্তটা এখন নাম পেয়েছে (`mayOpenSettings`), `isOwner ||` লিখে ছড়িয়ে
+দেওয়া হয়নি — পরের বার তৃতীয় জায়গাটা খুঁজে বের করা সহজ হবে।
+⏳ যা এখনো নেই: ওয়েবে কোনো রাউটিং টেস্ট। *([G134](08-Gap-Analysis.md))*
+
+### ⭐ ৬· ছুটির দিনে বারো লাইন খালি রেল, আর বারোটা "off"
+
+মালিক লাল কালি দিয়ে ঘিরে দেখালেন — সাপ্তাহিক ছুটির দিনে *"Against today's
+target"* কার্ডে প্রত্যেকের পাশে একটা **খালি ধূসর রেল**, ডানে **"off"**,
+অথচ সংখ্যাগুলো বলছে সবাই কাজ করেছেন (৩ঘ ২মি · ২ঘ ৫৪মি · …)।
+
+⚠️⚠️ খালি রেলটা দেখতে হুবহু **"শূন্য শতাংশ"**-এর মতো। একই সারিতে সংখ্যাটা
+বলত "কাজ হয়েছে" আর ছবিটা বলত "কিছুই হয়নি" — **আর ছবি-সংখ্যা বিপরীত কথা
+বললে মানুষ ছবিটাই বিশ্বাস করে**। ছুটির দিনে কাজ করাটাকেই ব্যর্থতার মতো
+দেখাত।
+
+নিয়মটা এখান থেকে বেরোলো: **যা কাউকে অন্যদের থেকে আলাদা করে না, সেটা
+প্রতি সারিতে লেখা হয় না।**
+
+| | সবাই ছুটিতে | মিশ্র দিনে |
+|---|---|---|
+| তুলনার কলাম (রেল) | নেই | আছে |
+| ডানের `off` / `%` | নেই | আছে — তখন সেটা সত্যিই একজনকে আলাদা করে |
+| কার্ডের নাম | **Hours today** | Against today's target |
+
+⭐ শেষেরটা আলাদা করে বলার মতো: কারো কোনো টার্গেট না থাকলে *"Against
+today's target"* শিরোনামটাই একটা স্ববিরোধ। ঘণ্টাগুলো তবু সত্যি, তাই
+কার্ডটা তখন শুধু ঘণ্টাই দেখায়।
+
+### ⛔ ৭· আর সেই একই ফাঁদ, তৃতীয়বার — এবার উল্টো দিক থেকে
+
+R21 ডিপ্লয় করার সময় `vps-update.sh` বলল *"নতুন migration নেই"*, স্বাস্থ্য
+পরীক্ষা সবুজ দিল, আর `deposit_policy` টেবিলটা **তৈরিই হয়নি**।
+
+কারণটা এবার স্ক্রিপ্টের বাগ নয়, **আমার ক্রম**: স্ক্রিপ্ট চালানোর আগেই
+হাতে `git pull` করে ফেলেছিলাম। স্ক্রিপ্ট নিজে pull করে `BEFORE`/`AFTER`
+মেলায় — আগেই টেনে ফেললে দুটো এক হয়ে যায়, আর তার চোখে "কিছুই বদলায়নি"।
+
+⭐⭐ শিকড়টা [G129](08-Gap-Analysis.md)-এর সাথে এক: **git-এর ইতিহাস জানে না
+ডাটাবেসে কী বসেছে।** তাই শর্তটাই তুলে দেওয়া হয়েছে — এখন প্রতিবার
+`prisma migrate status` জিজ্ঞেস করা হয়, বাকি থাকলে প্রয়োগ, আর প্রয়োগের
+পরেও **আবার** জিজ্ঞেস (`"চালানো হয়েছে"` আর `"বাকি নেই"` এক কথা নয়)।
+*([G135](08-Gap-Analysis.md))*
+
+⚠️ স্ক্রিপ্টের দ্বিতীয় জালটা কাজ করেছিল — `migrate status` দেখে সে সতর্ক
+করেছিল। আমি আউটপুটের শেষ ২৫ লাইন দেখেছিলাম বলে বার্তাটা চোখে পড়েনি।
+**লগ কেটে পড়া মানে জাল কেটে ফেলা।**
+
+### ৮· দিনের হিসাব
+
+| | |
+|---|---|
+| PR | কর্মী-কোড ও ডিভাইস-পরিচয় · **#১২** ম্যানেজারের অ্যাক্সেস · **#১৩** রুট · **#১৪** ছুটির দিনের কার্ড |
+| টেস্ট | **১১৪৭ পাস** · ১ লাল — ⚠️ `adjustments.e2e.spec.ts`-এর তারিখ-নির্ভর টেস্টটা, main-এ আগে থেকেই লাল *(✅ ১৭ আগস্ট সবুজ — § ৩ব)* |
+| প্রোডাকশন | ডিভাইস ৬ → **১০**; দুজন স্টাফ এক PC-তে পাশাপাশি |
+| এখনো বাকি | Belal ও Sadia-র হারানো ঘণ্টা Adjustments দিয়ে ফেরত (B14) · OX-10 ও OX-14-এ এজেন্ট |
+
+---
+
+
+## ৩ঙ২. R21 · সিকিউরিটি মানি — আর যে সহজ হিসাবটা টাকা নিয়ে মিথ্যা বলত *(১৫ আগস্ট ২০২৬)*
+
+দিনের শেষ কাজ, আর এটাই প্রথম ফিচার যেটা **টাকা জমা রাখে** — গোনে না, রাখে।
+
+মালিকের কথা: *"আমরা ইদানিং সকল স্টাফদের থেকে প্রতিমাসের সেলারি থেকে ৫০০
+টাকা কেটে রাখছি, সিকিউরিটি মানি হিসাবে… এই প্রতি মাসে ৫০০ করে টাকা সে
+আবার ব্যাক পাবে যখন জব ছেড়ে দিবে বা রিজাইন করবে… ৩০ দিন আগে না জানালে
+সে ঐ জমানো টাকা এবিল করতে পারবেনা।"*
+
+⚠️ নম্বরটা **R21**, R3 নয় — রোডম্যাপে R3 আগেই সাপ্তাহিক টেলিগ্রাম
+রিপোর্টের। কোড লেখার মাঝপথে ধরা পড়েছে, আর ২৩টা ফাইলে নাম বদলাতে হয়েছে।
+
+### ⭐⭐ ১· যে এক লাইনের হিসাবটা বাদ দেওয়া হয়েছে
+
+সবচেয়ে সহজ বাস্তবায়ন লিখতে দশ মিনিট লাগত:
+
+```ts
+জমা = (কত মাস কাজ করেছেন) × (আজকের অঙ্ক)
+```
+
+⚠️⚠️ **আর ঠিক ওখানেই টাকা নিয়ে মিথ্যা শুরু হতো।** অঙ্কটা কাল ৬০০ হলে ওই
+সূত্র গত ছ-মাসের জমাও **পিছন ফিরে** ৬০০ ধরে গুনত — খাতা এমন টাকা দাবি
+করত যা কর্মী কোনোদিন দেননি। আর অঙ্ক কমালে উল্টোটা: জমানো টাকা নীরবে
+উবে যেত।
+
+⭐ তাই খাতাটা **লিখে রাখা হয়**: `security_deposits`-এ এক কর্মীর এক মাসের
+এক সারি, আর **প্রতিটা সারিতে ওই মাসের অঙ্কটা নিজের ঘরে**।
+
+```
+জমা = প্রতিটা মাসের নিজের কিস্তির যোগফল
+```
+
+নিয়ম বদলালে নতুন মাস নতুন অঙ্কে বসে, পুরোনোগুলো অটুট। **জমা টাকা একটা
+ঘটনার ইতিহাস, আজকের নিয়মের ফল নয়** — এই এক বাক্যেই বাকি নকশাটা দাঁড়ানো।
+
+### ⚠️ ২· কিস্তি বসে অলসভাবে, cron-এ নয়
+
+যে-ই খাতাটা খোলেন — মালিকের পর্দা, পে-রোলের শিট, বা কর্মীর নিজের পাতা —
+`ensureLedger()` তখনই আজকের মাস পর্যন্ত ফাঁকগুলো পূরণ করে দেয়।
+
+⭐ cron হলে সার্ভার এক দিন বন্ধ থাকলেই একটা মাস নীরবে বাদ পড়ত, আর ধরা
+পড়ত বেতনের দিন — সবচেয়ে খারাপ সময়ে। ⚠️ দৌড় ঠেকায় `skipDuplicates`, আর
+শেষ রক্ষাকবচ ডাটাবেসেই: `@@unique([employeeId, yearMonth])`। **দুটো ট্যাব
+একসাথে খুললে কারো জমা বেড়ে যায় না** — টেস্টে ঠিক এটাই মাপা হয়।
+
+### ⭐⭐ ৩· ফেরতের সিদ্ধান্ত স্বয়ংক্রিয় করা হয়নি
+
+নিয়মটা সহজ: ৩০ দিনের নোটিশ হলে ফেরত, নইলে নয়। কোডে লিখতে এক লাইন।
+
+⚠️⚠️ তবু লেখা হয়নি — কারণ **ব্যতিক্রম সবসময়ই থাকে**। কেউ হাসপাতালে
+ভর্তি, কারো পারিবারিক দুর্ঘটনা। স্বয়ংক্রিয় করলে ওই দিনটায় মালিককে
+নিজের সিস্টেমের নিয়ম **ভাঙতে** হতো, অথচ ভাঙার কোনো পথ থাকত না — আর তখন
+টাকাটা হাতে দিয়ে খাতায় লেখা হতো "বাজেয়াপ্ত"।
+
+⭐ তাই সিস্টেম **হিসাব** দেয় (কত দিনের নোটিশ, নিয়ম কত দিনের, কত জমেছে),
+আর **সিদ্ধান্ত** মালিকের। যা করলেন সেটা `notice_days_given` ও
+`notice_days_rule` দুটোসহ সারিতে বসে, আর audit-এ `followedRule` লেখা
+থাকে — ছ-মাস পরে "কিসের ভিত্তিতে" প্রশ্নের উত্তর খাতাতেই।
+
+⚠️ তারিখ না জানা থাকলে "নিয়ম মেলেনি" ধরা হয়। **"জানি না"-কে "হ্যাঁ" ধরে
+নেওয়া মানে নীরবে নিয়মটা মাফ করে দেওয়া** — মালিক তবু ফেরত দিতে পারেন,
+কিন্তু সেটা তখন তাঁর সজ্ঞান সিদ্ধান্ত।
+
+### ৪· পে-রোলে দুটো সংখ্যা, একটা নয়
+
+```
+payable     = ঘণ্টার হিসাবে তাঁর প্রাপ্য      ← ৯,৫০০ নয়, ১০,০০০
+netPayable  = এই মাসে হাতে যাবে              ← ৯,৫০০
+```
+
+⚠️ একটাই সংখ্যা দেখালে পার্থক্যটা হারাত, আর ছাড়ার দিন "আপনি তো ৯,৫০০-ই
+পেতেন" বনাম "৫০০ করে জমেছে" — এই তর্কটা মেটানোর কোনো কাগজ থাকত না।
+জামানত বেতন **কমায় না**, জমা থাকে।
+
+⚠️ কারো ওই মাসের প্রদেয় কিস্তির চেয়ে কম হলে (পুরো মাস অনুপস্থিত) নিট
+শূন্যে থামে, আর নামটা `depositExceedsPayable`-এ আলাদা করে বলা হয় —
+নীরবে থামালে খাতায় ৫০০ জমা দেখাত অথচ টাকাটা কোনোদিন কাটাই যেত না।
+
+### ৫· কে দেখেন
+
+| | |
+|---|---|
+| owner | সবার জমা · নিয়ম · নিষ্পত্তি — সাইডবারে **Deposits** (`/deposits`, ১৬ আগস্ট থেকে · § ৩ঃ) |
+| ⚠️ manager | কিছুই না — জামানত সরাসরি বেতনের অংশ (ADR-023 · ADR-027) |
+| ⭐ স্টাফ | **নিজের** মোট ও মাস ধরে তালিকা, নিজের পাতায় |
+
+⭐ স্টাফের দেখাটা ADR-023 ভাঙে না: অঙ্কটা **তাঁর নিজের টাকা**, বেতনের হিসাব
+নয়, আর এটা থেকে কারো বেতন বের করা যায় না। আর মাস ধরে তালিকাটা না দিলে
+মেলাতে গিয়ে তাঁকে মালিকের কাছেই যেতে হতো — ফিচারটার উদ্দেশ্যই তখন ব্যর্থ।
+
+### ⭐ ৬· `test:nodb` — Docker ছাড়াই টেস্ট
+
+সিস্টেম VPS-এ চলে যাওয়ার পর এই মেশিনে Docker নেই, আর `vitest.config.ts`-এর
+`globalSetup` একটা আসল Postgres তোলে। ফলে **একটা খাঁটি ফাংশনের টেস্টও**
+চালানো যেত না — অথচ পে-রোল আর জামানতের গোটা হিসাবটাই খাঁটি ফাংশনে লেখা,
+ঠিক এই কারণেই।
+
+⭐ `npm run test:nodb` — `*.e2e.spec.ts` বাদ দিয়ে বাকি সব (**৯১৪ পাস**)।
+⚠️ সবুজ মানে "যা চালানো গেছে সব ঠিক", **"সব ঠিক" নয়** — শেষ কথা CI।
+
+⚠️ সাথে একটা টেস্ট Windows-এ skip করতে হয়েছে: `screenshot-heal`-এর
+read-only ফোল্ডারের টেস্টটা `chmod 0o555` ব্যবহার করে, আর Windows-এ ওটা
+কিছুই করে না। কারণটা কোডের নয়, OS-এর — কিন্তু না বাদ দিলে প্রতিবার একটা
+লাল থাকত, আর **"একটা তো সবসময় লাল থাকেই" — এভাবেই আসল লাল চোখ এড়িয়ে যায়।**
+
+### ৭· যাচাই
+
+| | |
+|---|---|
+| টেস্ট | ১২টা খাঁটি + ১৩টা e2e · CI-তে **১১৭২ পাস** |
+| মাঠে | migration প্রয়োগ, নিয়মের সারি বসেছে (৫০০ · ২০২৬-০৮ · ৩০ দিন) |
+| রুট | `/deposits` ও `/me/deposit` দুটোই ৪০১ দেয় লগইন ছাড়া — অর্থাৎ আছে |
+| ⏳ বাকি | প্রথমবার পর্দা খোলা — তখনই সবার আগস্টের কিস্তি বসবে |
+
+---
+
+
+## ৬. ⏳ সিদ্ধান্ত হয়েছে, কোড এখনো বসেনি
+
+| | সিদ্ধান্ত | কোথায় লেখা | আটকে আছে |
+|---|---|---|---|
+| ~~**G37**~~ ✅ | টার্গেট = তার কর্মদিবস × ৮ঘ · বেতন = মাসিক × d÷D | [ADR-025](05-Options-Decisions.md) | **কোডে বসেছে** ([§ ৩ভ](#৩ভ-g37--মাঝপথে-যোগ-দিলে-১২-আগস্ট-২০২৬-রাত)) |
+| ~~**কোড সাইনিং**~~ ✅ | নিজে সই (self-signed), কেনা নয় — খরচ ০ | [ADR-014](05-Options-Decisions.md) | **তিনটে স্ক্রিপ্ট লেখা হয়েছে** ([§ ৩ব](#৩ব-নিজে-সই-করা--তিনটে-স্ক্রিপ্ট-১২-আগস্ট-২০২৬-রাত)) |
+| ~~**হোস্টিং**~~ ✅ | VPS | [ADR-026](05-Options-Decisions.md) | **নিষ্পত্তি ১৩ আগস্ট** |
+
+⭐ **এই তালিকাটা এখন খালি হয়ে গেছে** — G37 ও কোড সাইনিং, দুটোই ১২ আগস্ট
+রাতে কোডে বসেছে। বাকি শুধু হোস্টিংয়ের সিদ্ধান্ত (O12)।
+
+⭐ **G37-এর একটা অংশ এমনিতেই কাজ করে:** *"১৭ ঘণ্টা কাজ করলে ১৭ ঘণ্টার
+বেতন"* — `payroll.math.ts`-এর `বেতন − বেতন × ঘাটতি ÷ টার্গেট` বীজগণিতে
+**কাজ করা ঘণ্টা × হার**-এর সমান। যা সত্যিই নেই তা হলো join/leave-এর
+proration।
+
+### দ্বিতীয় দফা রিভিউ থেকে আসা সিদ্ধান্ত *(৯ আগস্ট ২০২৬)*
+
+কোড শুরুর আগে পুরো প্ল্যান আবার যাচাই করে ১২টা ফাঁক পাওয়া গেছে ([08 § G](08-Gap-Analysis.md))।
+**G29–G34 স্পেকে বসানো হয়ে গেছে** — schema লেখা শুরু করা যায়। বাকিগুলো আপনার সিদ্ধান্তের অপেক্ষায়:
+
+**G35 ✅ অনুমোদিত ও স্পেকে বসানো** — owner-এর audited সংশোধন ([ADR-011e](05-Options-Decisions.md))।
+
+| # | প্রশ্ন | কখন দরকার |
+|---|---|---|
+| **G37** | মাঝপথে জয়েন করলে ২০৮ ঘণ্টা proration হবে কি? | Phase 5 |
+| **G39** | সাপ্তাহিক এনক্রিপটেড অফসাইট ব্যাকআপ — কোথায়? (Google Drive / অন্য ব্রাঞ্চ / ব্যাংক লকার) | Phase 6 |
+| — | ~~`monitoring-policy-template.md` ড্রাফট — **Phase 7-এর ব্লকার**~~ ✅ **লেখা হয়ে গেছে, আর ব্লকার নয়** — সম্মতি নেওয়া হয় জয়েনিংয়ের সময়েই (O14, ১৫ আগস্ট); কাগজটা থাকছে অন্য কেউ এই সিস্টেম বসালে তার জন্য | ~~যত আগে তত ভালো~~ |

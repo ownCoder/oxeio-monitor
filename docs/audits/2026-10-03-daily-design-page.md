@@ -1,0 +1,7 @@
+# Standalone Daily designs & skips page — 3 October 2026
+
+- Owner/manager now open **Targets → Daily designs & skips** at `/targets/daily`. The report is no longer embedded in Design Pool. Its daily Completed/Skipped/Pending table, staff/date filters and Skip-rate details are unchanged. Researcher/designer sidebar and route omit the page; API remains owner/manager-only.
+- Scoped frontend files: `web/src/App.tsx`, `web/src/components/Layout.tsx`, `web/src/pages/AllTargetsPage.tsx`, new `web/src/pages/DailyDesignPage.tsx`, and `web/src/pages/targets/Insights.tsx`. Clean local mirror `.release-salary/oxeio-monitor`; dirty main checkout was not deployed.
+- Local and isolated VPS staged source: frontend typecheck, lint, production build and **295/295** tests passed. No backend or database change.
+- VPS release `/opt/oxeio-releases/daily-design-page-20261003`; app commit **`cad69e415f9bb67d695b70b884489cc3efb8f101`**, build **446**. API/web healthy, PostgreSQL container unchanged, public `/targets/daily` returned 200, anonymous report API returned 401, public JS SHA256 matched web container. No migration or seed. Authenticated browser navigation was not exercised.
+- Rollback images: `oxeio-api:before-daily-design-page-20261003` and `oxeio-web:before-daily-design-page-20261003` (build 444). Use both compose files. Source bundle, validation/build logs, source hashes and public checks are in the release directory.

@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-24T02:23:00Z",
+  "schedule": "08:00 Asia/Dhaka, Saturday–Thursday",
+  "currentTaskId": "D06",
+  "lastRelease": {
+    "build": "542",
+    "commit": "6a16977214fa800017b0d2694eefb60497eb9ced",
+    "summary": "Permission-scoped per-design task checklist"
+  },
+  "tasks": [
+    {
+      "id": "D01",
+      "title": "এক design-এ সময়, screenshots, checklist ও review evidence",
+      "priority": 1,
+      "status": "deployed",
+      "note": "Release 514 live; 35 isolated integration tests passed. File observations, private screenshots, checklist and timeline in Design details."
+    },
+    {
+      "id": "D02",
+      "title": "Manager Action Center ও সরাসরি next action",
+      "priority": 1,
+      "status": "deployed",
+      "note": "Release 519 live: skip review, replacement owed, rework, overdue, stale unstarted work এবং missing agent setup এক owner/manager queue-তে; প্রতিটি item exact record খোলে।"
+    },
+    {
+      "id": "D03",
+      "title": "Storage usage, growth ও retention dashboard",
+      "priority": 1,
+      "status": "deployed",
+      "note": "Release 523 live: current storage/retention, Docker images/cache, reclaimable space, last cleanup এবং 31-day daily history। 12–13 November-এর দুই automatic sample ও -173,314,048 byte growth delta verified; D03 complete।"
+    },
+    {
+      "id": "D04",
+      "title": "Missing-time request ও owner approval",
+      "priority": 1,
+      "status": "blocked",
+      "note": "Owner policy approval required before enabling manual missing-time requests: eligible date window, maximum hours/request and acceptable reasons. Raw tracking will remain immutable."
+    },
+    {
+      "id": "D05",
+      "title": "Account অনুযায়ী table columns ও consistent filter controls",
+      "priority": 1,
+      "status": "deployed",
+      "note": "Release 526 account-synced saved views, 529 account-synced Manage columns, 532 Pool/Review chips, 534 Screenshots controls এবং 536 report shortcuts/removable filters/reset live। Report query/export/permissions unchanged; 313 frontend tests ও live health/401/assets pass। D05 complete।"
+    },
+    {
+      "id": "D06",
+      "title": "Design estimate বনাম actual time ও task planning",
+      "priority": 2,
+      "status": "in_progress",
+      "note": "Release 538 added audited estimate/observed-file comparison; release 540 added sample-aware work-type medians। Release 542 adds a target-owned 50-step checklist: owner/manager add/remove, assigned designer and management complete/reopen, researcher read-only; task progress is not payroll/approval। Isolated 15/15 + frontend 313/313 pass। Next: permission-safe targeted mentions and inbox delivery।"
+    },
+    {
+      "id": "D07",
+      "title": "Calendar ও day অনুযায়ী staff/design drill-down",
+      "priority": 2,
+      "status": "queued",
+      "note": "Configured holiday ও leave rules বজায় রেখে existing report totals ব্যবহার।"
+    },
+    {
+      "id": "D08",
+      "title": "Bulk staff tracking-policy grid",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing work policies, individual differences ও visible tracking changes।"
+    },
+    {
+      "id": "D09",
+      "title": "Staff-এর নিজের monthly PDF ও timesheet highlighter",
+      "priority": 2,
+      "status": "queued",
+      "note": "Own-data scope, identical report figures, clear recorded-time labels।"
+    },
+    {
+      "id": "D10",
+      "title": "Personal summary ও notification preferences",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing digest/KIA delivery reuse; unchanged reminder flood নয়।"
+    },
+    {
+      "id": "D11",
+      "title": "Quality-aware performance map ও monthly recognition",
+      "priority": 2,
+      "status": "queued",
+      "note": "Accepted output, target, rework ও hours একসঙ্গে; input percentage একা quality নয়।"
+    },
+    {
+      "id": "D12",
+      "title": "Team-scoped manager ও approved invitations",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing manager access migration-এর আগে explicit team assignment ও permission tests।"
+    },
+    {
+      "id": "D13",
+      "title": "Getting started ও agent sync/update guidance",
+      "priority": 2,
+      "status": "queued",
+      "note": "Existing updater রেখে clearer offline, permission ও recovery messages।"
+    },
+    {
+      "id": "D14",
+      "title": "Read-only external client portal",
+      "priority": 3,
+      "status": "queued",
+      "note": "Disabled by default; client/project scope ও actual invite recipient ছাড়া access দেওয়া হবে না।"
+    },
+    {
+      "id": "D15",
+      "title": "Browser toolbar team monitor",
+      "priority": 3,
+      "status": "queued",
+      "note": "Authenticated read-only prototype; install/publish আলাদা acceptance ধাপ।"
+    },
+    {
+      "id": "D16",
+      "title": "macOS/Linux agent support",
+      "priority": 3,
+      "status": "queued",
+      "note": "Protocol parity, platform implementation ও real-device acceptance প্রয়োজন।"
+    },
+    {
+      "id": "D17",
+      "title": "Private S3-compatible screenshot storage",
+      "priority": 3,
+      "status": "queued",
+      "note": "Private URLs, retry ও migration plan; provider credentials ছাড়া live storage switch নয়।"
+    },
+    {
+      "id": "D18",
+      "title": "Explicit task timing ও task-linked capture context",
+      "priority": 3,
+      "status": "queued",
+      "note": "Existing filename matching থেকে আলাদা explicit task context; agent rollout ও office pilot প্রয়োজন।"
+    }
+  ],
+  "nextActions": [
+    "D06 estimate versus actual and task planning",
+    "D07 calendar and day drill-down",
+    "D08 bulk tracking-policy grid"
+  ]
+}

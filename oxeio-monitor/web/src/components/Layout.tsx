@@ -1,4 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { api } from '../api/client';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 
 import { listAlerts } from '../api/alerts';
 import type { Role } from '../api/auth';
@@ -82,7 +84,6 @@ interface NavItem {
  *    কিন্তু চারটে ট্যাবের তিনটেয় ৪০৩ পাওয়ার চেয়ে সেটা ভালো।
  */
 const NAV: NavItem[] = [
-  { to: '/production', label: 'Production', roles: ['owner', 'manager', 'researcher'] },
   {
     to: '/',
     label: 'Live Board',
@@ -257,6 +258,8 @@ const NAV: NavItem[] = [
     roles: ['owner', 'manager', 'researcher', 'employee'],
   },
   { to: '/settings', label: 'Settings', roles: ['owner', 'manager'] },
+  {to:'/office/today',label:'Office',roles:['owner','manager','employee','researcher']},
+  { to: '/production', label: 'Production', roles: ['owner', 'manager', 'researcher'] },
 ];
 
 /**
@@ -313,6 +316,15 @@ export function Layout() {
     [user?.role],
   );
 
+  const inbox = usePolling(signal => user ? api<{unread:number}>('/workspace/inbox', {signal}) : Promise.resolve(null), 60000, [user?.userId]);
+
+  const reloadInbox = inbox.reload;
+  useEffect(() => {
+    const refreshInbox = () => reloadInbox();
+    window.addEventListener('oxeio-inbox-read', refreshInbox);
+    return () => window.removeEventListener('oxeio-inbox-read', refreshInbox);
+  }, [reloadInbox]);
+
   const nav = user
     ? NAV.filter(
         (item) =>
@@ -355,6 +367,8 @@ export function Layout() {
         <header className="studio-topbar">
           <div><span className="text-ink-2">Workspace / </span><span>{currentPage}</span></div>
           <div className="studio-topbar-actions">
+            <Link className="inline-flex min-h-9 items-center rounded-md border border-line px-3" to="/workspace/search">Search</Link>
+            <Link className="inline-flex min-h-9 items-center rounded-md border border-line px-3" to="/workspace/inbox">Inbox{inbox.data?.unread ? ` (${inbox.data.unread})` : ''}</Link>
             <span className="studio-topbar-time text-ink-2">Dhaka · {dhakaStamp()}</span>
             <ThemeToggle />
             <button type="button" onClick={() => void signOut()} className="tap px-3 py-1.5 text-xs">Sign out</button>

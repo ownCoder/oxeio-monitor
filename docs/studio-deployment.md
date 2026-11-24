@@ -1,4 +1,6 @@
-> **Current release — 26 September 2026, 17:25 UTC:** round 2 audit fixes are live in web
+> **Current release — 27 September 2026, 12:33 Asia/Dhaka:** web/API **411 / 5dd3783** is deployed and healthy. Public HTTPS and the served JavaScript hash are verified; PostgreSQL retained its container. See [current deployment and rollback constraints](audits/2026-09-27-skip-review.md). The Studio release and rollback commands below are historical; do not apply them to the current release.
+
+> **Previous release — 26 September 2026, 17:25 UTC:** round 2 audit fixes are live in web
 > and API build **409 / 1081b09**, and the matching source is present on the VPS.
 > All services are healthy; the prior version mismatch is resolved.
 > [Final validation and rollback details](audits/2026-09-26-round2-fixes.md).

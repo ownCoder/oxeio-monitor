@@ -201,6 +201,11 @@ class DropReasonDto {
   reason!: DropReason;
 }
 
+class SkipDecisionDto {
+  @IsBoolean()
+  approve!: boolean;
+}
+
 /**
  * **ডিজাইন-টার্গেট** *(২২ আগস্ট ২০২৬)*।
  *
@@ -295,6 +300,7 @@ export class TargetsController {
    * পাহারা বসালে একদিন একটা দিয়ে অন্যটা ফাঁকি দেওয়া যেত। ⭐ পর্দায়
    * বোতামটা কেবল owner/manager দেখেন (`mayDelete`)।
    */
+  @Roles(UserRole.owner, UserRole.manager)
   @Post('delete')
   async deleteMany(
     @CurrentUser() actor: SessionUser,
@@ -316,6 +322,7 @@ export class TargetsController {
    * ⚠️ বডিসহ `DELETE` অনেক প্রক্সি ফেলে দেয়, তাই কারণটা **query-তে**
    * (`?reason=not_found`) — একটা ছোট, চেনা মান, আর ওতে ব্যক্তিগত কিছু নেই।
    */
+  @Roles(UserRole.owner, UserRole.manager)
   @Delete(':id')
   async remove(
     @CurrentUser() actor: SessionUser,
@@ -390,6 +397,16 @@ export class TargetsController {
     return this.targets.markReviewed(id, actor.userId, new Date());
   }
 
+  @Roles(UserRole.owner, UserRole.manager)
+  @Post(':id/skip-decision')
+  decideSkip(
+    @CurrentUser() actor: SessionUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SkipDecisionDto,
+  ) {
+    return this.targets.decideSkip(id, dto.approve, actor.userId);
+  }
+
   @Post(':id/uploaded')
   async uploaded(
     @CurrentUser() actor: SessionUser,
@@ -452,6 +469,11 @@ export class MyTargetsController {
   @Get()
   mine(@CurrentUser() actor: SessionUser): Promise<MyTarget[]> {
     return this.targets.mine(employeeIdOf(actor));
+  }
+
+  @Get('skip-allowance')
+  skipAllowance(@CurrentUser() actor: SessionUser) {
+    return this.targets.skipAllowance(employeeIdOf(actor));
   }
 
   /**

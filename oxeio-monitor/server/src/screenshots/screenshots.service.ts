@@ -18,6 +18,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { SessionUser } from '../auth/types';
 import type { GalleryQueryDto } from './dto';
 import { formatWorkDate, pageSlice, parseWorkDate } from './gallery.math';
+import { captureWindow, galleryWindow } from './gallery.filters';
 import { SignedUrlService } from './signed-url.service';
 
 export interface GalleryItem {
@@ -89,15 +90,33 @@ export class ScreenshotsService {
     query: GalleryQueryDto,
     ip: string,
   ): Promise<GalleryPage> {
-    const workDate = this.resolveDate(query.date);
+    if (query.date !== undefined && (query.fromDate !== undefined || query.toDate !== undefined)) {
+      throw new BadRequestException('Use date or a range, not both');
+    }
+    if ((query.fromDate === undefined) !== (query.toDate === undefined)) {
+      throw new BadRequestException('Both range dates are required');
+    }
+    const singleDate = this.resolveDate(query.date);
+    const window = galleryWindow(
+      query.fromDate ?? formatWorkDate(singleDate),
+      query.toDate ?? formatWorkDate(singleDate),
+    );
+    if (!window) throw new BadRequestException('Date range must be 1–7 valid Dhaka days');
     const employeeId = this.resolveEmployeeScope(actor, query.employeeId);
+    const app = query.app?.trim();
+    const timeBand = query.timeBand;
 
     const where: Prisma.ScreenshotWhereInput = {
-      workDate,
+      workDate: { gte: window.from, lte: window.to },
       // ⚠️ retention job আগে `deleted_at` বসায়, ফাইল মোছে পরে (ADR-006)।
       //    এই শর্তটা না দিলে গ্যালারিতে সারি দেখা যেত অথচ ছবি ৪০৪ হতো।
       deletedAt: null,
       ...(employeeId === null ? {} : { employeeId }),
+      ...(timeBand && timeBand !== 'all'
+        ? { OR: window.days.map((day) => captureWindow(day, timeBand)) }
+        : {}),
+      ...(app ? { activeApp: { contains: app, mode: 'insensitive' } } : {}),
+      ...(query.monitorIndex === undefined ? {} : { monitorIndex: query.monitorIndex }),
     };
 
     const total = await this.prisma.screenshot.count({ where });
@@ -145,10 +164,15 @@ export class ScreenshotsService {
       fullUrl: this.urls.urlFor(r.id, 'full', actor.userId),
     }));
 
-    await this.recordView(actor, ip, workDate, slice.page, employeeId, rows);
+    await this.recordView(actor, ip, window.from, slice.page, employeeId, rows, {
+      toDate: formatWorkDate(window.to),
+      timeBand: query.timeBand ?? 'all',
+      app: app || null,
+      monitorIndex: query.monitorIndex ?? null,
+    });
 
     return {
-      date: formatWorkDate(workDate),
+      date: formatWorkDate(window.to),
       page: slice.page,
       pageSize: slice.pageSize,
       total,
@@ -476,6 +500,7 @@ export class ScreenshotsService {
     page: number,
     employeeId: number | null,
     rows: { id: bigint; employeeId: number }[],
+    filters?: { toDate: string; timeBand: string; app: string | null; monitorIndex: number | null },
   ): Promise<void> {
     if (rows.length === 0) return;
 
@@ -490,6 +515,7 @@ export class ScreenshotsService {
       ipAddress: ip,
       meta: {
         date: formatWorkDate(workDate),
+        ...(filters ? { filters } : {}),
         page,
         count: rows.length,
         // ⚠️ BigInt সরাসরi JSON-এ দিলে Prisma ছুঁড়ে দেয় — string করতেই হবে

@@ -1,11 +1,21 @@
-> **Current audit status — 26 September 2026:** A01–A07 and B01–B03 are fixed and verified; application release 409 is live. See [round 2 deployment](audits/2026-09-26-round2-fixes.md).
+> **Current release — 28 September 2026:** **414 / 352682c** is live. Design Pool audit fixes, simpler filters and page CSV export are verified; skip-review controls remain active. [Audit record](audits/2026-09-28-design-pool.md) · [Usage guide](design-pool-operations.md).
 
 > **27 September 2026 — Production expansion:** আটটি অনুমোদিত Production feature-এর code প্রস্তুত; phase-by-phase [status](production-expansion-plan.md) ও [verification](audits/2026-09-27-production-expansion.md) আলাদা। পরবর্তী operational কাজ: verified production backup, migration/API/web rollout, external monitor account/URLs ও notification verification। Synthetic এবং VPS-এর retained production backup—দুটির isolated restore verified; ভবিষ্যৎ backup-এ drill পুনরাবৃত্তি করতে হবে।
 > See the [bug evidence](audits/2026-09-26-system-audit.md) and
 > [fix tracker](audits/2026-09-26-fix-tracker.md) for current status and validation.
 > Earlier dated sections below remain historical records.
 
-## Current repair milestone — 26 September 2026
+## 28 September — Design Pool audit and usability
+
+Release **414 / 352682c** is deployed. Delete permissions, error upload, dropped-target queues and completion-date filters corrected; reset/refresh, date shortcuts, protected selection and page CSV export added. Backend 138 / frontend 281 tests passed. [Full record](audits/2026-09-28-design-pool.md) · [Usage](design-pool-operations.md).
+
+## 27 September — skip review deployed
+
+**Release 411 / 5dd3783 · 12:33 Asia/Dhaka:** দিনে প্রথম ৩টি skip automatic; পরের request owner/manager review না হওয়া পর্যন্ত assigned থাকে। Reject হলে একই designer-এর কাছে থাকে; approve হলে স্বাভাবিক allocation নিয়মে replacement হয়। Request ledger থেকে দৈনিক হিসাব হয়, undo/reject করলে quota ফেরত আসে না। Review-এর date filter এখন প্রকৃত request time ব্যবহার করে।
+
+Exact release source-এ ৮টি integration ও ৪০টি rule test পাস। API/web build, encrypted backup parsing, ২টি migration, public HTTPS health এবং public bundle hash যাচাই হয়েছে; PostgreSQL container অপরিবর্তিত। [Release record](audits/2026-09-27-skip-review.md) · [ব্যবহারবিধি](skip-review-operations.md)। Screenshot evidence ও comparative skip-rate dashboard এই release-এর অংশ নয়।
+
+## Historical repair milestone — 26 September 2026
 
 A01–A07 are closed with regression evidence and matched source/runtime deployment (release 407). Feature work can resume. Existing feature gaps such as assignment history and broader target auditing are separate scope. Remaining physical-device and backup-restore checks are not implied by green unit tests.
 

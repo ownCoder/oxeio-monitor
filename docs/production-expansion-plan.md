@@ -1,6 +1,6 @@
 # Production expansion — approved scope, 26 September 2026
 
-The owner approved all eight phases and the Studio mockup on 26 September 2026. Implementation was verified locally on 27 September. **Production remains release 409 / 1081b09; this expansion is not deployed.**
+The owner approved all eight phases and the Studio mockup on 26 September 2026. Implementation was verified locally on 27 September. **Current production status is in [current-state](current-state.md). Production workspace and Office additions are deployed in release 428. Actual digest delivery/sales imports remain operational setup; unrelated local Studio/agent changes are excluded. See the 29 September release record.**
 
 | Phase | Deliverable | Status |
 |---|---|---|

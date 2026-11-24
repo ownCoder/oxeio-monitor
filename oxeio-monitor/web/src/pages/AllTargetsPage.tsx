@@ -3,16 +3,15 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   deleteTarget,
+  decideSkip,
   deleteTargets,
   listTargetAdders,
   undoComplete,
   listTargetDesigners,
   listTargets,
-  markLive,
   markChecked,
   markFixed,
   markReviewed,
-  markUploaded,
   targetStats,
   type DropReason,
   type TargetRow,
@@ -43,6 +42,7 @@ import {
   type Stage,
 } from './targets/filters';
 import { DropReasonPicker, DropReasonTag } from './targets/DropReason';
+import { downloadTargetsCsv } from './targets/export';
 
 /**
  * **সব ডিজাইন-টার্গেট** *(২৩ আগস্ট, মালিকের চাওয়া)* — সাইডবারে
@@ -209,10 +209,11 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
 
   const rows = data.data?.rows ?? [];
   /** ⚠️ খালি পাতায় `every()` সত্যি বলে — তাই সংখ্যাটাও দেখা হয় */
-  const allPicked = rows.length > 0 && rows.every((r) => picked.has(r.id));
+  const selectableRows = rows.filter((r) => !r.skipReviewPending && r.status !== 'done' && r.status !== 'deleted');
+  const allPicked = selectableRows.length > 0 && selectableRows.every((r) => picked.has(r.id));
 
   const toggleAll = () =>
-    setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.id)));
+    setPicked(allPicked ? new Set() : new Set(selectableRows.map((r) => r.id)));
 
   const toggleOne = (id: number) =>
     setPicked((prev) => {
@@ -235,7 +236,8 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
             <input
               type="checkbox"
               className="tap"
-              aria-label="Select every row on this page"
+              aria-label="Select deletable targets on this page"
+              disabled={selectableRows.length === 0 || edit.busy || data.loading}
               checked={allPicked}
               onChange={toggleAll}
             />
@@ -245,6 +247,8 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
               type="checkbox"
               className="tap"
               aria-label={'Select ' + r.asin}
+              disabled={r.skipReviewPending || r.status === 'done' || r.status === 'deleted' || edit.busy || data.loading}
+              title={r.skipReviewPending ? 'Decide the pending skip before deleting' : r.status === 'done' ? 'Finished work is protected' : r.status === 'deleted' ? 'Already deleted' : 'Select for deletion'}
               checked={picked.has(r.id)}
               onChange={() => toggleOne(r.id)}
             />
@@ -263,6 +267,13 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
    */
   const looksLikeUrl = /[/:]/.test(q);
 
+  const hasSearchFilters = q.trim() !== '' || activeFilters > 0 || (showQueues && filter !== 'all');
+  const resetFilters = () => {
+    setPage(1); setQ(''); setStaffId(''); setAddedById(''); setFrom(''); setTo(''); setFilter(lockedStage ?? 'all');
+    setPicked(new Set()); setConfirmingBulk(false);
+  };
+  const skipDates = filter === 'to_review' || filter === 'skipped';
+
   const change = (next: () => void) => {
     setPage(1);
     next();
@@ -278,14 +289,14 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       */
       hint={
         data.data
-          ? `${data.data.total} in total · newest activity first`
+          ? `${data.data.total.toLocaleString()} matching targets · ${skipDates ? 'pending reviews first, then newest skip request' : 'newest activity first'}`
           : 'Loading…'
       }
       padded={false}
     >
       <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
         {showQueues &&
-          FILTERS.map((f) => (
+          FILTERS.filter((f) => f.stage !== 'to_upload' && f.stage !== 'to_live').map((f) => (
           <button
             key={f.key}
             type="button"
@@ -341,6 +352,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
         */}
         {showQueues && (
           <select
+            aria-label="Target status"
             value={statusValue}
           onChange={(e) =>
             change(() => {
@@ -409,6 +421,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
              নেওয়া হতো; মালিক ওটা তুলে দিতে বলেছেন।
         */}
         <input
+          aria-label="Search ASIN or job number"
           value={q}
           onChange={(e) => change(() => setQ(e.target.value))}
           placeholder="ASIN or job no…"
@@ -421,6 +434,12 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
            খালি তালিকা, আর ব্যবহারকারী ভাবতেন ডিজাইনটা পুলে নেই — অথচ
            আছে। এই অ্যাপে নীরব ভুল উত্তরই সবচেয়ে অপছন্দের ব্যর্থতা।
       */}
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+        <MiniButton disabled={data.loading || edit.busy} onClick={() => { setPicked(new Set()); setConfirmingBulk(false); data.reload(); stats.reload(); }}>Refresh</MiniButton>
+        <MiniButton disabled={data.loading || rows.length === 0} title="Export the visible page, up to 50 matching targets" onClick={() => downloadTargetsCsv(rows, data.data?.page ?? page)}>Export this page · CSV</MiniButton>
+        {hasSearchFilters && <MiniButton onClick={resetFilters}>Reset all filters</MiniButton>}
+        {data.loading && <span role="status" className="text-xs text-ink-3">Loading targets…</span>}
+      </div>
       {looksLikeUrl && (
         <div className="px-4 pb-2 text-[12px] text-idle-ink">
           Links are not searched any more — paste the <b>ASIN</b> or the{' '}
@@ -431,6 +450,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
           <select
+            aria-label="Designer"
             value={staffId}
             onChange={(e) => change(() => setStaffId(e.target.value))}
             className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
@@ -451,6 +471,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                কতটা এনেছেন।
           */}
           <select
+            aria-label="Added by"
             value={addedById}
             onChange={(e) => change(() => setAddedById(e.target.value))}
             className="rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
@@ -467,6 +488,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
             From
             <input
               type="date"
+              max={to || undefined}
               value={from}
               onChange={(e) => change(() => setFrom(e.target.value))}
               className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
@@ -477,12 +499,15 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
             to
             <input
               type="date"
+              min={from || undefined}
               value={to}
               onChange={(e) => change(() => setTo(e.target.value))}
               className="num rounded-md border border-line bg-paper px-2 py-1 text-[12.5px] text-ink"
             />
           </label>
 
+          <MiniButton onClick={() => change(() => { setFrom(today); setTo(today); })}>Today</MiniButton>
+          <MiniButton onClick={() => change(() => { setFrom(new Date(Date.now() + 6 * 3_600_000 - 6 * 86_400_000).toISOString().slice(0, 10)); setTo(today); })}>Last 7 days</MiniButton>
           {activeFilters > 0 && (
             <button
               type="button"
@@ -502,7 +527,13 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
         </div>
       )}
 
+      {(from || to) && <p className="px-4 pb-2 text-xs text-ink-3">
+        {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips without a recorded time and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
+      </p>}
       <div className="px-4">
+        {(from || to) && <p className="pb-2 text-xs text-ink-3">
+          {skipDates ? 'Dates refer to skip requests in Dhaka time. Clear dates to include legacy skips and deleted targets.' : filter === 'done' ? 'Dates refer to completion time in Dhaka time.' : 'Dates refer to the latest recorded target activity in Dhaka time.'}
+        </p>}
         <ServerError error={edit.error} />
       </div>
 
@@ -542,7 +573,8 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
 
       {data.data && data.data.rows.length === 0 && (
         <div className="px-4 py-6 text-[13px] text-ink-3">
-          Nothing matches that.
+          No targets match your search or filters.
+          {hasSearchFilters && <button type="button" onClick={resetFilters} className="ml-2 text-data hover:underline">Reset all filters</button>}
         </div>
       )}
 
@@ -571,7 +603,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                   disabled={edit.busy}
                   onClick={() => setConfirmingBulk(true)}
                 >
-                  Delete
+                  Delete {picked.size} selected
                 </MiniButton>
               </span>
             </div>
@@ -638,7 +670,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                 <Notice tone="attention">
                   They stay in the list as Deleted, never go to anyone again, and
                   the same ASIN can never be added back to the pool. Finished
-                  designs in the selection are left alone.
+                  designs and pending skip reviews are protected.
                 </Notice>
                 <ServerError error={edit.error} />
               </div>
@@ -777,18 +809,6 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                         stats.reload();
                       })
                     }
-                    onUploaded={() =>
-                      edit.run(async () => {
-                        await markUploaded(r.id);
-                        data.reload();
-                      })
-                    }
-                    onLive={() =>
-                      edit.run(async () => {
-                        await markLive(r.id);
-                        data.reload();
-                      })
-                    }
                     onUndo={() =>
                       edit.run(async () => {
                         await undoComplete(r.id);
@@ -803,6 +823,11 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
                       })
                     }
                     mayDelete={mayDelete}
+                    onSkipDecision={(approve) => edit.run(async () => {
+                      await decideSkip(r.id, approve);
+                      data.reload();
+                      stats.reload();
+                    })}
                     mayProofread={user?.canProofread === true}
                     onDelete={(reason) =>
                       edit.run(async () => {
@@ -826,13 +851,13 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
             </span>
             <span className="flex gap-2">
               <MiniButton
-                disabled={data.data.page <= 1}
+                disabled={data.loading || data.data.page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
                 Previous
               </MiniButton>
               <MiniButton
-                disabled={data.data.page >= data.data.pages}
+                disabled={data.loading || data.data.page >= data.data.pages}
                 onClick={() => setPage((p) => p + 1)}
               >
                 Next
@@ -851,6 +876,7 @@ export function TargetList({ lockedStage }: { lockedStage?: Stage } = {}) {
  * সংখ্যাটা এক, কিন্তু ভরসা এক নয়।
  */
 function StatusChip({ row }: { row: TargetRow }) {
+  if (row.skipReviewPending) return <Chip tone="attention">Pending skip review</Chip>;
   if (row.status === 'done') {
     /*
       ⚠️ পুরোনো Excel থেকে আসা সারিগুলো আলাদা করে বলা হয় — ওগুলোর
@@ -955,6 +981,11 @@ function FileCell({ sec }: { sec: number | null }) {
 }
 
 function WhenCell({ row }: { row: TargetRow }) {
+  if (row.skipReviewPending || row.status === 'skipped') return (
+    <span className="num mt-0.5 block text-[11.5px] text-ink-3">
+      {row.skipRequestedAt ? `${formatDateTime(row.skipRequestedAt)} · skip requested` : 'Skip time not recorded (legacy)'}
+    </span>
+  );
   const when =
     row.completedAt ?? row.startedAt ?? row.assignedAt ?? row.addedAt;
 
@@ -1035,12 +1066,11 @@ function RowActions({
   row,
   busy,
   onChange,
-  onUploaded,
   onChecked,
   onFixed,
-  onLive,
   onUndo,
   onReviewed,
+  onSkipDecision,
   onDelete,
   mayDelete,
   mayProofread,
@@ -1048,15 +1078,14 @@ function RowActions({
   row: TargetRow;
   busy: boolean;
   onChange: (status: TargetStatus) => void;
-  onUploaded: () => void;
   /** ⭐ `true` = বানান ঠিক · `false` = ভুল পাওয়া গেছে */
   onChecked: (ok: boolean) => void;
   onFixed: () => void;
-  onLive: () => void;
   /** ⭐ "শেষ" ফিরিয়ে নেওয়া *(২৫ আগস্ট)* — যেকোনো দিনের */
   onUndo: () => void;
   /** ⭐ "দেখে নিয়েছি" — কেবল বাদ-যাওয়া সারিতে *(৩১ আগস্ট)* */
   onReviewed: () => void;
+  onSkipDecision: (approve: boolean) => void;
   onDelete: (reason: DropReason) => void;
   /** ⚠️ `false` হলে Delete বোতামটাই বসে না — গবেষকের হাতে ওটা থাকবে না */
   mayDelete: boolean;
@@ -1082,6 +1111,13 @@ function RowActions({
    * ধরা, কি-বোর্ড সামলানো — তিনটে নতুন ফাঁদ, একটাও দরকার নেই।
    */
   const [open, setOpen] = useState(false);
+
+  if (row.skipReviewPending) return mayDelete ? (
+    <span className="flex flex-wrap justify-end gap-1.5">
+      <MiniButton tone="good" disabled={busy} onClick={() => onSkipDecision(true)}>Approve skip</MiniButton>
+      <MiniButton disabled={busy} onClick={() => onSkipDecision(false)}>Reject · return to designer</MiniButton>
+    </span>
+  ) : <span className="text-xs text-ink-3">Waiting for owner or manager</span>;
 
   /**
    * ⭐⭐ **"Really delete" উঠে গেছে, তার জায়গায় তিনটে কারণ** *(৩১ আগস্ট)*।
@@ -1175,14 +1211,6 @@ function RowActions({
           Has error
         </MiniButton>
       </>
-    ) : row.completedAt !== null && row.uploadedAt === null && !broken ? (
-      <MiniButton disabled={busy} onClick={onUploaded}>
-        Uploaded
-      </MiniButton>
-    ) : row.uploadedAt !== null && row.liveAt === null ? (
-      <MiniButton tone="good" disabled={busy} onClick={onLive}>
-        Live
-      </MiniButton>
     ) : row.status !== 'done' ? (
       /*
         ⚠️ নামটা **"Complete"**, "Done" নয় — ডিজাইনারের পাতায় ঠিক এই
@@ -1200,7 +1228,7 @@ function RowActions({
     return (
       <span className="flex items-center justify-end gap-1.5 whitespace-nowrap">
         {next}
-        <MiniButton disabled={busy} onClick={() => setOpen(true)}>
+        <MiniButton title={'More actions for ' + row.asin} disabled={busy} onClick={() => setOpen(true)}>
           {'⋯'}
         </MiniButton>
       </span>
@@ -1244,22 +1272,6 @@ function RowActions({
         </MiniButton>
       )}
       {/*
-        ⚠️⚠️ **ভুল পাওয়া অথচ ঠিক-না-হওয়া ডিজাইনে "Uploaded" বোতামই ওঠে না**
-        *(মালিকের সিদ্ধান্ত, ২৫ আগস্ট)* — জানা-ভাঙা জিনিস Amazon-এ যাবে না।
-        ⭐ কিন্তু **এখনো দেখা হয়নি** এমন সারি আটকায় না; আটকালে কিউটা
-        রাতারাতি ০ হয়ে যেত আর কেউ শুরুই করত না।
-      */}
-      {row.completedAt !== null && row.uploadedAt === null && !broken && (
-        <MiniButton disabled={busy} onClick={onUploaded}>
-          Uploaded
-        </MiniButton>
-      )}
-      {row.uploadedAt !== null && row.liveAt === null && (
-        <MiniButton tone="good" disabled={busy} onClick={onLive}>
-          Live
-        </MiniButton>
-      )}
-      {/*
         ⭐⭐ **"ভুল করে Complete চেপে ফেলেছে"** *(মালিকের রিপোর্ট, ২৫ আগস্ট)*।
 
         ⚠️⚠️ পাশের "To pool" দিয়ে এটা করা **যায় না** — ওটা মালিকানাও
@@ -1292,7 +1304,7 @@ function RowActions({
         ⚠️ গবেষকের হাতে Delete থাকবে না — ৪৬ হাজার সারির মধ্যে একটা
            ভুল ডিলিট কেউ খুঁজেই পেত না।
       */}
-      {mayDelete && (
+      {mayDelete && row.status !== 'done' && (
         <MiniButton tone="danger" disabled={busy} onClick={() => setConfirming(true)}>
           Delete
         </MiniButton>

@@ -42,6 +42,9 @@ describe('A03–A05 target lifecycle regressions', () => {
   });
   it('does not overwrite completion committed while the delete waits for a row lock', async () => {
     const { row, owner } = await target('assigned');
+    // Establish holder/writer/observer connections before starting the timed lock.
+    // Otherwise a cold connection over SSH can exhaust Prisma's acquisition budget.
+    await Promise.all(Array.from({ length: 3 }, () => h.prisma.$queryRaw`SELECT 1 FROM pg_sleep(0.2)`));
     let release!: () => void;
     let ready!: () => void;
     const locked = new Promise<void>((r) => { ready = r; });
